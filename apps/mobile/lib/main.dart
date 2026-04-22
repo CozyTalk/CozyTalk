@@ -1,5 +1,15 @@
 import 'package:flutter/material.dart';
 
+// main.dart — entry point
+//
+// This is where all layers are wired together.
+// Create your repository implementations and inject them into providers here.
+//
+// Example:
+//
+// final myProvider = MyProvider(MyRepositoryImpl());
+// runApp(MyApp(myProvider: myProvider));
+
 void main() {
   runApp(const MyApp());
 }
@@ -11,7 +21,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
+      title: 'CozyTalk',
       theme: ThemeData(
         // This is the theme of your application.
         //
