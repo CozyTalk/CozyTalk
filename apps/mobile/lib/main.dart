@@ -17,7 +17,13 @@ import 'firebase_options.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-  await FirebaseAuth.instance.signInAnonymously();
+  if (FirebaseAuth.instance.currentUser == null) {
+    try {
+      await FirebaseAuth.instance.signInAnonymously();
+    } catch (_) {
+      // Continue without sign-in; auth-required features will surface their own errors
+    }
+  }
   runApp(const MyApp());
 }
 
@@ -89,8 +95,13 @@ class _MyHomePageState extends State<MyHomePage> {
     try {
       final functions = FirebaseFunctions.instance;
       final result = await functions.httpsCallable('helloWorld').call();
+      final data = result.data;
+      final message =
+          data is Map<String, dynamic> && data['message'] is String
+              ? data['message'] as String
+              : 'Unexpected response format';
       setState(() {
-        _functionResult = (result.data as Map)['message'] as String;
+        _functionResult = message;
       });
     } catch (e) {
       setState(() {
