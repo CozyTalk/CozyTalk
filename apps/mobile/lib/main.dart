@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_functions/cloud_functions.dart';
+import 'firebase_options.dart';
 
 // main.dart — entry point
 //
@@ -10,7 +14,16 @@ import 'package:flutter/material.dart';
 // final myProvider = MyProvider(MyRepositoryImpl());
 // runApp(MyApp(myProvider: myProvider));
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  if (FirebaseAuth.instance.currentUser == null) {
+    try {
+      await FirebaseAuth.instance.signInAnonymously();
+    } catch (_) {
+      // Continue without sign-in; auth-required features will surface their own errors
+    }
+  }
   runApp(const MyApp());
 }
 
@@ -65,6 +78,7 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   int _counter = 0;
+  String _functionResult = '';
 
   void _incrementCounter() {
     setState(() {
@@ -75,6 +89,25 @@ class _MyHomePageState extends State<MyHomePage> {
       // called again, and so nothing would appear to happen.
       _counter++;
     });
+  }
+
+  Future<void> _callCloudFunction() async {
+    try {
+      final functions = FirebaseFunctions.instance;
+      final result = await functions.httpsCallable('helloWorld').call();
+      final data = result.data;
+      final message =
+          data is Map<String, dynamic> && data['message'] is String
+              ? data['message'] as String
+              : 'Unexpected response format';
+      setState(() {
+        _functionResult = message;
+      });
+    } catch (e) {
+      setState(() {
+        _functionResult = 'Error: $e';
+      });
+    }
   }
 
   @override
@@ -119,6 +152,13 @@ class _MyHomePageState extends State<MyHomePage> {
               '$_counter',
               style: Theme.of(context).textTheme.headlineMedium,
             ),
+            const SizedBox(height: 40),
+            ElevatedButton(
+              onPressed: _callCloudFunction,
+              child: const Text('Call Cloud Function'),
+            ),
+            const SizedBox(height: 20),
+            Text(_functionResult),
           ],
         ),
       ),
