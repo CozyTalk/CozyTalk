@@ -39,38 +39,23 @@ firebase login
 
 ## Run
 
-The app reads `apps/mobile/.env` to configure the environment. This file is gitignored — create it from the example:
+By default the app runs against the **local emulator**. To run against production, pass `--dart-define=USE_EMULATOR=false`.
+
+**With local emulators (default):**
 
 ```bash
-cd apps/mobile
-cp .env.example .env
-```
-
-Edit `.env` to switch between production and emulator:
-
-```bash
-# hit live Firebase (default)
-USE_EMULATOR=false
-
-# hit local emulator
-USE_EMULATOR=true
-```
-
-Then just run:
-
-```bash
-cd apps/mobile
-flutter run
-```
-
-**With local emulators**, start them first:
-
-```bash
-# Terminal 1
+# Terminal 1 — start emulators
 cd functions
 npm run serve
 
-# Terminal 2
+# Terminal 2 — run app
 cd apps/mobile
 flutter run
+```
+
+**Against production Firebase:**
+
+```bash
+cd apps/mobile
+flutter run --dart-define=USE_EMULATOR=false
 ```
