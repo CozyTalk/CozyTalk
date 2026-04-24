@@ -21,7 +21,7 @@ CozyTalk is an anonymous stranger chat app targeting **Android and Web**. Flutte
 - Matchmaking logic must be a Cloud Function — never client-side (race conditions)
 - Cloud Functions are the only writers to `active_sessions` — never allow client writes
 - Chat messages must be destroyed immediately on session end — only retained in `reports` doc if reported
-- Realtime DB room access must be scoped to session participants (deployed: participant-scoped via `sessions/{roomId}/users/{uid}`)
+- Realtime DB room access must be scoped to session participants via `sessions/{roomId}/users/{uid}`
 - `sessionId` should equal `roomId` in RTDB — one ID links Firestore session to RTDB messages
 
 ## Privacy by Design (non-negotiable)
@@ -42,11 +42,10 @@ Idle → Searching (in waiting_pool) → Matched (active_sessions created) → C
 - Cleanup: always via Cloud Function, never client-side
 
 ## Key Open Decisions
-1. Final Firestore document schemas (fields, types, valid status values)
-2. Matchmaking Cloud Function design: Firestore trigger on `waiting_pool` create vs. scheduled job
-3. Biometric/passkey integration design: Android Keystore + WebAuthn for web
-4. Feature flag strategy: which features to gate (e.g. icebreakers, biometric auth)
-5. Word censor implementation: client-side filter, Cloud Function pre-process, or both
+1. Matchmaking Cloud Function design: Firestore trigger on `waiting_pool` create vs. scheduled job
+2. Biometric/passkey integration design: Android Keystore + WebAuthn for web
+3. Feature flag strategy: which features to gate (e.g. icebreakers, biometric auth)
+4. Word censor implementation: client-side filter, Cloud Function pre-process, or both
 
 ## When to invoke
 Before starting any new feature, before writing any Cloud Function, or before any change that spans more than one layer.

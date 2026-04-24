@@ -94,7 +94,7 @@ The chat Notifier must model all four states explicitly as an enum — never inf
 End-to-end clean arch example: `HelloScreen` → `HelloNotifier` → `CallHello` usecase → `HelloRepositoryImpl` → `HelloDatasourceImpl` → `helloWorld` Cloud Function → response flows back. This is the **template** for all future features.
 
 ### App bootstrap (`lib/main.dart`)
-Loads `.env.example` (the only bundled asset — `.env` is gitignored and not bundled), initialises Firebase, points Functions at local emulator if `USE_EMULATOR=true`, signs in anonymously, wraps in `ProviderScope`.
+Loads `.env.example`, initialises Firebase, signs in anonymously, wraps in `ProviderScope`. Set `USE_EMULATOR=true` to point Functions at the local emulator.
 
 ### Tests (`test/widget_test.dart`)
 Three widget tests for `HelloScreen` using `_FakeHelloNotifier` with `callCount` — all passing.
@@ -151,11 +151,11 @@ service cloud.firestore {
       allow create: if isOwner(userId)
         && request.resource.data.createdAt == request.time
         && request.resource.data.status == 'waiting';
+      // clients can only touch updatedAt — Cloud Functions set status='matched'
       allow update: if isOwner(userId)
         && request.resource.data.diff(resource.data)
-            .affectedKeys().hasOnly(['status', 'updatedAt'])
-        && request.resource.data.updatedAt == request.time
-        && request.resource.data.status in ['waiting', 'matched'];
+            .affectedKeys().hasOnly(['updatedAt'])
+        && request.resource.data.updatedAt == request.time;
     }
 
     match /active_sessions/{sessionId} {
@@ -166,6 +166,7 @@ service cloud.firestore {
     match /reports/{reportId} {
       allow create: if isSignedIn()
         && request.resource.data.keys().hasOnly(['reporterId', 'reportedUserId', 'sessionId', 'reason', 'description', 'chatLog', 'createdAt', 'status'])
+        && request.resource.data.keys().hasAll(['reporterId', 'reportedUserId', 'sessionId', 'reason', 'chatLog', 'createdAt', 'status'])
         && request.resource.data.reporterId == request.auth.uid
         && request.resource.data.status == 'pending'
         && request.resource.data.createdAt == request.time;
@@ -192,7 +193,7 @@ service cloud.firestore {
         ".write": false,
         "$messageId": {
           ".write": "!data.exists() && auth != null && root.child('sessions').child($room_id).child('users').child(auth.uid).exists()",
-          ".validate": "newData.hasChildren(['senderId', 'text', 'timestamp']) && newData.child('senderId').val() == auth.uid && newData.child('text').isString() && newData.child('text').val().length > 0 && newData.child('timestamp').isNumber()"
+          ".validate": "newData.hasChildren(['senderId', 'text', 'timestamp']) && newData.child('senderId').val() == auth.uid && newData.child('text').isString() && newData.child('text').val().length > 0 && newData.child('text').val().length <= 1000 && newData.child('timestamp').isNumber()"
         }
       }
     }
@@ -228,7 +229,7 @@ Anonymous users get a minimal doc on first sign-in (`uid`, `role: 'user'`, `crea
 |---|---|---|
 | `createdAt` | timestamp | must be `request.time` (rules enforced) |
 | `status` | string | `'waiting'` on create (rules enforced) |
-| `updatedAt` | timestamp | client can update |
+| `updatedAt` | timestamp | client-updatable only; Cloud Function sets `status` |
 
 ### `active_sessions/{sessionId}` (Firestore)
 | Field | Type | Notes |

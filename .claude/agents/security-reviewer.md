@@ -12,7 +12,7 @@ CozyTalk — anonymous stranger chat app targeting Android and Web. Firebase-bac
 
 ### Firestore rules — deployed ✓
 - `users/{uid}`: user-owned read; create enforces `uid==userId` and `role=='user'`; update blocks `role`/`uid` mutation ✓
-- `waiting_pool/{uid}`: user-owned; create enforces `status=='waiting'` and `createdAt==request.time`; update restricted to `status`/`updatedAt` ✓
+- `waiting_pool/{uid}`: user-owned; create enforces `status=='waiting'` and `createdAt==request.time`; update restricted to `updatedAt` only (status written by Cloud Functions) ✓
 - `active_sessions/{sessionId}`: client read-only, write=false (Functions only) ✓
 - `reports/{reportId}`: create restricted to allowed fields, `reporterId==auth.uid`, `status=='pending'`, `createdAt==request.time`; admin-only read/update/delete ✓
 - `isAdmin()` has `exists()` guard — safe for anonymous users ✓
@@ -25,13 +25,12 @@ CozyTalk — anonymous stranger chat app targeting Android and Web. Firebase-bac
 ### Auth — current state
 - Anonymous auth: on. Users get a UID but no persistent identity. Reinstall = new UID.
 - Google + Email/Password: on, not yet wired in Flutter.
-- **Biometric / Passkey planned (not yet implemented):** Android Keystore + WebAuthn for secure anonymous session resumption across reinstalls. When implementing: credentials must be stored in platform keystore (Android Keystore / WebAuthn credential store) — never in SharedPreferences, Drift, Hive, or app storage.
+- Biometric/Passkey: planned (Android Keystore + WebAuthn). When implementing, credentials go in platform keystore only — never SharedPreferences, Drift, Hive, or app storage.
 
 ### Secret / config management
-- `.env` is gitignored ✓
-- `.env.example` committed with only `USE_EMULATOR=false` ✓
-- Firebase config in `firebase_options.dart` is public (expected — Firebase relies on rules, not config secrecy) ✓
-- **Never** store secrets in: SharedPreferences, Drift, Hive, bundled Flutter assets (`*.env` files), or hardcoded in Dart. All are extractable from APK/IPA. Use `--dart-define-from-file` or server-side storage.
+- `.env.example` committed with safe defaults; `.env` gitignored ✓
+- `firebase_options.dart` is public by design — security comes from rules, not config secrecy ✓
+- Never store secrets in SharedPreferences, Drift, Hive, or bundled assets — extractable from APK. Use `--dart-define-from-file` or server-side storage.
 
 ## Review Checklist (run before any merge touching auth/data/API code)
 
@@ -46,7 +45,7 @@ CozyTalk — anonymous stranger chat app targeting Android and Web. Firebase-bac
 ### Firebase Rules
 - [ ] `isAdmin()` has `exists()` guard ✓ (deployed)
 - [ ] RTDB rules scoped to session participants ✓ (deployed)
-- [ ] `waiting_pool` update restricted to `status`/`updatedAt` only via `diff().affectedKeys()` ✓ (deployed)
+- [ ] `waiting_pool` update restricted to `updatedAt` only (status=matched set by Cloud Functions) ✓ (deployed)
 - [ ] `active_sessions` write is `false` for clients ✓ (deployed)
 - [ ] `reports` create validates required fields and `reporterId==auth.uid` ✓ (deployed)
 
