@@ -266,6 +266,6 @@ This codebase is developed by specialized agents orchestrated by a lead:
 | File | Committed | Purpose |
 |---|---|---|
 | `.env.example` | Yes | Safe defaults (`USE_EMULATOR=false`) |
-| `.env` | No (gitignored) | Local overrides |
+| `.env` | No (gitignored) | Local overrides — not bundled |
 
-App tries `.env` first; falls back to `.env.example` with a console warning. Both listed in `pubspec.yaml` assets. Never bundle real secrets — use `--dart-define-from-file` for those.
+Only `.env.example` is listed in `pubspec.yaml` assets. `main.dart` always loads `.env.example` (`.env` cannot be bundled — Flutter's asset bundler fails on missing files, breaking fresh clones). To switch emulator mode locally, edit your copy of `.env.example`. Never bundle real secrets — use `--dart-define-from-file` for those.
