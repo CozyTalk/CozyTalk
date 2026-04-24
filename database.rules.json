@@ -11,12 +11,8 @@
         ".read": "auth != null && root.child('sessions').child($room_id).child('users').child(auth.uid).exists()",
         ".write": false,
         "$messageId": {
-          ".write": "auth != null && root.child('sessions').child($room_id).child('users').child(auth.uid).exists()",
-          ".validate": "newData.hasChildren(['senderId', 'text', 'timestamp'])
-            && newData.child('senderId').val() == auth.uid
-            && newData.child('text').isString()
-            && newData.child('text').val().length > 0
-            && newData.child('timestamp').isNumber()"
+          ".write": "!data.exists() && auth != null && root.child('sessions').child($room_id).child('users').child(auth.uid).exists()",
+          ".validate": "newData.hasChildren(['senderId', 'text', 'timestamp']) && newData.child('senderId').val() == auth.uid && newData.child('text').isString() && newData.child('text').val().length > 0 && newData.child('timestamp').isNumber()"
         }
       }
     }

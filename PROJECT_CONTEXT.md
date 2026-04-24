@@ -94,7 +94,7 @@ The chat Notifier must model all four states explicitly as an enum — never inf
 End-to-end clean arch example: `HelloScreen` → `HelloNotifier` → `CallHello` usecase → `HelloRepositoryImpl` → `HelloDatasourceImpl` → `helloWorld` Cloud Function → response flows back. This is the **template** for all future features.
 
 ### App bootstrap (`lib/main.dart`)
-Loads `.env` (falls back to `.env.example` with a warning), initialises Firebase, points Functions at local emulator if `USE_EMULATOR=true`, signs in anonymously, wraps in `ProviderScope`.
+Loads `.env.example` (the only bundled asset — `.env` is gitignored and not bundled), initialises Firebase, points Functions at local emulator if `USE_EMULATOR=true`, signs in anonymously, wraps in `ProviderScope`.
 
 ### Tests (`test/widget_test.dart`)
 Three widget tests for `HelloScreen` using `_FakeHelloNotifier` with `callCount` — all passing.
@@ -137,7 +137,13 @@ service cloud.firestore {
     }
 
     match /users/{userId} {
-      allow read, write: if isOwner(userId);
+      allow read: if isOwner(userId);
+      allow create: if isOwner(userId)
+        && request.resource.data.uid == userId
+        && request.resource.data.role == 'user';
+      allow update: if isOwner(userId)
+        && !request.resource.data.diff(resource.data)
+            .affectedKeys().hasAny(['role', 'uid']);
     }
 
     match /waiting_pool/{userId} {
@@ -147,7 +153,9 @@ service cloud.firestore {
         && request.resource.data.status == 'waiting';
       allow update: if isOwner(userId)
         && request.resource.data.diff(resource.data)
-            .affectedKeys().hasOnly(['status', 'updatedAt']);
+            .affectedKeys().hasOnly(['status', 'updatedAt'])
+        && request.resource.data.updatedAt == request.time
+        && request.resource.data.status in ['waiting', 'matched'];
     }
 
     match /active_sessions/{sessionId} {
@@ -156,7 +164,11 @@ service cloud.firestore {
     }
 
     match /reports/{reportId} {
-      allow create: if isSignedIn();
+      allow create: if isSignedIn()
+        && request.resource.data.keys().hasOnly(['reporterId', 'reportedUserId', 'sessionId', 'reason', 'description', 'chatLog', 'createdAt', 'status'])
+        && request.resource.data.reporterId == request.auth.uid
+        && request.resource.data.status == 'pending'
+        && request.resource.data.createdAt == request.time;
       allow read, update, delete: if isAdmin();
     }
   }
@@ -177,7 +189,11 @@ service cloud.firestore {
     "messages": {
       "$room_id": {
         ".read": "auth != null && root.child('sessions').child($room_id).child('users').child(auth.uid).exists()",
-        ".write": "auth != null && root.child('sessions').child($room_id).child('users').child(auth.uid).exists()"
+        ".write": false,
+        "$messageId": {
+          ".write": "!data.exists() && auth != null && root.child('sessions').child($room_id).child('users').child(auth.uid).exists()",
+          ".validate": "newData.hasChildren(['senderId', 'text', 'timestamp']) && newData.child('senderId').val() == auth.uid && newData.child('text').isString() && newData.child('text').val().length > 0 && newData.child('timestamp').isNumber()"
+        }
       }
     }
   }
