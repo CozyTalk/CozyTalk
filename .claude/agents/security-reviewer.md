@@ -8,39 +8,29 @@ CozyTalk — anonymous stranger chat app targeting Android and Web. Firebase-bac
 
 **Privacy by Design is a hard requirement:** chat messages must be destroyed on session end. The only exception is the `reports` flow where a snapshot is retained for moderation. Any code that persists messages outside this flow is a privacy violation.
 
-## Known Security State (as of project start)
+## Known Security State (current)
 
-### Firestore rules — deployed, mostly good
-- `users/{uid}`: user-owned read/write ✓
-- `waiting_pool/{uid}`: user-owned, client can only update `status`/`updatedAt` ✓
+### Firestore rules — deployed ✓
+- `users/{uid}`: user-owned read; create enforces `uid==userId` and `role=='user'`; update blocks `role`/`uid` mutation ✓
+- `waiting_pool/{uid}`: user-owned; create enforces `status=='waiting'` and `createdAt==request.time`; update restricted to `updatedAt` only (status written by Cloud Functions) ✓
 - `active_sessions/{sessionId}`: client read-only, write=false (Functions only) ✓
-- `reports/{reportId}`: any authed user can create, admin-only read ✓
-- **⚠️ Risk:** `isAdmin()` calls `get()` on `users` doc — if the doc doesn't exist (anonymous user), this throws instead of returning false. Fix: add `exists()` guard before `get()`:
-  ```
-  function isAdmin() {
-    return request.auth != null
-      && exists(/databases/$(database)/documents/users/$(request.auth.uid))
-      && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
-  }
-  ```
+- `reports/{reportId}`: create restricted to allowed fields, `reporterId==auth.uid`, `status=='pending'`, `createdAt==request.time`; admin-only read/update/delete ✓
+- `isAdmin()` has `exists()` guard — safe for anonymous users ✓
 
-### Realtime DB rules — deployed, TOO PERMISSIVE
-```json
-{ "rules": { "messages": { "$room_id": { ".read": "auth != null", ".write": "auth != null" } } } }
-```
-Any authenticated user can read/write ANY room. Must be tightened so only the two session participants can access their room before production.
-Fix options: (a) mirror `users` array into RTDB room node and check `auth.uid === data.child('users/0').val() || auth.uid === data.child('users/1').val()`, or (b) set Custom Claims on session creation.
+### Realtime DB rules — deployed ✓
+- `sessions/{roomId}`: read scoped to session participants via `users/{uid}` node; write=false ✓
+- `messages/{roomId}`: read scoped to session participants; room-level write=false ✓
+- `messages/{roomId}/{messageId}`: append-only (`!data.exists()`), participant-scoped write; `.validate` enforces `senderId==auth.uid`, non-empty text, numeric timestamp ✓
 
 ### Auth — current state
 - Anonymous auth: on. Users get a UID but no persistent identity. Reinstall = new UID.
 - Google + Email/Password: on, not yet wired in Flutter.
-- **Biometric / Passkey planned (not yet implemented):** Android Keystore + WebAuthn for secure anonymous session resumption across reinstalls. When implementing: credentials must be stored in platform keystore (Android Keystore / WebAuthn credential store) — never in SharedPreferences, Drift, Hive, or app storage.
+- Biometric/Passkey: planned (Android Keystore + WebAuthn). When implementing, credentials go in platform keystore only — never SharedPreferences, Drift, Hive, or app storage.
 
 ### Secret / config management
-- `.env` is gitignored ✓
-- `.env.example` committed with only `USE_EMULATOR=false` ✓
-- Firebase config in `firebase_options.dart` is public (expected — Firebase relies on rules, not config secrecy) ✓
-- **Never** store secrets in: SharedPreferences, Drift, Hive, bundled Flutter assets (`*.env` files), or hardcoded in Dart. All are extractable from APK/IPA. Use `--dart-define-from-file` or server-side storage.
+- `.env.example` committed with safe defaults; `.env` gitignored ✓
+- `firebase_options.dart` is public by design — security comes from rules, not config secrecy ✓
+- Never store secrets in SharedPreferences, Drift, Hive, or bundled assets — extractable from APK. Use `--dart-define-from-file` or server-side storage.
 
 ## Review Checklist (run before any merge touching auth/data/API code)
 
@@ -53,10 +43,11 @@ Fix options: (a) mirror `users` array into RTDB room node and check `auth.uid ==
 - [ ] Cloud Functions validate `request.auth` before any data access
 
 ### Firebase Rules
-- [ ] `isAdmin()` has `exists()` guard (not yet fixed — open issue)
-- [ ] RTDB rules scoped to session participants (not yet done — open issue)
-- [ ] `waiting_pool` update restricted to `status`/`updatedAt` only via `diff().affectedKeys()`
-- [ ] `active_sessions` write is `false` for clients
+- [ ] `isAdmin()` has `exists()` guard ✓ (deployed)
+- [ ] RTDB rules scoped to session participants ✓ (deployed)
+- [ ] `waiting_pool` update restricted to `updatedAt` only (status=matched set by Cloud Functions) ✓ (deployed)
+- [ ] `active_sessions` write is `false` for clients ✓ (deployed)
+- [ ] `reports` create validates required fields and `reporterId==auth.uid` ✓ (deployed)
 
 ### Secrets & Storage
 - [ ] No secrets or credentials in committed files

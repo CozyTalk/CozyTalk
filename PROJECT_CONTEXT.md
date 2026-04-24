@@ -6,7 +6,7 @@
 
 ## What is CozyTalk?
 
-CozyTalk is a **cross-platform stranger chat app** targeting **Android and Web**. Users are matched anonymously with a random stranger for a one-on-one text conversation. The goal is to provide a safe, low-pressure space for authentic interactions — combating social media performance fatigue.
+CozyTalk is a **cross-platform stranger chat app** targeting **Android and Web**. Users are matched anonymously with a random stranger for a one-on-one text conversation. The goal is to provide a low-pressure space for authentic interactions — combating social media performance fatigue.
 
 **Core Privacy Principle:** Chats are ephemeral. When a user leaves or presses Skip, the room and all messages are immediately destroyed by a Cloud Function. The only exception is when a user files a report — in that case the chat log is retained for moderation.
 
@@ -28,7 +28,7 @@ CozyTalk is a **cross-platform stranger chat app** targeting **Android and Web**
 
 ### Cloud Functions (`functions/`)
 - TypeScript, Firebase Functions v2
-- Deployed: `helloWorld` (echo, proof-of-concept — to be replaced)
+- Deployed: `helloWorld` (echo, proof-of-concept — to be replaced by matchmaking)
 - Max 10 instances (cost control)
 - Matchmaking logic **must** live here — never on client
 
@@ -75,7 +75,7 @@ Chat Room                                        │
 ### Chat Room UI Components
 - Message bubbles (sent / received)
 - Typing indicator
-- **Moods / Drinks SVG icebreakers** — tappable stickers to break the ice
+- **Moods / Drinks SVG icebreakers** — tappable stickers
 - **Skip / Next Person** button (prominent — core UX)
 - Connection status indicator
 
@@ -84,131 +84,184 @@ Chat Room                                        │
 Idle → Searching → Matched/Chatting → Disconnected
                                     ↘ (Skip) → Searching
 ```
-The chat Notifier must model all four states explicitly as an enum, never infer them from nullable fields.
+The chat Notifier must model all four states explicitly as an enum — never infer from nullable fields.
 
 ---
 
 ## What Is Already Built
 
 ### `hello` feature (proof-of-concept, complete)
-End-to-end clean arch example:
-- `HelloScreen` → `HelloNotifier` → `CallHello` usecase → `HelloRepositoryImpl` → `HelloDatasourceImpl` → `helloWorld` Cloud Function → response flows back
-
-This is the **template** for all future features.
+End-to-end clean arch example: `HelloScreen` → `HelloNotifier` → `CallHello` usecase → `HelloRepositoryImpl` → `HelloDatasourceImpl` → `helloWorld` Cloud Function → response flows back. This is the **template** for all future features.
 
 ### App bootstrap (`lib/main.dart`)
-- Loads `.env` (falls back to `.env.example` with a warning)
-- Initialises Firebase
-- Points Functions at local emulator if `USE_EMULATOR=true`
-- Signs in anonymously if no current user
-- Wraps in `ProviderScope`
+Loads `.env.example`, initialises Firebase, signs in anonymously, wraps in `ProviderScope`. Set `USE_EMULATOR=true` to point Functions at the local emulator.
 
 ### Tests (`test/widget_test.dart`)
-Three widget tests for `HelloScreen` using `_FakeHelloNotifier` with `callCount`.
+Three widget tests for `HelloScreen` using `_FakeHelloNotifier` with `callCount` — all passing.
 
 ---
 
 ## Firebase Configuration
 
 ### Authentication — enabled providers
-| Provider | Notes |
+| Provider | Status |
 |---|---|
 | **Anonymous** | On. Baseline auth. A few test users exist. |
 | **Google Sign-In** | On. Not yet wired in Flutter. |
 | **Email / Password** | On. Passwordless OFF. Not yet wired in Flutter. |
-| **Biometric / Passkey** | Planned — Android Keystore + WebAuthn for secure session resumption. Not yet implemented. |
+| **Biometric / Passkey** | Planned — Android Keystore + WebAuthn. Not yet implemented. |
 
-### Firestore Security Rules (deployed)
+### Firestore Security Rules — `firestore.rules` (deployed ✓)
+
 ```
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
     function isAdmin() {
-      return request.auth != null
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
         && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
-    // ⚠️ isAdmin() will throw if the users doc doesn't exist (e.g. anonymous user)
-    // Needs: exists(...) guard before the get()
+
+    function isSessionParticipant() {
+      return isSignedIn() && request.auth.uid in resource.data.users;
+    }
 
     match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow read: if isOwner(userId);
+      allow create: if isOwner(userId)
+        && request.resource.data.uid == userId
+        && request.resource.data.role == 'user';
+      allow update: if isOwner(userId)
+        && !request.resource.data.diff(resource.data)
+            .affectedKeys().hasAny(['role', 'uid']);
     }
 
     match /waiting_pool/{userId} {
-      allow read, delete: if request.auth != null && request.auth.uid == userId;
-      allow create: if request.auth != null && request.auth.uid == userId
-                    && request.resource.data.createdAt == request.time;
-      allow update: if request.auth != null && request.auth.uid == userId
-                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt']);
+      allow read, delete: if isOwner(userId);
+      allow create: if isOwner(userId)
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.status == 'waiting';
+      // clients can only touch updatedAt — Cloud Functions set status='matched'
+      allow update: if isOwner(userId)
+        && request.resource.data.diff(resource.data)
+            .affectedKeys().hasOnly(['updatedAt'])
+        && request.resource.data.updatedAt == request.time;
     }
 
     match /active_sessions/{sessionId} {
-      allow read: if request.auth != null && request.auth.uid in resource.data.users;
-      allow write: if false;  // Cloud Functions only
+      allow read: if isSessionParticipant();
+      allow write: if false;
     }
 
     match /reports/{reportId} {
-      allow create: if request.auth != null;
+      allow create: if isSignedIn()
+        && request.resource.data.keys().hasOnly(['reporterId', 'reportedUserId', 'sessionId', 'reason', 'description', 'chatLog', 'createdAt', 'status'])
+        && request.resource.data.keys().hasAll(['reporterId', 'reportedUserId', 'sessionId', 'reason', 'chatLog', 'createdAt', 'status'])
+        && request.resource.data.reporterId == request.auth.uid
+        && request.resource.data.status == 'pending'
+        && request.resource.data.createdAt == request.time;
       allow read, update, delete: if isAdmin();
     }
   }
 }
 ```
 
-**Current state:** No collections exist yet — rules deployed, database empty.
+### Realtime Database Rules — `database.rules.json` (deployed ✓)
 
-### Realtime Database Rules (deployed)
 ```json
 {
   "rules": {
+    "sessions": {
+      "$room_id": {
+        ".read": "auth != null && data.child('users').child(auth.uid).exists()",
+        ".write": false
+      }
+    },
     "messages": {
       "$room_id": {
-        ".read": "auth != null",
-        ".write": "auth != null"
+        ".read": "auth != null && root.child('sessions').child($room_id).child('users').child(auth.uid).exists()",
+        ".write": false,
+        "$messageId": {
+          ".write": "!data.exists() && auth != null && root.child('sessions').child($room_id).child('users').child(auth.uid).exists()",
+          ".validate": "newData.hasChildren(['senderId', 'text', 'timestamp']) && newData.child('senderId').val() == auth.uid && newData.child('text').isString() && newData.child('text').val().length > 0 && newData.child('text').val().length <= 1000 && newData.child('timestamp').isNumber()"
+        }
       }
     }
   }
 }
 ```
+
 **URL:** `https://cozytalk-5d984-default-rtdb.asia-southeast1.firebasedatabase.app`
 
-**⚠️ RTDB rules are too permissive** — any authed user can read/write any room. Must be tightened before production so only session participants can access their room.
+**RTDB node structure:**
+- `sessions/{roomId}/users/{uid}: true` — written by Cloud Function at session creation; used to scope message access
+- `messages/{roomId}/{pushId}: { senderId, text, timestamp }` — live chat, destroyed on session end
 
 ---
 
-## Pending Task: Database Schema Design
+## Database Schema (Finalized)
 
-The team needs to define the exact document shapes. Key open questions:
+### `users/{uid}` (Firestore)
+| Field | Type | Notes |
+|---|---|---|
+| `uid` | string | matches auth UID |
+| `displayName` | string? | null for anonymous |
+| `photoUrl` | string? | null for anonymous |
+| `email` | string? | null for anonymous |
+| `role` | string | `'user'` \| `'admin'` |
+| `createdAt` | timestamp | |
+| `lastSeen` | timestamp | |
 
-### `users/{uid}`
-- Fields: `uid`, `displayName`, `photoUrl`, `email`, `role` (`user` | `admin`), `createdAt`, `lastSeen`
-- Do anonymous users get a doc? (Without one, `isAdmin()` throws on their requests)
-- Any user preferences? (language, chat topics)
+Anonymous users get a minimal doc on first sign-in (`uid`, `role: 'user'`, `createdAt`, `lastSeen`) to prevent `isAdmin()` from throwing.
 
-### `waiting_pool/{uid}`
-- Fields: `createdAt` (server timestamp — rules require it), `status` (`waiting` | `matched`?), `updatedAt`
-- Any matching preferences? (language filter)
-- Does Cloud Function write matched partner UID here, or just delete the doc and create a session?
+### `waiting_pool/{uid}` (Firestore)
+| Field | Type | Notes |
+|---|---|---|
+| `createdAt` | timestamp | must be `request.time` (rules enforced) |
+| `status` | string | `'waiting'` on create (rules enforced) |
+| `updatedAt` | timestamp | client-updatable only; Cloud Function sets `status` |
 
-### `active_sessions/{sessionId}`
-- Fields: `users: [uid1, uid2]` (required by rules), `roomId` (RTDB key), `createdAt`, `endedAt`, `status` (`active` | `ended`)
-- Should `sessionId === roomId`? Simplest if yes.
-- Session cleanup: destroyed by Cloud Function on leave/skip. Chat log retained only if reported.
+### `active_sessions/{sessionId}` (Firestore)
+| Field | Type | Notes |
+|---|---|---|
+| `users` | string[] | `[uid1, uid2]` — used by Firestore rules |
+| `roomId` | string | equals `sessionId` (same ID in RTDB) |
+| `createdAt` | timestamp | |
+| `endedAt` | timestamp? | set on session end |
+| `status` | string | `'active'` \| `'ended'` |
 
-### `reports/{reportId}`
-- Fields: `reporterId`, `reportedUserId`, `sessionId`, `chatLog` (snapshot retained here), `reason`, `description`, `createdAt`, `status` (`pending` | `reviewed` | `dismissed`)
+`sessionId === roomId` — one ID links Firestore metadata to RTDB messages. Cloud Function is the only writer.
 
-### `messages/$room_id` (RTDB)
-- `$messageId` (push key): `{ senderId, text, timestamp }`
-- Destroyed immediately on session end (Cloud Function)
-- Retained as snapshot in `reports` doc if user is reported before destruction
+### `reports/{reportId}` (Firestore)
+| Field | Type | Notes |
+|---|---|---|
+| `reporterId` | string | UID of reporting user |
+| `reportedUserId` | string | UID of reported user |
+| `sessionId` | string | session where it occurred |
+| `chatLog` | map[] | snapshot of messages retained for review |
+| `reason` | string | |
+| `description` | string? | |
+| `createdAt` | timestamp | |
+| `status` | string | `'pending'` \| `'reviewed'` \| `'dismissed'` |
 
-### Key design decisions
-1. `sessionId === roomId` — one ID links Firestore session to RTDB messages
-2. Cloud Function generates `sessionId` (only writer to `active_sessions`)
-3. Anonymous users need a minimal `users` doc created on first sign-in to prevent `isAdmin()` from throwing
-4. RTDB rules tightening: mirror `users` array into RTDB session node, or use Custom Claims
+### `messages/{roomId}/{messageId}` (RTDB)
+| Field | Type |
+|---|---|
+| `senderId` | string |
+| `text` | string |
+| `timestamp` | number (ms) |
+
+Destroyed by Cloud Function on session end. Snapshot saved to `reports.chatLog` if reported.
 
 ---
 
@@ -216,9 +269,9 @@ The team needs to define the exact document shapes. Key open questions:
 
 | Phase | Work |
 |---|---|
-| **1.0 Frontend & UI** | Flutter project setup, UI/UX design (Moods/Drinks icebreakers), Landing/Auth UI, Waiting screen, Chat Room UI |
-| **2.0 Backend & Matchmaking** | Finalize NoSQL schema, matchmaking Cloud Function (race-condition safe), Realtime messaging API, session cleanup/lifecycle, word censor, reporting feature |
-| **3.0 Logic & Integration** | Complex UI state machine (Idle→Searching→Matched→Disconnected), network drop detection, offline alerts, biometric/passkey auth |
+| **1.0 Frontend & UI** | UI/UX design, Landing/Auth screen, Waiting screen, Chat Room UI (bubbles, typing, SVGs, Skip) |
+| **2.0 Backend & Matchmaking** | Matchmaking Cloud Function (race-condition safe), RTDB messaging, session cleanup/lifecycle, word censor, reporting |
+| **3.0 Logic & Integration** | Session state machine (Idle→Searching→Matched→Disconnected), network drop detection, offline alerts, biometric/passkey auth |
 | **4.0 Testing & Management** | Concurrency/race condition tests, cross-platform UI tests (Android + Web), accessibility sweeps, performance profiling |
 
 ---
@@ -228,7 +281,7 @@ The team needs to define the exact document shapes. Key open questions:
 | Gate | Requirement |
 |---|---|
 | **Correctness** | >80% unit test coverage for domain layer; widget tests for all screens; integration tests on Android + Web |
-| **Security** | Zero High/Critical vulnerabilities; secret scan clean; no plaintext secrets anywhere |
+| **Security** | Zero High/Critical vulnerabilities; secret scan clean; no plaintext secrets |
 | **Accessibility** | WCAG 2.2 AA on all screens (semantic labels, contrast, dynamic type) |
 | **Performance** | No unbounded ListViews; SVGs cached/compressed; no jank on message scroll |
 
@@ -242,9 +295,9 @@ The team needs to define the exact document shapes. Key open questions:
 | Matchmaking on client | Race conditions |
 | Persist chat messages | Privacy by Design |
 | Hand-roll toJson/fromJson | Use Freezed |
-| Store secrets in SharedPreferences, Drift, Hive, or assets | Extractable |
+| Store secrets in SharedPreferences, Drift, Hive, or assets | Extractable from APK/IPA |
 | Edit `*.g.dart` / `*.freezed.dart` | Run build_runner instead |
-| Unbounded ListView with children for dynamic data | Performance |
+| Unbounded `ListView(children: [...])` for dynamic data | Performance |
 
 ---
 
@@ -255,14 +308,16 @@ CozyTalk/
 ├── apps/mobile/               ← Flutter app (Android + Web)
 │   ├── lib/
 │   │   ├── main.dart
-│   │   └── features/
-│   │       └── hello/         ← reference implementation (template)
+│   │   └── features/hello/    ← reference implementation (template)
 │   ├── test/widget_test.dart
 │   ├── .env.example           ← committed, USE_EMULATOR=false
 │   └── .env                   ← gitignored
 ├── functions/src/index.ts     ← helloWorld Cloud Function
+├── firestore.rules            ← deployed Firestore security rules
+├── database.rules.json        ← deployed RTDB security rules
+├── firestore.indexes.json     ← Firestore composite indexes (empty for now)
+├── firebase.json              ← Firebase deploy config
 ├── .claude/agents/            ← specialized agent definitions
 ├── CLAUDE.md                  ← auto-loaded by Claude Code every session
-├── PROJECT_CONTEXT.md         ← this file
-└── firebase.json
+└── PROJECT_CONTEXT.md         ← this file
 ```

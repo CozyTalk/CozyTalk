@@ -21,7 +21,7 @@ CozyTalk is an anonymous stranger chat app targeting **Android and Web**. Flutte
 - Matchmaking logic must be a Cloud Function — never client-side (race conditions)
 - Cloud Functions are the only writers to `active_sessions` — never allow client writes
 - Chat messages must be destroyed immediately on session end — only retained in `reports` doc if reported
-- Realtime DB room access must be scoped to session participants (current rules are too permissive)
+- Realtime DB room access must be scoped to session participants via `sessions/{roomId}/users/{uid}`
 - `sessionId` should equal `roomId` in RTDB — one ID links Firestore session to RTDB messages
 
 ## Privacy by Design (non-negotiable)
@@ -41,14 +41,11 @@ Idle → Searching (in waiting_pool) → Matched (active_sessions created) → C
 - Session end triggers: user leaves, user presses Skip, network timeout, both users disconnect
 - Cleanup: always via Cloud Function, never client-side
 
-## Key Open Decisions (as of project start)
-1. Final Firestore document schemas (fields, types, valid status values)
-2. Anonymous users need a minimal `users` doc on first sign-in — `isAdmin()` will throw on missing doc
-3. Matchmaking Cloud Function design: Firestore trigger on `waiting_pool` create vs. scheduled job
-4. How to tighten RTDB rules: mirror `users` array into RTDB node, or Custom Claims
-5. Biometric/passkey integration design: Android Keystore + WebAuthn for web
-6. Feature flag strategy: which features to gate (e.g. icebreakers, biometric auth)
-7. Word censor implementation: client-side filter, Cloud Function pre-process, or both
+## Key Open Decisions
+1. Matchmaking Cloud Function design: Firestore trigger on `waiting_pool` create vs. scheduled job
+2. Biometric/passkey integration design: Android Keystore + WebAuthn for web
+3. Feature flag strategy: which features to gate (e.g. icebreakers, biometric auth)
+4. Word censor implementation: client-side filter, Cloud Function pre-process, or both
 
 ## When to invoke
 Before starting any new feature, before writing any Cloud Function, or before any change that spans more than one layer.

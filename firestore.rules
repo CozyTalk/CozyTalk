@@ -1,0 +1,70 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    function isAdmin() {
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    function isSessionParticipant() {
+      return isSignedIn() && request.auth.uid in resource.data.users;
+    }
+
+    // ── users ────────────────────────────────────────────────────────────────
+    match /users/{userId} {
+      allow read: if isOwner(userId);
+
+      // role and uid are immutable after creation — only Cloud Functions set role
+      allow create: if isOwner(userId)
+        && request.resource.data.uid == userId
+        && request.resource.data.role == 'user';
+
+      allow update: if isOwner(userId)
+        && !request.resource.data.diff(resource.data)
+            .affectedKeys().hasAny(['role', 'uid']);
+    }
+
+    // ── waiting_pool ─────────────────────────────────────────────────────────
+    match /waiting_pool/{userId} {
+      allow read, delete: if isOwner(userId);
+
+      allow create: if isOwner(userId)
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.status == 'waiting';
+
+      // clients can only cancel (stay 'waiting') — Cloud Functions set 'matched'
+      allow update: if isOwner(userId)
+        && request.resource.data.diff(resource.data)
+            .affectedKeys().hasOnly(['updatedAt'])
+        && request.resource.data.updatedAt == request.time;
+    }
+
+    // ── active_sessions ──────────────────────────────────────────────────────
+    // Cloud Functions are the only writers — client write is always false.
+    match /active_sessions/{sessionId} {
+      allow read: if isSessionParticipant();
+      allow write: if false;
+    }
+
+    // ── reports ──────────────────────────────────────────────────────────────
+    match /reports/{reportId} {
+      allow create: if isSignedIn()
+        && request.resource.data.keys().hasOnly(['reporterId', 'reportedUserId', 'sessionId', 'reason', 'description', 'chatLog', 'createdAt', 'status'])
+        && request.resource.data.keys().hasAll(['reporterId', 'reportedUserId', 'sessionId', 'reason', 'chatLog', 'createdAt', 'status'])
+        && request.resource.data.reporterId == request.auth.uid
+        && request.resource.data.status == 'pending'
+        && request.resource.data.createdAt == request.time;
+      allow read, update, delete: if isAdmin();
+    }
+  }
+}

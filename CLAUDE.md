@@ -39,7 +39,7 @@ cd apps/mobile
 
 flutter pub get                                              # install deps
 dart run build_runner build --delete-conflicting-outputs    # regenerate Freezed + Riverpod code
-flutter run                                                  # run on Android (uses .env)
+flutter run                                                  # run on Android
 flutter run -d chrome                                        # run on Web
 flutter test                                                 # run tests
 flutter build apk                                            # build Android
@@ -58,10 +58,7 @@ npm run deploy       # deploy to Firebase (lint + build run first via predeploy 
 ```
 
 ### Fresh clone setup
-```bash
-cp apps/mobile/.env.example apps/mobile/.env
-# Edit .env: USE_EMULATOR=true for emulator, false for prod
-```
+Edit `apps/mobile/.env.example` — set `USE_EMULATOR=true` to point at the local emulator.
 
 ---
 
@@ -174,7 +171,7 @@ After editing any `@freezed` class or `@riverpod` provider, always run build_run
 | Auth providers | Anonymous, Google, Email/Password (no passwordless) |
 | Observability | Firebase Crashlytics + structured Cloud Function logging |
 
-Emulator: `USE_EMULATOR=true` in `.env`. Functions emulator runs on `127.0.0.1:5001`.
+Emulator: set `USE_EMULATOR=true` in `.env.example`. Functions run on `127.0.0.1:5001`.
 
 ---
 
@@ -207,8 +204,6 @@ Schema not yet finalized — see `PROJECT_CONTEXT.md`.
 
 ## The Do-Not-Do List
 
-These are immediate failure conditions — do not do these under any circumstances:
-
 | ❌ Do NOT | Reason |
 |---|---|
 | Import Flutter or Firebase into the domain layer | Breaks Clean Architecture — domain must be pure Dart |
@@ -222,8 +217,6 @@ These are immediate failure conditions — do not do these under any circumstanc
 ---
 
 ## Quality Gates (Definition of Done)
-
-All four gates must pass before any feature is considered complete:
 
 | Gate | Requirement |
 |---|---|
@@ -263,9 +256,4 @@ This codebase is developed by specialized agents orchestrated by a lead:
 
 ## Environment Config
 
-| File | Committed | Purpose |
-|---|---|---|
-| `.env.example` | Yes | Safe defaults (`USE_EMULATOR=false`) |
-| `.env` | No (gitignored) | Local overrides |
-
-App tries `.env` first; falls back to `.env.example` with a console warning. Both listed in `pubspec.yaml` assets. Never bundle real secrets — use `--dart-define-from-file` for those.
+`main.dart` loads `.env.example`. Edit it to change `USE_EMULATOR`. It's committed — don't put real secrets here. Use `--dart-define-from-file` for secrets.
