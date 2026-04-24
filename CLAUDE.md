@@ -2,16 +2,28 @@
 
 ## What is this project?
 
-CozyTalk is a **stranger chat app** (anonymous 1-on-1 matching, like Omegle). Users join a waiting pool, a Cloud Function matches two of them, and they chat via Firebase Realtime Database. See `PROJECT_CONTEXT.md` for full detail.
+CozyTalk is a **cross-platform stranger chat app** (anonymous 1-on-1 matching, like Omegle) targeting **Android and Web**. Users join a waiting pool, a Cloud Function matches two of them, and they chat via Firebase Realtime Database. The core purpose is to provide a low-pressure, authentic interaction space to combat social media performance fatigue.
 
-**Stack:** Flutter + Riverpod + Firebase (Auth, Firestore, RTDB, Functions) + TypeScript Cloud Functions.
+**Stack:** Flutter (Android + Web) + Riverpod + Firebase (Auth, Firestore, RTDB, Functions, Crashlytics) + TypeScript Cloud Functions.
+
+---
+
+## Core Principle: Privacy by Design
+
+**Chat history is ephemeral.** When a user leaves a room or presses Skip:
+- The RTDB `messages/{roomId}` data is **immediately destroyed** by a Cloud Function.
+- The `active_sessions` Firestore doc is deleted.
+
+**The only exception:** if a report is filed, the Cloud Function retains the chat log for moderation review before destroying it.
+
+This is a hard product requirement — never suggest persisting chat messages outside the report flow.
 
 ---
 
 ## Monorepo Layout
 
 ```
-apps/mobile/      ← Flutter app
+apps/mobile/      ← Flutter app (Android + Web)
 functions/        ← Firebase Cloud Functions (TypeScript)
 packages/         ← shared packages (reserved, empty)
 tools/            ← CLI tools (reserved, empty)
@@ -27,8 +39,11 @@ cd apps/mobile
 
 flutter pub get                                              # install deps
 dart run build_runner build --delete-conflicting-outputs    # regenerate Freezed + Riverpod code
-flutter run                                                  # run app (uses .env)
+flutter run                                                  # run on Android (uses .env)
+flutter run -d chrome                                        # run on Web
 flutter test                                                 # run tests
+flutter build apk                                            # build Android
+flutter build web                                            # build Web
 ```
 
 ### Cloud Functions
@@ -81,6 +96,24 @@ features/<feature>/
 
 ---
 
+## App Screens & Session States
+
+**Screens (in flow order):**
+1. **Landing / Auth** — anonymous sign-in, entry point
+2. **Waiting / Searching** — user in `waiting_pool`, spinner, cancel option
+3. **Chat Room** — message bubbles, typing indicator, Moods/Drinks SVG icebreakers, prominent **Skip / Next Person** button
+4. **Disconnected** — shown when partner leaves or connection drops
+
+**Session state machine:**
+```
+Idle → Searching → Matched/Chatting → Disconnected
+                                    ↘ (Skip) → Searching
+```
+
+The Notifier for the chat feature must model all four states explicitly — never infer state from nullable fields.
+
+---
+
 ## State Management Pattern (Riverpod)
 
 Every feature's `presentation/providers/<feature>_provider.dart` does two things:
@@ -113,7 +146,8 @@ class FooNotifier extends Notifier<FooState> {
 
 ## Models: Freezed + JSON Serializable
 
-All data-layer models use `@freezed`:
+All data-layer models use `@freezed`. Never hand-roll `toJson`/`fromJson`.
+
 ```dart
 @freezed
 abstract class FooModel with _$FooModel {
@@ -138,6 +172,7 @@ After editing any `@freezed` class or `@riverpod` provider, always run build_run
 | Functions region | `us-central1` |
 | Realtime DB URL | `https://cozytalk-5d984-default-rtdb.asia-southeast1.firebasedatabase.app` |
 | Auth providers | Anonymous, Google, Email/Password (no passwordless) |
+| Observability | Firebase Crashlytics + structured Cloud Function logging |
 
 Emulator: `USE_EMULATOR=true` in `.env`. Functions emulator runs on `127.0.0.1:5001`.
 
@@ -150,11 +185,11 @@ Emulator: `USE_EMULATOR=true` in `.env`. Functions emulator runs on `127.0.0.1:5
 | `users/{uid}` | User profile. Has `role` field (`user` \| `admin`). |
 | `waiting_pool/{uid}` | Matchmaking queue. Fields: `createdAt`, `status`, `updatedAt`. |
 | `active_sessions/{sessionId}` | Active chat. Has `users: [uid1, uid2]`. Write-locked to Cloud Functions only. |
-| `reports/{reportId}` | Moderation reports. Admin-only read. |
+| `reports/{reportId}` | Moderation reports. Admin-only read. Chat log retained here if reported. |
 
-Realtime DB: `messages/{roomId}/{messageId}` — chat messages.
+Realtime DB: `messages/{roomId}/{messageId}` — live chat messages (ephemeral, destroyed on session end).
 
-Schema not yet finalized — see `PROJECT_CONTEXT.md` section "Pending Task: Database Schema Design".
+Schema not yet finalized — see `PROJECT_CONTEXT.md`.
 
 ---
 
@@ -165,6 +200,55 @@ Schema not yet finalized — see `PROJECT_CONTEXT.md` section "Pending Task: Dat
 - **`Map` from Firebase** — always normalize via `Map<String, dynamic>.from(data as Map)` before `fromJson`. Never check `data is! Map<String, dynamic>` directly.
 - **Loading guards** — check `isLoading` at the top of every submit handler before proceeding.
 - **Test fakes** — `_FakeXxxNotifier` must track invocations (`callCount`) so tests assert behavior, not just rendered UI.
+- **No unbounded ListViews** — all lists must use `ListView.builder` or `SliverList` with item count. No `children: [...]` for dynamic lists.
+- **SVG assets (Moods/Drinks icebreakers)** — must be cached and compressed. Use `flutter_svg` with asset precaching.
+
+---
+
+## The Do-Not-Do List
+
+These are immediate failure conditions — do not do these under any circumstances:
+
+| ❌ Do NOT | Reason |
+|---|---|
+| Import Flutter or Firebase into the domain layer | Breaks Clean Architecture — domain must be pure Dart |
+| Write matchmaking logic on the client | Race conditions — must be a Cloud Function |
+| Persist chat messages | Privacy by Design — destroy immediately on session end |
+| Hand-roll `toJson`/`fromJson` | Use Freezed + json_serializable |
+| Store API keys or secrets in SharedPreferences, Drift, Hive, or bundled assets | Extractable from APK/IPA |
+| Edit generated files (`*.g.dart`, `*.freezed.dart`) | Always run `build_runner` instead |
+| Use unbounded `ListView` with `children: [...]` for dynamic data | Performance violation |
+
+---
+
+## Quality Gates (Definition of Done)
+
+All four gates must pass before any feature is considered complete:
+
+| Gate | Requirement |
+|---|---|
+| **Correctness** | >80% unit test coverage for domain layer; widget tests for all screens; integration tests passing on Android and Web |
+| **Security** | Zero High/Critical vulnerabilities; dependency scan clean; no secrets in code |
+| **Accessibility** | All screens pass WCAG 2.2 AA (semantic labels, contrast ratio, dynamic type support) |
+| **Performance** | No unbounded ListViews; Moods/Drinks SVGs cached and compressed; no jank on message list scroll |
+
+---
+
+## Multi-Agent Workflow
+
+This codebase is developed by specialized agents orchestrated by a lead:
+
+| Agent | File | Responsibility |
+|---|---|---|
+| Architect | `.claude/agents/architect.md` | System design, schema, cross-cutting decisions |
+| Flutter Engineer | `.claude/agents/flutter-engineer.md` | Feature implementation, UI, tests |
+| QA Engineer | `.claude/agents/qa-engineer.md` | Test strategy, quality gates |
+| Security Reviewer | `.claude/agents/security-reviewer.md` | Auth, rules, secrets, compliance |
+
+**Rules:**
+- For any complex task, output a step-by-step plan for approval before writing code.
+- The agent that writes code must NOT be the agent that reviews it.
+- Structured handoffs: specify `@agent` + what they should do + what inputs they receive.
 
 ---
 

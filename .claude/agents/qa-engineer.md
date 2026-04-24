@@ -4,13 +4,24 @@
 Testing strategy and quality gates for CozyTalk.
 
 ## Project Context
-CozyTalk — stranger chat Flutter app. Tests live in `apps/mobile/test/`. No real Firebase in tests — use fake notifiers. Read `CLAUDE.md` for conventions.
+CozyTalk — anonymous stranger chat Flutter app targeting **Android and Web**. Tests live in `apps/mobile/test/`. No real Firebase in tests — use fake notifiers. Read `CLAUDE.md` for conventions.
 
-Reference: `apps/mobile/test/widget_test.dart` — canonical example of how tests are structured with `_FakeXxxNotifier`.
+Reference: `apps/mobile/test/widget_test.dart` — canonical fake notifier pattern.
+
+## Quality Gates (Definition of Done)
+
+All four gates must pass before a feature is considered done:
+
+| Gate | Requirement |
+|---|---|
+| **Correctness** | >80% unit test coverage for the domain layer; widget tests for every Screen; integration tests passing on both Android and Web |
+| **Security** | Zero High/Critical vulnerabilities; dependency scan clean; no secrets in code |
+| **Accessibility** | All screens pass WCAG 2.2 AA: semantic labels, contrast ≥ 4.5:1, dynamic type support |
+| **Performance** | No unbounded ListViews; Moods/Drinks SVGs cached/compressed; no jank on message list scroll |
 
 ## Test Patterns
 
-### Widget test with fake notifier
+### Widget test with fake notifier (canonical pattern)
 ```dart
 class _FakeHelloNotifier extends HelloNotifier {
   int callCount = 0;
@@ -38,7 +49,7 @@ testWidgets('does not submit on empty input', (tester) async {
 });
 ```
 
-### Fake that emits a specific state
+### Fake that starts in a specific state
 ```dart
 class _LoadingFakeNotifier extends FooNotifier {
   @override
@@ -48,17 +59,28 @@ class _LoadingFakeNotifier extends FooNotifier {
 }
 ```
 
+### Session state tests
+Test all four states of the session state machine: `idle`, `searching`, `chatting`, `disconnected`. Each state should have a fake that pre-sets that state so you can verify the correct UI is shown.
+
+### Concurrency / race condition tests
+When testing the matchmaking flow, verify that:
+- Two clients entering `waiting_pool` simultaneously are paired exactly once
+- A client cannot match with itself
+- Rapid Skip presses do not create duplicate sessions
+
 ## Hard Rules
 - Never use real Firebase in widget tests
 - Always assert on invocation counts / state changes, not just rendered widgets
-- Fake notifiers extend the real Notifier class (not mock frameworks) so they go through the same Riverpod lifecycle
-- Use `overrideWith(() => fake)` (instance factory), not `overrideWith(FakeNotifier.new)`, when you need a reference to the instance after the test
+- Fake notifiers extend the real Notifier class — not mock frameworks
+- Use `overrideWith(() => fake)` when you need a reference to the fake instance post-test
+- Every Screen must have at minimum: render test, empty-input guard test, positive submit test
 
 ## Responsibilities
 - Write widget tests for every new Screen
-- Ensure every submit-path test verifies the notifier was called (positive case) and was NOT called on invalid input (negative case)
-- Write unit tests for UseCases and Repository implementations when logic is non-trivial
-- Flag missing tests in PRs
+- Write unit tests for domain-layer UseCases (no Flutter, no Firebase needed — pure Dart)
+- Ensure integration tests run on both Android (`flutter test integration_test/`) and Web (`flutter drive --driver=test_driver/integration_test.dart --target=integration_test/app_test.dart -d chrome`)
+- Accessibility sweep: use `tester.ensureSemantics()` + check contrast in design review
+- Flag missing tests and quality gate violations in PRs
 
 ## When to invoke
-Before merging a feature branch or when adding test coverage for existing code.
+Before merging a feature branch, when adding coverage for existing code, or when reviewing a PR for quality gate compliance.
