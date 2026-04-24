@@ -7,8 +7,8 @@
  * See a full list of supported triggers at https://firebase.google.com/docs/functions
  */
 
-import {setGlobalOptions} from "firebase-functions";
-import {onCall, HttpsError} from "firebase-functions/https";
+import {setGlobalOptions} from "firebase-functions/v2";
+import {onCall, HttpsError} from "firebase-functions/v2/https";
 import * as logger from "firebase-functions/logger";
 
 // Start writing functions
@@ -30,6 +30,13 @@ export const helloWorld = onCall({invoker: "public"}, (request) => {
   if (!request.auth) {
     throw new HttpsError("unauthenticated", "Must be signed in.");
   }
-  logger.info("Hello logs!", {structuredData: true});
-  return {message: "Hello from Firebase!"};
+  const input = request.data?.message;
+  if (typeof input !== "string" || input.trim() === "") {
+    throw new HttpsError(
+      "invalid-argument",
+      "A non-empty message string is required.",
+    );
+  }
+  logger.info("Echo request", {message: input, structuredData: true});
+  return {message: input};
 });
