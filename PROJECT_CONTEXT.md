@@ -70,6 +70,10 @@ Chat Room                                        │
     ├── [Skip / Next Person] ────────────────────┘
     ├── [Leave] → session destroyed
     └── [Report] → chat log retained, session destroyed
+Profile / Settings
+    ├── Edit display name
+    ├── Upgrade from anonymous → Google / Email
+    └── Sign out
 ```
 
 ### Chat Room UI Components
@@ -176,36 +180,30 @@ service cloud.firestore {
 }
 ```
 
-### Realtime Database Rules — `database.rules.json` (deployed ✓)
-
-```json
-{
-  "rules": {
-    "sessions": {
-      "$room_id": {
-        ".read": "auth != null && data.child('users').child(auth.uid).exists()",
-        ".write": false
-      }
-    },
-    "messages": {
-      "$room_id": {
-        ".read": "auth != null && root.child('sessions').child($room_id).child('users').child(auth.uid).exists()",
-        ".write": false,
-        "$messageId": {
-          ".write": "!data.exists() && auth != null && root.child('sessions').child($room_id).child('users').child(auth.uid).exists()",
-          ".validate": "newData.hasChildren(['senderId', 'text', 'timestamp']) && newData.child('senderId').val() == auth.uid && newData.child('text').isString() && newData.child('text').val().length > 0 && newData.child('text').val().length <= 1000 && newData.child('timestamp').isNumber()"
-        }
-      }
-    }
-  }
-}
-```
+### Realtime Database — `database.rules.json` (deployed ✓)
 
 **URL:** `https://cozytalk-5d984-default-rtdb.asia-southeast1.firebasedatabase.app`
 
-**RTDB node structure:**
-- `sessions/{roomId}/users/{uid}: true` — written by Cloud Function at session creation; used to scope message access
-- `messages/{roomId}/{pushId}: { senderId, text, timestamp }` — live chat, destroyed on session end
+All nodes are participant-scoped — access gates on `sessions/{roomId}/users/{uid}` membership. See `database.rules.json` for full rules.
+
+| Node | Value | Notes |
+|---|---|---|
+| `sessions/{roomId}/users/{uid}` | `true` | Written by Cloud Function; auth anchor for all other nodes |
+| `messages/{roomId}/{messageId}` | `{ senderId, text, timestamp }` | Append-only, max 1000 chars; destroyed on session end |
+| `typing/{roomId}/{uid}` | `true` | Set while typing, deleted when done |
+| `presence/{roomId}/{uid}` | `true` | Set on connect; `onDisconnect().remove()` handles drops |
+
+### Firestore Indexes — `firestore.indexes.json` (deployed ✓)
+
+| Collection | Fields | Query |
+|---|---|---|
+| `waiting_pool` | `status ASC, createdAt ASC` | Matchmaking: oldest waiting user |
+| `reports` | `status ASC, createdAt DESC` | Admin dashboard: pending reports by time |
+
+### Feature Flags — Firebase Remote Config
+
+`icebreakers_enabled` (boolean, default `true`) — gates the Moods/Drinks SVG sticker panel.
+Rollback: set to `false` in Remote Config console; clients pick it up within 12 hours.
 
 ---
 
@@ -262,6 +260,14 @@ Anonymous users get a minimal doc on first sign-in (`uid`, `role: 'user'`, `crea
 | `timestamp` | number (ms) |
 
 Destroyed by Cloud Function on session end. Snapshot saved to `reports.chatLog` if reported.
+
+### Local Cache (Drift)
+
+| Table | Columns | Purpose |
+|---|---|---|
+| `cached_users` | `uid, displayName, photoUrl, email, role, lastSeen` | Current user's own profile — shown while offline |
+
+Profile data is the only thing worth caching — live chat is inherently online-only.
 
 ---
 

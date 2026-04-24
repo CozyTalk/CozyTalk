@@ -15,6 +15,24 @@
           ".validate": "newData.hasChildren(['senderId', 'text', 'timestamp']) && newData.child('senderId').val() == auth.uid && newData.child('text').isString() && newData.child('text').val().length > 0 && newData.child('text').val().length <= 1000 && newData.child('timestamp').isNumber()"
         }
       }
+    },
+    "typing": {
+      "$room_id": {
+        "$uid": {
+          ".read": "auth != null && root.child('sessions').child($room_id).child('users').child(auth.uid).exists()",
+          ".write": "auth != null && auth.uid == $uid && root.child('sessions').child($room_id).child('users').child(auth.uid).exists()",
+          ".validate": "newData.isBoolean()"
+        }
+      }
+    },
+    "presence": {
+      "$room_id": {
+        "$uid": {
+          ".read": "auth != null && root.child('sessions').child($room_id).child('users').child(auth.uid).exists()",
+          ".write": "auth != null && auth.uid == $uid && root.child('sessions').child($room_id).child('users').child(auth.uid).exists()",
+          ".validate": "newData.isBoolean()"
+        }
+      }
     }
   }
 }
