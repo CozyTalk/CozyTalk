@@ -9,7 +9,7 @@ import 'features/hello/presentation/screens/hello_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await dotenv.load();
+  await dotenv.load(fileName: '.env.example');
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
   if (dotenv.get('USE_EMULATOR', fallback: 'false') == 'true') {

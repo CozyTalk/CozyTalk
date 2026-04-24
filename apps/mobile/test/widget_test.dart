@@ -1,30 +1,39 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mobile/features/hello/presentation/providers/hello_provider.dart';
+import 'package:mobile/features/hello/presentation/screens/hello_screen.dart';
 
-import 'package:mobile/main.dart';
+class _FakeHelloNotifier extends HelloNotifier {
+  @override
+  HelloState build() => const HelloState();
+
+  @override
+  Future<void> callHello(String message) async {}
+}
+
+Widget _buildApp() => ProviderScope(
+      overrides: [
+        helloNotifierProvider.overrideWith(_FakeHelloNotifier.new),
+      ],
+      child: const MaterialApp(home: HelloScreen()),
+    );
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+  testWidgets('HelloScreen renders input and send button', (tester) async {
+    await tester.pumpWidget(_buildApp());
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+    expect(find.byType(TextField), findsOneWidget);
+    expect(find.text('Send to server'), findsOneWidget);
+    expect(find.byType(CircularProgressIndicator), findsNothing);
+  });
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
+  testWidgets('HelloScreen does not submit when input is empty', (tester) async {
+    await tester.pumpWidget(_buildApp());
+
+    await tester.tap(find.text('Send to server'));
     await tester.pump();
 
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    expect(find.byType(CircularProgressIndicator), findsNothing);
   });
 }

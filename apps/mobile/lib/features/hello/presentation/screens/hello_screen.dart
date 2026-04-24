@@ -22,7 +22,6 @@ class _HelloScreenState extends ConsumerState<HelloScreen> {
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(helloNotifierProvider);
-    final notifier = ref.read(helloNotifierProvider.notifier);
     return Scaffold(
       appBar: AppBar(title: const Text('CozyTalk')),
       body: Padding(
@@ -36,11 +35,11 @@ class _HelloScreenState extends ConsumerState<HelloScreen> {
                 labelText: 'Type a message',
                 border: OutlineInputBorder(),
               ),
-              onSubmitted: (_) => _submit(notifier),
+              onSubmitted: (_) => _submit(),
             ),
             const SizedBox(height: 16),
             ElevatedButton(
-              onPressed: state.isLoading ? null : () => _submit(notifier),
+              onPressed: state.isLoading ? null : _submit,
               child: const Text('Send to server'),
             ),
             const SizedBox(height: 32),
@@ -64,9 +63,10 @@ class _HelloScreenState extends ConsumerState<HelloScreen> {
     );
   }
 
-  void _submit(HelloNotifier notifier) {
+  void _submit() {
+    if (ref.read(helloNotifierProvider).isLoading) return;
     final text = _controller.text.trim();
     if (text.isEmpty) return;
-    notifier.callHello(text);
+    ref.read(helloNotifierProvider.notifier).callHello(text);
   }
 }

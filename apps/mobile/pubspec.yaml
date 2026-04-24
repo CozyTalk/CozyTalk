@@ -76,7 +76,9 @@ flutter:
   uses-material-design: true
 
   assets:
-    - .env
+    # .env is gitignored — copy .env.example to .env for local overrides
+    # Never put real secrets in a bundled asset; use --dart-define-from-file for those
+    - .env.example
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

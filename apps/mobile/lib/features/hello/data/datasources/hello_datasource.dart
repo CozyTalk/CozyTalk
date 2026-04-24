@@ -16,9 +16,9 @@ class HelloDatasourceImpl implements HelloDatasource {
         .httpsCallable('helloWorld')
         .call({'message': message});
     final data = result.data;
-    if (data is! Map<String, dynamic>) {
+    if (data is! Map) {
       throw Exception('Unexpected response format from helloWorld');
     }
-    return HelloMessageModel.fromJson(data);
+    return HelloMessageModel.fromJson(Map<String, dynamic>.from(data));
   }
 }

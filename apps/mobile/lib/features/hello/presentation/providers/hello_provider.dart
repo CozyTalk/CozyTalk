@@ -23,6 +23,8 @@ final helloNotifierProvider = NotifierProvider<HelloNotifier, HelloState>(
   HelloNotifier.new,
 );
 
+const _sentinel = Object();
+
 class HelloState {
   final HelloMessage? result;
   final bool isLoading;
@@ -30,12 +32,15 @@ class HelloState {
 
   const HelloState({this.result, this.isLoading = false, this.error});
 
-  HelloState copyWith({HelloMessage? result, bool? isLoading, String? error}) =>
-      HelloState(
-        result: result ?? this.result,
-        isLoading: isLoading ?? this.isLoading,
-        error: error ?? this.error,
-      );
+  HelloState copyWith({
+    Object? result = _sentinel,
+    bool? isLoading,
+    Object? error = _sentinel,
+  }) => HelloState(
+    result: result == _sentinel ? this.result : result as HelloMessage?,
+    isLoading: isLoading ?? this.isLoading,
+    error: error == _sentinel ? this.error : error as String?,
+  );
 }
 
 class HelloNotifier extends Notifier<HelloState> {
