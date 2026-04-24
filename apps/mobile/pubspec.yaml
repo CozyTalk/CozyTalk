@@ -76,9 +76,11 @@ flutter:
   uses-material-design: true
 
   assets:
-    # .env is gitignored — copy .env.example to .env for local overrides
-    # Never put real secrets in a bundled asset; use --dart-define-from-file for those
+    # .env.example is committed with safe defaults (USE_EMULATOR=false)
+    # .env is gitignored — run: cp apps/mobile/.env.example apps/mobile/.env
+    # On a fresh clone, create .env before flutter run or the build will fail
     - .env.example
+    - .env
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
