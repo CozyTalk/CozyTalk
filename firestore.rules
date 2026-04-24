@@ -1,0 +1,54 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    function isAdmin() {
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    function isSessionParticipant() {
+      return isSignedIn() && request.auth.uid in resource.data.users;
+    }
+
+    // ── users ────────────────────────────────────────────────────────────────
+    match /users/{userId} {
+      allow read, write: if isOwner(userId);
+    }
+
+    // ── waiting_pool ─────────────────────────────────────────────────────────
+    match /waiting_pool/{userId} {
+      allow read, delete: if isOwner(userId);
+
+      allow create: if isOwner(userId)
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.status == 'waiting';
+
+      allow update: if isOwner(userId)
+        && request.resource.data.diff(resource.data)
+            .affectedKeys().hasOnly(['status', 'updatedAt']);
+    }
+
+    // ── active_sessions ──────────────────────────────────────────────────────
+    // Cloud Functions are the only writers — client write is always false.
+    match /active_sessions/{sessionId} {
+      allow read: if isSessionParticipant();
+      allow write: if false;
+    }
+
+    // ── reports ──────────────────────────────────────────────────────────────
+    match /reports/{reportId} {
+      allow create: if isSignedIn();
+      allow read, update, delete: if isAdmin();
+    }
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "rules": {
+    "sessions": {
+      "$room_id": {
+        ".read": "auth != null && data.child('users').child(auth.uid).exists()",
+        ".write": false
+      }
+    },
+    "messages": {
+      "$room_id": {
+        ".read": "auth != null && root.child('sessions').child($room_id).child('users').child(auth.uid).exists()",
+        ".write": "auth != null && root.child('sessions').child($room_id).child('users').child(auth.uid).exists()"
+      }
+    }
+  }
+}
