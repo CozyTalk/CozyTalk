@@ -46,7 +46,6 @@ dependencies:
   drift: ^2.32.1
   drift_flutter: ^0.3.0
   flutter_secure_storage: ^10.0.0
-  flutter_dotenv: ^5.2.1
   freezed_annotation: ^3.1.0
   json_annotation: ^4.11.0
 
@@ -74,9 +73,6 @@ flutter:
   # included with your application, so that you can use the icons in
   # the material Icons class.
   uses-material-design: true
-
-  assets:
-    - .env.example
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

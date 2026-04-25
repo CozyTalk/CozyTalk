@@ -2,20 +2,20 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_functions/cloud_functions.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'firebase_options.dart';
 import 'features/hello/presentation/screens/hello_screen.dart';
 
+const _useEmulator = bool.fromEnvironment('USE_EMULATOR', defaultValue: true);
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await dotenv.load(fileName: '.env.example');
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
-  if (dotenv.get('USE_EMULATOR', fallback: 'false') == 'true') {
-    FirebaseFunctions.instanceFor(
-      region: 'us-central1',
-    ).useFunctionsEmulator('127.0.0.1', 5001);
+  if (_useEmulator) {
+    await FirebaseAuth.instance.useAuthEmulator('127.0.0.1', 9099);
+    FirebaseFunctions.instanceFor(region: 'us-central1')
+        .useFunctionsEmulator('127.0.0.1', 5001);
   }
 
   if (FirebaseAuth.instance.currentUser == null) {
