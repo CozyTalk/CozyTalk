@@ -91,6 +91,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 child: const Text("Don't have an account? Sign up"),
               ),
               const SizedBox(height: 8),
+              OutlinedButton.icon(
+                onPressed: isLoading ? null : _signInWithGoogle,
+                icon: const Icon(Icons.g_mobiledata, size: 24),
+                label: const Text('Sign in with Google'),
+              ),
+              const SizedBox(height: 8),
               OutlinedButton(
                 onPressed: isLoading ? null : _continueAsGuest,
                 child: const Text('Continue as Guest'),
@@ -108,6 +114,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           email: _emailController.text.trim(),
           password: _passwordController.text,
         );
+  }
+
+  void _signInWithGoogle() {
+    ref.read(authNotifierProvider.notifier).signInWithGoogle();
   }
 
   void _continueAsGuest() {

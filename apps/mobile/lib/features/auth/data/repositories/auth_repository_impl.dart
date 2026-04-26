@@ -18,6 +18,12 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
+  Future<AuthUser> signInWithGoogle() async {
+    final model = await _datasource.signInWithGoogle();
+    return model.toEntity();
+  }
+
+  @override
   Future<AuthUser> signUp({required String email, required String password}) async {
     final model = await _datasource.signUp(email: email, password: password);
     return model.toEntity();

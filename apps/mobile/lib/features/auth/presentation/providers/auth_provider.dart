@@ -10,6 +10,7 @@ import '../../domain/entities/auth_user.dart';
 import '../../domain/repositories/auth_repository.dart';
 import '../../domain/usecases/sign_in.dart';
 import '../../domain/usecases/sign_in_anonymously.dart';
+import '../../domain/usecases/sign_in_with_google.dart';
 import '../../domain/usecases/sign_out.dart';
 import '../../domain/usecases/sign_up.dart';
 
@@ -27,6 +28,10 @@ final _signUpProvider = Provider<SignUp>(
 
 final _signInAnonymouslyProvider = Provider<SignInAnonymously>(
   (ref) => SignInAnonymously(ref.watch(_authRepositoryProvider)),
+);
+
+final _signInWithGoogleProvider = Provider<SignInWithGoogle>(
+  (ref) => SignInWithGoogle(ref.watch(_authRepositoryProvider)),
 );
 
 final _signInProvider = Provider<SignIn>(
@@ -90,6 +95,17 @@ class AuthNotifier extends Notifier<AuthState> {
     state = state.copyWith(status: AuthStatus.loading, error: null);
     try {
       final user = await ref.read(_signInAnonymouslyProvider)();
+      state = state.copyWith(status: AuthStatus.authenticated, user: user);
+    } catch (e) {
+      state = state.copyWith(status: AuthStatus.unauthenticated, error: e.toString().replaceFirst('Exception: ', ''));
+    }
+  }
+
+  Future<void> signInWithGoogle() async {
+    if (state.status == AuthStatus.loading) return;
+    state = state.copyWith(status: AuthStatus.loading, error: null);
+    try {
+      final user = await ref.read(_signInWithGoogleProvider)();
       state = state.copyWith(status: AuthStatus.authenticated, user: user);
     } catch (e) {
       state = state.copyWith(status: AuthStatus.unauthenticated, error: e.toString().replaceFirst('Exception: ', ''));
