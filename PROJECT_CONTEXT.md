@@ -62,15 +62,19 @@ See `CLAUDE.md` for full conventions and code patterns.
 ## App Screens & User Flow
 
 ```
-Landing (anon auth)
-    ↓
+Login Screen
+    ├── [Email + Password] ──────────────────────────────────┐
+    ├── [Sign in with Google] ───────────────────────────────┤
+    ├── [Continue as Guest] ───────────────────────────────── authenticated
+    └── [Don't have an account?] → Sign Up Screen ───────────┘
+            ↓
 Waiting / Searching  ←──────────────────────────┐
     ↓  [matched by Cloud Function]               │
 Chat Room                                        │
     ├── [Skip / Next Person] ────────────────────┘
     ├── [Leave] → session destroyed
     └── [Report] → chat log retained, session destroyed
-Profile / Settings
+Profile / Settings (planned)
     ├── Edit display name
     ├── Upgrade from anonymous → Google / Email
     └── Sign out
@@ -95,10 +99,26 @@ The chat Notifier must model all four states explicitly as an enum — never inf
 ## What Is Already Built
 
 ### `hello` feature (proof-of-concept, complete)
-End-to-end clean arch example: `HelloScreen` → `HelloNotifier` → `CallHello` usecase → `HelloRepositoryImpl` → `HelloDatasourceImpl` → `helloWorld` Cloud Function → response flows back. This is the **template** for all future features.
+End-to-end clean arch example: `HelloScreen` → `HelloNotifier` → `CallHello` usecase → `HelloRepositoryImpl` → `HelloDatasourceImpl` → `helloWorld` Cloud Function → response flows back. This is the **primary template** for all future features.
+
+### `auth` feature (complete)
+Full authentication flow following the same Clean Architecture pattern.
+
+**Domain:** `AuthUser` entity, `AuthRepository` interface, use cases: `SignUp`, `SignIn`, `SignOut`, `SignInAnonymously`, `SignInWithGoogle`.
+
+**Data:** `AuthUserModel` (`@freezed` DTO), `AuthDatasourceImpl` (Firebase Auth + Firestore writes), `AuthRepositoryImpl`. Platform-specific Google sign-in: `signInWithPopup` on web, `google_sign_in` SDK on native.
+
+**Presentation:**
+- `AuthStatus` enum: `idle | loading | authenticated | unauthenticated`
+- `AuthState` with sentinel `copyWith` for `user` and `error`
+- `AuthNotifier` watching `FirebaseAuth.authStateChanges()` via the repository stream
+- `LoginScreen` — email/password form + "Sign in with Google" + "Continue as Guest"
+- `SignupScreen` — email/password/confirm form; pops to root on success
+
+**Firestore user doc** is created by the datasource on `signUp` and on first-time Google sign-in (`additionalUserInfo.isNewUser == true`). Anonymous users do not get a Firestore doc.
 
 ### App bootstrap (`lib/main.dart`)
-Loads `.env.example`, initialises Firebase, signs in anonymously, wraps in `ProviderScope`. Set `USE_EMULATOR=true` to point Functions at the local emulator.
+Initialises Firebase, points to emulators (Auth `9099`, Functions `5001`, Firestore `8080`) when `USE_EMULATOR=true`. No automatic sign-in — `_AuthRouter` widget watches `authNotifierProvider` and routes to `LoginScreen` or `HelloScreen`.
 
 ### Tests (`test/widget_test.dart`)
 Three widget tests for `HelloScreen` using `_FakeHelloNotifier` with `callCount` — all passing.
@@ -110,9 +130,9 @@ Three widget tests for `HelloScreen` using `_FakeHelloNotifier` with `callCount`
 ### Authentication — enabled providers
 | Provider | Status |
 |---|---|
-| **Anonymous** | On. Baseline auth. A few test users exist. |
-| **Google Sign-In** | On. Not yet wired in Flutter. |
-| **Email / Password** | On. Passwordless OFF. Not yet wired in Flutter. |
+| **Anonymous** | On. Wired in Flutter — "Continue as Guest" button on `LoginScreen`. |
+| **Google Sign-In** | On. Wired in Flutter — web uses `signInWithPopup`, native uses `google_sign_in` SDK. |
+| **Email / Password** | On. Passwordless OFF. Wired in Flutter — `LoginScreen` + `SignupScreen`. |
 | **Biometric / Passkey** | Planned — Android Keystore + WebAuthn. Not yet implemented. |
 
 ### Firestore Security Rules — `firestore.rules` (deployed ✓)
@@ -273,12 +293,12 @@ Profile data is the only thing worth caching — live chat is inherently online-
 
 ## Development Phases (WBS)
 
-| Phase | Work |
-|---|---|
-| **1.0 Frontend & UI** | UI/UX design, Landing/Auth screen, Waiting screen, Chat Room UI (bubbles, typing, SVGs, Skip) |
-| **2.0 Backend & Matchmaking** | Matchmaking Cloud Function (race-condition safe), RTDB messaging, session cleanup/lifecycle, word censor, reporting |
-| **3.0 Logic & Integration** | Session state machine (Idle→Searching→Matched→Disconnected), network drop detection, offline alerts, biometric/passkey auth |
-| **4.0 Testing & Management** | Concurrency/race condition tests, cross-platform UI tests (Android + Web), accessibility sweeps, performance profiling |
+| Phase | Work | Status |
+|---|---|---|
+| **1.0 Frontend & UI** | UI/UX design, Auth screens, Waiting screen, Chat Room UI (bubbles, typing, SVGs, Skip) | Auth screens done; remaining screens not yet built |
+| **2.0 Backend & Matchmaking** | Matchmaking Cloud Function (race-condition safe), RTDB messaging, session cleanup/lifecycle, word censor, reporting | Not started |
+| **3.0 Logic & Integration** | Session state machine (Idle→Searching→Matched→Disconnected), network drop detection, offline alerts, biometric/passkey auth | Not started |
+| **4.0 Testing & Management** | Concurrency/race condition tests, cross-platform UI tests (Android + Web), accessibility sweeps, performance profiling | Not started |
 
 ---
 
@@ -311,19 +331,32 @@ Profile data is the only thing worth caching — live chat is inherently online-
 
 ```
 CozyTalk/
-├── apps/mobile/               ← Flutter app (Android + Web)
+├── apps/mobile/                      ← Flutter app (Android + Web)
 │   ├── lib/
-│   │   ├── main.dart
-│   │   └── features/hello/    ← reference implementation (template)
+│   │   ├── main.dart                 ← Firebase init, emulator setup, _AuthRouter
+│   │   └── features/
+│   │       ├── hello/                ← proof-of-concept (template)
+│   │       └── auth/                 ← authentication feature (complete)
+│   │           ├── domain/
+│   │           │   ├── entities/auth_user.dart
+│   │           │   ├── repositories/auth_repository.dart
+│   │           │   └── usecases/     ← SignUp, SignIn, SignOut, SignInAnonymously, SignInWithGoogle
+│   │           ├── data/
+│   │           │   ├── models/auth_user_model.dart  (@freezed)
+│   │           │   ├── datasources/auth_datasource.dart
+│   │           │   └── repositories/auth_repository_impl.dart
+│   │           └── presentation/
+│   │               ├── providers/auth_provider.dart  ← AuthState, AuthNotifier, DI
+│   │               └── screens/      ← LoginScreen, SignupScreen
 │   ├── test/widget_test.dart
-│   ├── .env.example           ← committed, USE_EMULATOR=false
-│   └── .env                   ← gitignored
-├── functions/src/index.ts     ← helloWorld Cloud Function
-├── firestore.rules            ← deployed Firestore security rules
-├── database.rules.json        ← deployed RTDB security rules
-├── firestore.indexes.json     ← Firestore composite indexes (empty for now)
-├── firebase.json              ← Firebase deploy config
-├── .claude/agents/            ← specialized agent definitions
-├── CLAUDE.md                  ← auto-loaded by Claude Code every session
-└── PROJECT_CONTEXT.md         ← this file
+│   └── .env.example                  ← committed; USE_EMULATOR=true by default
+├── functions/src/index.ts            ← helloWorld Cloud Function
+├── firestore.rules                   ← deployed Firestore security rules
+├── database.rules.json               ← deployed RTDB security rules
+├── firestore.indexes.json            ← Firestore composite indexes
+├── firebase.json                     ← Firebase deploy config (predeploy: npm --prefix functions)
+├── .gitattributes                    ← enforces LF line endings repo-wide
+├── .claude/agents/                   ← specialized agent definitions
+├── CLAUDE.md                         ← auto-loaded by Claude Code every session
+└── PROJECT_CONTEXT.md                ← this file
 ```

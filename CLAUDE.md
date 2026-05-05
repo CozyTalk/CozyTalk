@@ -96,10 +96,11 @@ features/<feature>/
 ## App Screens & Session States
 
 **Screens (in flow order):**
-1. **Landing / Auth** — anonymous sign-in, entry point
-2. **Waiting / Searching** — user in `waiting_pool`, spinner, cancel option
-3. **Chat Room** — message bubbles, typing indicator, Moods/Drinks SVG icebreakers, prominent **Skip / Next Person** button
-4. **Disconnected** — shown when partner leaves or connection drops
+1. **Login / Auth** — entry point; email+password, Google Sign-In, or anonymous (Continue as Guest)
+2. **Sign Up** — email+password registration; navigated to from Login
+3. **Waiting / Searching** — user in `waiting_pool`, spinner, cancel option
+4. **Chat Room** — message bubbles, typing indicator, Moods/Drinks SVG icebreakers, prominent **Skip / Next Person** button
+5. **Disconnected** — shown when partner leaves or connection drops
 
 **Session state machine:**
 ```
@@ -168,10 +169,10 @@ After editing any `@freezed` class or `@riverpod` provider, always run build_run
 | Project ID | `cozytalk-5d984` |
 | Functions region | `us-central1` |
 | Realtime DB URL | `https://cozytalk-5d984-default-rtdb.asia-southeast1.firebasedatabase.app` |
-| Auth providers | Anonymous, Google, Email/Password (no passwordless) |
+| Auth providers | Anonymous, Google, Email/Password (no passwordless) — all wired in Flutter |
 | Observability | Firebase Crashlytics + structured Cloud Function logging |
 
-Emulator: set `USE_EMULATOR=true` in `.env.example`. Functions run on `127.0.0.1:5001`.
+Emulator ports: Auth `9099`, Functions `5001`, Firestore `8080`. Set `USE_EMULATOR=true` in `.env.example` to enable all three.
 
 ---
 
@@ -179,14 +180,14 @@ Emulator: set `USE_EMULATOR=true` in `.env.example`. Functions run on `127.0.0.1
 
 | Collection | Purpose |
 |---|---|
-| `users/{uid}` | User profile. Has `role` field (`user` \| `admin`). |
+| `users/{uid}` | User profile. Fields: `uid`, `email`, `role` (`user`\|`admin`), `createdAt`, `lastSeen`, `displayName?`, `photoUrl?`. |
 | `waiting_pool/{uid}` | Matchmaking queue. Fields: `createdAt`, `status`, `updatedAt`. |
 | `active_sessions/{sessionId}` | Active chat. Has `users: [uid1, uid2]`. Write-locked to Cloud Functions only. |
 | `reports/{reportId}` | Moderation reports. Admin-only read. Chat log retained here if reported. |
 
 Realtime DB: `messages/{roomId}/{messageId}` — live chat messages (ephemeral, destroyed on session end).
 
-Schema not yet finalized — see `PROJECT_CONTEXT.md`.
+See `PROJECT_CONTEXT.md` for full schema and security rules.
 
 ---
 
@@ -254,6 +255,26 @@ This codebase is developed by specialized agents orchestrated by a lead:
 
 ---
 
+## Auth Feature (`features/auth/`)
+
+The `auth` feature is fully implemented and is the **second reference implementation** (alongside `hello`).
+
+**Use cases:** `SignUp`, `SignIn`, `SignOut`, `SignInAnonymously`, `SignInWithGoogle`
+
+**`AuthStatus` enum:** `idle | loading | authenticated | unauthenticated` — never infer auth state from nullable fields.
+
+**`AuthState` fields:** `status`, `user` (`AuthUser?`), `error` (`String?`) — both nullable fields use the sentinel pattern.
+
+**`AuthNotifier.build()`** subscribes to `authRepository.watchAuthState()` (wraps `FirebaseAuth.authStateChanges()`). The stream listener skips state updates while `status == loading` to avoid races with in-flight sign-in actions.
+
+**Platform split in `AuthDatasourceImpl.signInWithGoogle()`:** web uses `signInWithPopup(GoogleAuthProvider())`, native uses `GoogleSignIn.instance.authenticate()` + `GoogleAuthProvider.credential(idToken:)`. Checked via `kIsWeb`.
+
+**Firestore user doc creation:** written by the datasource on `signUp` and on first-time Google sign-in (`additionalUserInfo.isNewUser == true`). Anonymous users do not get a Firestore doc.
+
+**`_AuthRouter`** (in `main.dart`) watches `authNotifierProvider` and routes: `authenticated` → `HelloScreen`, `idle` → loading spinner, anything else → `LoginScreen`.
+
+---
+
 ## Environment Config
 
-`main.dart` loads `.env.example`. Edit it to change `USE_EMULATOR`. It's committed — don't put real secrets here. Use `--dart-define-from-file` for secrets.
+`main.dart` reads `USE_EMULATOR` via `bool.fromEnvironment` (compile-time constant, default `true`). Set it in `.env.example` or pass `--dart-define=USE_EMULATOR=false` for production builds. Never put real secrets here. Use `--dart-define-from-file` for secrets.
