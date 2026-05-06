@@ -51,16 +51,41 @@ export const endSession = onCall({invoker: "public"}, async (request) => {
     });
   }
 
-  // Delete real-time data — clients lose live visibility immediately.
+  // Remove real-time presence data — clients lose live visibility immediately.
   await Promise.all([
     rtdb.ref(`typing/${sessionId}`).remove(),
     rtdb.ref(`presence/${sessionId}`).remove(),
   ]);
 
-  // Deleting active_sessions revokes participant access to the key and to
-  // chat_rooms messages (Firestore rules gate on active_sessions existence).
+  // Delete active_sessions first — this revokes client read access to
+  // chat_rooms via Firestore rules before we begin the message wipe.
   await db.collection("active_sessions").doc(sessionId).delete();
+
+  // Privacy by Design: destroy all chat messages now that the session key has
+  // been archived and access has been revoked.
+  await _deleteMessages(db, sessionId);
 
   logger.info("Session ended", {sessionId, initiatedBy: uid});
   return {success: true};
 });
+
+async function _deleteMessages(
+  db: admin.firestore.Firestore,
+  sessionId: string,
+  batchSize = 100,
+): Promise<void> {
+  const snap = await db
+    .collection("chat_rooms")
+    .doc(sessionId)
+    .collection("messages")
+    .limit(batchSize)
+    .get();
+
+  if (snap.empty) return;
+
+  const batch = db.batch();
+  snap.docs.forEach((d) => batch.delete(d.ref));
+  await batch.commit();
+
+  if (snap.size >= batchSize) await _deleteMessages(db, sessionId, batchSize);
+}
