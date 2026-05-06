@@ -124,6 +124,29 @@ class ChatNotifier extends Notifier<ChatState> {
       currentUserDisplayName: currentUserDisplayName,
     );
 
+    if (sessionId.startsWith('proto-')) {
+      _joinProtoThenSubscribe(sessionId, currentUserId);
+    } else {
+      _startSubscriptions(sessionId);
+    }
+  }
+
+  Future<void> _joinProtoThenSubscribe(String sessionId, String uid) async {
+    try {
+      final displayName = await ref
+          .read(_chatDatasourceProvider)
+          .joinProtoSession(sessionId: sessionId, uid: uid);
+      state = state.copyWith(currentUserDisplayName: displayName);
+      _startSubscriptions(sessionId);
+    } catch (e) {
+      state = state.copyWith(
+        status: SessionStatus.disconnected,
+        error: e.toString(),
+      );
+    }
+  }
+
+  void _startSubscriptions(String sessionId) {
     _messagesSub = ref
         .read(_watchMessagesProvider)(sessionId)
         .listen(
@@ -134,7 +157,6 @@ class ChatNotifier extends Notifier<ChatState> {
     _typingSub = ref
         .read(_watchTypingUsersProvider)(sessionId)
         .listen((users) {
-      // Exclude the current user — they know they are typing.
       final others = users
           .where((u) => u.uid != state.currentUserId)
           .toList();
