@@ -1,0 +1,416 @@
+import 'dart:async';
+
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../domain/entities/session_status.dart';
+import '../../domain/entities/typing_user.dart';
+import '../providers/chat_provider.dart';
+
+class ChatScreen extends ConsumerStatefulWidget {
+  final String sessionId;
+  final String currentUserId;
+  final String? currentUserDisplayName;
+
+  const ChatScreen({
+    super.key,
+    required this.sessionId,
+    required this.currentUserId,
+    this.currentUserDisplayName,
+  });
+
+  @override
+  ConsumerState<ChatScreen> createState() => _ChatScreenState();
+}
+
+class _ChatScreenState extends ConsumerState<ChatScreen> {
+  final _controller = TextEditingController();
+  final _scrollController = ScrollController();
+  Timer? _typingTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(chatNotifierProvider.notifier).enterSession(
+            sessionId: widget.sessionId,
+            currentUserId: widget.currentUserId,
+            currentUserDisplayName: widget.currentUserDisplayName,
+          );
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    _scrollController.dispose();
+    _typingTimer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final state = ref.watch(chatNotifierProvider);
+
+    ref.listen<ChatState>(chatNotifierProvider, (prev, next) {
+      if (next.messages.length != (prev?.messages.length ?? 0)) {
+        _scrollToBottom();
+      }
+    });
+
+    if (state.status == SessionStatus.disconnected) {
+      return const _DisconnectedScreen();
+    }
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('CozyTalk'),
+        actions: [
+          Semantics(
+            label: 'Skip to next person',
+            button: true,
+            child: TextButton(
+              onPressed:
+                  state.status == SessionStatus.chatting ? _endSession : null,
+              child: const Text(
+                'Skip',
+                style: TextStyle(color: Colors.white, fontSize: 16),
+              ),
+            ),
+          ),
+        ],
+      ),
+      body: Column(
+        children: [
+          Expanded(
+            child: state.messages.isEmpty
+                ? const Center(
+                    child: Text(
+                      'Say hello!',
+                      style: TextStyle(color: Colors.grey),
+                    ),
+                  )
+                : ListView.builder(
+                    controller: _scrollController,
+                    padding: const EdgeInsets.symmetric(
+                        vertical: 8, horizontal: 12),
+                    itemCount: state.messages.length,
+                    itemBuilder: (context, index) {
+                      final message = state.messages[index];
+                      final isMine =
+                          message.senderId == state.currentUserId;
+                      return _MessageBubble(
+                        text: message.text,
+                        displayName: message.displayName,
+                        isMine: isMine,
+                      );
+                    },
+                  ),
+          ),
+          if (state.typingUsers.isNotEmpty)
+            _TypingIndicator(typingUsers: state.typingUsers),
+          if (state.error != null)
+            Padding(
+              padding: const EdgeInsets.symmetric(
+                  horizontal: 12, vertical: 4),
+              child: Text(
+                state.error!,
+                style:
+                    const TextStyle(color: Colors.red, fontSize: 12),
+                textAlign: TextAlign.center,
+              ),
+            ),
+          _InputBar(
+            controller: _controller,
+            isSending: state.isSending,
+            onChanged: _onTypingChanged,
+            onSend: _send,
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _onTypingChanged(String value) {
+    _typingTimer?.cancel();
+    if (value.isNotEmpty) {
+      ref.read(chatNotifierProvider.notifier).setTyping(true);
+      _typingTimer = Timer(const Duration(seconds: 2), () {
+        ref.read(chatNotifierProvider.notifier).setTyping(false);
+      });
+    } else {
+      ref.read(chatNotifierProvider.notifier).setTyping(false);
+    }
+  }
+
+  void _send() {
+    final text = _controller.text.trim();
+    if (text.isEmpty) return;
+    _typingTimer?.cancel();
+    ref.read(chatNotifierProvider.notifier).setTyping(false);
+    _controller.clear();
+    ref.read(chatNotifierProvider.notifier).sendMessage(text);
+  }
+
+  void _endSession() {
+    ref.read(chatNotifierProvider.notifier).endSession();
+  }
+
+  void _scrollToBottom() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          _scrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeOut,
+        );
+      }
+    });
+  }
+}
+
+// ── Message bubble ────────────────────────────────────────────────────────────
+
+class _MessageBubble extends StatelessWidget {
+  final String text;
+  final String displayName;
+  final bool isMine;
+
+  const _MessageBubble({
+    required this.text,
+    required this.displayName,
+    required this.isMine,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Align(
+      alignment: isMine ? Alignment.centerRight : Alignment.centerLeft,
+      child: Semantics(
+        label: '$displayName: $text',
+        child: Container(
+          margin: const EdgeInsets.symmetric(vertical: 4),
+          constraints: BoxConstraints(
+            maxWidth: MediaQuery.of(context).size.width * 0.72,
+          ),
+          child: Column(
+            crossAxisAlignment: isMine
+                ? CrossAxisAlignment.end
+                : CrossAxisAlignment.start,
+            children: [
+              if (!isMine)
+                Padding(
+                  padding: const EdgeInsets.only(left: 4, bottom: 2),
+                  child: Text(
+                    displayName,
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: theme.colorScheme.outline,
+                    ),
+                  ),
+                ),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(
+                  color: isMine
+                      ? theme.colorScheme.primary
+                      : theme.colorScheme.surfaceContainerHighest,
+                  borderRadius: BorderRadius.only(
+                    topLeft: const Radius.circular(16),
+                    topRight: const Radius.circular(16),
+                    bottomLeft: Radius.circular(isMine ? 16 : 4),
+                    bottomRight: Radius.circular(isMine ? 4 : 16),
+                  ),
+                ),
+                child: Text(
+                  text,
+                  style: TextStyle(
+                    color: isMine
+                        ? theme.colorScheme.onPrimary
+                        : theme.colorScheme.onSurface,
+                    fontSize: 15,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Group typing indicator ────────────────────────────────────────────────────
+
+class _TypingIndicator extends StatefulWidget {
+  final List<TypingUser> typingUsers;
+  const _TypingIndicator({required this.typingUsers});
+
+  @override
+  State<_TypingIndicator> createState() => _TypingIndicatorState();
+}
+
+class _TypingIndicatorState extends State<_TypingIndicator>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<double> _opacity;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 700),
+    )..repeat(reverse: true);
+    _opacity = Tween<double>(begin: 0.3, end: 1.0).animate(_controller);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final label = _buildLabel(widget.typingUsers);
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Padding(
+        padding: const EdgeInsets.only(left: 16, bottom: 4),
+        child: Semantics(
+          label: label,
+          child: FadeTransition(
+            opacity: _opacity,
+            child: Text(
+              label,
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.outline,
+                fontSize: 13,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  static String _buildLabel(List<TypingUser> users) {
+    if (users.isEmpty) return '';
+    if (users.length == 1) return '${users[0].displayName} is typing…';
+    if (users.length == 2) {
+      return '${users[0].displayName} and ${users[1].displayName} are typing…';
+    }
+    return 'Several people are typing…';
+  }
+}
+
+// ── Input bar ─────────────────────────────────────────────────────────────────
+
+class _InputBar extends StatelessWidget {
+  final TextEditingController controller;
+  final bool isSending;
+  final ValueChanged<String> onChanged;
+  final VoidCallback onSend;
+
+  const _InputBar({
+    required this.controller,
+    required this.isSending,
+    required this.onChanged,
+    required this.onSend,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+        child: Row(
+          children: [
+            Expanded(
+              child: Semantics(
+                label: 'Message input',
+                child: TextField(
+                  controller: controller,
+                  onChanged: onChanged,
+                  onSubmitted: (_) => onSend(),
+                  textInputAction: TextInputAction.send,
+                  minLines: 1,
+                  maxLines: 4,
+                  decoration: InputDecoration(
+                    hintText: 'Type a message…',
+                    contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 10),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(24),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Semantics(
+              label: 'Send message',
+              button: true,
+              child: SizedBox(
+                width: 48,
+                height: 48,
+                child: isSending
+                    ? const Padding(
+                        padding: EdgeInsets.all(12),
+                        child:
+                            CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : IconButton(
+                        onPressed: onSend,
+                        icon: const Icon(Icons.send_rounded),
+                        tooltip: 'Send',
+                      ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Disconnected screen ───────────────────────────────────────────────────────
+
+class _DisconnectedScreen extends StatelessWidget {
+  const _DisconnectedScreen();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.link_off_rounded,
+                size: 64,
+                color: Theme.of(context).colorScheme.outline,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Session ended',
+                style: Theme.of(context).textTheme.headlineSmall,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'The conversation has ended.',
+                style: TextStyle(
+                    color: Theme.of(context).colorScheme.outline),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
