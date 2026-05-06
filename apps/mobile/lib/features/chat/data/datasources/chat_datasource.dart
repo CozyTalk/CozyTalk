@@ -83,6 +83,24 @@ class ChatDatasourceImpl implements ChatDatasource {
     required String sessionId,
     required String text,
   }) async {
+    // TODO: remove proto branch — bypasses sendMessage CF for local prototype testing
+    if (sessionId.startsWith('proto-')) {
+      final uid = _auth.currentUser?.uid ?? '';
+      final name = _auth.currentUser?.displayName ??
+          _auth.currentUser?.email ??
+          'Anonymous';
+      await _firestore
+          .collection('chat_rooms')
+          .doc(sessionId)
+          .collection('messages')
+          .add({
+        'senderId': uid,
+        'displayName': name,
+        'text': text,
+        'timestamp': FieldValue.serverTimestamp(),
+      });
+      return;
+    }
     await _functions
         .httpsCallable('sendMessage')
         .call({'sessionId': sessionId, 'text': text});
