@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -17,9 +18,11 @@ void main() async {
 
   if (_useEmulator) {
     await FirebaseAuth.instance.useAuthEmulator('127.0.0.1', 9099);
-    FirebaseFunctions.instanceFor(region: 'us-central1')
-        .useFunctionsEmulator('127.0.0.1', 5001);
+    FirebaseFunctions.instanceFor(
+      region: 'us-central1',
+    ).useFunctionsEmulator('127.0.0.1', 5001);
     FirebaseFirestore.instance.useFirestoreEmulator('127.0.0.1', 8080);
+    FirebaseDatabase.instance.useDatabaseEmulator('127.0.0.1', 9000);
   }
 
   runApp(const ProviderScope(child: MyApp()));
@@ -49,8 +52,8 @@ class _AuthRouter extends ConsumerWidget {
     return switch (status) {
       AuthStatus.authenticated => const HelloScreen(),
       AuthStatus.idle => const Scaffold(
-          body: Center(child: CircularProgressIndicator()),
-        ),
+        body: Center(child: CircularProgressIndicator()),
+      ),
       _ => const LoginScreen(),
     };
   }
