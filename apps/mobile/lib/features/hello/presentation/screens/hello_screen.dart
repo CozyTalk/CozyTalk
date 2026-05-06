@@ -45,7 +45,6 @@ class _HelloScreenState extends ConsumerState<HelloScreen> {
               child: const Text('Send to server'),
             ),
             const SizedBox(height: 16),
-            // TODO: remove — prototype shortcut to ChatScreen
             OutlinedButton.icon(
               onPressed: () {
                 final user = ref.read(authNotifierProvider).user;
