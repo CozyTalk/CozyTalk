@@ -8,8 +8,8 @@ class _NotifItem {
   final String subtitle;
   final String time;
   final bool isFriendRequest;
-  bool accepted = false;
-  bool declined = false;
+  bool accepted;
+  bool declined;
 
   _NotifItem({
     required this.imagePath,
@@ -18,6 +18,8 @@ class _NotifItem {
     required this.subtitle,
     required this.time,
     this.isFriendRequest = false,
+    this.accepted = false,
+    this.declined = false,
   });
 }
 
