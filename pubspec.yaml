@@ -1,0 +1,53 @@
+name: cozytalk
+description: "CozytTalk - A cozy chat application"
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.3.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  shared_preferences: ^2.2.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/images/HomeBg.png
+    - assets/images/ThinkBubble.png
+    - assets/images/UserAvatar.png
+    - assets/images/Logo.png
+    - assets/images/DressUp.png
+    - assets/images/Friends.png
+    - assets/images/LetsChat.png
+    - assets/images/Mood.png
+    - assets/images/Notification.png
+    - assets/images/User.png
+    - assets/images/Setting.png
+    - assets/images/Back.png
+    - assets/images/Logout.png
+    - assets/images/Edit.png
+    - assets/images/Report.png
+    - assets/images/DressUpBg.png
+    - assets/images/MoodBg.png
+    - assets/images/Happy.png
+    - assets/images/Sad.png
+    - assets/images/Thrilled.png
+    - assets/images/Silly.png
+    - assets/images/Lonely.png
+    - assets/images/Grumpy.png
+    - assets/images/Cap.png
+    - assets/images/CatHeadband.png
+    - assets/images/Crown.png
+    - assets/images/Pinkbeanie.png
+    - assets/images/Sunglasses.png
+    - assets/images/WitchHat.png
+
+
