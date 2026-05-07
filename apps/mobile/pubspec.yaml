@@ -43,8 +43,6 @@ dependencies:
   flutter_riverpod: ^3.3.1
   riverpod_annotation: ^4.0.2
   go_router: ^17.2.2
-  drift: ^2.32.1
-  drift_flutter: ^0.3.0
   flutter_secure_storage: ^10.0.0
   freezed_annotation: ^3.1.0
   json_annotation: ^4.11.0
@@ -60,19 +58,51 @@ dev_dependencies:
   # rules and activating additional ones.
   flutter_lints: ^5.0.0
   riverpod_generator: ^4.0.3
-  build_runner: ^2.14.0
+  build_runner: ^2.15.0
   freezed: ^3.2.5
   json_serializable: ^6.13.0
+
+dependency_overrides:
+  test_api: 0.7.10
+  path_provider_foundation: 2.4.4
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
 
 # The following section is specific to Flutter packages.
 flutter:
-  # The following line ensures that the Material Icons font is
-  # included with your application, so that you can use the icons in
-  # the material Icons class.
   uses-material-design: true
+
+  assets:
+    - assets/images/HomeBg.png
+    - assets/images/ThinkBubble.png
+    - assets/images/UserAvatar.png
+    - assets/images/Logo.png
+    - assets/images/DressUp.png
+    - assets/images/Friends.png
+    - assets/images/LetsChat.png
+    - assets/images/Mood.png
+    - assets/images/Notification.png
+    - assets/images/User.png
+    - assets/images/Setting.png
+    - assets/images/Back.png
+    - assets/images/Logout.png
+    - assets/images/Edit.png
+    - assets/images/Report.png
+    - assets/images/DressUpBg.png
+    - assets/images/MoodBg.png
+    - assets/images/Happy.png
+    - assets/images/Sad.png
+    - assets/images/Thrilled.png
+    - assets/images/Silly.png
+    - assets/images/Lonely.png
+    - assets/images/Grumpy.png
+    - assets/images/Cap.png
+    - assets/images/CatHeadband.png
+    - assets/images/Crown.png
+    - assets/images/Pinkbeanie.png
+    - assets/images/Sunglasses.png
+    - assets/images/WitchHat.png
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
