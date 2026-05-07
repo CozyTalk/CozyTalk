@@ -16,8 +16,12 @@ import 'screens/mood_screen.dart';
 import 'screens/friends_screen.dart';
 import 'screens/friend_chat_screen.dart';
 import 'screens/choose_room_type_screen.dart';
+import 'screens/select_background_screen.dart';
+import 'screens/join_room_id_screen.dart';
+import 'screens/chat_screen.dart';
+import 'screens/group_chat_screen.dart';
 
-const _useEmulator = bool.fromEnvironment('USE_EMULATOR', defaultValue: true);
+const _useEmulator = bool.fromEnvironment('USE_EMULATOR', defaultValue: false);
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -52,7 +56,14 @@ class MyApp extends StatelessWidget {
         AppRoutes.mood:           (_) => const MoodScreen(),
         AppRoutes.friends:        (_) => const FriendsScreen(),
         AppRoutes.friendChat:     (_) => const FriendChatScreen(),
-        AppRoutes.chooseRoomType: (_) => const ChooseRoomTypeScreen(),
+        AppRoutes.chooseRoomType:   (_) => const ChooseRoomTypeScreen(),
+        AppRoutes.selectBackground: (ctx) {
+          final args = ModalRoute.of(ctx)?.settings.arguments as String?;
+          return SelectBackgroundScreen(roomType: args);
+        },
+        AppRoutes.joinRoomId:       (_) => const JoinRoomIdScreen(),
+        AppRoutes.chatScreen:       (_) => const ChatScreen(),
+        AppRoutes.groupChatScreen:  (_) => const GroupChatScreen(),
       },
     );
   }

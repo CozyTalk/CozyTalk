@@ -69,7 +69,7 @@ class _DressUpScreenState extends State<DressUpScreen> {
                           borderRadius: BorderRadius.circular(25),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.12),
+                              color: Colors.black.withValues(alpha:0.12),
                               blurRadius: 12,
                               offset: const Offset(0, 4),
                             ),
@@ -144,7 +144,7 @@ class _DressUpScreenState extends State<DressUpScreen> {
                                 ),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: Colors.black.withOpacity(0.08),
+                                    color: Colors.black.withValues(alpha:0.08),
                                     blurRadius: 10,
                                     offset: const Offset(0, 4),
                                   ),
@@ -201,7 +201,7 @@ class _DressUpScreenState extends State<DressUpScreen> {
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.15),
+                        color: Colors.black.withValues(alpha:0.15),
                         blurRadius: 8,
                         offset: const Offset(0, 4),
                       ),
@@ -251,7 +251,7 @@ class _DressUpScreenState extends State<DressUpScreen> {
                     border: Border.all(color: Colors.grey.shade300, width: 1.5),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.08),
+                        color: Colors.black.withValues(alpha:0.08),
                         blurRadius: 10,
                         offset: const Offset(0, 4),
                       )

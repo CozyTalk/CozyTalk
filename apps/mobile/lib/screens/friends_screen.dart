@@ -173,7 +173,17 @@ class _FriendsScreenState extends State<FriendsScreen> {
                 Row(
                   children: [
                     if (friend.isInRoom) ...[
-                      _buildJoinButton(),
+                      GestureDetector(
+                        onTap: () => Navigator.pushNamed(
+                          context,
+                          AppRoutes.groupChatScreen,
+                          arguments: {
+                            'roomName': "${friend.name}'s Room",
+                            'bgImage': 'assets/images/kao_tapu.png',
+                          },
+                        ),
+                        child: _buildJoinButton(),
+                      ),
                       const SizedBox(width: 6),
                     ],
                     if (friend.unreadCount > 0)
@@ -191,15 +201,19 @@ class _FriendsScreenState extends State<FriendsScreen> {
   // ─── Join pill ───
   Widget _buildJoinButton() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: AppColors.greenLight,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.tanGreen, width: 1),
+        color: const Color(0xFFDEF1C2),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFC7D2B5), width: 1.5),
       ),
       child: const Text(
         'Join',
-        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900),
+        style: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w900,
+          color: Color(0xFF4A553F),
+        ),
       ),
     );
   }
