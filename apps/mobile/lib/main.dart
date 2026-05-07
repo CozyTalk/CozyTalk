@@ -1,13 +1,21 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'firebase_options.dart';
-import 'features/auth/presentation/providers/auth_provider.dart';
-import 'features/auth/presentation/screens/login_screen.dart';
-import 'features/hello/presentation/screens/hello_screen.dart';
+import 'theme/app_theme.dart';
+import 'theme/app_routes.dart';
+import 'screens/home_screen.dart';
+import 'screens/notification_screen.dart';
+import 'screens/profile_screen.dart';
+import 'screens/blocked_screen.dart';
+import 'screens/dress_up_screen.dart';
+import 'screens/mood_screen.dart';
+import 'screens/friends_screen.dart';
+import 'screens/friend_chat_screen.dart';
+import 'screens/choose_room_type_screen.dart';
 
 const _useEmulator = bool.fromEnvironment('USE_EMULATOR', defaultValue: true);
 
@@ -32,26 +40,20 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'CozyTalk',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-      ),
-      home: const _AuthRouter(),
+      debugShowCheckedModeBanner: false,
+      theme: AppTheme.theme,
+      initialRoute: AppRoutes.home,
+      routes: {
+        AppRoutes.home:           (_) => const HomeScreen(),
+        AppRoutes.notification:   (_) => const NotificationScreen(),
+        AppRoutes.profile:        (_) => const ProfileScreen(),
+        AppRoutes.blocked:        (_) => const BlockedScreen(),
+        AppRoutes.dressUp:        (_) => const DressUpScreen(),
+        AppRoutes.mood:           (_) => const MoodScreen(),
+        AppRoutes.friends:        (_) => const FriendsScreen(),
+        AppRoutes.friendChat:     (_) => const FriendChatScreen(),
+        AppRoutes.chooseRoomType: (_) => const ChooseRoomTypeScreen(),
+      },
     );
-  }
-}
-
-class _AuthRouter extends ConsumerWidget {
-  const _AuthRouter();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final status = ref.watch(authNotifierProvider.select((s) => s.status));
-    return switch (status) {
-      AuthStatus.authenticated => const HelloScreen(),
-      AuthStatus.idle => const Scaffold(
-          body: Center(child: CircularProgressIndicator()),
-        ),
-      _ => const LoginScreen(),
-    };
   }
 }
