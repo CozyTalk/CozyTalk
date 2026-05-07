@@ -9,7 +9,7 @@ class AppTheme {
         scaffoldBackgroundColor: AppColors.scaffoldBg,
         colorScheme: ColorScheme.fromSeed(
           seedColor: AppColors.headerBg,
-          background: AppColors.scaffoldBg,
+          surface: AppColors.scaffoldBg,
         ),
         appBarTheme: const AppBarTheme(
           backgroundColor: AppColors.headerBg,

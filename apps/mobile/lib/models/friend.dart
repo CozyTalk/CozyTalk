@@ -1,6 +1,6 @@
 class Friend {
-  String name;
-  final String username;
+  String name;           // editable note/nickname you set for this friend
+  final String username; // their actual account username
   final String lastMessage;
   final bool isOnline;
   int unreadCount;
@@ -13,7 +13,7 @@ class Friend {
     required this.username,
     required this.lastMessage,
     required this.isOnline,
-    required this.unreadCount,
+    this.unreadCount = 0,
     required this.isInRoom,
     this.avatar = '',
     this.interest = '',
