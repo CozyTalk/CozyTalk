@@ -5,6 +5,22 @@ import '../dialogs/song_dialog.dart';
 import '../dialogs/user_profile_dialog.dart';
 import '../dialogs/members_list_dialog.dart';
 
+enum _MsgType { warning, system, me, other, card }
+
+class _GroupMsg {
+  final _MsgType type;
+  final String text;
+  final String? sender;
+  final String? time;
+
+  const _GroupMsg({
+    required this.type,
+    required this.text,
+    this.sender,
+    this.time,
+  });
+}
+
 class GroupChatScreen extends StatefulWidget {
   const GroupChatScreen({super.key});
 
@@ -30,10 +46,10 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
 
   void _sendTopicCard() {
     setState(() {
-      messages.add({
-        'type': 'card',
-        'text': topics[_currentTopicIndex % topics.length],
-      });
+      messages.add(_GroupMsg(
+        type: _MsgType.card,
+        text: topics[_currentTopicIndex % topics.length],
+      ));
     });
     _scrollToBottom();
   }
@@ -41,40 +57,36 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
   void _shuffleTopic() {
     setState(() {
       _currentTopicIndex = (_currentTopicIndex + 1) % topics.length;
-      messages.add({'type': 'system', 'text': 'Someone shuffled the topic!'});
-      messages.add({
-        'type': 'card',
-        'text': topics[_currentTopicIndex],
-      });
+      messages.add(const _GroupMsg(
+          type: _MsgType.system, text: 'Someone shuffled the topic!'));
+      messages.add(_GroupMsg(
+          type: _MsgType.card, text: topics[_currentTopicIndex]));
     });
     _scrollToBottom();
   }
 
-  List<Map<String, dynamic>> messages = [
-    {
-      'type': 'warning',
-      'text':
-          'Keep it friendly! Please be respectful and protect your personal info. Report any suspicious behavior to help keep our community safe.'
-    },
-    {'type': 'system', 'text': 'Kaitom Hop in'},
-    {
-      'type': 'other',
-      'sender': 'Kaitom',
-      'text': 'Hellooooooooooooooo\noooooooooooooooo.',
-      'time': '10:00 pm'
-    },
-    {
-      'type': 'other',
-      'sender': 'Somjeed',
-      'text': 'Hello.',
-      'time': '10:05 pm'
-    },
-    {
-      'type': 'me',
-      'sender': 'Me',
-      'text': 'Hello 🍪🙏🔥😣',
-      'time': '10:10 pm'
-    },
+  final List<_GroupMsg> messages = [
+    const _GroupMsg(
+      type: _MsgType.warning,
+      text:
+          'Keep it friendly! Please be respectful and protect your personal info. Report any suspicious behavior to help keep our community safe.',
+    ),
+    const _GroupMsg(type: _MsgType.system, text: 'Kaitom Hop in'),
+    const _GroupMsg(
+        type: _MsgType.other,
+        sender: 'Kaitom',
+        text: 'Hellooooooooooooooo\noooooooooooooooo.',
+        time: '10:00 pm'),
+    const _GroupMsg(
+        type: _MsgType.other,
+        sender: 'Somjeed',
+        text: 'Hello.',
+        time: '10:05 pm'),
+    const _GroupMsg(
+        type: _MsgType.me,
+        sender: 'Me',
+        text: 'Hello 🍪🙏🔥😣',
+        time: '10:10 pm'),
   ];
 
   @override
@@ -100,12 +112,12 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
   void _sendMessage() {
     if (_msgController.text.trim().isEmpty) return;
     setState(() {
-      messages.add({
-        'type': 'me',
-        'sender': 'Me',
-        'text': _msgController.text,
-        'time': 'Now'
-      });
+      messages.add(_GroupMsg(
+        type: _MsgType.me,
+        sender: 'Me',
+        text: _msgController.text,
+        time: 'Now',
+      ));
     });
     _msgController.clear();
     _scrollToBottom();
@@ -311,9 +323,9 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
               itemCount: messages.length,
               itemBuilder: (context, index) {
                 final msg = messages[index];
-                if (msg['type'] == 'warning') return _buildWarning(msg['text']);
-                if (msg['type'] == 'system') return _buildSystem(msg['text']);
-                if (msg['type'] == 'card') return _buildCard(msg['text']);
+                if (msg.type == _MsgType.warning) return _buildWarning(msg.text);
+                if (msg.type == _MsgType.system) return _buildSystem(msg.text);
+                if (msg.type == _MsgType.card) return _buildCard(msg.text);
                 return _buildChatBubble(msg);
               },
             ),
@@ -400,8 +412,8 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
     );
   }
 
-  Widget _buildChatBubble(Map<String, dynamic> msg) {
-    bool isMe = msg['type'] == 'me';
+  Widget _buildChatBubble(_GroupMsg msg) {
+    final isMe = msg.type == _MsgType.me;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
@@ -413,7 +425,8 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
             GestureDetector(
               onTap: () => showDialog(
                   context: context,
-                  builder: (_) => UserProfileDialog(username: msg['sender'])),
+                  builder: (_) =>
+                      UserProfileDialog(username: msg.sender ?? '')),
               child: const CircleAvatar(
                 radius: 20,
                 backgroundColor: Colors.white,
@@ -426,7 +439,7 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
                 isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
             children: [
               if (!isMe)
-                Text(msg['sender'],
+                Text(msg.sender ?? '',
                     style: const TextStyle(
                         fontSize: 12, fontWeight: FontWeight.bold)),
               const SizedBox(height: 4),
@@ -434,7 +447,7 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   if (isMe)
-                    Text(msg['time'],
+                    Text(msg.time ?? '',
                         style:
                             const TextStyle(fontSize: 10, color: Colors.grey)),
                   if (isMe) const SizedBox(width: 8),
@@ -450,11 +463,11 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
                       border: isMe ? null : Border.all(color: Colors.black12),
                     ),
                     child:
-                        Text(msg['text'], style: const TextStyle(fontSize: 15)),
+                        Text(msg.text, style: const TextStyle(fontSize: 15)),
                   ),
                   if (!isMe) const SizedBox(width: 8),
                   if (!isMe)
-                    Text(msg['time'],
+                    Text(msg.time ?? '',
                         style:
                             const TextStyle(fontSize: 10, color: Colors.grey)),
                 ],

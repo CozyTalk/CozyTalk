@@ -131,6 +131,7 @@ class _JoinRoomIdScreenState extends State<JoinRoomIdScreen> {
                         child: TextField(
                           controller: _controllers[index],
                           focusNode: _focusNodes[index],
+                          autofocus: index == 0,
                           textAlign: TextAlign.center,
                           style: const TextStyle(
                               fontSize: 24, fontWeight: FontWeight.bold),

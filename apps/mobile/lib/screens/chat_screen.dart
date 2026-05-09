@@ -161,7 +161,7 @@ class _ChatScreenState extends State<ChatScreen> {
                                     color: Colors.white,
                                     fontSize: 20,
                                     fontWeight: FontWeight.bold)),
-                            const Text('Room ID: AWD3V',
+                            const Text('Room ID: —',
                                 style: TextStyle(
                                     color: Colors.white70, fontSize: 12)),
                           ],
@@ -237,10 +237,10 @@ class _ChatScreenState extends State<ChatScreen> {
                   if (msg.type == 'warning') return _buildWarning(msg.text);
                   if (msg.type == 'system') return _buildSystem(msg.text);
                   if (msg.type == 'me') {
-                    return _buildBubble(msg.text, msg.time!, true);
+                    return _buildBubble(msg.text, msg.time ?? '', true);
                   }
                   if (msg.type == 'other') {
-                    return _buildBubble(msg.text, msg.time!, false);
+                    return _buildBubble(msg.text, msg.time ?? '', false);
                   }
                   if (msg.type == 'card') return _buildCard(msg.text);
                   return const SizedBox();

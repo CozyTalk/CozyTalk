@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../theme/app_colors.dart';
 import '../theme/app_routes.dart';
 
 class ChooseRoomTypeScreen extends StatefulWidget {
@@ -204,13 +205,13 @@ class _ChooseRoomTypeScreenState extends State<ChooseRoomTypeScreen> {
     final bool isSelectedAny = selectedType != null;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFFFF9F0),
+      backgroundColor: AppColors.scaffoldBg,
       body: Column(
         children: [
           Container(
             width: double.infinity,
             decoration: const BoxDecoration(
-              color: Color(0xFF695959),
+              color: AppColors.brownDeep,
               borderRadius: BorderRadius.vertical(
                 top: Radius.circular(35),
               ),
@@ -224,8 +225,7 @@ class _ChooseRoomTypeScreenState extends State<ChooseRoomTypeScreen> {
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     GestureDetector(
-                      onTap: () => Navigator.pushNamedAndRemoveUntil(
-                          context, AppRoutes.home, (route) => false),
+                      onTap: () => Navigator.pop(context),
                       child: Container(
                         width: 48,
                         height: 48,

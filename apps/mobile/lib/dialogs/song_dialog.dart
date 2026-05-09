@@ -97,14 +97,17 @@ class SongDialog extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 12),
-                Container(
-                  width: 55,
-                  height: 55,
-                  decoration: BoxDecoration(
-                      color: const Color(0xFFEAC163),
-                      borderRadius: BorderRadius.circular(16)),
-                  child: const Icon(Icons.send,
-                      color: Color(0xFF6B5E5B), size: 28),
+                GestureDetector(
+                  onTap: () => Navigator.pop(context),
+                  child: Container(
+                    width: 55,
+                    height: 55,
+                    decoration: BoxDecoration(
+                        color: const Color(0xFFEAC163),
+                        borderRadius: BorderRadius.circular(16)),
+                    child: const Icon(Icons.send,
+                        color: Color(0xFF6B5E5B), size: 28),
+                  ),
                 ),
               ],
             )

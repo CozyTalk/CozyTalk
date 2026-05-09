@@ -87,7 +87,7 @@ class _SelectBackgroundScreenState extends State<SelectBackgroundScreen> {
                     ),
                     const Spacer(),
                     const Text(
-                      'Select room type',
+                      'Select background',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                           color: Colors.white,

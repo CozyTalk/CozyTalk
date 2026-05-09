@@ -21,7 +21,7 @@ import 'screens/join_room_id_screen.dart';
 import 'screens/chat_screen.dart';
 import 'screens/group_chat_screen.dart';
 
-const _useEmulator = bool.fromEnvironment('USE_EMULATOR', defaultValue: false);
+const _useEmulator = bool.fromEnvironment('USE_EMULATOR', defaultValue: true);
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();

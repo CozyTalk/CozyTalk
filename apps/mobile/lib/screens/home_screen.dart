@@ -290,7 +290,6 @@ class _TopBar extends StatelessWidget {
   }
 }
 
-// ─── AVATAR CARD (เพิ่มเงาอย่างเดียว) ───────────────────────────────────
 class _AvatarCard extends StatefulWidget {
   final String moodText;
   final VoidCallback onMoodTap;
@@ -312,10 +311,9 @@ class _AvatarCardState extends State<_AvatarCard> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        // ลบ border ออก และใส่เฉพาะเงา
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha:0.12), // ปรับเงาให้ชัดขึ้นเล็กน้อยเพื่อความสวยงาม
+            color: Colors.black.withValues(alpha:0.12),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),

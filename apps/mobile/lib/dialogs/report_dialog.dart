@@ -10,6 +10,13 @@ class ReportDialog extends StatefulWidget {
 class _ReportDialogState extends State<ReportDialog> {
   int _step = 1;
   final Set<int> _selectedOptions = {};
+  final TextEditingController _contextCtrl = TextEditingController();
+
+  @override
+  void dispose() {
+    _contextCtrl.dispose();
+    super.dispose();
+  }
 
   void _toggleOption(int index) {
     setState(() {
@@ -94,7 +101,9 @@ class _ReportDialogState extends State<ReportDialog> {
             const SizedBox(width: 12),
             Expanded(
                 child: _buildButton('Next',
-                    onTap: () => setState(() => _step = 2))),
+                    onTap: _selectedOptions.isEmpty
+                        ? null
+                        : () => setState(() => _step = 2))),
           ],
         )
       ],
@@ -107,12 +116,15 @@ class _ReportDialogState extends State<ReportDialog> {
         _buildInputContainer(
           label: 'Additional Context',
           trailing: '/200',
-          child: const TextField(
+          child: TextField(
+            controller: _contextCtrl,
             maxLines: 3,
-            decoration: InputDecoration(
+            maxLength: 200,
+            decoration: const InputDecoration(
               hintText: 'Type here..',
               border: InputBorder.none,
               hintStyle: TextStyle(color: Colors.grey, fontSize: 14),
+              counterText: '',
             ),
           ),
         ),
