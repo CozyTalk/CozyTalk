@@ -16,8 +16,8 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
 
-    function isSessionParticipant() {
-      return isSignedIn() && request.auth.uid in resource.data.users;
+    function isChatRoomParticipant(sessionId) {
+      return isSignedIn() && request.auth.uid in get(/databases/$(database)/documents/active_sessions/$(sessionId)).data.users;
     }
 
     // ── users ────────────────────────────────────────────────────────────────
@@ -52,7 +52,7 @@ service cloud.firestore {
     // ── active_sessions ──────────────────────────────────────────────────────
     // Cloud Functions are the only writers — client write is always false.
     match /active_sessions/{sessionId} {
-      allow read: if isSessionParticipant();
+      allow read: if isSignedIn() && (sessionId.matches('proto-.*') || request.auth.uid in resource.data.users);
       allow write: if false;
     }
 
@@ -65,6 +65,24 @@ service cloud.firestore {
         && request.resource.data.status == 'pending'
         && request.resource.data.createdAt == request.time;
       allow read, update, delete: if isAdmin();
+    }
+    match /chat_rooms/{sessionId}/messages/{messageId} {
+      allow read: if isSignedIn() && (sessionId.matches('proto-.*') || isChatRoomParticipant(sessionId));
+      allow create: if isSignedIn() && (sessionId.matches('proto-.*') || isChatRoomParticipant(sessionId))
+        && request.resource.data.keys().hasAll(['senderId', 'displayName', 'encryptedText', 'iv', 'authTag', 'timestamp', 'expiresAt', 'flagged'])
+        && request.resource.data.senderId == request.auth.uid
+        && request.resource.data.displayName is string
+        && request.resource.data.displayName.size() <= 200
+        && request.resource.data.encryptedText is string
+        && request.resource.data.encryptedText.size() < 12000
+        && request.resource.data.iv is string
+        && request.resource.data.iv.size() <= 24
+        && request.resource.data.authTag is string
+        && request.resource.data.authTag.size() <= 32
+        && request.resource.data.timestamp is timestamp
+        && request.resource.data.expiresAt is timestamp
+        && request.resource.data.flagged == false;
+      allow update, delete: if false;
     }
   }
 }
