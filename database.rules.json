@@ -18,19 +18,25 @@
     },
     "typing": {
       "$room_id": {
+        ".read": "auth != null",
         "$uid": {
-          ".read": "auth != null && root.child('sessions').child($room_id).child('users').child(auth.uid).exists()",
-          ".write": "auth != null && auth.uid == $uid && root.child('sessions').child($room_id).child('users').child(auth.uid).exists()",
-          ".validate": "newData.isBoolean()"
+          ".write": "auth != null && auth.uid == $uid",
+          ".validate": "newData.hasChildren(['isTyping', 'displayName']) && newData.child('isTyping').isBoolean() && newData.child('displayName').isString() && newData.child('displayName').val().length <= 100"
         }
+      }
+    },
+    "nameQueue": {
+      "$room_id": {
+        ".read": "auth != null",
+        ".write": "auth != null"
       }
     },
     "presence": {
       "$room_id": {
+        ".read": "auth != null",
         "$uid": {
-          ".read": "auth != null && root.child('sessions').child($room_id).child('users').child(auth.uid).exists()",
-          ".write": "auth != null && auth.uid == $uid && root.child('sessions').child($room_id).child('users').child(auth.uid).exists()",
-          ".validate": "newData.isBoolean()"
+          ".write": "auth != null && auth.uid == $uid",
+          ".validate": "!newData.exists() || (newData.isString() && newData.val().length > 0 && newData.val().length <= 30)"
         }
       }
     }

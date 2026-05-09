@@ -172,7 +172,7 @@ After editing any `@freezed` class or `@riverpod` provider, always run build_run
 | Auth providers | Anonymous, Google, Email/Password (no passwordless) — all wired in Flutter |
 | Observability | Firebase Crashlytics + structured Cloud Function logging |
 
-Emulator ports: Auth `9099`, Functions `5001`, Firestore `8080`. Set `USE_EMULATOR=true` in `.env.example` to enable all three.
+Emulator ports: Auth `9099`, Functions `5001`, Firestore `8080`, RTDB `9000`. Set `USE_EMULATOR=true` in `.env.example` to enable all four.
 
 ---
 
