@@ -57,7 +57,30 @@ http://127.0.0.1:4000
 |---|---|
 | Emulator UI | 4000 |
 | Auth | 9099 |
+| Firestore | 8080 |
+| Realtime Database | 9000 |
 | Functions | 5001 |
+
+---
+
+## Switching between the home screen and backend testing
+
+There are currently two entry points wired up in `apps/mobile/lib/main.dart`:
+
+- **`_useMainUI = false`** — the chatroom/auth flow. Exercises real Firebase auth, Firestore, Realtime Database, and Cloud Functions. This is what you want when testing backend features.
+- **`_useMainUI = true`** — the full UI home screen with all navigation. The design and routes are complete but not yet wired to Firebase. Use this when working on UI.
+
+To switch, open `apps/mobile/lib/main.dart` and change line 30:
+
+```dart
+// chatroom + auth backend testing (default)
+const _useMainUI = false;
+
+// full UI home screen
+const _useMainUI = true;
+```
+
+Hot reload won't pick this up since it's a compile-time constant — you need a full restart (`R` in the terminal, or stop and re-run `./dev.sh`).
 
 ---
 

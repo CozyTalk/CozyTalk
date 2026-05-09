@@ -85,5 +85,5 @@ printf "  ${CYAN}▸${RESET}  ${BOLD}./dev.sh --prod${RESET}       Flutter → $
 printf "  ${CYAN}▸${RESET}  ${BOLD}./dev.sh --prod --web${RESET} Flutter → ${YELLOW}live${RESET} Firebase (Chrome)\n"
 printf "\n"
 printf "  ${GRAY}Emulator UI  →  http://127.0.0.1:4000${RESET}\n"
-printf "  ${GRAY}Auth :9099   Functions :5001${RESET}\n"
+printf "  ${GRAY}Auth :9099   Firestore :8080   Database :9000   Functions :5001${RESET}\n"
 printf "\n"

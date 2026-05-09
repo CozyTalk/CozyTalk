@@ -96,6 +96,11 @@ cleanup() {
 if ! $USE_PROD; then
   trap cleanup EXIT INT TERM
 
+  # Kill any stale emulator processes left over from a previous run.
+  for port in 9099 8080 9000 5001 4000 4400 4500; do
+    pids=$(lsof -ti:$port 2>/dev/null) && kill $pids 2>/dev/null || true
+  done
+
   EMULATOR_LOG="$(mktemp /tmp/cozytalk-emulator-XXXXXX.log)"
 
   log "Starting Firebase emulators…"
@@ -107,36 +112,37 @@ if ! $USE_PROD; then
   (cd functions && npm run serve) > "$EMULATOR_LOG" 2>&1 &
   EMULATOR_PID=$!
 
-  AUTH_PORT=9099
   MAX_WAIT=90
-  elapsed=0
-  printf "  ${GRAY}Waiting for auth emulator on :${AUTH_PORT}${RESET}"
 
-  while ! (echo > /dev/tcp/localhost/$AUTH_PORT) 2>/dev/null; do
-    printf "${GRAY}.${RESET}"
-    sleep 1
-    elapsed=$((elapsed + 1))
+  wait_for_port() {
+    local name="$1" port="$2" elapsed=0
+    printf "  ${GRAY}Waiting for ${name} emulator on :${port}${RESET}"
+    while ! (echo > /dev/tcp/localhost/$port) 2>/dev/null; do
+      printf "${GRAY}.${RESET}"
+      sleep 1
+      elapsed=$((elapsed + 1))
+      if [[ $elapsed -ge $MAX_WAIT ]]; then
+        printf "\n\n"
+        printf "  ${RED}✗${RESET}  ${name} emulator didn't respond after ${MAX_WAIT}s.\n"
+        printf "  ${GRAY}  Last log lines:${RESET}\n\n"
+        tail -20 "$EMULATOR_LOG" | sed 's/^/    /'
+        printf "\n"
+        exit 1
+      fi
+      if ! kill -0 "$EMULATOR_PID" 2>/dev/null; then
+        printf "\n\n"
+        printf "  ${RED}✗${RESET}  Emulator process exited unexpectedly.\n"
+        printf "  ${GRAY}  Last log lines:${RESET}\n\n"
+        tail -20 "$EMULATOR_LOG" | sed 's/^/    /'
+        printf "\n"
+        exit 1
+      fi
+    done
+    printf " ${GREEN}ready${RESET}\n"
+  }
 
-    if [[ $elapsed -ge $MAX_WAIT ]]; then
-      printf "\n\n"
-      printf "  ${RED}✗${RESET}  Auth emulator didn't respond after ${MAX_WAIT}s.\n"
-      printf "  ${GRAY}  Last log lines:${RESET}\n\n"
-      tail -20 "$EMULATOR_LOG" | sed 's/^/    /'
-      printf "\n"
-      exit 1
-    fi
-
-    if ! kill -0 "$EMULATOR_PID" 2>/dev/null; then
-      printf "\n\n"
-      printf "  ${RED}✗${RESET}  Emulator process exited unexpectedly.\n"
-      printf "  ${GRAY}  Last log lines:${RESET}\n\n"
-      tail -20 "$EMULATOR_LOG" | sed 's/^/    /'
-      printf "\n"
-      exit 1
-    fi
-  done
-
-  printf " ${GREEN}ready${RESET}\n"
+  wait_for_port "auth"     9099
+  wait_for_port "database" 9000
   ok "Emulator UI → http://127.0.0.1:4000"
   printf "\n$HR\n"
 fi
