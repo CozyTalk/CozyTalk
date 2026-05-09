@@ -30,10 +30,9 @@ dependencies:
 
   # Navigation
   go_router: ^17.2.2
-
-  # Code generation annotations
   freezed_annotation: ^3.1.0
   json_annotation: ^4.11.0
+  cryptography: ^2.7.0
 
 dev_dependencies:
   flutter_test:
