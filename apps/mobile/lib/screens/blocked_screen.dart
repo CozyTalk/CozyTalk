@@ -15,11 +15,10 @@ class _BlockedScreenState extends State<BlockedScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.scaffoldBg, // พื้นหลังสีครีม
+      backgroundColor: AppColors.scaffoldBg,
       body: Column(
         children: [
           _buildCustomAppBar(context),
-          // แสดงจำนวนผู้ที่ถูกบล็อกชิดขวา
           Padding(
             padding: const EdgeInsets.only(top: 20, right: 30, bottom: 10),
             child: Align(
@@ -54,11 +53,11 @@ class _BlockedScreenState extends State<BlockedScreen> {
     );
   }
 
-  // ─── Custom App Bar (สไตล์เดียวกับหน้า Profile/Notification) ───
+  // ─── Custom App Bar ───
   Widget _buildCustomAppBar(BuildContext context) {
     return Container(
       decoration: const BoxDecoration(
-        color: Color(0xFF695959), 
+        color: AppColors.brownDeep,
         borderRadius: BorderRadius.vertical(
           top: Radius.circular(35), 
         ),
@@ -82,7 +81,7 @@ class _BlockedScreenState extends State<BlockedScreen> {
                     borderRadius: BorderRadius.circular(16),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.08),
+                        color: Colors.black.withValues(alpha: 0.08),
                         blurRadius: 10,
                         offset: const Offset(0, 4),
                       )
@@ -130,7 +129,7 @@ class _BlockedScreenState extends State<BlockedScreen> {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.08),
+            color: Colors.black.withValues(alpha: 0.08),
             blurRadius: 10,
             offset: const Offset(0, 4),
           )
@@ -142,7 +141,6 @@ class _BlockedScreenState extends State<BlockedScreen> {
       ),
       child: Row(
         children: [
-          // Avatar Box (สี่เหลี่ยมขอบมนสไตล์เดียวกับหน้า Profile)
           Container(
             width: 60,
             height: 60,
@@ -151,7 +149,7 @@ class _BlockedScreenState extends State<BlockedScreen> {
               borderRadius: BorderRadius.circular(16),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
+                  color: Colors.black.withValues(alpha: 0.05),
                   blurRadius: 5,
                   offset: const Offset(0, 2),
                 )
@@ -175,17 +173,16 @@ class _BlockedScreenState extends State<BlockedScreen> {
               ),
             ),
           ),
-          // Unblock Button (สีเทาตามรูป)
           GestureDetector(
             onTap: () => setState(() => _blocked.removeAt(index)),
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               decoration: BoxDecoration(
-                color: const Color(0xFFDEDEDE), // สีเทาอ่อน
+                color: const Color(0xFFDEDEDE),
                 borderRadius: BorderRadius.circular(20),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
+                    color: Colors.black.withValues(alpha: 0.05),
                     blurRadius: 4,
                     offset: const Offset(0, 2),
                   )

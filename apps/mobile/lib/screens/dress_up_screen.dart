@@ -5,8 +5,8 @@ class _DressItem {
   final String name;
   final String imagePath;
   final String label;
-  final double equipBottom; // ตำแหน่งความสูงเวลาใส่บน Avatar
-  final double equipHeight; // ขนาดของไอเทมเวลาใส่บน Avatar
+  final double equipBottom;
+  final double equipHeight;
 
   const _DressItem(
     this.name, 
@@ -27,24 +27,18 @@ class DressUpScreen extends StatefulWidget {
 class _DressUpScreenState extends State<DressUpScreen> {
   String? _selected;
 
-  // ── รายการไอเทม พร้อมตั้งค่าตำแหน่งและขนาดเฉพาะตัว ──
-  // คุณสามารถปรับเลข equipBottom (ความสูงจากขอบล่าง) และ equipHeight (ขนาด) ตรงนี้ได้เลย
   static const List<_DressItem> _items = [
-    // หมวกต่างๆ ให้อยู่สูงหน่อย (bottom ประมาณ 85-95) และขนาดพอดีหัว
     _DressItem('Cap', 'assets/images/Cap.png', 'Cap', 80, 55),
     _DressItem('Beanie', 'assets/images/Pinkbeanie.png', 'Beanie', 85, 55),
-    _DressItem('Witch', 'assets/images/WitchHat.png', 'Witch Hat', 90, 70), // หมวกแม่มดอาจจะทรงสูงหน่อย
-    // แว่นตาให้อยู่ต่ำลงมาตรงหน้า (bottom ประมาณ 55) และขนาดเล็กกว่าหมวก
+    _DressItem('Witch', 'assets/images/WitchHat.png', 'Witch Hat', 90, 70),
     _DressItem('Glasses', 'assets/images/Sunglasses.png', 'Sunglasses', 55, 30),
-    // ที่คาดผมหูแมวและมงกุฎ
     _DressItem('Cat Headband', 'assets/images/CatHeadband.png', 'Cat Headband', 65, 70),
     _DressItem('Crown', 'assets/images/Crown.png', 'Crown', 100, 35),
   ];
 
   @override
   Widget build(BuildContext context) {
-    // หาไอเทมที่กำลังถูกเลือก เพื่อดึงข้อมูลรูป ตำแหน่ง และขนาดมาใช้
-    final selectedItem = _selected != null 
+    final selectedItem = _selected != null
         ? _items.firstWhere((item) => item.name == _selected) 
         : null;
 
@@ -69,7 +63,7 @@ class _DressUpScreenState extends State<DressUpScreen> {
                           borderRadius: BorderRadius.circular(25),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.12),
+                              color: Colors.black.withValues(alpha:0.12),
                               blurRadius: 12,
                               offset: const Offset(0, 4),
                             ),
@@ -88,7 +82,6 @@ class _DressUpScreenState extends State<DressUpScreen> {
                                       Container(color: AppColors.tanGreen),
                                 ),
                               ),
-                              // ตัวละครเปล่า
                               Positioned(
                                 bottom: -15, 
                                 child: Image.asset(
@@ -97,13 +90,12 @@ class _DressUpScreenState extends State<DressUpScreen> {
                                   fit: BoxFit.contain,
                                 ),
                               ),
-                              // ── แปะไอเทมที่เลือก (ดึงค่าตำแหน่งจากคลาสมาใช้) ──
                               if (selectedItem != null)
                                 Positioned(
-                                  bottom: selectedItem.equipBottom, // ใช้ค่าเฉพาะของไอเทมนั้นๆ
+                                  bottom: selectedItem.equipBottom,
                                   child: Image.asset(
                                     selectedItem.imagePath,
-                                    height: selectedItem.equipHeight, // ใช้ขนาดเฉพาะของไอเทมนั้นๆ
+                                    height: selectedItem.equipHeight,
                                     fit: BoxFit.contain,
                                   ),
                                 ),
@@ -144,7 +136,7 @@ class _DressUpScreenState extends State<DressUpScreen> {
                                 ),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: Colors.black.withOpacity(0.08),
+                                    color: Colors.black.withValues(alpha:0.08),
                                     blurRadius: 10,
                                     offset: const Offset(0, 4),
                                   ),
@@ -182,7 +174,6 @@ class _DressUpScreenState extends State<DressUpScreen> {
             ],
           ),
 
-          // ── เลเยอร์ปุ่มลอย Save ──
           Positioned(
             bottom: 30,
             left: 0,
@@ -201,7 +192,7 @@ class _DressUpScreenState extends State<DressUpScreen> {
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.15),
+                        color: Colors.black.withValues(alpha:0.15),
                         blurRadius: 8,
                         offset: const Offset(0, 4),
                       ),
@@ -251,7 +242,7 @@ class _DressUpScreenState extends State<DressUpScreen> {
                     border: Border.all(color: Colors.grey.shade300, width: 1.5),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.08),
+                        color: Colors.black.withValues(alpha:0.08),
                         blurRadius: 10,
                         offset: const Offset(0, 4),
                       )

@@ -11,7 +11,7 @@ class ProfileEditScreen extends StatefulWidget {
 
 class _ProfileEditScreenState extends State<ProfileEditScreen> {
   static const int _maxUsername = 20;
-  static const int _maxInterest = 100; // จำกัด 100 ตัวตามที่คุณต้องการ
+  static const int _maxInterest = 100;
 
   late TextEditingController _usernameCtrl;
   late TextEditingController _interestCtrl;
@@ -54,7 +54,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                             border: Border.all(color: Colors.grey.shade300, width: 1.5),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withOpacity(0.08), 
+                                color: Colors.black.withValues(alpha:0.08), 
                                 blurRadius: 10, 
                                 offset: const Offset(0, 4)
                               )
@@ -73,7 +73,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                                     border: Border.all(color: Colors.grey.shade200, width: 1.5),
                                     boxShadow: [
                                       BoxShadow(
-                                        color: Colors.black.withOpacity(0.05),
+                                        color: Colors.black.withValues(alpha:0.05),
                                         blurRadius: 5,
                                         offset: const Offset(0, 2),
                                       )
@@ -94,7 +94,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                                       const SizedBox(width: 8),
                                       const Text(
                                         'Do not use your real name', 
-                                        style: TextStyle(fontSize: 11, color: Color(0xFFD9453F)) // สีตามที่คุณกำหนด
+                                        style: TextStyle(fontSize: 11, color: Color(0xFFD9453F))
                                       ),
                                       const Spacer(),
                                       Text(
@@ -143,7 +143,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                               border: Border.all(color: const Color(0xFFC7D2B5), width: 1.5),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.black.withOpacity(0.1), 
+                                  color: Colors.black.withValues(alpha:0.1), 
                                   blurRadius: 4, 
                                   offset: const Offset(0, 2)
                                 )
@@ -171,7 +171,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
   Widget _buildCustomAppBar(BuildContext context) {
     return Container(
       decoration: const BoxDecoration(
-        color: Color(0xFF695959), 
+        color: AppColors.brownDeep,
         borderRadius: BorderRadius.vertical(top: Radius.circular(35))
       ),
       child: SafeArea(
@@ -194,7 +194,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                     border: Border.all(color: Colors.grey.shade300, width: 1.5),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.08), 
+                        color: Colors.black.withValues(alpha:0.08), 
                         blurRadius: 10, 
                         offset: const Offset(0, 4)
                       )
@@ -220,7 +220,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
       controller: controller,
       maxLength: maxLength,
       maxLines: maxLines,
-      style: const TextStyle(color: Colors.black), // สีตัวหนังสือตอนพิมพ์เป็นสีดำ
+      style: const TextStyle(color: Colors.black),
       decoration: InputDecoration(
         counterText: '',
         filled: true,

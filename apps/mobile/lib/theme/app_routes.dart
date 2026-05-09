@@ -11,4 +11,8 @@ class AppRoutes {
   static const String friends         = '/friends';
   static const String friendChat      = '/friends/chat';
   static const String chooseRoomType  = '/choose-room-type';
+  static const String selectBackground = '/select-background';
+  static const String joinRoomId       = '/join-room';
+  static const String chatScreen       = '/chat';
+  static const String groupChatScreen  = '/group-chat';
 }

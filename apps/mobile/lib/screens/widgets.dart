@@ -73,7 +73,7 @@ class CozyCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(radius),
         boxShadow: [
           BoxShadow(
-            color: AppColors.brownDeep.withOpacity(0.08),
+            color: AppColors.brownDeep.withValues(alpha:0.08),
             blurRadius: 8,
             offset: const Offset(0, 3),
           ),

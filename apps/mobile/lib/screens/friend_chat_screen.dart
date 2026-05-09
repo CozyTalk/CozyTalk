@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 import '../models/friend.dart';
+import '../dialogs/report_dialog.dart';
 
 // Mock conversation history per friend name — ready to swap with real API
 final Map<String, List<ChatMessage>> _mockConversations = {
@@ -40,7 +41,13 @@ class _FriendChatScreenState extends State<FriendChatScreen> {
       _friend = ModalRoute.of(context)!.settings.arguments as Friend;
       _messages = List<ChatMessage>.from(
         _mockConversations[_friend.name] ??
-            [ChatMessage(text: _friend.lastMessage, isMe: false, time: _formatNow())],
+            [
+              ChatMessage(
+                text: _friend.lastMessage,
+                isMe: false,
+                time: _formatNow(),
+              ),
+            ],
       );
       _initialized = true;
     }
@@ -76,8 +83,8 @@ class _FriendChatScreenState extends State<FriendChatScreen> {
     final h = now.hour > 12
         ? now.hour - 12
         : now.hour == 0
-            ? 12
-            : now.hour;
+        ? 12
+        : now.hour;
     final m = now.minute.toString().padLeft(2, '0');
     final ampm = now.hour >= 12 ? 'pm' : 'am';
     return '$h:$m $ampm';
@@ -86,8 +93,18 @@ class _FriendChatScreenState extends State<FriendChatScreen> {
   String _chatDateLabel() {
     final now = DateTime.now();
     const months = [
-      'January', 'February', 'March', 'April', 'May', 'June',
-      'July', 'August', 'September', 'October', 'November', 'December',
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December',
     ];
     return '${now.day} ${months[now.month - 1]} ${now.year}';
   }
@@ -142,9 +159,16 @@ class _FriendChatScreenState extends State<FriendChatScreen> {
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: Colors.grey.shade300, width: 1.5),
+                      border: Border.all(
+                        color: Colors.grey.shade300,
+                        width: 1.5,
+                      ),
                     ),
-                    child: Image.asset('assets/images/Back.png', width: 24, height: 24),
+                    child: Image.asset(
+                      'assets/images/Back.png',
+                      width: 24,
+                      height: 24,
+                    ),
                   ),
                 ),
                 const SizedBox(width: 10),
@@ -163,8 +187,11 @@ class _FriendChatScreenState extends State<FriendChatScreen> {
                           child: Image.asset(
                             _friend.avatar,
                             fit: BoxFit.contain,
-                            errorBuilder: (_, __, ___) =>
-                                const Icon(Icons.person, color: Colors.grey, size: 28),
+                            errorBuilder: (_, __, ___) => const Icon(
+                              Icons.person,
+                              color: Colors.grey,
+                              size: 28,
+                            ),
                           ),
                         )
                       : const Icon(Icons.person, color: Colors.grey, size: 28),
@@ -200,7 +227,10 @@ class _FriendChatScreenState extends State<FriendChatScreen> {
                           const SizedBox(width: 4),
                           Text(
                             _friend.isOnline ? 'Online' : 'Offline',
-                            style: const TextStyle(color: Colors.white70, fontSize: 12),
+                            style: const TextStyle(
+                              color: Colors.white70,
+                              fontSize: 12,
+                            ),
                           ),
                         ],
                       ),
@@ -208,15 +238,27 @@ class _FriendChatScreenState extends State<FriendChatScreen> {
                   ),
                 ),
                 // Report button
-                Container(
-                  width: 46,
-                  height: 46,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: AppColors.redOrange,
-                    borderRadius: BorderRadius.circular(14),
+                GestureDetector(
+                  onTap: () => showDialog(
+                    context: context,
+                    builder: (_) => const ReportDialog(),
                   ),
-                  child: const Icon(Icons.flag_outlined, color: Colors.white, size: 22),
+                  child: Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFCCAA),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: const Color(0xFFCF5733),
+                        width: 1.5,
+                      ),
+                    ),
+                    child: const Icon(
+                      Icons.flag_outlined,
+                      color: Color(0xFFCF5733),
+                      size: 22,
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -247,7 +289,10 @@ class _FriendChatScreenState extends State<FriendChatScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.redOrange.withValues(alpha: 0.7), width: 1.5),
+        border: Border.all(
+          color: AppColors.redOrange.withValues(alpha: 0.7),
+          width: 1.5,
+        ),
       ),
       child: const Text(
         'Keep it friendly! Please be respectful and protect your personal info.\n'
@@ -263,8 +308,9 @@ class _FriendChatScreenState extends State<FriendChatScreen> {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Column(
-        crossAxisAlignment:
-            message.isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+        crossAxisAlignment: message.isMe
+            ? CrossAxisAlignment.end
+            : CrossAxisAlignment.start,
         children: [
           Container(
             constraints: BoxConstraints(
@@ -344,7 +390,11 @@ class _FriendChatScreenState extends State<FriendChatScreen> {
                 color: AppColors.yellowWarm,
                 borderRadius: BorderRadius.circular(16),
               ),
-              child: const Icon(Icons.send_rounded, color: Colors.white, size: 22),
+              child: const Icon(
+                Icons.send_rounded,
+                color: Colors.white,
+                size: 22,
+              ),
             ),
           ),
         ],

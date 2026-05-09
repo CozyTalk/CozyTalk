@@ -203,7 +203,7 @@ class _TopBar extends StatelessWidget {
                         borderRadius: BorderRadius.circular(16), 
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.08),
+                            color: Colors.black.withValues(alpha:0.08),
                             blurRadius: 10,
                             offset: const Offset(0, 4),
                           )
@@ -258,7 +258,7 @@ class _TopBar extends StatelessWidget {
                     borderRadius: BorderRadius.circular(16),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.08),
+                        color: Colors.black.withValues(alpha:0.08),
                         blurRadius: 10,
                         offset: const Offset(0, 4),
                       )
@@ -290,7 +290,6 @@ class _TopBar extends StatelessWidget {
   }
 }
 
-// ─── AVATAR CARD (เพิ่มเงาอย่างเดียว) ───────────────────────────────────
 class _AvatarCard extends StatefulWidget {
   final String moodText;
   final VoidCallback onMoodTap;
@@ -312,10 +311,9 @@ class _AvatarCardState extends State<_AvatarCard> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        // ลบ border ออก และใส่เฉพาะเงา
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.12), // ปรับเงาให้ชัดขึ้นเล็กน้อยเพื่อความสวยงาม
+            color: Colors.black.withValues(alpha:0.12),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -355,7 +353,7 @@ class _AvatarCardState extends State<_AvatarCard> {
                       width: 70,
                       height: 85,
                       decoration: BoxDecoration(
-                        color: AppColors.white.withOpacity(0.85),
+                        color: AppColors.white.withValues(alpha:0.85),
                         borderRadius: BorderRadius.circular(50),
                       ),
                       child: const Icon(Icons.person,
@@ -461,7 +459,7 @@ class _QuickAction extends StatelessWidget {
               borderRadius: BorderRadius.circular(22),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.08),
+                  color: Colors.black.withValues(alpha:0.08),
                   blurRadius: 10,
                   offset: const Offset(0, 4),
                 )
@@ -511,7 +509,7 @@ class _LetsChatButton extends StatelessWidget {
           borderRadius: BorderRadius.circular(25),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.1),
+              color: Colors.black.withValues(alpha:0.1),
               blurRadius: 12,
               offset: const Offset(0, 4),
             )

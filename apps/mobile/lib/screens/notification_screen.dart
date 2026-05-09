@@ -8,7 +8,7 @@ class _NotifItem {
   final String subtitle;
   final String time;
   final bool isFriendRequest;
-  bool accepted;
+  bool accepted = false;
   bool declined;
 
   _NotifItem({
@@ -18,7 +18,6 @@ class _NotifItem {
     required this.subtitle,
     required this.time,
     this.isFriendRequest = false,
-    this.accepted = false,
     this.declined = false,
   });
 }
@@ -47,7 +46,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
       subtitle: 'from Red Lotus Lake',
       time: '1h',
       isFriendRequest: true,
-      declined: true, // ตั้งเป็น declined: true เพื่อให้ช่อง 2 โชว์เป็นสีเทาตั้งแต่เริ่มเหมือนในรูป
+      declined: true,
     ),
     _NotifItem(
       imagePath: 'assets/images/Settings.png', 
@@ -82,44 +81,43 @@ class _NotificationScreenState extends State<NotificationScreen> {
   Widget _buildCustomAppBar() {
     return Container(
       decoration: const BoxDecoration(
-        color: Color(0xFF695959), 
+        color: AppColors.brownDeep,
         borderRadius: BorderRadius.vertical(
-          top: Radius.circular(35), 
+          top: Radius.circular(35),
         ),
       ),
       child: SafeArea(
         bottom: false,
         child: Container(
-          height: 90, // ปรับความสูงให้เท่ากับ Topbar หน้า Home
+          height: 90,
           padding: const EdgeInsets.symmetric(horizontal: 20),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              // ── ปุ่มย้อนกลับ (ใช้รูป Back.png) ──
               GestureDetector(
                 onTap: () => Navigator.pop(context),
                 child: Container(
-                  width: 48, // ขนาดเท่าปุ่มในหน้า Home
+                  width: 48,
                   height: 48,
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    borderRadius: BorderRadius.circular(16), // ความโค้งเท่าหน้า Home
+                    borderRadius: BorderRadius.circular(16),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.08),
+                        color: Colors.black.withValues(alpha: 0.08),
                         blurRadius: 10,
                         offset: const Offset(0, 4),
                       )
                     ],
                     border: Border.all(
-                      color: Colors.grey.shade300, // ขอบสีเทาเหมือนหน้า Home
+                      color: Colors.grey.shade300,
                       width: 1.5,
                     ),
                   ),
                   child: Image.asset(
-                    'assets/images/Back.png', // เปลี่ยนมาใช้รูปที่ต้องการ
-                    width: 26, // ขนาดไอคอนด้านใน (ปรับเล็กใหญ่ได้ตามชอบ)
+                    'assets/images/Back.png',
+                    width: 26,
                     height: 26,
                     fit: BoxFit.contain,
                     errorBuilder: (_, __, ___) => const Icon(
@@ -131,7 +129,6 @@ class _NotificationScreenState extends State<NotificationScreen> {
                 ),
               ),
               const SizedBox(width: 16),
-              // ── ข้อความหัวข้อ ──
               const Text(
                 'Notifications',
                 style: TextStyle(
@@ -156,7 +153,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
         borderRadius: BorderRadius.circular(20), 
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.08), 
+            color: Colors.black.withValues(alpha:0.08), 
             blurRadius: 10,
             offset: const Offset(0, 4),
           )
@@ -178,7 +175,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
               borderRadius: BorderRadius.circular(16),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.08),
+                  color: Colors.black.withValues(alpha:0.08),
                   blurRadius: 8,
                   offset: const Offset(0, 3),
                 )
@@ -237,13 +234,11 @@ class _NotificationScreenState extends State<NotificationScreen> {
                   ),
                 ),
                 
-                // ─── ปุ่ม Action สำหรับ Friend Request ───
                 if (item.isFriendRequest) ...[
                   const SizedBox(height: 12),
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.end, 
+                    mainAxisAlignment: MainAxisAlignment.end,
                     children: [
-                      // กรณีที่ 1: ยังไม่ได้กดอะไรเลย
                       if (!item.accepted && !item.declined) ...[
                         _buildButton(
                           label: 'Accept',
@@ -268,25 +263,23 @@ class _NotificationScreenState extends State<NotificationScreen> {
                             });
                           },
                         ),
-                      ] 
-                      // กรณีที่ 2: กด Accept ไปแล้ว
+                      ]
                       else if (item.accepted) ...[
                         _buildButton(
                           label: 'Accept',
-                          backgroundColor: const Color(0xFFE0E0E0), 
-                          borderColor: Colors.grey.shade400, 
-                          textColor: Colors.black54, 
-                          onTap: null, 
+                          backgroundColor: const Color(0xFFE0E0E0),
+                          borderColor: Colors.grey.shade400,
+                          textColor: Colors.black54,
+                          onTap: null,
                         ),
-                      ] 
-                      // กรณีที่ 3: กด Decline ไปแล้ว
+                      ]
                       else if (item.declined) ...[
                         _buildButton(
                           label: 'Decline',
-                          backgroundColor: const Color(0xFFE0E0E0), 
-                          borderColor: Colors.grey.shade400, 
-                          textColor: Colors.black54, 
-                          onTap: null, 
+                          backgroundColor: const Color(0xFFE0E0E0),
+                          borderColor: Colors.grey.shade400,
+                          textColor: Colors.black54,
+                          onTap: null,
                         ),
                       ],
                     ],
@@ -320,7 +313,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
               : null,
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.1),
+              color: Colors.black.withValues(alpha:0.1),
               blurRadius: 4,
               offset: const Offset(0, 2),
             )

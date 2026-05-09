@@ -17,7 +17,6 @@ class MoodScreen extends StatefulWidget {
 class _MoodScreenState extends State<MoodScreen> {
   String? _selected;
 
-  // รายการ Mood
   static const List<_MoodOption> _moods = [
     _MoodOption('Happy', 'assets/images/Happy.png'),
     _MoodOption('Thrilled', 'assets/images/Thrilled.png'),
@@ -29,16 +28,14 @@ class _MoodScreenState extends State<MoodScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // หา path ของรูปอารมณ์ที่ถูกเลือก เพื่อเอาไปแปะบนหน้า Avatar
-    final selectedMoodImage = _selected != null 
-        ? _moods.firstWhere((m) => m.name == _selected).imagePath 
+    final selectedMoodImage = _selected != null
+        ? _moods.firstWhere((m) => m.name == _selected).imagePath
         : null;
 
     return Scaffold(
       backgroundColor: AppColors.scaffoldBg,
       body: Stack(
         children: [
-          // ── เลเยอร์เนื้อหาหลัก ──
           Column(
             children: [
               _buildCustomAppBar(context),
@@ -47,7 +44,6 @@ class _MoodScreenState extends State<MoodScreen> {
                   padding: const EdgeInsets.only(left: 20, right: 20, top: 24, bottom: 120),
                   child: Column(
                     children: [
-                      // ── Avatar Preview ──
                       Container(
                         width: double.infinity,
                         height: 250,
@@ -56,7 +52,7 @@ class _MoodScreenState extends State<MoodScreen> {
                           borderRadius: BorderRadius.circular(25),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.12),
+                              color: Colors.black.withValues(alpha:0.12),
                               blurRadius: 12,
                               offset: const Offset(0, 4),
                             ),
@@ -75,7 +71,6 @@ class _MoodScreenState extends State<MoodScreen> {
                                       Container(color: AppColors.tanGreen),
                                 ),
                               ),
-                              // ตัวละครเปล่า
                               Positioned(
                                 bottom: -15,
                                 child: Image.asset(
@@ -84,7 +79,6 @@ class _MoodScreenState extends State<MoodScreen> {
                                   fit: BoxFit.contain,
                                 ),
                               ),
-                              // แปะหน้าอารมณ์ที่เลือก
                               if (selectedMoodImage != null)
                                 Positioned(
                                   bottom: 48,
@@ -98,20 +92,18 @@ class _MoodScreenState extends State<MoodScreen> {
                           ),
                         ),
                       ),
-                      
-                      // ลดระยะห่างตรงนี้ให้รูปด้านบนกับตัวเลือกด้านล่างชิดกันมากขึ้น
+
                       const SizedBox(height: 30),
 
-                      // ── Mood Grid ──
                       GridView.builder(
                         shrinkWrap: true,
                         physics: const NeverScrollableScrollPhysics(),
-                        padding: EdgeInsets.zero, // ── ลบ Padding แฝงของ GridView ทิ้ง ──
+                        padding: EdgeInsets.zero,
                         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                           crossAxisCount: 3,
                           crossAxisSpacing: 15,
                           mainAxisSpacing: 15,
-                          childAspectRatio: 0.85, 
+                          childAspectRatio: 0.85,
                         ),
                         itemCount: _moods.length,
                         itemBuilder: (_, i) {
@@ -132,7 +124,7 @@ class _MoodScreenState extends State<MoodScreen> {
                                 ),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: Colors.black.withOpacity(0.08),
+                                    color: Colors.black.withValues(alpha:0.08),
                                     blurRadius: 10,
                                     offset: const Offset(0, 4),
                                   ),
@@ -170,7 +162,6 @@ class _MoodScreenState extends State<MoodScreen> {
             ],
           ),
 
-          // ── เลเยอร์ปุ่มลอย Save ──
           Positioned(
             bottom: 30,
             left: 0,
@@ -189,7 +180,7 @@ class _MoodScreenState extends State<MoodScreen> {
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.15),
+                        color: Colors.black.withValues(alpha:0.15),
                         blurRadius: 8,
                         offset: const Offset(0, 4),
                       ),
@@ -212,11 +203,10 @@ class _MoodScreenState extends State<MoodScreen> {
     );
   }
 
-  // ─── Custom App Bar ──────────────────────────────────────────
   Widget _buildCustomAppBar(BuildContext context) {
     return Container(
       decoration: const BoxDecoration(
-        color: Color(0xFF695959),
+        color: AppColors.brownDeep,
         borderRadius: BorderRadius.vertical(top: Radius.circular(35)),
       ),
       child: SafeArea(
@@ -239,7 +229,7 @@ class _MoodScreenState extends State<MoodScreen> {
                     border: Border.all(color: Colors.grey.shade300, width: 1.5),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.08),
+                        color: Colors.black.withValues(alpha:0.08),
                         blurRadius: 10,
                         offset: const Offset(0, 4),
                       )

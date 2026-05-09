@@ -6,42 +6,6 @@ This PR introduces a complete home screen UI layer: `HomeScreen`, `NotificationS
 
 ---
 
-## Critical Issues
-
-**1. Auth completely bypassed**
-`main.dart` removes `_AuthRouter` and routes directly to `HomeScreen`. The entire auth flow (login, anonymous, Google) is now unreachable. This needs to be restored — the home screen should be gated behind `AuthStatus.authenticated`.
-
-**2. Violates Clean Architecture**
-All new screens live in `lib/screens/` (flat), not under `features/<feature>/domain/data/presentation`. This bypasses the project's established architecture. New screens need to either follow the feature structure or there needs to be an explicit architectural decision documented.
-
-**3. Unbounded `ListView` with `children` in `friend_chat_screen.dart`**
-```dart
-// line 1192-1200
-ListView(
-  children: [
-    ...
-    ..._messages.map(_buildMessageBubble),  // CLAUDE.md forbids this
-  ],
-)
-```
-Must use `ListView.builder` with `itemCount`.
-
-**4. `Friend` model is mutable — breaks Riverpod state guarantees**
-```dart
-// friends_screen.dart
-_friends[index].unreadCount = 0;   // direct mutation
-_friends[index].name = newNote;    // direct mutation
-```
-All data models must use `@freezed` with `copyWith`. `Friend` appears to be a plain mutable class.
-
-**5. `go_router` added but not used**
-The pubspec adds `go_router` but navigation uses `Navigator.pushNamed`. Either use `go_router` for type-safe routing or remove the dependency.
-
-**6. `profileEdit` route declared but never registered**
-`AppRoutes.profileEdit = '/profile/edit'` is in `app_routes.dart` but not in `main.dart`'s routes map.
-
----
-
 ## Moderate Issues
 
 **7. Mock data embedded directly in screen files**
@@ -98,10 +62,7 @@ The red flag icon in the chat header has no `onTap` handler — it can't be pres
 
 | Severity | Count |
 |---|---|
-| Critical (blocks merge) | 6 |
 | Moderate | 5 |
 | Style / Convention | 4 |
 | Security | 1 |
 | Missing tests | 1 |
-
-The UI work itself looks solid and the design system (`AppColors`, `AppTheme`, `AppRoutes`) is a clean addition. The main blockers are: auth bypass, architecture placement, the unbounded `ListView`, and mutable `Friend` model.
