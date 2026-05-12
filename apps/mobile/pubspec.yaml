@@ -33,6 +33,7 @@ dependencies:
   freezed_annotation: ^3.1.0
   json_annotation: ^4.11.0
   cryptography: ^2.7.0
+  flutter_svg: ^2.0.17
 
 dev_dependencies:
   flutter_test:
@@ -56,17 +57,20 @@ flutter:
     - assets/images/ThinkBubble.png
     - assets/images/UserAvatar.png
     - assets/images/Logo.png
-    - assets/images/DressUp.png
-    - assets/images/Friends.png
-    - assets/images/LetsChat.png
-    - assets/images/Mood.png
-    - assets/images/Notification.png
-    - assets/images/User.png
-    - assets/images/Setting.png
-    - assets/images/Back.png
-    - assets/images/Logout.png
-    - assets/images/Edit.png
-    - assets/images/Report.png
+    - assets/images/Setting.svg
+    - assets/images/Back.svg
+    - assets/images/ThreeDot.svg
+    - assets/images/LogOut.svg
+    - assets/images/Edit.svg
+    - assets/images/Discord.svg
+    - assets/images/Report.svg
+    - assets/images/sent.svg
+    - assets/images/User.svg
+    - assets/images/Notification.svg
+    - assets/images/Mood.svg
+    - assets/images/LetsChat.svg
+    - assets/images/Friends.svg
+    - assets/images/DressUp.svg
     - assets/images/DressUpBg.png
     - assets/images/MoodBg.png
     - assets/images/Happy.png
@@ -88,3 +92,4 @@ flutter:
     - assets/images/lumphini_park.png
     - assets/images/red_lotus_lake.png
     - assets/images/sea_of_cloud.png
+    - assets/images/Close.svg

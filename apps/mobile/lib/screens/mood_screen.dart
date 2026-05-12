@@ -1,5 +1,9 @@
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../theme/app_colors.dart';
+import '../shared/avatar_overlay.dart';
+import '../shared/layered_avatar.dart';
 
 class _MoodOption {
   final String name;
@@ -7,14 +11,14 @@ class _MoodOption {
   const _MoodOption(this.name, this.imagePath);
 }
 
-class MoodScreen extends StatefulWidget {
+class MoodScreen extends ConsumerStatefulWidget {
   const MoodScreen({super.key});
 
   @override
-  State<MoodScreen> createState() => _MoodScreenState();
+  ConsumerState<MoodScreen> createState() => _MoodScreenState();
 }
 
-class _MoodScreenState extends State<MoodScreen> {
+class _MoodScreenState extends ConsumerState<MoodScreen> {
   String? _selected;
 
   static const List<_MoodOption> _moods = [
@@ -28,9 +32,6 @@ class _MoodScreenState extends State<MoodScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final selectedMoodImage = _selected != null
-        ? _moods.firstWhere((m) => m.name == _selected).imagePath
-        : null;
 
     return Scaffold(
       backgroundColor: AppColors.scaffoldBg,
@@ -73,21 +74,14 @@ class _MoodScreenState extends State<MoodScreen> {
                               ),
                               Positioned(
                                 bottom: -15,
-                                child: Image.asset(
-                                  'assets/images/UserAvatar.png',
-                                  height: 130,
-                                  fit: BoxFit.contain,
+                                child: LayeredAvatar(
+                                  boxSize: 130,
+                                  accessoryOverlay: ref.watch(avatarProvider).accessory,
+                                  moodOverlay: _selected != null
+                                      ? AvatarOverlays.mood[_selected]
+                                      : ref.watch(avatarProvider).mood,
                                 ),
                               ),
-                              if (selectedMoodImage != null)
-                                Positioned(
-                                  bottom: 48,
-                                  child: Image.asset(
-                                    selectedMoodImage,
-                                    height: 45,
-                                    fit: BoxFit.contain,
-                                  ),
-                                ),
                             ],
                           ),
                         ),
@@ -168,7 +162,7 @@ class _MoodScreenState extends State<MoodScreen> {
             right: 0,
             child: Center(
               child: GestureDetector(
-                onTap: () => Navigator.pop(context),
+                onTap: () => Navigator.pop(context, _selected),
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 12),
                   decoration: BoxDecoration(
@@ -235,11 +229,10 @@ class _MoodScreenState extends State<MoodScreen> {
                       )
                     ],
                   ),
-                  child: Image.asset(
-                    'assets/images/Back.png',
+                  child: SvgPicture.asset(
+                    'assets/images/Back.svg',
                     width: 26,
                     height: 26,
-                    fit: BoxFit.contain,
                   ),
                 ),
               ),

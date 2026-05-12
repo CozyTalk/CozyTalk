@@ -1,8 +1,11 @@
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_routes.dart';
 import '../models/friend.dart';
+import '../shared/layered_avatar.dart';
 import 'friend_profile_dialog.dart';
+import 'block_dialogs.dart';
 
 // Mock friend list — swap with API response when backend is ready
 final List<Friend> _mockFriends = [
@@ -23,6 +26,7 @@ final List<Friend> _mockFriends = [
     isOnline: false,
     unreadCount: 2,
     isInRoom: false,
+    avatar: 'assets/images/UserAvatar.png',
     interest: 'Music',
   ),
   Friend(
@@ -32,6 +36,7 @@ final List<Friend> _mockFriends = [
     isOnline: false,
     unreadCount: 0,
     isInRoom: false,
+    avatar: 'assets/images/UserAvatar.png',
     interest: 'Gaming',
   ),
 ];
@@ -104,6 +109,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
           children: [
             // ── Avatar + online dot ──
             Stack(
+              clipBehavior: Clip.none,
               children: [
                 Container(
                   width: 65,
@@ -112,31 +118,43 @@ class _FriendsScreenState extends State<FriendsScreen> {
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(color: Colors.grey.shade200, width: 1.5),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.06),
+                        blurRadius: 6,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
                   ),
-                  child: friend.avatar.isNotEmpty
-                      ? ClipRRect(
-                          borderRadius: BorderRadius.circular(14),
-                          child: Image.asset(
-                            friend.avatar,
-                            fit: BoxFit.contain,
-                            errorBuilder: (_, __, ___) =>
-                                const Icon(Icons.person, color: Colors.grey, size: 35),
-                          ),
-                        )
-                      : const Icon(Icons.person, color: Colors.grey, size: 35),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(14),
+                    child: Padding(
+                      padding: const EdgeInsets.only(top: 10),
+                      child: Center(
+                        child: friend.avatar.isNotEmpty
+                            ? LayeredAvatar(boxSize: 48)
+                            : const Icon(Icons.person, color: Colors.grey, size: 35),
+                      ),
+                    ),
+                  ),
                 ),
                 Positioned(
-                  right: -2,
-                  bottom: -2,
+                  bottom: -4,
+                  right: -4,
                   child: Container(
-                    width: 18,
-                    height: 18,
+                    width: 16,
+                    height: 16,
                     decoration: BoxDecoration(
                       color: friend.isOnline
-                          ? const Color(0xFF8DBB6F)
-                          : Colors.grey.shade400,
+                          ? const Color(0xFF86BA73)
+                          : Colors.grey.shade300,
                       shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white, width: 2),
+                      border: Border.all(
+                        color: friend.isOnline
+                            ? const Color(0xFF72A161)
+                            : Colors.grey.shade400,
+                        width: 1.5,
+                      ),
                     ),
                   ),
                 ),
@@ -149,7 +167,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    friend.name,
+                    friend.displayName,
                     style: const TextStyle(
                       fontWeight: FontWeight.w900,
                       fontSize: 16,
@@ -159,7 +177,15 @@ class _FriendsScreenState extends State<FriendsScreen> {
                   const SizedBox(height: 4),
                   Text(
                     friend.lastMessage,
-                    style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: friend.unreadCount > 0
+                          ? Colors.black
+                          : Colors.grey.shade500,
+                      fontWeight: friend.unreadCount > 0
+                          ? FontWeight.w600
+                          : FontWeight.normal,
+                    ),
                   ),
                 ],
               ),
@@ -169,27 +195,29 @@ class _FriendsScreenState extends State<FriendsScreen> {
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 _buildMoreButton(friend, index),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    if (friend.isInRoom) ...[
-                      GestureDetector(
-                        onTap: () => Navigator.pushNamed(
-                          context,
-                          AppRoutes.groupChatScreen,
-                          arguments: {
-                            'roomName': "${friend.name}'s Room",
-                            'bgImage': 'assets/images/kao_tapu.png',
-                          },
+                if (friend.isInRoom || friend.unreadCount > 0) ...[
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      if (friend.isInRoom) ...[
+                        GestureDetector(
+                          onTap: () => Navigator.pushNamed(
+                            context,
+                            AppRoutes.groupChatScreen,
+                            arguments: {
+                              'roomName': "${friend.name}'s Room",
+                              'bgImage': 'assets/images/kao_tapu.png',
+                            },
+                          ),
+                          child: _buildJoinButton(),
                         ),
-                        child: _buildJoinButton(),
-                      ),
-                      const SizedBox(width: 6),
+                        const SizedBox(width: 6),
+                      ],
+                      if (friend.unreadCount > 0)
+                        _buildUnreadBadge(friend.unreadCount),
                     ],
-                    if (friend.unreadCount > 0)
-                      _buildUnreadBadge(friend.unreadCount),
-                  ],
-                ),
+                  ),
+                ],
               ],
             ),
           ],
@@ -204,7 +232,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
         color: const Color(0xFFDEF1C2),
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(color: const Color(0xFFC7D2B5), width: 1.5),
       ),
       child: const Text(
@@ -224,9 +252,10 @@ class _FriendsScreenState extends State<FriendsScreen> {
       width: 26,
       height: 26,
       alignment: Alignment.center,
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: AppColors.redOrange,
         shape: BoxShape.circle,
+        border: Border.all(color: const Color(0xFFA33615), width: 1.5),
       ),
       child: Text(
         '$count',
@@ -243,9 +272,18 @@ class _FriendsScreenState extends State<FriendsScreen> {
   Widget _buildMoreButton(Friend friend, int index) {
     return PopupMenuButton<String>(
       padding: EdgeInsets.zero,
-      icon: const Icon(Icons.more_horiz, color: Colors.black),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-      offset: const Offset(0, 40),
+      icon: SvgPicture.asset(
+        'assets/images/ThreeDot.svg',
+        width: 36,
+        height: 36,
+      ),
+      color: Colors.white,
+      elevation: 3,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: Colors.grey.shade300, width: 1.5),
+      ),
+      offset: const Offset(0, 36),
       onSelected: (value) {
         switch (value) {
           case 'Edit':
@@ -253,12 +291,15 @@ class _FriendsScreenState extends State<FriendsScreen> {
               context: context,
               friend: friend,
               onNoteSaved: (newNote) {
-                setState(() => _friends[index].name = newNote);
+                setState(() => _friends[index].note = newNote.isNotEmpty ? newNote : null);
               },
             );
           case 'Block':
-            // TODO: call block API; for now just remove from list
-            setState(() => _friends.removeAt(index));
+            showConfirmBlockDialog(
+              context: context,
+              username: friend.displayName,
+              onConfirm: () => setState(() => _friends.removeAt(index)),
+            );
           case 'Unfriend':
             showRemoveConfirmDialog(
               context: context,
@@ -269,19 +310,41 @@ class _FriendsScreenState extends State<FriendsScreen> {
       },
       itemBuilder: (_) => [
         _popupItem('Edit'),
+        _divider(),
         _popupItem('Block'),
+        _divider(),
         _popupItem('Unfriend'),
       ],
     );
   }
 
-  PopupMenuItem<String> _popupItem(String title) {
+  PopupMenuEntry<String> _divider() {
     return PopupMenuItem<String>(
-      value: title,
-      child: Center(
-        child: Text(
-          title,
-          style: const TextStyle(fontWeight: FontWeight.w900, color: Colors.black),
+      enabled: false,
+      height: 1,
+      padding: EdgeInsets.zero,
+      child: Divider(height: 1, thickness: 1, color: Colors.grey.shade300),
+    );
+  }
+
+  PopupMenuItem<String> _popupItem(String label) {
+    return PopupMenuItem<String>(
+      value: label,
+      padding: EdgeInsets.zero,
+      child: SizedBox(
+        width: 110,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          child: Center(
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontWeight: FontWeight.w900,
+                fontSize: 14,
+                color: Colors.black,
+              ),
+            ),
+          ),
         ),
       ),
     );
@@ -313,7 +376,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(color: Colors.grey.shade300, width: 1.5),
                     ),
-                    child: Image.asset('assets/images/Back.png', width: 26, height: 26),
+                    child: SvgPicture.asset('assets/images/Back.svg', width: 26, height: 26),
                   ),
                 ),
                 const SizedBox(width: 16),

@@ -1,26 +1,42 @@
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../theme/app_colors.dart';
+import '../shared/avatar_overlay.dart';
+import '../shared/layered_avatar.dart';
 
-class ProfileEditScreen extends StatefulWidget {
-  final String currentInterest; 
-  const ProfileEditScreen({super.key, required this.currentInterest});
+class ProfileEditScreen extends ConsumerStatefulWidget {
+  final String currentName;
+  final String currentInterest;
+
+  const ProfileEditScreen({
+    super.key,
+    required this.currentName,
+    required this.currentInterest,
+  });
 
   @override
-  State<ProfileEditScreen> createState() => _ProfileEditScreenState();
+  ConsumerState<ProfileEditScreen> createState() => _ProfileEditScreenState();
 }
 
-class _ProfileEditScreenState extends State<ProfileEditScreen> {
+class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
   static const int _maxUsername = 20;
   static const int _maxInterest = 100;
 
   late TextEditingController _usernameCtrl;
   late TextEditingController _interestCtrl;
+  bool _usernameError = false;
 
   @override
   void initState() {
     super.initState();
-    _usernameCtrl = TextEditingController(text: 'Somtum');
+    _usernameCtrl = TextEditingController(text: widget.currentName);
     _interestCtrl = TextEditingController(text: widget.currentInterest);
+    _usernameCtrl.addListener(() {
+      if (_usernameError && _usernameCtrl.text.isNotEmpty) {
+        setState(() => _usernameError = false);
+      }
+    });
   }
 
   @override
@@ -54,15 +70,16 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                             border: Border.all(color: Colors.grey.shade300, width: 1.5),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withValues(alpha:0.08), 
-                                blurRadius: 10, 
-                                offset: const Offset(0, 4)
-                              )
+                                color: Colors.black.withValues(alpha: 0.08),
+                                blurRadius: 10,
+                                offset: const Offset(0, 4),
+                              ),
                             ],
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
+                              // Avatar preview
                               Center(
                                 child: Container(
                                   width: 90,
@@ -73,68 +90,100 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                                     border: Border.all(color: Colors.grey.shade200, width: 1.5),
                                     boxShadow: [
                                       BoxShadow(
-                                        color: Colors.black.withValues(alpha:0.05),
+                                        color: Colors.black.withValues(alpha: 0.05),
                                         blurRadius: 5,
                                         offset: const Offset(0, 2),
-                                      )
+                                      ),
                                     ],
+                                  ),
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(14),
+                                    child: Padding(
+                                      padding: const EdgeInsets.only(top: 18),
+                                      child: Center(
+                                        child: LayeredAvatar(
+                                          boxSize: 62,
+                                          moodOverlay: ref.watch(avatarProvider).mood,
+                                          accessoryOverlay: ref.watch(avatarProvider).accessory,
+                                        ),
+                                      ),
+                                    ),
                                   ),
                                 ),
                               ),
                               const SizedBox(height: 30),
+
+                              // Username
                               ValueListenableBuilder(
                                 valueListenable: _usernameCtrl,
-                                builder: (_, val, __) {
-                                  return Row(
-                                    children: [
-                                      const Text(
-                                        'Username', 
-                                        style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16, color: Colors.black)
-                                      ),
-                                      const SizedBox(width: 8),
-                                      const Text(
-                                        'Do not use your real name', 
-                                        style: TextStyle(fontSize: 11, color: Color(0xFFD9453F))
-                                      ),
-                                      const Spacer(),
-                                      Text(
-                                        '${val.text.length}/$_maxUsername', 
-                                        style: const TextStyle(fontSize: 12, color: Colors.black)
-                                      ),
-                                    ],
-                                  );
-                                },
+                                builder: (_, val, __) => Row(
+                                  children: [
+                                    const Text(
+                                      'Username',
+                                      style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16, color: Colors.black),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    const Text(
+                                      'Do not use your real name',
+                                      style: TextStyle(fontSize: 11, color: Color(0xFFD9453F)),
+                                    ),
+                                    const Spacer(),
+                                    Text(
+                                      '${val.text.length}/$_maxUsername',
+                                      style: const TextStyle(fontSize: 12, color: Colors.black),
+                                    ),
+                                  ],
+                                ),
                               ),
                               const SizedBox(height: 8),
-                              _buildTextField(controller: _usernameCtrl, maxLength: _maxUsername),
+                              _buildTextField(controller: _usernameCtrl, maxLength: _maxUsername, hintText: 'What do you go by?'),
+                              if (_usernameError) ...[
+                                const SizedBox(height: 4),
+                                const Text(
+                                  '*Username is required',
+                                  style: TextStyle(fontSize: 11, color: Color(0xFFD9453F)),
+                                ),
+                              ],
                               const SizedBox(height: 24),
+
+                              // Interest
                               ValueListenableBuilder(
                                 valueListenable: _interestCtrl,
-                                builder: (_, val, __) {
-                                  return Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      const Text(
-                                        'Interest', 
-                                        style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16, color: Colors.black)
-                                      ),
-                                      Text(
-                                        '${val.text.length}/$_maxInterest', 
-                                        style: const TextStyle(fontSize: 12, color: Colors.black)
-                                      ),
-                                    ],
-                                  );
-                                },
+                                builder: (_, val, __) => Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    const Text(
+                                      'Interest',
+                                      style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16, color: Colors.black),
+                                    ),
+                                    Text(
+                                      '${val.text.length}/$_maxInterest',
+                                      style: const TextStyle(fontSize: 12, color: Colors.black),
+                                    ),
+                                  ],
+                                ),
                               ),
                               const SizedBox(height: 8),
-                              _buildTextField(controller: _interestCtrl, maxLength: _maxInterest, maxLines: 5),
+                              _buildTextField(controller: _interestCtrl, maxLength: _maxInterest, maxLines: 5, hintText: 'What are you into?'),
                             ],
                           ),
                         ),
+
                         const Spacer(),
                         const SizedBox(height: 24),
+
+                        // Save button
                         GestureDetector(
-                          onTap: () => Navigator.pop(context, _interestCtrl.text),
+                          onTap: () {
+                            if (_usernameCtrl.text.trim().isEmpty) {
+                              setState(() => _usernameError = true);
+                              return;
+                            }
+                            Navigator.pop(context, {
+                              'name': _usernameCtrl.text.trim(),
+                              'interest': _interestCtrl.text.trim(),
+                            });
+                          },
                           child: Container(
                             padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 12),
                             decoration: BoxDecoration(
@@ -143,15 +192,15 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                               border: Border.all(color: const Color(0xFFC7D2B5), width: 1.5),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.black.withValues(alpha:0.1), 
-                                  blurRadius: 4, 
-                                  offset: const Offset(0, 2)
-                                )
+                                  color: Colors.black.withValues(alpha: 0.1),
+                                  blurRadius: 4,
+                                  offset: const Offset(0, 2),
+                                ),
                               ],
                             ),
                             child: const Text(
-                              'Save', 
-                              style: TextStyle(color: Colors.black, fontSize: 16, fontWeight: FontWeight.w900)
+                              'Save',
+                              style: TextStyle(color: Colors.black, fontSize: 16, fontWeight: FontWeight.w900),
                             ),
                           ),
                         ),
@@ -172,7 +221,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
     return Container(
       decoration: const BoxDecoration(
         color: AppColors.brownDeep,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(35))
+        borderRadius: BorderRadius.vertical(top: Radius.circular(35)),
       ),
       child: SafeArea(
         bottom: false,
@@ -193,20 +242,16 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(color: Colors.grey.shade300, width: 1.5),
                     boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha:0.08), 
-                        blurRadius: 10, 
-                        offset: const Offset(0, 4)
-                      )
+                      BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 10, offset: const Offset(0, 4)),
                     ],
                   ),
-                  child: Image.asset('assets/images/Back.png', width: 26, height: 26),
+                  child: SvgPicture.asset('assets/images/Back.svg', width: 26, height: 26),
                 ),
               ),
               const SizedBox(width: 16),
               const Text(
-                'Profile Edit', 
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: Colors.white)
+                'Edit Profile',
+                style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: Colors.white),
               ),
             ],
           ),
@@ -215,24 +260,53 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
     );
   }
 
-  Widget _buildTextField({required TextEditingController controller, required int maxLength, int maxLines = 1}) {
-    return TextField(
-      controller: controller,
-      maxLength: maxLength,
-      maxLines: maxLines,
-      style: const TextStyle(color: Colors.black),
-      decoration: InputDecoration(
-        counterText: '',
-        filled: true,
-        fillColor: Colors.white,
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12), 
-          borderSide: BorderSide(color: Colors.grey.shade300, width: 1.5)
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12), 
-          borderSide: const BorderSide(color: Colors.grey, width: 1.5)
-        ),
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required int maxLength,
+    int maxLines = 1,
+    String hintText = '',
+  }) {
+    return ValueListenableBuilder<TextEditingValue>(
+      valueListenable: controller,
+      builder: (_, val, __) => Stack(
+        children: [
+          TextField(
+            controller: controller,
+            maxLength: maxLength,
+            maxLines: maxLines,
+            style: const TextStyle(color: Colors.black),
+            decoration: InputDecoration(
+              counterText: '',
+              hintText: hintText,
+              hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14),
+              filled: true,
+              fillColor: Colors.white,
+              contentPadding: EdgeInsets.fromLTRB(14, 12, val.text.isNotEmpty ? 36 : 14, 12),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: Colors.grey.shade300, width: 1.5),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: Colors.grey, width: 1.5),
+              ),
+            ),
+          ),
+          if (val.text.isNotEmpty)
+            Positioned(
+              top: 6,
+              right: 6,
+              child: GestureDetector(
+                onTap: () => controller.clear(),
+                child: SvgPicture.asset(
+                  'assets/images/Close.svg',
+                  width: 24,
+                  height: 24,
+                  colorFilter: const ColorFilter.mode(Colors.grey, BlendMode.srcIn),
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }

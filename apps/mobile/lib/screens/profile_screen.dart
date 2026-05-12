@@ -1,17 +1,22 @@
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../theme/app_colors.dart';
-import 'profile_edit_screen.dart'; 
+import '../shared/avatar_overlay.dart';
+import '../shared/layered_avatar.dart';
+import '../shared/user_profile.dart';
+import 'profile_edit_screen.dart';
 import 'blocked_screen.dart';
+import '../features/auth/presentation/screens/signup_screen.dart';
 
-class ProfileScreen extends StatefulWidget {
+class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
 
   @override
-  State<ProfileScreen> createState() => _ProfileScreenState();
+  ConsumerState<ProfileScreen> createState() => _ProfileScreenState();
 }
 
-class _ProfileScreenState extends State<ProfileScreen> {
-  String _interest = 'Hello';
+class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
@@ -45,12 +50,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                       borderRadius: BorderRadius.circular(16),
                                       boxShadow: [
                                         BoxShadow(
-                                          color: Colors.black.withValues(alpha:0.08),
+                                          color: Colors.black.withValues(alpha: 0.08),
                                           blurRadius: 8,
                                           offset: const Offset(0, 3),
                                         )
                                       ],
                                       border: Border.all(color: Colors.grey.shade200, width: 1.5),
+                                    ),
+                                    child: ClipRRect(
+                                      borderRadius: BorderRadius.circular(14),
+                                      child: Padding(
+                                        padding: const EdgeInsets.only(top: 18),
+                                        child: Center(
+                                          child: LayeredAvatar(
+                                            boxSize: 62,
+                                            moodOverlay: ref.watch(avatarProvider).mood,
+                                            accessoryOverlay: ref.watch(avatarProvider).accessory,
+                                          ),
+                                        ),
+                                      ),
                                     ),
                                   ),
                                   const SizedBox(width: 20),
@@ -59,22 +77,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
                                         const Text(
-                                          'Username', 
-                                          style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16, color: Colors.black),
-                                        ),
-                                        const SizedBox(height: 6),
-                                        const Text(
-                                          'Somtum', 
-                                          style: TextStyle(fontSize: 15, color: Colors.black),
-                                        ),
-                                        const SizedBox(height: 18),
-                                        const Text(
-                                          'Interest', 
+                                          'Username',
                                           style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16, color: Colors.black),
                                         ),
                                         const SizedBox(height: 6),
                                         Text(
-                                          _interest, 
+                                          ref.watch(userProfileProvider).username,
+                                          style: const TextStyle(fontSize: 15, color: Colors.black),
+                                        ),
+                                        const SizedBox(height: 18),
+                                        const Text(
+                                          'Interest',
+                                          style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16, color: Colors.black),
+                                        ),
+                                        const SizedBox(height: 6),
+                                        Text(
+                                          ref.watch(userProfileProvider).interest,
                                           style: const TextStyle(fontSize: 15, color: Colors.black),
                                         ),
                                       ],
@@ -87,19 +105,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 right: 0,
                                 child: GestureDetector(
                                   onTap: () async {
+                                    final profile = ref.read(userProfileProvider);
                                     final result = await Navigator.push(
                                       context,
                                       MaterialPageRoute(
-                                        builder: (context) => ProfileEditScreen(currentInterest: _interest),
+                                        builder: (_) => ProfileEditScreen(
+                                          currentName: profile.username,
+                                          currentInterest: profile.interest,
+                                        ),
                                       ),
                                     );
-                                    if (result != null && result is String && mounted) {
-                                      setState(() {
-                                        _interest = result;
-                                      });
+                                    if (result is Map && mounted) {
+                                      ref.read(userProfileProvider.notifier).update(
+                                        username: result['name'] as String? ?? profile.username,
+                                        interest: result['interest'] as String? ?? profile.interest,
+                                      );
                                     }
                                   },
-                                  child: Image.asset('assets/images/Edit.png', width: 22, height: 22),
+                                  child: SvgPicture.asset('assets/images/Edit.svg', width: 24, height: 24),
                                 ),
                               ),
                             ],
@@ -144,7 +167,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           onTap: () {},
                           child: Row(
                             children: [
-                              const Icon(Icons.discord, color: Color(0xFF5865F2)),
+                              SvgPicture.asset(
+                                'assets/images/Discord.svg',
+                                width: 24,
+                                height: 24,
+                                colorFilter: const ColorFilter.mode(
+                                  Color(0xFF7289DA),
+                                  BlendMode.srcIn,
+                                ),
+                              ),
                               const SizedBox(width: 12),
                               const Text(
                                 'Contact us', 
@@ -164,10 +195,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
                         // ── Log out Card ──
                         _buildCard(
-                          onTap: () {},
+                          onTap: () => Navigator.pushAndRemoveUntil(
+                            context,
+                            MaterialPageRoute(builder: (_) => const SignupScreen()),
+                            (route) => false,
+                          ),
                           child: Row(
                             children: [
-                              Image.asset('assets/images/Logout.png', width: 24, height: 24),
+                              SvgPicture.asset('assets/images/LogOut.svg', width: 24, height: 24),
                               const SizedBox(width: 12),
                               const Text(
                                 'Log out', 
@@ -212,7 +247,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     border: Border.all(color: Colors.grey.shade300, width: 1.5),
                     boxShadow: [BoxShadow(color: Colors.black.withValues(alpha:0.08), blurRadius: 10, offset: const Offset(0, 4))],
                   ),
-                  child: Image.asset('assets/images/Back.png', width: 26, height: 26),
+                  child: SvgPicture.asset('assets/images/Back.svg', width: 26, height: 26),
                 ),
               ),
               const SizedBox(width: 16),

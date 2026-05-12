@@ -6,7 +6,7 @@ class AppColors {
   static const Color white       = Color(0xFFFFFFFF);
   static const Color cream       = Color(0xFFFFF8EC);
   static const Color greenLight  = Color(0xFFDEF1C2);
-  static const Color peachLight  = Color(0xFFF0BFD6);
+  static const Color peachLight  = Color(0xFFF6D4E5);
   static const Color peachWarm   = Color(0xFFFFCCAA);
   static const Color tanGreen    = Color(0xFFC7D2B5);
   static const Color pinkSoft    = Color(0xFFF6D4E5);

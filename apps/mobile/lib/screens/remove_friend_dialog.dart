@@ -1,0 +1,130 @@
+import 'package:flutter/material.dart';
+import '../theme/app_colors.dart';
+import '../models/friend.dart';
+
+void showRemoveConfirmDialog({
+  required BuildContext context,
+  required Friend friend,
+  required VoidCallback onConfirm,
+}) {
+  showDialog(
+    context: context,
+    barrierColor: Colors.black.withValues(alpha: 0.35),
+    builder: (_) => _RemoveConfirmDialog(friendName: friend.name, onConfirm: onConfirm),
+  );
+}
+
+class _RemoveConfirmDialog extends StatelessWidget {
+  final String friendName;
+  final VoidCallback onConfirm;
+
+  const _RemoveConfirmDialog({required this.friendName, required this.onConfirm});
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(24),
+        side: BorderSide(color: Colors.grey.shade300, width: 1.5),
+      ),
+      backgroundColor: Colors.white,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 48),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Remove "$friendName"',
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontWeight: FontWeight.w900,
+                fontSize: 18,
+                color: Colors.black,
+              ),
+            ),
+            const SizedBox(height: 12),
+            RichText(
+              textAlign: TextAlign.center,
+              text: TextSpan(
+                style: const TextStyle(fontSize: 14, color: Colors.black87, height: 1.5),
+                children: [
+                  const TextSpan(text: 'Are you sure you want to remove\n'),
+                  TextSpan(
+                    text: '"$friendName"',
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  const TextSpan(text: ' from your friends'),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                _PillButton(
+                  label: 'Cancel',
+                  bgColor: Colors.grey.shade200,
+                  textColor: Colors.black87,
+                  onTap: () => Navigator.pop(context),
+                ),
+                const SizedBox(width: 12),
+                _PillButton(
+                  label: 'Remove',
+                  bgColor: AppColors.redOrange,
+                  textColor: Colors.white,
+                  onTap: () {
+                    Navigator.pop(context);
+                    onConfirm();
+                  },
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _PillButton extends StatelessWidget {
+  final String label;
+  final Color bgColor;
+  final Color textColor;
+  final VoidCallback onTap;
+
+  const _PillButton({
+    required this.label,
+    required this.bgColor,
+    required this.textColor,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 12),
+        decoration: BoxDecoration(
+          color: bgColor,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(
+            color: label == 'Remove'
+                ? const Color(0xFFA33615)
+                : const Color(0xFFB7B4B4),
+            width: 1.5,
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: textColor,
+            fontWeight: FontWeight.w700,
+            fontSize: 14,
+          ),
+        ),
+      ),
+    );
+  }
+}
