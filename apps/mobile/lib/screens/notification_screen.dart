@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import '../theme/app_colors.dart';
 
 class _NotifItem {
@@ -8,7 +9,8 @@ class _NotifItem {
   final String subtitle;
   final String time;
   final bool isFriendRequest;
-  bool accepted = false;
+  final String? roomName;
+  bool accepted;
   bool declined;
 
   _NotifItem({
@@ -18,6 +20,8 @@ class _NotifItem {
     required this.subtitle,
     required this.time,
     this.isFriendRequest = false,
+    this.roomName,
+    this.accepted = false,
     this.declined = false,
   });
 }
@@ -32,27 +36,29 @@ class NotificationScreen extends StatefulWidget {
 class _NotificationScreenState extends State<NotificationScreen> {
   final List<_NotifItem> _items = [
     _NotifItem(
-      imagePath: 'assets/images/Friends.png', 
+      imagePath: 'assets/images/Friends.svg',
       fallbackIcon: Icons.favorite_border,
       title: 'Kaitom wants to be friends',
-      subtitle: 'from Koh Tapu',
+      subtitle: '',
       time: '10m',
       isFriendRequest: true,
+      roomName: 'Koh Tapu',
     ),
     _NotifItem(
-      imagePath: 'assets/images/Friends.png',
+      imagePath: 'assets/images/Friends.svg',
       fallbackIcon: Icons.favorite_border,
       title: 'Mitsuru wants to be friends',
-      subtitle: 'from Red Lotus Lake',
+      subtitle: '',
       time: '1h',
       isFriendRequest: true,
+      roomName: 'Red Lotus Lake',
       declined: true,
     ),
     _NotifItem(
-      imagePath: 'assets/images/Settings.png', 
+      imagePath: 'assets/images/Setting.svg',
       fallbackIcon: Icons.settings_outlined,
-      title: 'update',
-      subtitle: 'v.2.9\nfix...',
+      title: 'App Update',
+      subtitle: 'v.2.9 — bug fixes and improvements',
       time: '20 April 2026',
     ),
   ];
@@ -115,16 +121,10 @@ class _NotificationScreenState extends State<NotificationScreen> {
                       width: 1.5,
                     ),
                   ),
-                  child: Image.asset(
-                    'assets/images/Back.png',
+                  child: SvgPicture.asset(
+                    'assets/images/Back.svg',
                     width: 26,
                     height: 26,
-                    fit: BoxFit.contain,
-                    errorBuilder: (_, __, ___) => const Icon(
-                      Icons.arrow_back_ios_new,
-                      color: Colors.black87,
-                      size: 24,
-                    ),
                   ),
                 ),
               ),
@@ -185,16 +185,10 @@ class _NotificationScreenState extends State<NotificationScreen> {
                 width: 1.5,
               ),
             ),
-            child: Image.asset(
+            child: SvgPicture.asset(
               item.imagePath,
               width: 32,
               height: 32,
-              fit: BoxFit.contain,
-              errorBuilder: (_, __, ___) => Icon(
-                item.fallbackIcon,
-                color: Colors.black87,
-                size: 32,
-              ),
             ),
           ),
           const SizedBox(width: 16),
@@ -225,15 +219,23 @@ class _NotificationScreenState extends State<NotificationScreen> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  item.subtitle,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    color: Colors.black87,
+                if (item.isFriendRequest && item.roomName != null) ...[
+                  const SizedBox(height: 3),
+                  Text(
+                    'from ${item.roomName!}',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: Colors.black87,
+                    ),
                   ),
-                ),
-                
+                ] else if (item.subtitle.isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    item.subtitle,
+                    style: const TextStyle(fontSize: 13, color: Colors.black87),
+                  ),
+                ],
+
                 if (item.isFriendRequest) ...[
                   const SizedBox(height: 12),
                   Row(
@@ -270,7 +272,9 @@ class _NotificationScreenState extends State<NotificationScreen> {
                           backgroundColor: const Color(0xFFE0E0E0),
                           borderColor: Colors.grey.shade400,
                           textColor: Colors.black54,
-                          onTap: null,
+                          onTap: () => setState(() {
+                            _items[index].accepted = false;
+                          }),
                         ),
                       ]
                       else if (item.declined) ...[
@@ -279,7 +283,9 @@ class _NotificationScreenState extends State<NotificationScreen> {
                           backgroundColor: const Color(0xFFE0E0E0),
                           borderColor: Colors.grey.shade400,
                           textColor: Colors.black54,
-                          onTap: null,
+                          onTap: () => setState(() {
+                            _items[index].declined = false;
+                          }),
                         ),
                       ],
                     ],

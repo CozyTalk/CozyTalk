@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import '../theme/app_colors.dart';
 import '../models/friend.dart';
+import '../shared/layered_avatar.dart';
+export 'remove_friend_dialog.dart' show showRemoveConfirmDialog;
 
 // ─── Public helpers called from FriendsScreen ───────────────────────────────
 
@@ -13,18 +16,6 @@ void showFriendProfileDialog({
     context: context,
     barrierColor: Colors.black.withValues(alpha: 0.35),
     builder: (_) => _FriendProfileDialog(friend: friend, onNoteSaved: onNoteSaved),
-  );
-}
-
-void showRemoveConfirmDialog({
-  required BuildContext context,
-  required Friend friend,
-  required VoidCallback onConfirm,
-}) {
-  showDialog(
-    context: context,
-    barrierColor: Colors.black.withValues(alpha: 0.35),
-    builder: (_) => _RemoveConfirmDialog(friendName: friend.name, onConfirm: onConfirm),
   );
 }
 
@@ -43,12 +34,14 @@ class _FriendProfileDialog extends StatefulWidget {
 class _FriendProfileDialogState extends State<_FriendProfileDialog> {
   static const int _maxNote = 20;
   late final TextEditingController _noteCtrl;
+  late final String _originalName;
   bool _editing = false;
 
   @override
   void initState() {
     super.initState();
-    _noteCtrl = TextEditingController(text: widget.friend.name);
+    _originalName = widget.friend.note ?? '';
+    _noteCtrl = TextEditingController(text: _originalName);
   }
 
   @override
@@ -61,21 +54,23 @@ class _FriendProfileDialogState extends State<_FriendProfileDialog> {
 
   void _cancel() {
     setState(() {
-      _noteCtrl.text = widget.friend.name;
+      _noteCtrl.text = _originalName;
       _editing = false;
     });
   }
 
   void _save() {
-    final trimmed = _noteCtrl.text.trim();
-    if (trimmed.isNotEmpty) widget.onNoteSaved(trimmed);
+    widget.onNoteSaved(_noteCtrl.text.trim());
     Navigator.pop(context);
   }
 
   @override
   Widget build(BuildContext context) {
     return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(24),
+        side: BorderSide(color: Colors.grey.shade300, width: 1.5),
+      ),
       backgroundColor: Colors.white,
       insetPadding: const EdgeInsets.symmetric(horizontal: 32),
       child: Padding(
@@ -113,9 +108,14 @@ class _FriendProfileDialogState extends State<_FriendProfileDialog> {
               child: GestureDetector(
                 onTap: () => Navigator.pop(context),
                 behavior: HitTestBehavior.opaque,
-                child: const Padding(
-                  padding: EdgeInsets.all(4),
-                  child: Icon(Icons.close, size: 22, color: Colors.black),
+                child: Padding(
+                  padding: const EdgeInsets.all(4),
+                  child: SvgPicture.asset(
+                    'assets/images/Close.svg',
+                    width: 30,
+                    height: 30,
+                    colorFilter: const ColorFilter.mode(Colors.black, BlendMode.srcIn),
+                  ),
                 ),
               ),
             ),
@@ -142,17 +142,17 @@ class _FriendProfileDialogState extends State<_FriendProfileDialog> {
           ),
         ],
       ),
-      child: widget.friend.avatar.isNotEmpty
-          ? ClipRRect(
-              borderRadius: BorderRadius.circular(18),
-              child: Image.asset(
-                widget.friend.avatar,
-                fit: BoxFit.contain,
-                errorBuilder: (_, __, ___) =>
-                    const Icon(Icons.person, color: Colors.grey, size: 50),
-              ),
-            )
-          : const Icon(Icons.person, color: Colors.grey, size: 50),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(18),
+        child: Padding(
+          padding: const EdgeInsets.only(top: 12),
+          child: Center(
+            child: widget.friend.avatar.isNotEmpty
+                ? LayeredAvatar(boxSize: 68)
+                : const Icon(Icons.person, color: Colors.grey, size: 50),
+          ),
+        ),
+      ),
     );
   }
 
@@ -163,20 +163,25 @@ class _FriendProfileDialogState extends State<_FriendProfileDialog> {
       children: [
         // Username
         const Text('Username',
-            style: TextStyle(fontWeight: FontWeight.w900, fontSize: 15)),
+            style: TextStyle(fontWeight: FontWeight.w900, fontSize: 15, color: Colors.black)),
         const SizedBox(height: 2),
         Text(widget.friend.username,
-            style: TextStyle(fontSize: 13, color: Colors.grey.shade600)),
+            style: const TextStyle(fontSize: 13, color: Colors.black87)),
         const SizedBox(height: 14),
         // Note label row
         Row(
           children: [
             const Text('Note',
-                style: TextStyle(fontWeight: FontWeight.w900, fontSize: 15)),
+                style: TextStyle(fontWeight: FontWeight.w900, fontSize: 15, color: Colors.black)),
             const SizedBox(width: 5),
             GestureDetector(
               onTap: _startEdit,
-              child: const Icon(Icons.edit, size: 15, color: Colors.black87),
+              child: SvgPicture.asset(
+                'assets/images/Edit.svg',
+                width: 22,
+                height: 22,
+                colorFilter: const ColorFilter.mode(Colors.black87, BlendMode.srcIn),
+              ),
             ),
             if (_editing) ...[
               const Spacer(),
@@ -194,8 +199,10 @@ class _FriendProfileDialogState extends State<_FriendProfileDialog> {
         const SizedBox(height: 4),
         // Note value or input
         if (!_editing)
-          Text(widget.friend.name,
-              style: TextStyle(fontSize: 13, color: Colors.grey.shade600))
+          Text(
+              widget.friend.note?.isNotEmpty == true ? widget.friend.note! : '—',
+              style: const TextStyle(fontSize: 13, color: Colors.black87),
+            )
         else
           SizedBox(
             height: 38,
@@ -238,11 +245,11 @@ class _FriendProfileDialogState extends State<_FriendProfileDialog> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text('Interest',
-            style: TextStyle(fontWeight: FontWeight.w900, fontSize: 15)),
+            style: TextStyle(fontWeight: FontWeight.w900, fontSize: 15, color: Colors.black)),
         const SizedBox(height: 4),
         Text(
           widget.friend.interest.isNotEmpty ? widget.friend.interest : '—',
-          style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+          style: const TextStyle(fontSize: 13, color: Colors.black87),
         ),
       ],
     );
@@ -271,79 +278,6 @@ class _FriendProfileDialogState extends State<_FriendProfileDialog> {
   }
 }
 
-// ─── Remove confirmation dialog ──────────────────────────────────────────────
-
-class _RemoveConfirmDialog extends StatelessWidget {
-  final String friendName;
-  final VoidCallback onConfirm;
-
-  const _RemoveConfirmDialog(
-      {required this.friendName, required this.onConfirm});
-
-  @override
-  Widget build(BuildContext context) {
-    return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-      backgroundColor: Colors.white,
-      insetPadding: const EdgeInsets.symmetric(horizontal: 48),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Title
-            Text(
-              'Remove "$friendName"',
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                  fontWeight: FontWeight.w900, fontSize: 18, color: Colors.black),
-            ),
-            const SizedBox(height: 12),
-            // Body
-            RichText(
-              textAlign: TextAlign.center,
-              text: TextSpan(
-                style: const TextStyle(fontSize: 14, color: Colors.black87, height: 1.5),
-                children: [
-                  const TextSpan(text: 'Are you sure you want to remove\n'),
-                  TextSpan(
-                    text: '"$friendName"',
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  const TextSpan(text: ' from your friends'),
-                ],
-              ),
-            ),
-            const SizedBox(height: 24),
-            // Buttons
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                _PillButton(
-                  label: 'Cancel',
-                  bgColor: Colors.grey.shade200,
-                  textColor: Colors.black87,
-                  onTap: () => Navigator.pop(context),
-                ),
-                const SizedBox(width: 12),
-                _PillButton(
-                  label: 'Remove',
-                  bgColor: AppColors.redOrange,
-                  textColor: Colors.white,
-                  onTap: () {
-                    Navigator.pop(context);
-                    onConfirm();
-                  },
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 // ─── Shared pill button ───────────────────────────────────────────────────────
 
 class _PillButton extends StatelessWidget {
@@ -364,17 +298,26 @@ class _PillButton extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 9),
+        constraints: const BoxConstraints(minWidth: 90),
         decoration: BoxDecoration(
           color: bgColor,
           borderRadius: BorderRadius.circular(24),
+          border: Border.all(
+            color: label == 'save'
+                ? const Color(0xFFC7D2B5)
+                : const Color(0xFFB7B4B4),
+            width: 1.5,
+          ),
         ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: textColor,
-            fontWeight: FontWeight.w700,
-            fontSize: 14,
+        child: Center(
+          child: Text(
+            label,
+            style: TextStyle(
+              color: textColor,
+              fontWeight: FontWeight.w700,
+              fontSize: 14,
+            ),
           ),
         ),
       ),

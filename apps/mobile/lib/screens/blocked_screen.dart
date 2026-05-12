@@ -1,5 +1,10 @@
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
+import '../models/friend.dart';
+import '../shared/layered_avatar.dart';
+import 'friend_profile_dialog.dart';
+import 'block_dialogs.dart';
 
 class BlockedScreen extends StatefulWidget {
   const BlockedScreen({super.key});
@@ -10,7 +15,10 @@ class BlockedScreen extends StatefulWidget {
 
 class _BlockedScreenState extends State<BlockedScreen> {
   static const int _maxBlocked = 5;
-  final List<String> _blocked = ['Somchai', 'Somying'];
+  final List<Friend> _blocked = [
+    Friend(name: 'Somchai', username: 'somchai99', lastMessage: '', isOnline: false, isInRoom: false, avatar: 'assets/images/UserAvatar.png', interest: ''),
+    Friend(name: 'Somying', username: 'somying55', lastMessage: '', isOnline: false, isInRoom: false, avatar: 'assets/images/UserAvatar.png', interest: ''),
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -26,9 +34,9 @@ class _BlockedScreenState extends State<BlockedScreen> {
               child: Text(
                 '${_blocked.length}/$_maxBlocked',
                 style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w900,
-                  color: Colors.black,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.grey,
                 ),
               ),
             ),
@@ -45,7 +53,7 @@ class _BlockedScreenState extends State<BlockedScreen> {
                     padding: const EdgeInsets.symmetric(horizontal: 20),
                     itemCount: _blocked.length,
                     separatorBuilder: (_, __) => const SizedBox(height: 16),
-                    itemBuilder: (_, i) => _buildBlockedCard(_blocked[i], i),
+                    itemBuilder: (context, i) => _buildBlockedCard(context, _blocked[i], i),
                   ),
           ),
         ],
@@ -91,16 +99,10 @@ class _BlockedScreenState extends State<BlockedScreen> {
                       width: 1.5,
                     ),
                   ),
-                  child: Image.asset(
-                    'assets/images/Back.png',
+                  child: SvgPicture.asset(
+                    'assets/images/Back.svg',
                     width: 26,
                     height: 26,
-                    fit: BoxFit.contain,
-                    errorBuilder: (_, __, ___) => const Icon(
-                      Icons.arrow_back_ios_new,
-                      color: Colors.black87,
-                      size: 24,
-                    ),
                   ),
                 ),
               ),
@@ -121,7 +123,7 @@ class _BlockedScreenState extends State<BlockedScreen> {
   }
 
   // ─── Blocked User Card ───
-  Widget _buildBlockedCard(String name, int index) {
+  Widget _buildBlockedCard(BuildContext context, Friend friend, int index) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -134,38 +136,47 @@ class _BlockedScreenState extends State<BlockedScreen> {
             offset: const Offset(0, 4),
           )
         ],
-        border: Border.all(
-          color: Colors.grey.shade300,
-          width: 1.5,
-        ),
+        border: Border.all(color: Colors.grey.shade300, width: 1.5),
       ),
       child: Row(
         children: [
-          Container(
-            width: 60,
-            height: 60,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.05),
-                  blurRadius: 5,
-                  offset: const Offset(0, 2),
-                )
-              ],
-              border: Border.all(
-                color: Colors.grey.shade200,
-                width: 1.5,
+          // ── Avatar (tappable → profile dialog) ──
+          GestureDetector(
+            onTap: () => showFriendProfileDialog(
+              context: context,
+              friend: friend,
+              onNoteSaved: (note) =>
+                  setState(() => friend.note = note.isNotEmpty ? note : null),
+            ),
+            child: Container(
+              width: 60,
+              height: 60,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.05),
+                    blurRadius: 5,
+                    offset: const Offset(0, 2),
+                  )
+                ],
+                border: Border.all(color: Colors.grey.shade200, width: 1.5),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(14),
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Center(child: LayeredAvatar(boxSize: 44)),
+                ),
               ),
             ),
-            child: const Icon(Icons.person, color: Colors.grey, size: 35),
           ),
           const SizedBox(width: 16),
-          // Username
+          // ── Username ──
           Expanded(
             child: Text(
-              name,
+              friend.displayName,
               style: const TextStyle(
                 fontWeight: FontWeight.w900,
                 fontSize: 16,
@@ -173,13 +184,19 @@ class _BlockedScreenState extends State<BlockedScreen> {
               ),
             ),
           ),
+          // ── Unblock button ──
           GestureDetector(
-            onTap: () => setState(() => _blocked.removeAt(index)),
+            onTap: () => showConfirmUnblockDialog(
+              context: context,
+              username: friend.displayName,
+              onConfirm: () => setState(() => _blocked.removeAt(index)),
+            ),
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               decoration: BoxDecoration(
                 color: const Color(0xFFDEDEDE),
                 borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: Colors.grey.shade400, width: 1.5),
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withValues(alpha: 0.05),

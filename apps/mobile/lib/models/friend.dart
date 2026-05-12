@@ -1,6 +1,7 @@
 class Friend {
-  String name;           // editable note/nickname you set for this friend
+  final String name;     // friend's original display name (set by them)
   final String username; // their actual account username
+  String? note;          // nickname you set for this friend (null = not set)
   final String lastMessage;
   final bool isOnline;
   int unreadCount;
@@ -11,6 +12,7 @@ class Friend {
   Friend({
     required this.name,
     required this.username,
+    this.note,
     required this.lastMessage,
     required this.isOnline,
     this.unreadCount = 0,
@@ -18,6 +20,9 @@ class Friend {
     this.avatar = '',
     this.interest = '',
   });
+
+  // ชื่อที่แสดงผล: ถ้าตั้ง note ไว้ใช้ note, ไม่งั้นใช้ username
+  String get displayName => (note != null && note!.isNotEmpty) ? note! : username;
 }
 
 class ChatMessage {

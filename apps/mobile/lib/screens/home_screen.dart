@@ -1,53 +1,41 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_routes.dart';
+import '../shared/avatar_overlay.dart';
+import '../shared/user_profile.dart';
+import 'thought_bubble_dialog.dart';
 
-class HomeScreen extends StatefulWidget {
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends ConsumerState<HomeScreen> {
   bool _hasNotification = true;
-  String _moodText = 'I love Tiktok very much!';
+  String _moodText = '';
+  Future<void> _navigateMood() async {
+    final result = await Navigator.pushNamed(context, AppRoutes.mood);
+    if (result is String && mounted) {
+      ref.read(avatarProvider.notifier).setMood(AvatarOverlays.mood[result]);
+    }
+  }
+
+  Future<void> _navigateDressUp() async {
+    final result = await Navigator.pushNamed(context, AppRoutes.dressUp);
+    if (result is String && mounted) {
+      ref.read(avatarProvider.notifier).setAccessory(AvatarOverlays.accessory[result]);
+    }
+  }
 
   // ── Edit mood bubble ──
   void _editMood() async {
-    final controller = TextEditingController(text: _moodText);
-    final result = await showDialog<String>(
+    final result = await showThoughtBubbleDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.cream,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text(
-          'Edit your thought',
-          style: TextStyle(
-            color: Color.fromRGBO(92, 61, 46, 1),
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          decoration: const InputDecoration(
-            hintText: 'Type here...',
-            hintStyle: TextStyle(color: AppColors.gray),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child:
-                const Text('Cancel', style: TextStyle(color: AppColors.gray)),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(ctx, controller.text),
-            child: const Text('Save'),
-          ),
-        ],
-      ),
+      initialText: _moodText,
     );
     if (result != null && mounted) {
       setState(() => _moodText = result);
@@ -78,9 +66,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   children: [
                     const SizedBox(height: 35),
 
-                    const Text(
-                      'Hello, Somtum!',
-                      style: TextStyle(
+                    Text(
+                      'Hello, ${ref.watch(userProfileProvider).username}!',
+                      style: const TextStyle(
                         fontSize: 22,
                         fontWeight: FontWeight.bold,
                         color: Color(0xFF000000),
@@ -91,6 +79,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     _AvatarCard(
                       moodText: _moodText,
                       onMoodTap: _editMood,
+                      moodOverlay: ref.watch(avatarProvider).mood,
+                      accessoryOverlay: ref.watch(avatarProvider).accessory,
                     ),
                     const SizedBox(height: 22),
                     
@@ -98,26 +88,24 @@ class _HomeScreenState extends State<HomeScreen> {
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       children: [
                         _QuickAction(
-                          imagePath: 'assets/images/DressUp.png',
+                          imagePath: 'assets/images/DressUp.svg',
                           label: 'Dress Up!',
                           imageWidth: 35,
                           imageHeight: 35,
-                          onTap: () =>
-                              Navigator.pushNamed(context, AppRoutes.dressUp),
+                          onTap: _navigateDressUp,
                         ),
                         _QuickAction(
-                          imagePath: 'assets/images/Mood.png',
+                          imagePath: 'assets/images/Mood.svg',
                           label: 'Mood',
-                          imageWidth: 42,
-                          imageHeight: 42,
-                          onTap: () =>
-                              Navigator.pushNamed(context, AppRoutes.mood),
-                        ),
-                        _QuickAction(
-                          imagePath: 'assets/images/Friends.png',
-                          label: 'Friends',
                           imageWidth: 38,
                           imageHeight: 38,
+                          onTap: _navigateMood,
+                        ),
+                        _QuickAction(
+                          imagePath: 'assets/images/Friends.svg',
+                          label: 'Friends',
+                          imageWidth: 39,
+                          imageHeight: 39,
                           onTap: () =>
                               Navigator.pushNamed(context, AppRoutes.friends),
                         ),
@@ -213,15 +201,10 @@ class _TopBar extends StatelessWidget {
                           width: 1.5, 
                         ),
                       ),
-                      child: Image.asset(
-                        'assets/images/Notification.png',
-                        width: 30, 
-                        height: 30,
-                        fit: BoxFit.contain,
-                        errorBuilder: (_, __, ___) => const Icon(
-                            Icons.notifications_outlined,
-                            color: Colors.black87,
-                            size: 30),
+                      child: SvgPicture.asset(
+                        'assets/images/Notification.svg',
+                        width: 25,
+                        height: 25,
                       ),
                     ),
                   ),
@@ -268,16 +251,10 @@ class _TopBar extends StatelessWidget {
                       width: 1.5, 
                     ),
                   ),
-                  child: Image.asset(
-                    'assets/images/User.png',
-                    width: 30, 
-                    height: 30,
-                    fit: BoxFit.contain,
-                    errorBuilder: (_, __, ___) => const Icon(
-                      Icons.account_circle,
-                      color: Colors.black87,
-                      size: 30,
-                    ),
+                  child: SvgPicture.asset(
+                    'assets/images/User.svg',
+                    width: 27,
+                    height: 27,
                   ),
                 ),
               ),
@@ -293,8 +270,15 @@ class _TopBar extends StatelessWidget {
 class _AvatarCard extends StatefulWidget {
   final String moodText;
   final VoidCallback onMoodTap;
+  final AvatarOverlay? moodOverlay;
+  final AvatarOverlay? accessoryOverlay;
 
-  const _AvatarCard({required this.moodText, required this.onMoodTap});
+  const _AvatarCard({
+    required this.moodText,
+    required this.onMoodTap,
+    this.moodOverlay,
+    this.accessoryOverlay,
+  });
 
   @override
   State<_AvatarCard> createState() => _AvatarCardState();
@@ -328,9 +312,14 @@ class _AvatarCardState extends State<_AvatarCard> {
             double safeY =
                 _bubblePosition.dy.clamp(0.0, constraints.maxHeight - 100.0);
 
+            // Avatar is 90px tall, positioned at bottom 62.
+            // avatarTop = cardHeight(270) - 62 - 90 = 118
+            // avatarCenterX = constraints.maxWidth / 2
+            final double centerX = constraints.maxWidth / 2;
+
             return Stack(
-              alignment: Alignment.center,
               children: [
+                // Background
                 Positioned.fill(
                   child: Transform.scale(
                     scale: 1.15,
@@ -338,29 +327,72 @@ class _AvatarCardState extends State<_AvatarCard> {
                       'assets/images/HomeBg.png',
                       fit: BoxFit.cover,
                       alignment: Alignment.center,
-                      errorBuilder: (_, __, ___) => Container(
-                        color: AppColors.tanGreen,
-                      ),
+                      errorBuilder: (_, __, ___) => Container(color: AppColors.tanGreen),
                     ),
                   ),
                 ),
+
+                // Base avatar
                 Positioned(
-                  bottom: 62,
+                  top: 118,
+                  left: centerX - 45,
                   child: Image.asset(
                     'assets/images/UserAvatar.png',
+                    width: 90,
                     height: 90,
+                    fit: BoxFit.contain,
                     errorBuilder: (_, __, ___) => Container(
-                      width: 70,
-                      height: 85,
+                      width: 90,
+                      height: 90,
                       decoration: BoxDecoration(
-                        color: AppColors.white.withValues(alpha:0.85),
+                        color: AppColors.white.withValues(alpha: 0.85),
                         borderRadius: BorderRadius.circular(50),
                       ),
-                      child: const Icon(Icons.person,
-                          size: 50, color: AppColors.brownDeep),
+                      child: const Icon(Icons.person, size: 50, color: AppColors.brownDeep),
                     ),
                   ),
                 ),
+
+                // Accessory layer — hats go under mood
+                if (widget.accessoryOverlay != null && !widget.accessoryOverlay!.path.contains('Sunglasses'))
+                  Positioned(
+                    top:  widget.accessoryOverlay!.top,
+                    left: centerX + widget.accessoryOverlay!.cx - widget.accessoryOverlay!.w / 2,
+                    child: Image.asset(
+                      widget.accessoryOverlay!.path,
+                      width:  widget.accessoryOverlay!.w,
+                      height: widget.accessoryOverlay!.h,
+                      fit: BoxFit.contain,
+                    ),
+                  ),
+
+                // Mood layer
+                if (widget.moodOverlay != null)
+                  Positioned(
+                    top:  widget.moodOverlay!.top,
+                    left: centerX + widget.moodOverlay!.cx - widget.moodOverlay!.w / 2,
+                    child: Image.asset(
+                      widget.moodOverlay!.path,
+                      width:  widget.moodOverlay!.w,
+                      height: widget.moodOverlay!.h,
+                      fit: BoxFit.contain,
+                    ),
+                  ),
+
+                // Glasses render above mood
+                if (widget.accessoryOverlay != null && widget.accessoryOverlay!.path.contains('Sunglasses'))
+                  Positioned(
+                    top:  widget.accessoryOverlay!.top,
+                    left: centerX + widget.accessoryOverlay!.cx - widget.accessoryOverlay!.w / 2,
+                    child: Image.asset(
+                      widget.accessoryOverlay!.path,
+                      width:  widget.accessoryOverlay!.w,
+                      height: widget.accessoryOverlay!.h,
+                      fit: BoxFit.contain,
+                    ),
+                  ),
+
+                // Draggable thought bubble
                 Positioned(
                   left: safeX,
                   top: safeY,
@@ -412,11 +444,11 @@ class _ThoughtBubble extends StatelessWidget {
         padding: const EdgeInsets.only(bottom: 12, left: 15, right: 10),
         alignment: Alignment.center,
         child: Text(
-          text,
-          style: const TextStyle(
+          text.isEmpty ? 'Care to share?' : text,
+          style: TextStyle(
             fontSize: 11,
             fontWeight: FontWeight.bold,
-            color: Colors.black87,
+            color: text.isEmpty ? Colors.grey.shade400 : Colors.black87,
           ),
           textAlign: TextAlign.center,
           maxLines: 3,
@@ -469,13 +501,10 @@ class _QuickAction extends StatelessWidget {
                 width: 1.5, 
               ),
             ),
-            child: Image.asset(
+            child: SvgPicture.asset(
               imagePath,
               width: imageWidth,
               height: imageHeight,
-              fit: BoxFit.contain,
-              errorBuilder: (_, __, ___) =>
-                  const Icon(Icons.image_not_supported, color: Colors.grey),
             ),
           ),
           const SizedBox(height: 10),
@@ -522,16 +551,10 @@ class _LetsChatButton extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Image.asset(
-              'assets/images/LetsChat.png',
-              width: 45, 
-              height: 45,
-              fit: BoxFit.contain,
-              errorBuilder: (_, __, ___) => const Icon(
-                Icons.chat,
-                color: Colors.black,
-                size: 35,
-              ),
+            SvgPicture.asset(
+              'assets/images/LetsChat.svg',
+              width: 42,
+              height: 42,
             ),
             const SizedBox(width: 12),
             const Text(
@@ -549,3 +572,4 @@ class _LetsChatButton extends StatelessWidget {
     );
   }
 }
+

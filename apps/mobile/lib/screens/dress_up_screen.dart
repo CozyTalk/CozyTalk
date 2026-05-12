@@ -1,5 +1,9 @@
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../theme/app_colors.dart';
+import '../shared/avatar_overlay.dart';
+import '../shared/layered_avatar.dart';
 
 class _DressItem {
   final String name;
@@ -17,14 +21,14 @@ class _DressItem {
   );
 }
 
-class DressUpScreen extends StatefulWidget {
+class DressUpScreen extends ConsumerStatefulWidget {
   const DressUpScreen({super.key});
 
   @override
-  State<DressUpScreen> createState() => _DressUpScreenState();
+  ConsumerState<DressUpScreen> createState() => _DressUpScreenState();
 }
 
-class _DressUpScreenState extends State<DressUpScreen> {
+class _DressUpScreenState extends ConsumerState<DressUpScreen> {
   String? _selected;
 
   static const List<_DressItem> _items = [
@@ -38,10 +42,6 @@ class _DressUpScreenState extends State<DressUpScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final selectedItem = _selected != null
-        ? _items.firstWhere((item) => item.name == _selected) 
-        : null;
-
     return Scaffold(
       backgroundColor: AppColors.scaffoldBg,
       body: Stack(
@@ -83,22 +83,15 @@ class _DressUpScreenState extends State<DressUpScreen> {
                                 ),
                               ),
                               Positioned(
-                                bottom: -15, 
-                                child: Image.asset(
-                                  'assets/images/UserAvatar.png',
-                                  height: 130, 
-                                  fit: BoxFit.contain,
+                                bottom: -15,
+                                child: LayeredAvatar(
+                                  boxSize: 130,
+                                  moodOverlay: ref.watch(avatarProvider).mood,
+                                  accessoryOverlay: _selected != null
+                                      ? AvatarOverlays.accessory[_selected]
+                                      : ref.watch(avatarProvider).accessory,
                                 ),
                               ),
-                              if (selectedItem != null)
-                                Positioned(
-                                  bottom: selectedItem.equipBottom,
-                                  child: Image.asset(
-                                    selectedItem.imagePath,
-                                    height: selectedItem.equipHeight,
-                                    fit: BoxFit.contain,
-                                  ),
-                                ),
                             ],
                           ),
                         ),
@@ -180,7 +173,7 @@ class _DressUpScreenState extends State<DressUpScreen> {
             right: 0,
             child: Center(
               child: GestureDetector(
-                onTap: () => Navigator.pop(context),
+                onTap: () => Navigator.pop(context, _selected),
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 12),
                   decoration: BoxDecoration(
@@ -248,11 +241,10 @@ class _DressUpScreenState extends State<DressUpScreen> {
                       )
                     ],
                   ),
-                  child: Image.asset(
-                    'assets/images/Back.png',
+                  child: SvgPicture.asset(
+                    'assets/images/Back.svg',
                     width: 26,
                     height: 26,
-                    fit: BoxFit.contain,
                   ),
                 ),
               ),
