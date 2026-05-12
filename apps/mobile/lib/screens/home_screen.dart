@@ -354,7 +354,7 @@ class _AvatarCardState extends State<_AvatarCard> {
                 ),
 
                 // Accessory layer — hats go under mood
-                if (widget.accessoryOverlay != null && !widget.accessoryOverlay!.path.contains('Sunglasses'))
+                if (widget.accessoryOverlay != null && !widget.accessoryOverlay!.aboveMood)
                   Positioned(
                     top:  widget.accessoryOverlay!.top,
                     left: centerX + widget.accessoryOverlay!.cx - widget.accessoryOverlay!.w / 2,
@@ -379,8 +379,8 @@ class _AvatarCardState extends State<_AvatarCard> {
                     ),
                   ),
 
-                // Glasses render above mood
-                if (widget.accessoryOverlay != null && widget.accessoryOverlay!.path.contains('Sunglasses'))
+                // Accessory layer — above mood (glasses)
+                if (widget.accessoryOverlay != null && widget.accessoryOverlay!.aboveMood)
                   Positioned(
                     top:  widget.accessoryOverlay!.top,
                     left: centerX + widget.accessoryOverlay!.cx - widget.accessoryOverlay!.w / 2,

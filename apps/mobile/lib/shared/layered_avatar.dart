@@ -54,7 +54,7 @@ class LayeredAvatar extends StatelessWidget {
           ),
 
           // Accessory layer (hats go under mood; glasses go above mood)
-          if (accessoryOverlay != null && !accessoryOverlay!.path.contains('Sunglasses'))
+          if (accessoryOverlay != null && !accessoryOverlay!.aboveMood)
             Positioned(
               top:  _top(accessoryOverlay!),
               left: _left(accessoryOverlay!),
@@ -80,7 +80,7 @@ class LayeredAvatar extends StatelessWidget {
             ),
 
           // Glasses render above mood
-          if (accessoryOverlay != null && accessoryOverlay!.path.contains('Sunglasses'))
+          if (accessoryOverlay != null && accessoryOverlay!.aboveMood)
             Positioned(
               top:  _top(accessoryOverlay!),
               left: _left(accessoryOverlay!),

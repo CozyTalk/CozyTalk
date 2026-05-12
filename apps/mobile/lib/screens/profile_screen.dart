@@ -7,7 +7,7 @@ import '../shared/layered_avatar.dart';
 import '../shared/user_profile.dart';
 import 'profile_edit_screen.dart';
 import 'blocked_screen.dart';
-import '../features/auth/presentation/screens/signup_screen.dart';
+import '../features/auth/presentation/providers/auth_provider.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
@@ -195,11 +195,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
                         // ── Log out Card ──
                         _buildCard(
-                          onTap: () => Navigator.pushAndRemoveUntil(
-                            context,
-                            MaterialPageRoute(builder: (_) => const SignupScreen()),
-                            (route) => false,
-                          ),
+                          onTap: () => ref.read(authNotifierProvider.notifier).signOut(),
                           child: Row(
                             children: [
                               SvgPicture.asset('assets/images/LogOut.svg', width: 24, height: 24),

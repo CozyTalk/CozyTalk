@@ -5,10 +5,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 // LayeredAvatar recomputes positions for any target box size automatically.
 class AvatarOverlay {
   final String path;
-  final double top; // from card top in HomeScreen (270px card)
-  final double cx;  // horizontal offset from avatar horizontal centre
+  final double top;      // from card top in HomeScreen (270px card)
+  final double cx;       // horizontal offset from avatar horizontal centre
   final double w;
   final double h;
+  final bool aboveMood;  // true → renders above the mood layer (e.g. glasses)
 
   const AvatarOverlay({
     required this.path,
@@ -16,6 +17,7 @@ class AvatarOverlay {
     this.cx = 0,
     required this.w,
     required this.h,
+    this.aboveMood = false,
   });
 }
 
@@ -36,7 +38,7 @@ class AvatarOverlays {
     'Cap':          AvatarOverlay(path: 'assets/images/Cap.png',          top: 100, cx: -4, w: 56, h: 50),
     'Beanie':       AvatarOverlay(path: 'assets/images/Pinkbeanie.png',   top: 97, cx: 0, w: 52, h: 46),
     'Witch':        AvatarOverlay(path: 'assets/images/WitchHat.png',     top: 82, cx: 0, w: 60, h: 70),
-    'Glasses':      AvatarOverlay(path: 'assets/images/Sunglasses.png',   top: 134, cx: 0, w: 60, h: 24),
+    'Glasses':      AvatarOverlay(path: 'assets/images/Sunglasses.png',   top: 134, cx: 0, w: 60, h: 24, aboveMood: true),
     'Cat Headband': AvatarOverlay(path: 'assets/images/CatHeadband.png',  top: 97, cx: 1, w: 67, h: 65),
     'Crown':        AvatarOverlay(path: 'assets/images/Crown.png',        top: 100, cx: 0, w: 52, h: 32),
   };
@@ -48,11 +50,6 @@ class AvatarState {
   final AvatarOverlay? accessory;
   const AvatarState({this.mood, this.accessory});
 
-  AvatarState copyWith({AvatarOverlay? mood, AvatarOverlay? accessory}) =>
-      AvatarState(
-        mood:      mood      ?? this.mood,
-        accessory: accessory ?? this.accessory,
-      );
 }
 
 class AvatarNotifier extends Notifier<AvatarState> {

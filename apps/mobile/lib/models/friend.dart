@@ -21,9 +21,34 @@ class Friend {
     this.interest = '',
   });
 
+  Friend copyWith({
+    String? name,
+    String? username,
+    Object? note = _sentinel,
+    String? lastMessage,
+    bool? isOnline,
+    int? unreadCount,
+    bool? isInRoom,
+    String? avatar,
+    String? interest,
+  }) =>
+      Friend(
+        name: name ?? this.name,
+        username: username ?? this.username,
+        note: note == _sentinel ? this.note : note as String?,
+        lastMessage: lastMessage ?? this.lastMessage,
+        isOnline: isOnline ?? this.isOnline,
+        unreadCount: unreadCount ?? this.unreadCount,
+        isInRoom: isInRoom ?? this.isInRoom,
+        avatar: avatar ?? this.avatar,
+        interest: interest ?? this.interest,
+      );
+
   // ชื่อที่แสดงผล: ถ้าตั้ง note ไว้ใช้ note, ไม่งั้นใช้ username
   String get displayName => (note != null && note!.isNotEmpty) ? note! : username;
 }
+
+const _sentinel = Object();
 
 class ChatMessage {
   final String text;

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../theme/app_colors.dart';
+import '../shared/pill_button.dart';
 
 Future<String?> showThoughtBubbleDialog({
   required BuildContext context,
@@ -140,7 +141,7 @@ class _ThoughtBubbleDialogState extends State<_ThoughtBubbleDialog> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    _PillButton(
+                    PillButton(
                       label: 'Cancel',
                       bgColor: Colors.grey.shade200,
                       borderColor: const Color(0xFFB7B4B4),
@@ -148,7 +149,7 @@ class _ThoughtBubbleDialogState extends State<_ThoughtBubbleDialog> {
                       onTap: _cancel,
                     ),
                     const SizedBox(width: 12),
-                    _PillButton(
+                    PillButton(
                       label: 'Save',
                       bgColor: AppColors.greenLight,
                       borderColor: const Color(0xFFC7D2B5),
@@ -184,44 +185,3 @@ class _ThoughtBubbleDialogState extends State<_ThoughtBubbleDialog> {
   }
 }
 
-class _PillButton extends StatelessWidget {
-  final String label;
-  final Color bgColor;
-  final Color borderColor;
-  final Color textColor;
-  final VoidCallback onTap;
-
-  const _PillButton({
-    required this.label,
-    required this.bgColor,
-    required this.borderColor,
-    required this.textColor,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 9),
-        constraints: const BoxConstraints(minWidth: 90),
-        decoration: BoxDecoration(
-          color: bgColor,
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: borderColor, width: 1.5),
-        ),
-        child: Center(
-          child: Text(
-            label,
-            style: TextStyle(
-              color: textColor,
-              fontWeight: FontWeight.w700,
-              fontSize: 14,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
