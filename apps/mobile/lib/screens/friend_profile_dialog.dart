@@ -111,7 +111,7 @@ class _FriendProfileDialogState extends State<_FriendProfileDialog> {
                 child: Padding(
                   padding: const EdgeInsets.all(4),
                   child: SvgPicture.asset(
-                    'assets/images/Close.svg',
+                    'assets/images/icons/Close.svg',
                     width: 30,
                     height: 30,
                     colorFilter: const ColorFilter.mode(Colors.black, BlendMode.srcIn),
@@ -177,7 +177,7 @@ class _FriendProfileDialogState extends State<_FriendProfileDialog> {
             GestureDetector(
               onTap: _startEdit,
               child: SvgPicture.asset(
-                'assets/images/Edit.svg',
+                'assets/images/icons/Edit.svg',
                 width: 22,
                 height: 22,
                 colorFilter: const ColorFilter.mode(Colors.black87, BlendMode.srcIn),

@@ -100,7 +100,7 @@ class _BlockedScreenState extends State<BlockedScreen> {
                     ),
                   ),
                   child: SvgPicture.asset(
-                    'assets/images/Back.svg',
+                    'assets/images/icons/Back.svg',
                     width: 26,
                     height: 26,
                   ),

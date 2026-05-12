@@ -36,7 +36,7 @@ class NotificationScreen extends StatefulWidget {
 class _NotificationScreenState extends State<NotificationScreen> {
   final List<_NotifItem> _items = [
     _NotifItem(
-      imagePath: 'assets/images/Friends.svg',
+      imagePath: 'assets/images/icons/Friends.svg',
       fallbackIcon: Icons.favorite_border,
       title: 'Kaitom wants to be friends',
       subtitle: '',
@@ -45,7 +45,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
       roomName: 'Koh Tapu',
     ),
     _NotifItem(
-      imagePath: 'assets/images/Friends.svg',
+      imagePath: 'assets/images/icons/Friends.svg',
       fallbackIcon: Icons.favorite_border,
       title: 'Mitsuru wants to be friends',
       subtitle: '',
@@ -55,7 +55,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
       declined: true,
     ),
     _NotifItem(
-      imagePath: 'assets/images/Setting.svg',
+      imagePath: 'assets/images/icons/Setting.svg',
       fallbackIcon: Icons.settings_outlined,
       title: 'App Update',
       subtitle: 'v.2.9 — bug fixes and improvements',
@@ -122,7 +122,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
                     ),
                   ),
                   child: SvgPicture.asset(
-                    'assets/images/Back.svg',
+                    'assets/images/icons/Back.svg',
                     width: 26,
                     height: 26,
                   ),

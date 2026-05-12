@@ -129,7 +129,7 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
     final args =
         ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
     final roomName = args?['roomName'] ?? 'Room Name';
-    final bgImage = args?['bgImage'] ?? 'assets/images/kao_tapu.png';
+    final bgImage = args?['bgImage'] ?? 'assets/images/backgrounds/kao_tapu.png';
 
     return Scaffold(
       backgroundColor: AppColors.scaffoldBg,

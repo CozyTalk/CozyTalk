@@ -206,7 +206,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
                             AppRoutes.groupChatScreen,
                             arguments: {
                               'roomName': "${friend.name}'s Room",
-                              'bgImage': 'assets/images/kao_tapu.png',
+                              'bgImage': 'assets/images/backgrounds/kao_tapu.png',
                             },
                           ),
                           child: _buildJoinButton(),
@@ -273,7 +273,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
     return PopupMenuButton<String>(
       padding: EdgeInsets.zero,
       icon: SvgPicture.asset(
-        'assets/images/ThreeDot.svg',
+        'assets/images/icons/ThreeDot.svg',
         width: 36,
         height: 36,
       ),
@@ -376,7 +376,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(color: Colors.grey.shade300, width: 1.5),
                     ),
-                    child: SvgPicture.asset('assets/images/Back.svg', width: 26, height: 26),
+                    child: SvgPicture.asset('assets/images/icons/Back.svg', width: 26, height: 26),
                   ),
                 ),
                 const SizedBox(width: 16),

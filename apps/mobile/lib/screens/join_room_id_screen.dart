@@ -31,7 +31,7 @@ class _JoinRoomIdScreenState extends State<JoinRoomIdScreen> {
     if (roomCode.length == 5) {
       Navigator.pushNamed(context, AppRoutes.groupChatScreen, arguments: {
         'roomName': 'Private Room $roomCode',
-        'bgImage': 'assets/images/kao_tapu.png',
+        'bgImage': 'assets/images/backgrounds/kao_tapu.png',
       });
     } else {
       ScaffoldMessenger.of(context).showSnackBar(

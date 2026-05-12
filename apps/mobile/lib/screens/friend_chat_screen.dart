@@ -168,7 +168,7 @@ class _FriendChatScreenState extends State<FriendChatScreen> {
                       ),
                     ),
                     child: SvgPicture.asset(
-                      'assets/images/Back.svg',
+                      'assets/images/icons/Back.svg',
                       width: 24,
                       height: 24,
                     ),
@@ -275,7 +275,7 @@ class _FriendChatScreenState extends State<FriendChatScreen> {
                       ),
                     ),
                     child: SvgPicture.asset(
-                      'assets/images/Report.svg',
+                      'assets/images/icons/Report.svg',
                       width: 22,
                       height: 22,
                       colorFilter: const ColorFilter.mode(
@@ -448,7 +448,7 @@ class _FriendChatScreenState extends State<FriendChatScreen> {
                 ],
               ),
               child: SvgPicture.asset(
-                'assets/images/sent.svg',
+                'assets/images/icons/sent.svg',
                 width: 26,
                 height: 26,
                 colorFilter: const ColorFilter.mode(Color(0xFF695959), BlendMode.srcIn),

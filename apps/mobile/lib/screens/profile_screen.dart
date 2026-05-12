@@ -122,7 +122,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                       );
                                     }
                                   },
-                                  child: SvgPicture.asset('assets/images/Edit.svg', width: 24, height: 24),
+                                  child: SvgPicture.asset('assets/images/icons/Edit.svg', width: 24, height: 24),
                                 ),
                               ),
                             ],
@@ -168,7 +168,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                           child: Row(
                             children: [
                               SvgPicture.asset(
-                                'assets/images/Discord.svg',
+                                'assets/images/icons/Discord.svg',
                                 width: 24,
                                 height: 24,
                                 colorFilter: const ColorFilter.mode(
@@ -202,7 +202,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                           ),
                           child: Row(
                             children: [
-                              SvgPicture.asset('assets/images/LogOut.svg', width: 24, height: 24),
+                              SvgPicture.asset('assets/images/icons/LogOut.svg', width: 24, height: 24),
                               const SizedBox(width: 12),
                               const Text(
                                 'Log out', 
@@ -247,7 +247,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     border: Border.all(color: Colors.grey.shade300, width: 1.5),
                     boxShadow: [BoxShadow(color: Colors.black.withValues(alpha:0.08), blurRadius: 10, offset: const Offset(0, 4))],
                   ),
-                  child: SvgPicture.asset('assets/images/Back.svg', width: 26, height: 26),
+                  child: SvgPicture.asset('assets/images/icons/Back.svg', width: 26, height: 26),
                 ),
               ),
               const SizedBox(width: 16),

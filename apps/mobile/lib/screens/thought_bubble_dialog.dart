@@ -122,7 +122,7 @@ class _ThoughtBubbleDialogState extends State<_ThoughtBubbleDialog> {
                           child: GestureDetector(
                             onTap: () => _ctrl.clear(),
                             child: SvgPicture.asset(
-                              'assets/images/Close.svg',
+                              'assets/images/icons/Close.svg',
                               width: 24,
                               height: 24,
                               colorFilter: const ColorFilter.mode(
@@ -169,7 +169,7 @@ class _ThoughtBubbleDialogState extends State<_ThoughtBubbleDialog> {
                 child: Padding(
                   padding: const EdgeInsets.all(4),
                   child: SvgPicture.asset(
-                    'assets/images/Close.svg',
+                    'assets/images/icons/Close.svg',
                     width: 30,
                     height: 30,
                     colorFilter: const ColorFilter.mode(Colors.black, BlendMode.srcIn),
