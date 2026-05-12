@@ -57,6 +57,11 @@ npm run serve        # start local emulator (port 5001)
 npm run deploy       # deploy to Firebase (lint + build run first via predeploy hooks)
 ```
 
+### Dev scripts
+Run `./setup.sh` (Linux/macOS) or `.\setup.ps1` (Windows) to install all dependencies and run code generation in one step.
+
+Run `./dev.sh` (Linux/macOS) or `.\dev.ps1` (Windows) to start emulators and Flutter together. Both accept `--web` and `--prod` flags.
+
 ### Fresh clone setup
 Edit `apps/mobile/.env.example` — set `USE_EMULATOR=true` to point at the local emulator.
 
