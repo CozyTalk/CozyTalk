@@ -32,12 +32,12 @@ class _DressUpScreenState extends ConsumerState<DressUpScreen> {
   String? _selected;
 
   static const List<_DressItem> _items = [
-    _DressItem('Cap', 'assets/images/Cap.png', 'Cap', 80, 55),
-    _DressItem('Beanie', 'assets/images/Pinkbeanie.png', 'Beanie', 85, 55),
-    _DressItem('Witch', 'assets/images/WitchHat.png', 'Witch Hat', 90, 70),
-    _DressItem('Glasses', 'assets/images/Sunglasses.png', 'Sunglasses', 55, 30),
-    _DressItem('Cat Headband', 'assets/images/CatHeadband.png', 'Cat Headband', 65, 70),
-    _DressItem('Crown', 'assets/images/Crown.png', 'Crown', 100, 35),
+    _DressItem('Cap', 'assets/images/dressup/Cap.png', 'Cap', 80, 55),
+    _DressItem('Beanie', 'assets/images/dressup/Pinkbeanie.png', 'Beanie', 85, 55),
+    _DressItem('Witch', 'assets/images/dressup/WitchHat.png', 'Witch Hat', 90, 70),
+    _DressItem('Glasses', 'assets/images/dressup/Sunglasses.png', 'Sunglasses', 55, 30),
+    _DressItem('Cat Headband', 'assets/images/dressup/CatHeadband.png', 'Cat Headband', 65, 70),
+    _DressItem('Crown', 'assets/images/dressup/Crown.png', 'Crown', 100, 35),
   ];
 
   @override
@@ -76,7 +76,7 @@ class _DressUpScreenState extends ConsumerState<DressUpScreen> {
                             children: [
                               Positioned.fill(
                                 child: Image.asset(
-                                  'assets/images/DressUpBg.png',
+                                  'assets/images/backgrounds/DressUpBg.png',
                                   fit: BoxFit.cover,
                                   errorBuilder: (_, __, ___) =>
                                       Container(color: AppColors.tanGreen),
@@ -242,7 +242,7 @@ class _DressUpScreenState extends ConsumerState<DressUpScreen> {
                     ],
                   ),
                   child: SvgPicture.asset(
-                    'assets/images/Back.svg',
+                    'assets/images/icons/Back.svg',
                     width: 26,
                     height: 26,
                   ),

@@ -245,7 +245,7 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
                       BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 10, offset: const Offset(0, 4)),
                     ],
                   ),
-                  child: SvgPicture.asset('assets/images/Back.svg', width: 26, height: 26),
+                  child: SvgPicture.asset('assets/images/icons/Back.svg', width: 26, height: 26),
                 ),
               ),
               const SizedBox(width: 16),
@@ -299,7 +299,7 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
               child: GestureDetector(
                 onTap: () => controller.clear(),
                 child: SvgPicture.asset(
-                  'assets/images/Close.svg',
+                  'assets/images/icons/Close.svg',
                   width: 24,
                   height: 24,
                   colorFilter: const ColorFilter.mode(Colors.grey, BlendMode.srcIn),

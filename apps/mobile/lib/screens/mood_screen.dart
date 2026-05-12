@@ -22,12 +22,12 @@ class _MoodScreenState extends ConsumerState<MoodScreen> {
   String? _selected;
 
   static const List<_MoodOption> _moods = [
-    _MoodOption('Happy', 'assets/images/Happy.png'),
-    _MoodOption('Thrilled', 'assets/images/Thrilled.png'),
-    _MoodOption('Sad', 'assets/images/Sad.png'),
-    _MoodOption('Lonely', 'assets/images/Lonely.png'),
-    _MoodOption('Silly', 'assets/images/Silly.png'),
-    _MoodOption('Grumpy', 'assets/images/Grumpy.png'),
+    _MoodOption('Happy', 'assets/images/moods/Happy.png'),
+    _MoodOption('Thrilled', 'assets/images/moods/Thrilled.png'),
+    _MoodOption('Sad', 'assets/images/moods/Sad.png'),
+    _MoodOption('Lonely', 'assets/images/moods/Lonely.png'),
+    _MoodOption('Silly', 'assets/images/moods/Silly.png'),
+    _MoodOption('Grumpy', 'assets/images/moods/Grumpy.png'),
   ];
 
   @override
@@ -66,7 +66,7 @@ class _MoodScreenState extends ConsumerState<MoodScreen> {
                             children: [
                               Positioned.fill(
                                 child: Image.asset(
-                                  'assets/images/MoodBg.png',
+                                  'assets/images/backgrounds/MoodBg.png',
                                   fit: BoxFit.cover,
                                   errorBuilder: (_, __, ___) =>
                                       Container(color: AppColors.tanGreen),
@@ -230,7 +230,7 @@ class _MoodScreenState extends ConsumerState<MoodScreen> {
                     ],
                   ),
                   child: SvgPicture.asset(
-                    'assets/images/Back.svg',
+                    'assets/images/icons/Back.svg',
                     width: 26,
                     height: 26,
                   ),
