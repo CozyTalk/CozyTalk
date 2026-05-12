@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 import '../models/friend.dart';
+import '../shared/pill_button.dart';
 
 void showRemoveConfirmDialog({
   required BuildContext context,
@@ -62,17 +63,23 @@ class _RemoveConfirmDialog extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                _PillButton(
+                PillButton(
                   label: 'Cancel',
                   bgColor: Colors.grey.shade200,
+                  borderColor: const Color(0xFFB7B4B4),
                   textColor: Colors.black87,
+                  padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 12),
+                  constraints: null,
                   onTap: () => Navigator.pop(context),
                 ),
                 const SizedBox(width: 12),
-                _PillButton(
+                PillButton(
                   label: 'Remove',
                   bgColor: AppColors.redOrange,
+                  borderColor: const Color(0xFFA33615),
                   textColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 12),
+                  constraints: null,
                   onTap: () {
                     Navigator.pop(context);
                     onConfirm();
@@ -87,44 +94,3 @@ class _RemoveConfirmDialog extends StatelessWidget {
   }
 }
 
-class _PillButton extends StatelessWidget {
-  final String label;
-  final Color bgColor;
-  final Color textColor;
-  final VoidCallback onTap;
-
-  const _PillButton({
-    required this.label,
-    required this.bgColor,
-    required this.textColor,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 12),
-        decoration: BoxDecoration(
-          color: bgColor,
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(
-            color: label == 'Remove'
-                ? const Color(0xFFA33615)
-                : const Color(0xFFB7B4B4),
-            width: 1.5,
-          ),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: textColor,
-            fontWeight: FontWeight.w700,
-            fontSize: 14,
-          ),
-        ),
-      ),
-    );
-  }
-}
