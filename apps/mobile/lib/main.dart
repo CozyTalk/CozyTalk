@@ -27,6 +27,7 @@ import 'screens/select_background_screen.dart';
 import 'screens/join_room_id_screen.dart';
 import 'screens/chat_screen.dart';
 import 'screens/group_chat_screen.dart';
+import 'screens/admin_console_screen.dart';
 
 const _useEmulator = bool.fromEnvironment('USE_EMULATOR', defaultValue: true);
 
@@ -59,7 +60,7 @@ class MyApp extends StatelessWidget {
         title: 'CozyTalk',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.theme,
-        initialRoute: AppRoutes.home,
+        initialRoute: AppRoutes.home, // TODO: revert to AppRoutes.home
         routes: {
           AppRoutes.home:             (_) => const HomeScreen(),
           AppRoutes.notification:     (_) => const NotificationScreen(),
