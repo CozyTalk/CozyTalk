@@ -1,5 +1,11 @@
 # CozyTalk — Claude Code Project Guide
 
+## Pull Requests
+
+Always use the template at `.github/pull_request_template.md` when creating PRs in this repo. Read the file first, then fill every section — do not skip or delete sections, use `N/A` where not applicable. Pass the body via heredoc to `gh pr create` to preserve formatting.
+
+---
+
 ## What is this project?
 
 CozyTalk is a **cross-platform stranger chat app** (anonymous 1-on-1 matching, like Omegle) targeting **Android and Web**. Users join a waiting pool, a Cloud Function matches two of them, and they chat via Firebase Realtime Database. The core purpose is to provide a low-pressure, authentic interaction space to combat social media performance fatigue.

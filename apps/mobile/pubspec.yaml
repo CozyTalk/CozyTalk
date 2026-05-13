@@ -53,43 +53,43 @@ flutter:
   uses-material-design: true
 
   assets:
-    - assets/images/HomeBg.png
+    - assets/images/Logo.png
     - assets/images/ThinkBubble.png
     - assets/images/UserAvatar.png
-    - assets/images/Logo.png
-    - assets/images/Setting.svg
-    - assets/images/Back.svg
-    - assets/images/ThreeDot.svg
-    - assets/images/LogOut.svg
-    - assets/images/Edit.svg
-    - assets/images/Discord.svg
-    - assets/images/Report.svg
-    - assets/images/sent.svg
-    - assets/images/User.svg
-    - assets/images/Notification.svg
-    - assets/images/Mood.svg
-    - assets/images/LetsChat.svg
-    - assets/images/Friends.svg
-    - assets/images/DressUp.svg
-    - assets/images/DressUpBg.png
-    - assets/images/MoodBg.png
-    - assets/images/Happy.png
-    - assets/images/Sad.png
-    - assets/images/Thrilled.png
-    - assets/images/Silly.png
-    - assets/images/Lonely.png
-    - assets/images/Grumpy.png
-    - assets/images/Cap.png
-    - assets/images/CatHeadband.png
-    - assets/images/Crown.png
-    - assets/images/Pinkbeanie.png
-    - assets/images/Sunglasses.png
-    - assets/images/WitchHat.png
     - assets/images/1on1_doodle.png
     - assets/images/create_group_doodle.png
     - assets/images/group_doodle.png
-    - assets/images/kao_tapu.png
-    - assets/images/lumphini_park.png
-    - assets/images/red_lotus_lake.png
-    - assets/images/sea_of_cloud.png
-    - assets/images/Close.svg
+    - assets/images/backgrounds/HomeBg.png
+    - assets/images/backgrounds/DressUpBg.png
+    - assets/images/backgrounds/MoodBg.png
+    - assets/images/backgrounds/kao_tapu.png
+    - assets/images/backgrounds/lumphini_park.png
+    - assets/images/backgrounds/red_lotus_lake.png
+    - assets/images/backgrounds/sea_of_cloud.png
+    - assets/images/icons/Setting.svg
+    - assets/images/icons/Back.svg
+    - assets/images/icons/ThreeDot.svg
+    - assets/images/icons/LogOut.svg
+    - assets/images/icons/Edit.svg
+    - assets/images/icons/Discord.svg
+    - assets/images/icons/Report.svg
+    - assets/images/icons/sent.svg
+    - assets/images/icons/User.svg
+    - assets/images/icons/Notification.svg
+    - assets/images/icons/Mood.svg
+    - assets/images/icons/LetsChat.svg
+    - assets/images/icons/Friends.svg
+    - assets/images/icons/DressUp.svg
+    - assets/images/icons/Close.svg
+    - assets/images/moods/Happy.png
+    - assets/images/moods/Sad.png
+    - assets/images/moods/Thrilled.png
+    - assets/images/moods/Silly.png
+    - assets/images/moods/Lonely.png
+    - assets/images/moods/Grumpy.png
+    - assets/images/dressup/Cap.png
+    - assets/images/dressup/CatHeadband.png
+    - assets/images/dressup/Crown.png
+    - assets/images/dressup/Pinkbeanie.png
+    - assets/images/dressup/Sunglasses.png
+    - assets/images/dressup/WitchHat.png
