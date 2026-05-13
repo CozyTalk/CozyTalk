@@ -69,6 +69,13 @@ export const endSession = onCall({invoker: "public"}, async (request) => {
   return {success: true};
 });
 
+/**
+ * Recursively deletes all messages in a chat room in batches.
+ * @param {admin.firestore.Firestore} db - Firestore instance.
+ * @param {string} sessionId - The room whose messages to delete.
+ * @param {number} batchSize - Documents to delete per batch.
+ * @return {Promise<void>}
+ */
 async function _deleteMessages(
   db: admin.firestore.Firestore,
   sessionId: string,
