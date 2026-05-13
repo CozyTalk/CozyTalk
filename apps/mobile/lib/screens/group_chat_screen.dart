@@ -358,8 +358,9 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
               itemCount: messages.length,
               itemBuilder: (context, index) {
                 final msg = messages[index];
-                if (msg.type == _MsgType.warning)
+                if (msg.type == _MsgType.warning) {
                   return _buildWarning(msg.text);
+                }
                 if (msg.type == _MsgType.system) return _buildSystem(msg.text);
                 if (msg.type == _MsgType.card) return _buildCard(msg.text);
                 return _buildChatBubble(msg);
