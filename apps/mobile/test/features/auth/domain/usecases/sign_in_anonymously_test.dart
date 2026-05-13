@@ -1,44 +1,14 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mobile/features/auth/domain/entities/auth_user.dart';
-import 'package:mobile/features/auth/domain/repositories/auth_repository.dart';
 import 'package:mobile/features/auth/domain/usecases/sign_in_anonymously.dart';
-
-class _FakeAuthRepository implements AuthRepository {
-  int callCount = 0;
-  AuthUser? returnUser;
-  Exception? error;
-
-  @override
-  Future<AuthUser> signInAnonymously() async {
-    callCount++;
-    if (error != null) throw error!;
-    return returnUser!;
-  }
-
-  @override
-  Future<AuthUser> signIn({required String email, required String password}) async =>
-      throw UnimplementedError();
-
-  @override
-  Future<AuthUser> signUp({required String email, required String password}) async =>
-      throw UnimplementedError();
-
-  @override
-  Future<AuthUser> signInWithGoogle() async => throw UnimplementedError();
-
-  @override
-  Future<void> signOut() async => throw UnimplementedError();
-
-  @override
-  Stream<AuthUser?> watchAuthState() => throw UnimplementedError();
-}
+import '../shared_fakes.dart';
 
 void main() {
-  late _FakeAuthRepository repo;
+  late FakeAuthRepository repo;
   late SignInAnonymously usecase;
 
   setUp(() {
-    repo = _FakeAuthRepository();
+    repo = FakeAuthRepository();
     usecase = SignInAnonymously(repo);
   });
 
@@ -46,7 +16,7 @@ void main() {
     test('delegates to repository', () async {
       repo.returnUser = const AuthUser(uid: 'anon-1');
       await usecase();
-      expect(repo.callCount, 1);
+      expect(repo.signInAnonymouslyCount, 1);
     });
 
     test('returns the AuthUser', () async {

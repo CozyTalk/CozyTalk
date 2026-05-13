@@ -132,6 +132,14 @@ void main() {
         await repository.signInWithGoogle();
         expect(datasource.signInWithGoogleCount, 1);
       });
+
+      test('converts model to entity', () async {
+        datasource.returnUser = _model;
+        final user = await repository.signInWithGoogle();
+        expect(user.uid, 'uid-1');
+        expect(user.email, 'a@b.com');
+        expect(user.displayName, 'Alice');
+      });
     });
 
     group('signOut', () {
@@ -145,16 +153,16 @@ void main() {
       test('maps AuthUserModel to AuthUser', () async {
         datasource.watchStateFactory =
             () => Stream.value(const AuthUserModel(uid: 'stream-uid', email: 'x@y.com'));
-        repository = AuthRepositoryImpl(datasource);
-        final user = await repository.watchAuthState().first;
+        final repo = AuthRepositoryImpl(datasource);
+        final user = await repo.watchAuthState().first;
         expect(user?.uid, 'stream-uid');
         expect(user?.email, 'x@y.com');
       });
 
       test('maps null to null', () async {
         datasource.watchStateFactory = () => Stream.value(null);
-        repository = AuthRepositoryImpl(datasource);
-        final user = await repository.watchAuthState().first;
+        final repo = AuthRepositoryImpl(datasource);
+        final user = await repo.watchAuthState().first;
         expect(user, isNull);
       });
     });
