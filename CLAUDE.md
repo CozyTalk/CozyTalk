@@ -214,6 +214,22 @@ See `PROJECT_CONTEXT.md` for full schema and security rules.
 
 ---
 
+## Code Style
+
+All rules below are enforced by CI. Do not write code that needs a `// ignore:` suppression to pass.
+
+**Dart** — style owned by `dart format`, rules by `flutter_lints`:
+- Always use `{}` on `if`/`for`/`while` bodies (`curly_braces_in_flow_control_structures`)
+- Single quotes for strings; trailing commas on multi-line arg lists
+- No `print()` — use structured logging (`avoid_print` is active)
+
+**TypeScript** — style owned by Prettier (`functions/.prettierrc`), logic by ESLint:
+- Double quotes, 2-space indent, trailing commas everywhere, semicolons required, no bracket spacing (`{foo: bar}`)
+- Every `function` declaration (including `_`-prefixed helpers) needs a JSDoc block with `@param` + `@return`; `const` arrow functions are exempt
+- No implicit `any`; explicit types required
+
+---
+
 ## The Do-Not-Do List
 
 | ❌ Do NOT | Reason |

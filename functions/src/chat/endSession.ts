@@ -22,7 +22,9 @@ export const endSession = onCall({invoker: "public"}, async (request) => {
   const rtdb = admin.database();
 
   const sessionDoc = await db
-    .collection("active_sessions").doc(sessionId).get();
+    .collection("active_sessions")
+    .doc(sessionId)
+    .get();
   if (!sessionDoc.exists) {
     throw new HttpsError("not-found", "Session not found.");
   }
@@ -39,16 +41,19 @@ export const endSession = onCall({invoker: "public"}, async (request) => {
   // flagged messages within the retention window.
   const encryptionKey = sessionData.encryptionKey as string | undefined;
   if (encryptionKey) {
-    await db.collection("session_keys").doc(sessionId).set({
-      sessionId,
-      encryptionKey,
-      users: sessionData.users,
-      createdAt: sessionData.createdAt ?? null,
-      expiresAt: admin.firestore.Timestamp.fromMillis(
-        Date.now() + RETENTION_MS
-      ),
-      flagged: false,
-    });
+    await db
+      .collection("session_keys")
+      .doc(sessionId)
+      .set({
+        sessionId,
+        encryptionKey,
+        users: sessionData.users,
+        createdAt: sessionData.createdAt ?? null,
+        expiresAt: admin.firestore.Timestamp.fromMillis(
+          Date.now() + RETENTION_MS,
+        ),
+        flagged: false,
+      });
   }
 
   // Remove real-time presence data — clients lose live visibility immediately.

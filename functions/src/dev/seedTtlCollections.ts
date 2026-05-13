@@ -24,7 +24,7 @@ export const seedTtlCollections = onRequest(async (_req, res) => {
   // 7-day window — long enough to configure the TTL policy before
   // Firestore auto-deletes these placeholder documents.
   const expiresAt = admin.firestore.Timestamp.fromMillis(
-    Date.now() + 7 * 24 * 60 * 60 * 1000
+    Date.now() + 7 * 24 * 60 * 60 * 1000,
   );
 
   const chatRoomRef = db
@@ -33,9 +33,7 @@ export const seedTtlCollections = onRequest(async (_req, res) => {
     .collection("messages")
     .doc("_placeholder_");
 
-  const sessionKeyRef = db
-    .collection("session_keys")
-    .doc("_ttl_setup_");
+  const sessionKeyRef = db.collection("session_keys").doc("_ttl_setup_");
 
   await Promise.all([
     chatRoomRef.set({
@@ -65,10 +63,14 @@ export const seedTtlCollections = onRequest(async (_req, res) => {
 
   logger.info("TTL seed documents written", {paths});
 
-  const msg = "Placeholder documents written. Configure TTL policy " +
+  const msg =
+    "Placeholder documents written. Configure TTL policy " +
     "in the Firebase console, then remove this function.";
 
   res.json({
-    success: true, message: msg, documents: paths, ttlField: "expiresAt",
+    success: true,
+    message: msg,
+    documents: paths,
+    ttlField: "expiresAt",
   });
 });
