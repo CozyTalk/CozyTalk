@@ -253,10 +253,55 @@ This codebase is developed by specialized agents orchestrated by a lead:
 
 ## Testing
 
-- Widget tests: `apps/mobile/test/`
-- Use `_FakeXxxNotifier extends XxxNotifier` + `overrideWith(() => fake)`
-- No real Firebase in tests
-- Run: `cd apps/mobile && flutter test`
+Run: `cd apps/mobile && flutter test`
+
+Test files mirror source structure under `test/features/<feature>/domain/`, `data/`, `presentation/`.
+
+**When adding a feature, write all of these:**
+
+| Layer | What to test |
+|---|---|
+| `domain/entities/` | Construction, optional fields default to null |
+| `domain/usecases/` | Args forwarded correctly, result returned, exception propagates |
+| `data/models/` | `fromJson` with all fields, with nulls, with extra unknown keys; `toEntity()` maps correctly |
+| `data/repositories/` | Call counts, arg forwarding, model→entity conversion, exception propagation; stream repos use `Stream.value(...)` |
+| `presentation/providers/` | `State.copyWith` preserves fields, sets nullables, **clears nullables with explicit `null`** (sentinel guard) |
+| `presentation/screens/` | Renders key widgets, validation errors, valid submit calls notifier, error/loading states |
+
+**Fake patterns:**
+
+```dart
+// Use case test — inline and file-private when the interface is only used in one file
+class _FakeMyRepository implements MyRepository {
+  String? lastArg; MyEntity? returnValue; Exception? error;
+  @override Future<MyEntity> doThing(String arg) async {
+    lastArg = arg; if (error != null) throw error!; return returnValue!;
+  }
+  @override Future<void> other() => throw UnimplementedError();
+}
+
+// When the same interface is tested across 3+ files, extract to shared_fakes.dart
+// in the same domain/ directory (public name, no underscore).
+// See: test/features/auth/domain/shared_fakes.dart (FakeAuthRepository)
+//      test/features/chat/domain/shared_fakes.dart  (FakeChatRepository)
+
+// Screen widget test — extend Notifier, override build() to avoid Firebase
+class _FakeMyNotifier extends MyNotifier {
+  final MyState _initial; int callCount = 0;
+  _FakeMyNotifier({MyState initial = const MyState()}) : _initial = initial;
+  @override MyState build() => _initial;  // never call super.build()
+  @override Future<void> doThing() async => callCount++;
+}
+// Wrap: ProviderScope(overrides: [myProvider.overrideWith(() => fake)], child: ...)
+```
+
+**Hard rules:**
+- No Firebase SDK in any test file
+- No mockito — hand-written fakes only
+- `_FakeXxxNotifier` must override `build()` — default `build()` touches Firebase and throws
+- Domain tests: no `flutter` or Firebase imports
+- Fresh fake in each `setUp` — never share mutable fakes across tests
+- Enum tests: one `containsAll` + length assertion, not one test per value
 
 ---
 
