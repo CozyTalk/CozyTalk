@@ -15,7 +15,7 @@ Reference files:
 - Implement new features following the clean arch pattern (copy `hello` as template)
 - Ensure UI works on both Android and Web (`flutter run -d chrome` to verify)
 - Write widget tests using `_FakeXxxNotifier` with invocation tracking
-- Run `dart run build_runner build --delete-conflicting-outputs` after any model/provider change
+- Run `dart run build_runner build` after any model/provider change
 - Follow all conventions and Do-Not-Do rules in `CLAUDE.md`
 
 ## Hard Rules
