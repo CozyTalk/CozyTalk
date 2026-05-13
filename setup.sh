@@ -92,7 +92,7 @@ ok "Flutter packages ready"
 # ── Code generation ───────────────────────────────────────────────────────────
 step "Code generation  ${DIM}(Freezed + Riverpod)${RESET}"
 info "build_runner build  →  apps/mobile"
-(cd apps/mobile && dart run build_runner build --delete-conflicting-outputs)
+(cd apps/mobile && dart run build_runner build)
 ok "Generated code up to date"
 
 # ── Cloud Functions ───────────────────────────────────────────────────────────

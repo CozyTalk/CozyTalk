@@ -44,7 +44,7 @@ tools/            ← CLI tools (reserved, empty)
 cd apps/mobile
 
 flutter pub get                                              # install deps
-dart run build_runner build --delete-conflicting-outputs    # regenerate Freezed + Riverpod code
+dart run build_runner build    # regenerate Freezed + Riverpod code
 flutter run                                                  # run on Android
 flutter run -d chrome                                        # run on Web
 flutter test                                                 # run tests
@@ -98,7 +98,7 @@ features/<feature>/
 
 1. Copy the `hello` feature folder as a template.
 2. Rename every class/file: `Hello` → `YourFeature`.
-3. Run `dart run build_runner build --delete-conflicting-outputs`.
+3. Run `dart run build_runner build`.
 4. Never put Firebase SDK calls outside `datasources/`.
 5. Never put business logic inside a `Screen` or `Notifier` — that belongs in a UseCase.
 

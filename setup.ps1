@@ -92,7 +92,7 @@ ok "Flutter packages ready"
 step "Code generation (Freezed + Riverpod)"
 info "build_runner build  ->  apps/mobile"
 Push-Location $mobileDir
-& dart run build_runner build --delete-conflicting-outputs
+& dart run build_runner build
 $code = $LASTEXITCODE
 Pop-Location
 if ($code -ne 0) { fail "build_runner failed" }
