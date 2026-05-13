@@ -75,6 +75,11 @@ info "npm install  →  functions/"
 (cd functions && npm install --silent)
 ok "Node packages ready"
 
+# ── Git hooks ─────────────────────────────────────────────────────────────────
+step "Git hooks"
+git config core.hooksPath .githooks
+ok "pre-push hook active  ${DIM}(runs flutter test before every push)${RESET}"
+
 # ── Done ──────────────────────────────────────────────────────────────────────
 printf "\n$HR\n\n"
 printf "  ${GREEN}${BOLD}Setup complete.${RESET}\n\n"

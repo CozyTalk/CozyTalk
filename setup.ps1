@@ -75,6 +75,11 @@ Pop-Location
 if ($code -ne 0) { fail "npm install failed" }
 ok "Node packages ready"
 
+# ── Git hooks ─────────────────────────────────────────────────────────────────
+step "Git hooks"
+& git config core.hooksPath .githooks
+ok "pre-push hook active (runs flutter test before every push)"
+
 # ── Done ──────────────────────────────────────────────────────────────────────
 Write-Host ""
 hr
