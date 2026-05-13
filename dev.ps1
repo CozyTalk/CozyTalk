@@ -6,12 +6,12 @@ function fail($msg) { Write-Host "  [x]  $msg" -ForegroundColor Red; exit 1 }
 function log($msg)  { Write-Host "  >>  $msg" -ForegroundColor Cyan }
 function info($msg) { Write-Host "       $msg" -ForegroundColor DarkGray }
 function warn($msg) { Write-Host "  [!]  $msg" -ForegroundColor Yellow }
-function hr()       { Write-Host "  $('─' * 57)" -ForegroundColor DarkGray }
+function hr()       { Write-Host ("  " + ("-" * 57)) -ForegroundColor DarkGray }
 
 $ROOT_DIR = Split-Path -Parent $MyInvocation.MyCommand.Definition
 Set-Location $ROOT_DIR
 
-# ── Args ───────────────────────────────────────────────────────────────────────
+# -- Args ----------------------------------------------------------------------
 $USE_PROD = $false
 $USE_WEB  = $false
 
@@ -34,13 +34,13 @@ foreach ($arg in $args) {
     }
 }
 
-# ── Header ─────────────────────────────────────────────────────────────────────
+# -- Header --------------------------------------------------------------------
 Write-Host ""
-Write-Host "  CozyTalk  ·  dev runner" -ForegroundColor Magenta
+Write-Host "  CozyTalk  -  dev runner" -ForegroundColor Magenta
 hr
 Write-Host ""
 
-$PLATFORM = if ($USE_WEB)  { "Chrome" }            else { "auto-detect" }
+$PLATFORM = if ($USE_WEB)  { "Chrome" }             else { "auto-detect" }
 $BACKEND  = if ($USE_PROD) { "Production Firebase" } else { "Local emulators" }
 
 Write-Host "  Platform  $PLATFORM"
@@ -48,11 +48,11 @@ Write-Host "  Backend   $BACKEND"
 Write-Host ""
 
 if ($USE_PROD) {
-    warn "You are connecting to live Firebase — real data, real users."
+    warn "You are connecting to live Firebase -- real data, real users."
     Write-Host ""
 }
 
-# ── Helpers ────────────────────────────────────────────────────────────────────
+# -- Helpers -------------------------------------------------------------------
 function Stop-ProcessOnPort([int]$Port) {
     Get-NetTCPConnection -LocalPort $Port -ErrorAction SilentlyContinue |
         Select-Object -ExpandProperty OwningProcess -Unique |
@@ -66,7 +66,7 @@ function Test-Port([int]$Port) {
     finally { $tcp.Dispose() }
 }
 
-# ── Emulator state ─────────────────────────────────────────────────────────────
+# -- Emulator state ------------------------------------------------------------
 $EmulatorProcess = $null
 $EmulatorOut     = $null
 $EmulatorErr     = $null
@@ -97,7 +97,7 @@ function Show-EmulatorTail {
     $lines | Select-Object -Last 20 | ForEach-Object { Write-Host "    $_" }
 }
 
-# ── Build Flutter args ─────────────────────────────────────────────────────────
+# -- Build Flutter args --------------------------------------------------------
 $FLUTTER_ARGS = @()
 if ($USE_WEB)  { $FLUTTER_ARGS += '-d', 'chrome' }
 if ($USE_PROD) { $FLUTTER_ARGS += '--dart-define=USE_EMULATOR=false' }
@@ -105,9 +105,8 @@ if ($USE_PROD) { $FLUTTER_ARGS += '--dart-define=USE_EMULATOR=false' }
 $mobileDir = Join-Path (Join-Path $ROOT_DIR 'apps') 'mobile'
 
 try {
-    # ── Emulator startup ───────────────────────────────────────────────────────
+    # -- Emulator startup ------------------------------------------------------
     if (-not $USE_PROD) {
-        # Kill any stale processes left over from a previous run.
         foreach ($port in @(9099, 8080, 9000, 5001, 4000, 4400, 4500)) {
             Stop-ProcessOnPort $port
         }
@@ -121,7 +120,6 @@ try {
         info "Logs -> $EmulatorOut"
         Write-Host ""
 
-        # cmd.exe /c ensures npm.cmd resolves correctly on Windows.
         $EmulatorProcess = Start-Process -FilePath 'cmd.exe' `
             -ArgumentList '/c', 'npm run serve' `
             -WorkingDirectory $functionsDir `
@@ -168,7 +166,7 @@ try {
         hr
     }
 
-    # ── Flutter ────────────────────────────────────────────────────────────────
+    # -- Flutter ---------------------------------------------------------------
     Write-Host ""
     $webSuffix = if ($USE_WEB) { " on Chrome" } else { "" }
     log "Starting Flutter$webSuffix..."
