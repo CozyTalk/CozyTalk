@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
+import '../shared/pill_button.dart';
 
 // ─── Confirm Block ────────────────────────────────────────────────
 
@@ -112,19 +113,23 @@ class _ConfirmDialog extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                _PillButton(
+                PillButton(
                   label: 'Cancel',
                   bgColor: Colors.grey.shade200,
                   borderColor: const Color(0xFFB7B4B4),
                   textColor: Colors.black87,
+                  padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 12),
+                  constraints: null,
                   onTap: () => Navigator.pop(context),
                 ),
                 const SizedBox(width: 12),
-                _PillButton(
+                PillButton(
                   label: confirmLabel,
                   bgColor: confirmBgColor,
                   borderColor: confirmBorderColor,
                   textColor: confirmTextColor,
+                  padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 12),
+                  constraints: null,
                   onTap: () {
                     Navigator.pop(context);
                     onConfirm();
@@ -139,43 +144,3 @@ class _ConfirmDialog extends StatelessWidget {
   }
 }
 
-// ─── Pill button ──────────────────────────────────────────────────
-
-class _PillButton extends StatelessWidget {
-  final String label;
-  final Color bgColor;
-  final Color borderColor;
-  final Color textColor;
-  final VoidCallback onTap;
-
-  const _PillButton({
-    required this.label,
-    required this.bgColor,
-    required this.borderColor,
-    required this.textColor,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 12),
-        decoration: BoxDecoration(
-          color: bgColor,
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: borderColor, width: 1.5),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: textColor,
-            fontWeight: FontWeight.w700,
-            fontSize: 14,
-          ),
-        ),
-      ),
-    );
-  }
-}

@@ -20,8 +20,14 @@ You also need to be invited to the `cozytalk-5d984` Firebase project before runn
 
 **1. Install everything**
 
+Linux / macOS:
 ```bash
 ./setup.sh
+```
+
+Windows (PowerShell):
+```powershell
+.\setup.ps1
 ```
 
 Installs Flutter packages, runs code generation (Freezed + Riverpod), and installs Cloud Functions dependencies.
@@ -34,6 +40,7 @@ firebase login
 
 **3. Start developing**
 
+Linux / macOS:
 ```bash
 ./dev.sh              # emulators + Flutter on Android
 ./dev.sh --web        # emulators + Flutter on Chrome
@@ -41,7 +48,15 @@ firebase login
 ./dev.sh --prod --web # Flutter → live Firebase (Chrome)
 ```
 
-`dev.sh` starts the Firebase emulators in the background, waits until they're ready, then launches Flutter. `Ctrl+C` shuts everything down cleanly.
+Windows (PowerShell):
+```powershell
+.\dev.ps1              # emulators + Flutter on Android
+.\dev.ps1 --web        # emulators + Flutter on Chrome
+.\dev.ps1 --prod       # Flutter → live Firebase (Android)
+.\dev.ps1 --prod --web # Flutter → live Firebase (Chrome)
+```
+
+The dev script starts the Firebase emulators in the background, waits until they're ready, then launches Flutter. `Ctrl+C` shuts everything down cleanly.
 
 ---
 
@@ -80,7 +95,7 @@ const _useMainUI = false;
 const _useMainUI = true;
 ```
 
-Hot reload won't pick this up since it's a compile-time constant — you need a full restart (`R` in the terminal, or stop and re-run `./dev.sh`).
+Hot reload won't pick this up since it's a compile-time constant — you need a full restart (`R` in the terminal, or stop and re-run `./dev.sh` / `.\dev.ps1`).
 
 ---
 

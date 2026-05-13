@@ -3,7 +3,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import '../theme/app_colors.dart';
 import '../models/friend.dart';
 import '../shared/layered_avatar.dart';
-export 'remove_friend_dialog.dart' show showRemoveConfirmDialog;
+import '../shared/pill_button.dart';
 
 // ─── Public helpers called from FriendsScreen ───────────────────────────────
 
@@ -260,16 +260,18 @@ class _FriendProfileDialogState extends State<_FriendProfileDialog> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        _PillButton(
+        PillButton(
           label: 'Cancel',
           bgColor: Colors.grey.shade200,
+          borderColor: const Color(0xFFB7B4B4),
           textColor: Colors.black87,
           onTap: _cancel,
         ),
         const SizedBox(width: 12),
-        _PillButton(
+        PillButton(
           label: 'save',
           bgColor: AppColors.greenLight,
+          borderColor: const Color(0xFFC7D2B5),
           textColor: Colors.black87,
           onTap: _save,
         ),
@@ -278,49 +280,3 @@ class _FriendProfileDialogState extends State<_FriendProfileDialog> {
   }
 }
 
-// ─── Shared pill button ───────────────────────────────────────────────────────
-
-class _PillButton extends StatelessWidget {
-  final String label;
-  final Color bgColor;
-  final Color textColor;
-  final VoidCallback onTap;
-
-  const _PillButton({
-    required this.label,
-    required this.bgColor,
-    required this.textColor,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 9),
-        constraints: const BoxConstraints(minWidth: 90),
-        decoration: BoxDecoration(
-          color: bgColor,
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(
-            color: label == 'save'
-                ? const Color(0xFFC7D2B5)
-                : const Color(0xFFB7B4B4),
-            width: 1.5,
-          ),
-        ),
-        child: Center(
-          child: Text(
-            label,
-            style: TextStyle(
-              color: textColor,
-              fontWeight: FontWeight.w700,
-              fontSize: 14,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}

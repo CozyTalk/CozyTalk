@@ -5,6 +5,7 @@ import '../theme/app_routes.dart';
 import '../models/friend.dart';
 import '../shared/layered_avatar.dart';
 import 'friend_profile_dialog.dart';
+import 'remove_friend_dialog.dart';
 import 'block_dialogs.dart';
 
 // Mock friend list — swap with API response when backend is ready
