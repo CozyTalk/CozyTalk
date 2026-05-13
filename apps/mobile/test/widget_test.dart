@@ -19,23 +19,28 @@ class _FakeHelloNotifier extends HelloNotifier {
 void main() {
   testWidgets('HelloScreen renders input and send button', (tester) async {
     final fake = _FakeHelloNotifier();
-    await tester.pumpWidget(ProviderScope(
-      overrides: [helloNotifierProvider.overrideWith(() => fake)],
-      child: const MaterialApp(home: HelloScreen()),
-    ));
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [helloNotifierProvider.overrideWith(() => fake)],
+        child: const MaterialApp(home: HelloScreen()),
+      ),
+    );
 
     expect(find.byType(TextField), findsOneWidget);
     expect(find.text('Send to server'), findsOneWidget);
     expect(find.byType(CircularProgressIndicator), findsNothing);
   });
 
-  testWidgets('HelloScreen does not call callHello when input is empty',
-      (tester) async {
+  testWidgets('HelloScreen does not call callHello when input is empty', (
+    tester,
+  ) async {
     final fake = _FakeHelloNotifier();
-    await tester.pumpWidget(ProviderScope(
-      overrides: [helloNotifierProvider.overrideWith(() => fake)],
-      child: const MaterialApp(home: HelloScreen()),
-    ));
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [helloNotifierProvider.overrideWith(() => fake)],
+        child: const MaterialApp(home: HelloScreen()),
+      ),
+    );
 
     await tester.tap(find.text('Send to server'));
     await tester.pump();
@@ -43,13 +48,16 @@ void main() {
     expect(fake.callCount, 0);
   });
 
-  testWidgets('HelloScreen calls callHello when input is non-empty',
-      (tester) async {
+  testWidgets('HelloScreen calls callHello when input is non-empty', (
+    tester,
+  ) async {
     final fake = _FakeHelloNotifier();
-    await tester.pumpWidget(ProviderScope(
-      overrides: [helloNotifierProvider.overrideWith(() => fake)],
-      child: const MaterialApp(home: HelloScreen()),
-    ));
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [helloNotifierProvider.overrideWith(() => fake)],
+        child: const MaterialApp(home: HelloScreen()),
+      ),
+    );
 
     await tester.enterText(find.byType(TextField), 'hello');
     await tester.tap(find.text('Send to server'));

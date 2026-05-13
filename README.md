@@ -8,8 +8,8 @@ Anonymous 1-on-1 stranger chat — Flutter (Android + Web) + Firebase.
 
 | Tool | Version | Install |
 |---|---|---|
-| Flutter SDK | 3.x+ | [flutter.dev](https://docs.flutter.dev/get-started/install) |
-| Node.js | 20+ | [nodejs.org](https://nodejs.org) |
+| Flutter SDK | 3.41+ | [flutter.dev](https://docs.flutter.dev/get-started/install) |
+| Node.js | 24+ | [nodejs.org](https://nodejs.org) |
 | firebase-tools | latest | `npm i -g firebase-tools` |
 
 You also need to be invited to the `cozytalk-5d984` Firebase project before running against production.
@@ -108,7 +108,7 @@ If you prefer to run things yourself:
 cd apps/mobile
 
 flutter pub get
-dart run build_runner build --delete-conflicting-outputs  # after editing @freezed / @riverpod
+dart run build_runner build                                # after editing @freezed / @riverpod
 flutter run                                                # Android
 flutter run -d chrome                                      # Web
 flutter run --dart-define=USE_EMULATOR=false               # against production

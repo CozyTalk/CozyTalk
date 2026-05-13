@@ -20,8 +20,11 @@ void main() {
     });
 
     test('returns the AuthUser', () async {
-      repo.returnUser =
-          const AuthUser(uid: 'g-uid', email: 'user@gmail.com', displayName: 'Bob');
+      repo.returnUser = const AuthUser(
+        uid: 'g-uid',
+        email: 'user@gmail.com',
+        displayName: 'Bob',
+      );
       final result = await usecase();
       expect(result.uid, 'g-uid');
       expect(result.displayName, 'Bob');

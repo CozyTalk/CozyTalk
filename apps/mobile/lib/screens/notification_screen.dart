@@ -10,7 +10,7 @@ class _NotifItem {
   final String time;
   final bool isFriendRequest;
   final String? roomName;
-  bool accepted;
+  bool accepted = false;
   bool declined;
 
   _NotifItem({
@@ -21,7 +21,6 @@ class _NotifItem {
     required this.time,
     this.isFriendRequest = false,
     this.roomName,
-    this.accepted = false,
     this.declined = false,
   });
 }
@@ -66,7 +65,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.scaffoldBg, 
+      backgroundColor: AppColors.scaffoldBg,
       body: Column(
         children: [
           _buildCustomAppBar(),
@@ -88,9 +87,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
     return Container(
       decoration: const BoxDecoration(
         color: AppColors.brownDeep,
-        borderRadius: BorderRadius.vertical(
-          top: Radius.circular(35),
-        ),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(35)),
       ),
       child: SafeArea(
         bottom: false,
@@ -114,12 +111,9 @@ class _NotificationScreenState extends State<NotificationScreen> {
                         color: Colors.black.withValues(alpha: 0.08),
                         blurRadius: 10,
                         offset: const Offset(0, 4),
-                      )
+                      ),
                     ],
-                    border: Border.all(
-                      color: Colors.grey.shade300,
-                      width: 1.5,
-                    ),
+                    border: Border.all(color: Colors.grey.shade300, width: 1.5),
                   ),
                   child: SvgPicture.asset(
                     'assets/images/icons/Back.svg',
@@ -150,18 +144,15 @@ class _NotificationScreenState extends State<NotificationScreen> {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(20), 
+        borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha:0.08), 
+            color: Colors.black.withValues(alpha: 0.08),
             blurRadius: 10,
             offset: const Offset(0, 4),
-          )
+          ),
         ],
-        border: Border.all(
-          color: Colors.grey.shade300,
-          width: 1.5,
-        ),
+        border: Border.all(color: Colors.grey.shade300, width: 1.5),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -175,21 +166,14 @@ class _NotificationScreenState extends State<NotificationScreen> {
               borderRadius: BorderRadius.circular(16),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha:0.08),
+                  color: Colors.black.withValues(alpha: 0.08),
                   blurRadius: 8,
                   offset: const Offset(0, 3),
-                )
+                ),
               ],
-              border: Border.all(
-                color: Colors.grey.shade200,
-                width: 1.5,
-              ),
+              border: Border.all(color: Colors.grey.shade200, width: 1.5),
             ),
-            child: SvgPicture.asset(
-              item.imagePath,
-              width: 32,
-              height: 32,
-            ),
+            child: SvgPicture.asset(item.imagePath, width: 32, height: 32),
           ),
           const SizedBox(width: 16),
           Expanded(
@@ -203,7 +187,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
                       child: Text(
                         item.title,
                         style: const TextStyle(
-                          fontWeight: FontWeight.w900, 
+                          fontWeight: FontWeight.w900,
                           fontSize: 15,
                           color: Colors.black,
                         ),
@@ -223,10 +207,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
                   const SizedBox(height: 3),
                   Text(
                     'from ${item.roomName!}',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: Colors.black87,
-                    ),
+                    style: const TextStyle(fontSize: 12, color: Colors.black87),
                   ),
                 ] else if (item.subtitle.isNotEmpty) ...[
                   const SizedBox(height: 4),
@@ -244,8 +225,8 @@ class _NotificationScreenState extends State<NotificationScreen> {
                       if (!item.accepted && !item.declined) ...[
                         _buildButton(
                           label: 'Accept',
-                          backgroundColor: const Color(0xFFDEF1C2), 
-                          borderColor: const Color(0xFFC7D2B5), 
+                          backgroundColor: const Color(0xFFDEF1C2),
+                          borderColor: const Color(0xFFC7D2B5),
                           textColor: Colors.black,
                           onTap: () {
                             setState(() {
@@ -256,8 +237,8 @@ class _NotificationScreenState extends State<NotificationScreen> {
                         const SizedBox(width: 8),
                         _buildButton(
                           label: 'Decline',
-                          backgroundColor: const Color(0xFFCF5733), 
-                          borderColor: const Color(0xFFA33615), 
+                          backgroundColor: const Color(0xFFCF5733),
+                          borderColor: const Color(0xFFA33615),
                           textColor: Colors.white,
                           onTap: () {
                             setState(() {
@@ -265,8 +246,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
                             });
                           },
                         ),
-                      ]
-                      else if (item.accepted) ...[
+                      ] else if (item.accepted) ...[
                         _buildButton(
                           label: 'Accept',
                           backgroundColor: const Color(0xFFE0E0E0),
@@ -276,8 +256,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
                             _items[index].accepted = false;
                           }),
                         ),
-                      ]
-                      else if (item.declined) ...[
+                      ] else if (item.declined) ...[
                         _buildButton(
                           label: 'Decline',
                           backgroundColor: const Color(0xFFE0E0E0),
@@ -304,25 +283,25 @@ class _NotificationScreenState extends State<NotificationScreen> {
     required String label,
     required Color backgroundColor,
     required Color textColor,
-    Color? borderColor, 
-    VoidCallback? onTap, 
+    Color? borderColor,
+    VoidCallback? onTap,
   }) {
     return GestureDetector(
-      onTap: onTap, 
+      onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
           color: backgroundColor,
-          borderRadius: BorderRadius.circular(20), 
-          border: borderColor != null 
-              ? Border.all(color: borderColor, width: 1.5) 
+          borderRadius: BorderRadius.circular(20),
+          border: borderColor != null
+              ? Border.all(color: borderColor, width: 1.5)
               : null,
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha:0.1),
+              color: Colors.black.withValues(alpha: 0.1),
               blurRadius: 4,
               offset: const Offset(0, 2),
-            )
+            ),
           ],
         ),
         child: Text(
@@ -330,7 +309,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
           style: TextStyle(
             color: textColor,
             fontSize: 13,
-            fontWeight: FontWeight.w800, 
+            fontWeight: FontWeight.w800,
           ),
         ),
       ),

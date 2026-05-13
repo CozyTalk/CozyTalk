@@ -22,7 +22,10 @@ class FakeAuthRepository implements AuthRepository {
       watchStateFactory != null ? watchStateFactory!() : const Stream.empty();
 
   @override
-  Future<AuthUser> signIn({required String email, required String password}) async {
+  Future<AuthUser> signIn({
+    required String email,
+    required String password,
+  }) async {
     signInCount++;
     lastEmail = email;
     lastPassword = password;
@@ -31,7 +34,10 @@ class FakeAuthRepository implements AuthRepository {
   }
 
   @override
-  Future<AuthUser> signUp({required String email, required String password}) async {
+  Future<AuthUser> signUp({
+    required String email,
+    required String password,
+  }) async {
     signUpCount++;
     lastEmail = email;
     lastPassword = password;

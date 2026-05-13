@@ -22,13 +22,14 @@ function generateKey(): string {
  */
 function encryptText(
   text: string,
-  keyHex: string
+  keyHex: string,
 ): {encryptedText: string; iv: string; authTag: string} {
   const key = Buffer.from(keyHex, "hex");
   const iv = crypto.randomBytes(12);
   const cipher = crypto.createCipheriv("aes-256-gcm", key, iv);
   const encrypted = Buffer.concat([
-    cipher.update(text, "utf8"), cipher.final(),
+    cipher.update(text, "utf8"),
+    cipher.final(),
   ]);
   return {
     encryptedText: encrypted.toString("base64"),
@@ -52,13 +53,13 @@ export const sendMessage = onCall({invoker: "public"}, async (request) => {
   if (!text || typeof text !== "string" || text.trim() === "") {
     throw new HttpsError(
       "invalid-argument",
-      "text must be a non-empty string."
+      "text must be a non-empty string.",
     );
   }
   if (text.trim().length > MAX_TEXT_LENGTH) {
     throw new HttpsError(
       "invalid-argument",
-      `Message cannot exceed ${MAX_TEXT_LENGTH} characters.`
+      `Message cannot exceed ${MAX_TEXT_LENGTH} characters.`,
     );
   }
 
@@ -96,11 +97,9 @@ export const sendMessage = onCall({invoker: "public"}, async (request) => {
     displayName = d ?? "Anonymous";
   }
 
-  const {encryptedText, iv, authTag} = encryptText(
-    text.trim(), encryptionKey
-  );
+  const {encryptedText, iv, authTag} = encryptText(text.trim(), encryptionKey);
   const expiresAt = admin.firestore.Timestamp.fromMillis(
-    Date.now() + RETENTION_MS
+    Date.now() + RETENTION_MS,
   );
 
   const msgRef = db
@@ -121,7 +120,9 @@ export const sendMessage = onCall({invoker: "public"}, async (request) => {
   });
 
   logger.info("Message sent", {
-    sessionId, senderId: uid, messageId: msgRef.id,
+    sessionId,
+    senderId: uid,
+    messageId: msgRef.id,
   });
   return {messageId: msgRef.id};
 });

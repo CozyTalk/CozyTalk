@@ -16,13 +16,19 @@ class _ChooseRoomTypeScreenState extends State<ChooseRoomTypeScreen> {
     if (selectedType == null) return;
 
     if (selectedType == "1v1") {
-      Navigator.pushNamed(context, AppRoutes.selectBackground,
-          arguments: "1v1");
+      Navigator.pushNamed(
+        context,
+        AppRoutes.selectBackground,
+        arguments: "1v1",
+      );
     } else if (selectedType == "group") {
       _showJoinGroupDialog();
     } else if (selectedType == "create") {
-      Navigator.pushNamed(context, AppRoutes.selectBackground,
-          arguments: "create");
+      Navigator.pushNamed(
+        context,
+        AppRoutes.selectBackground,
+        arguments: "create",
+      );
     }
   }
 
@@ -31,8 +37,9 @@ class _ChooseRoomTypeScreenState extends State<ChooseRoomTypeScreen> {
       context: context,
       builder: (BuildContext context) {
         return Dialog(
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+          ),
           backgroundColor: Colors.white,
           child: Padding(
             padding: const EdgeInsets.all(24),
@@ -45,8 +52,10 @@ class _ChooseRoomTypeScreenState extends State<ChooseRoomTypeScreen> {
                     const SizedBox(width: 40),
                     const Text(
                       'Join a room',
-                      style:
-                          TextStyle(fontSize: 26, fontWeight: FontWeight.w900),
+                      style: TextStyle(
+                        fontSize: 26,
+                        fontWeight: FontWeight.w900,
+                      ),
                     ),
                     IconButton(
                       icon: const Icon(Icons.close, size: 30),
@@ -62,11 +71,15 @@ class _ChooseRoomTypeScreenState extends State<ChooseRoomTypeScreen> {
                         onTap: () {
                           Navigator.pop(context);
                           Navigator.pushNamed(
-                              context, AppRoutes.selectBackground,
-                              arguments: "group");
+                            context,
+                            AppRoutes.selectBackground,
+                            arguments: "group",
+                          );
                         },
                         child: _dialogOptionCard(
-                            'Random Match', 'Meet\nsomeone\nnew!'),
+                          'Random Match',
+                          'Meet\nsomeone\nnew!',
+                        ),
                       ),
                     ),
                     const SizedBox(width: 16),
@@ -76,8 +89,10 @@ class _ChooseRoomTypeScreenState extends State<ChooseRoomTypeScreen> {
                           Navigator.pop(context);
                           Navigator.pushNamed(context, AppRoutes.joinRoomId);
                         },
-                        child: _dialogOptionCard('Room ID',
-                            'Enter a Room\nID to join your\nfriend.'),
+                        child: _dialogOptionCard(
+                          'Room ID',
+                          'Enter a Room\nID to join your\nfriend.',
+                        ),
                       ),
                     ),
                   ],
@@ -113,17 +128,21 @@ class _ChooseRoomTypeScreenState extends State<ChooseRoomTypeScreen> {
             title,
             textAlign: TextAlign.center,
             style: const TextStyle(
-                fontSize: 18, fontWeight: FontWeight.w800, color: Colors.black),
+              fontSize: 18,
+              fontWeight: FontWeight.w800,
+              color: Colors.black,
+            ),
           ),
           const SizedBox(height: 12),
           Text(
             subtitle,
             textAlign: TextAlign.center,
             style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-                color: Colors.black87,
-                height: 1.4),
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+              color: Colors.black87,
+              height: 1.4,
+            ),
           ),
         ],
       ),
@@ -162,20 +181,24 @@ class _ChooseRoomTypeScreenState extends State<ChooseRoomTypeScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text(title,
-                style: const TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.w900,
-                    color: Colors.black)),
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.w900,
+                color: Colors.black,
+              ),
+            ),
             const SizedBox(height: 8),
             Text(
               description,
               textAlign: TextAlign.center,
               style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  color: Colors.black87,
-                  height: 1.3),
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: Colors.black87,
+                height: 1.3,
+              ),
             ),
             const Spacer(),
             Image.asset(
@@ -212,9 +235,7 @@ class _ChooseRoomTypeScreenState extends State<ChooseRoomTypeScreen> {
             width: double.infinity,
             decoration: const BoxDecoration(
               color: AppColors.brownDeep,
-              borderRadius: BorderRadius.vertical(
-                top: Radius.circular(35),
-              ),
+              borderRadius: BorderRadius.vertical(top: Radius.circular(35)),
             ),
             child: SafeArea(
               bottom: false,
@@ -245,8 +266,11 @@ class _ChooseRoomTypeScreenState extends State<ChooseRoomTypeScreen> {
                             width: 1.5,
                           ),
                         ),
-                        child: const Icon(Icons.chevron_left,
-                            color: Colors.black, size: 30),
+                        child: const Icon(
+                          Icons.chevron_left,
+                          color: Colors.black,
+                          size: 30,
+                        ),
                       ),
                     ),
                     const Spacer(),
@@ -254,9 +278,10 @@ class _ChooseRoomTypeScreenState extends State<ChooseRoomTypeScreen> {
                       'Choose your room type',
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 22,
-                          fontWeight: FontWeight.w800),
+                        color: Colors.white,
+                        fontSize: 22,
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
                     const Spacer(),
                     const SizedBox(width: 48),
@@ -273,14 +298,18 @@ class _ChooseRoomTypeScreenState extends State<ChooseRoomTypeScreen> {
                   Row(
                     children: [
                       Container(
-                          width: 12,
-                          height: 12,
-                          decoration: const BoxDecoration(
-                              color: Color(0xFF85BA72),
-                              shape: BoxShape.circle)),
+                        width: 12,
+                        height: 12,
+                        decoration: const BoxDecoration(
+                          color: Color(0xFF85BA72),
+                          shape: BoxShape.circle,
+                        ),
+                      ),
                       const SizedBox(width: 8),
-                      const Text('User online ~ 234',
-                          style: TextStyle(fontWeight: FontWeight.w600)),
+                      const Text(
+                        'User online ~ 234',
+                        style: TextStyle(fontWeight: FontWeight.w600),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 20),
@@ -288,30 +317,33 @@ class _ChooseRoomTypeScreenState extends State<ChooseRoomTypeScreen> {
                     children: [
                       Expanded(
                         child: _roomTypeCard(
-                            type: '1v1',
-                            title: '1 on 1',
-                            description:
-                                'A private chat with\none stranger.\nCozy and personal.',
-                            imagePath: 'assets/images/1on1_doodle.png'),
+                          type: '1v1',
+                          title: '1 on 1',
+                          description:
+                              'A private chat with\none stranger.\nCozy and personal.',
+                          imagePath: 'assets/images/1on1_doodle.png',
+                        ),
                       ),
                       const SizedBox(width: 16),
                       Expanded(
                         child: _roomTypeCard(
-                            type: 'group',
-                            title: 'Group',
-                            description:
-                                'Meet multiple\nstrangers at once.\nMore fun, more\nchaos!',
-                            imagePath: 'assets/images/group_doodle.png'),
+                          type: 'group',
+                          title: 'Group',
+                          description:
+                              'Meet multiple\nstrangers at once.\nMore fun, more\nchaos!',
+                          imagePath: 'assets/images/group_doodle.png',
+                        ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 16),
                   _roomTypeCard(
-                      type: 'create',
-                      title: 'Create Group Room',
-                      description: 'Chat privately with your crew.',
-                      imagePath: 'assets/images/create_group_doodle.png',
-                      wide: true),
+                    type: 'create',
+                    title: 'Create Group Room',
+                    description: 'Chat privately with your crew.',
+                    imagePath: 'assets/images/create_group_doodle.png',
+                    wide: true,
+                  ),
                   const SizedBox(height: 40),
                   GestureDetector(
                     onTap: handleJoin,
@@ -326,20 +358,22 @@ class _ChooseRoomTypeScreenState extends State<ChooseRoomTypeScreen> {
                         border: Border.all(color: Colors.black12),
                         boxShadow: [
                           BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.1),
-                              blurRadius: 8,
-                              offset: const Offset(0, 4))
+                            color: Colors.black.withValues(alpha: 0.1),
+                            blurRadius: 8,
+                            offset: const Offset(0, 4),
+                          ),
                         ],
                       ),
                       child: Center(
                         child: Text(
                           'Join Room',
                           style: TextStyle(
-                              fontSize: 22,
-                              fontWeight: FontWeight.w800,
-                              color: isSelectedAny
-                                  ? Colors.white
-                                  : Colors.black54),
+                            fontSize: 22,
+                            fontWeight: FontWeight.w800,
+                            color: isSelectedAny
+                                ? Colors.white
+                                : Colors.black54,
+                          ),
                         ),
                       ),
                     ),

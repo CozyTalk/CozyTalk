@@ -17,8 +17,7 @@ class _MembersListDialogState extends State<MembersListDialog> {
     return Dialog(
       backgroundColor: Colors.transparent,
       elevation: 0,
-      insetPadding:
-          const EdgeInsets.symmetric(horizontal: 40, vertical: 24),
+      insetPadding: const EdgeInsets.symmetric(horizontal: 40, vertical: 24),
       child: Container(
         decoration: BoxDecoration(
           color: const Color(0xFF6B5E5B),
@@ -41,7 +40,9 @@ class _MembersListDialogState extends State<MembersListDialog> {
               return Container(
                 margin: const EdgeInsets.only(bottom: 12),
                 padding: const EdgeInsets.symmetric(
-                    horizontal: 12, vertical: 10),
+                  horizontal: 12,
+                  vertical: 10,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(20),
@@ -82,8 +83,7 @@ class _MembersListDialogState extends State<MembersListDialog> {
                       ),
                     ),
                     GestureDetector(
-                      onTap: () =>
-                          setState(() => _friendsAdded[index] = true),
+                      onTap: () => setState(() => _friendsAdded[index] = true),
                       child: Container(
                         padding: const EdgeInsets.all(6),
                         decoration: BoxDecoration(
@@ -99,9 +99,7 @@ class _MembersListDialogState extends State<MembersListDialog> {
                           ),
                         ),
                         child: Icon(
-                          isAdded
-                              ? Icons.person
-                              : Icons.person_add_alt_1,
+                          isAdded ? Icons.person : Icons.person_add_alt_1,
                           color: isAdded
                               ? Colors.grey.shade600
                               : const Color(0xFF4A553F),
@@ -112,8 +110,9 @@ class _MembersListDialogState extends State<MembersListDialog> {
                     const SizedBox(width: 8),
                     GestureDetector(
                       onTap: () => showDialog(
-                          context: context,
-                          builder: (_) => const ReportDialog()),
+                        context: context,
+                        builder: (_) => const ReportDialog(),
+                      ),
                       child: Container(
                         padding: const EdgeInsets.all(6),
                         decoration: BoxDecoration(

@@ -13,11 +13,11 @@ class _DressItem {
   final double equipHeight;
 
   const _DressItem(
-    this.name, 
-    this.imagePath, 
-    this.label, 
-    this.equipBottom, 
-    this.equipHeight
+    this.name,
+    this.imagePath,
+    this.label,
+    this.equipBottom,
+    this.equipHeight,
   );
 }
 
@@ -33,10 +33,34 @@ class _DressUpScreenState extends ConsumerState<DressUpScreen> {
 
   static const List<_DressItem> _items = [
     _DressItem('Cap', 'assets/images/dressup/Cap.png', 'Cap', 80, 55),
-    _DressItem('Beanie', 'assets/images/dressup/Pinkbeanie.png', 'Beanie', 85, 55),
-    _DressItem('Witch', 'assets/images/dressup/WitchHat.png', 'Witch Hat', 90, 70),
-    _DressItem('Glasses', 'assets/images/dressup/Sunglasses.png', 'Sunglasses', 55, 30),
-    _DressItem('Cat Headband', 'assets/images/dressup/CatHeadband.png', 'Cat Headband', 65, 70),
+    _DressItem(
+      'Beanie',
+      'assets/images/dressup/Pinkbeanie.png',
+      'Beanie',
+      85,
+      55,
+    ),
+    _DressItem(
+      'Witch',
+      'assets/images/dressup/WitchHat.png',
+      'Witch Hat',
+      90,
+      70,
+    ),
+    _DressItem(
+      'Glasses',
+      'assets/images/dressup/Sunglasses.png',
+      'Sunglasses',
+      55,
+      30,
+    ),
+    _DressItem(
+      'Cat Headband',
+      'assets/images/dressup/CatHeadband.png',
+      'Cat Headband',
+      65,
+      70,
+    ),
     _DressItem('Crown', 'assets/images/dressup/Crown.png', 'Crown', 100, 35),
   ];
 
@@ -51,7 +75,12 @@ class _DressUpScreenState extends ConsumerState<DressUpScreen> {
               _buildCustomAppBar(context),
               Expanded(
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.only(left: 20, right: 20, top: 24, bottom: 120),
+                  padding: const EdgeInsets.only(
+                    left: 20,
+                    right: 20,
+                    top: 24,
+                    bottom: 120,
+                  ),
                   child: Column(
                     children: [
                       // ── Avatar Preview ──
@@ -63,7 +92,7 @@ class _DressUpScreenState extends ConsumerState<DressUpScreen> {
                           borderRadius: BorderRadius.circular(25),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withValues(alpha:0.12),
+                              color: Colors.black.withValues(alpha: 0.12),
                               blurRadius: 12,
                               offset: const Offset(0, 4),
                             ),
@@ -96,7 +125,7 @@ class _DressUpScreenState extends ConsumerState<DressUpScreen> {
                           ),
                         ),
                       ),
-                      
+
                       const SizedBox(height: 12),
 
                       // ── Items Grid ──
@@ -104,12 +133,13 @@ class _DressUpScreenState extends ConsumerState<DressUpScreen> {
                         shrinkWrap: true,
                         physics: const NeverScrollableScrollPhysics(),
                         padding: EdgeInsets.zero,
-                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 3,
-                          crossAxisSpacing: 15,
-                          mainAxisSpacing: 15,
-                          childAspectRatio: 0.85, 
-                        ),
+                        gridDelegate:
+                            const SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 3,
+                              crossAxisSpacing: 15,
+                              mainAxisSpacing: 15,
+                              childAspectRatio: 0.85,
+                            ),
                         itemCount: _items.length,
                         itemBuilder: (_, i) {
                           final item = _items[i];
@@ -119,17 +149,23 @@ class _DressUpScreenState extends ConsumerState<DressUpScreen> {
                             child: AnimatedContainer(
                               duration: const Duration(milliseconds: 200),
                               curve: Curves.easeOut,
-                              transform: Matrix4.translationValues(0, sel ? -10.0 : 0, 0),
+                              transform: Matrix4.translationValues(
+                                0,
+                                sel ? -10.0 : 0,
+                                0,
+                              ),
                               decoration: BoxDecoration(
                                 color: Colors.white,
                                 borderRadius: BorderRadius.circular(22),
                                 border: Border.all(
-                                  color: sel ? const Color(0xFFCE5E42) : Colors.grey.shade300,
+                                  color: sel
+                                      ? const Color(0xFFCE5E42)
+                                      : Colors.grey.shade300,
                                   width: sel ? 2.5 : 1.5,
                                 ),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: Colors.black.withValues(alpha:0.08),
+                                    color: Colors.black.withValues(alpha: 0.08),
                                     blurRadius: 10,
                                     offset: const Offset(0, 4),
                                   ),
@@ -143,7 +179,8 @@ class _DressUpScreenState extends ConsumerState<DressUpScreen> {
                                     height: 45,
                                     width: 45,
                                     fit: BoxFit.contain,
-                                    errorBuilder: (_, __, ___) => const Icon(Icons.style, size: 40),
+                                    errorBuilder: (_, __, ___) =>
+                                        const Icon(Icons.style, size: 40),
                                   ),
                                   const SizedBox(height: 10),
                                   Text(
@@ -175,7 +212,10 @@ class _DressUpScreenState extends ConsumerState<DressUpScreen> {
               child: GestureDetector(
                 onTap: () => Navigator.pop(context, _selected),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 48,
+                    vertical: 12,
+                  ),
                   decoration: BoxDecoration(
                     color: const Color(0xFFDEF1C2),
                     borderRadius: BorderRadius.circular(20),
@@ -185,7 +225,7 @@ class _DressUpScreenState extends ConsumerState<DressUpScreen> {
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withValues(alpha:0.15),
+                        color: Colors.black.withValues(alpha: 0.15),
                         blurRadius: 8,
                         offset: const Offset(0, 4),
                       ),
@@ -235,10 +275,10 @@ class _DressUpScreenState extends ConsumerState<DressUpScreen> {
                     border: Border.all(color: Colors.grey.shade300, width: 1.5),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withValues(alpha:0.08),
+                        color: Colors.black.withValues(alpha: 0.08),
                         blurRadius: 10,
                         offset: const Offset(0, 4),
-                      )
+                      ),
                     ],
                   ),
                   child: SvgPicture.asset(

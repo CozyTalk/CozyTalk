@@ -27,7 +27,7 @@ export const reportSession = onCall({invoker: "public"}, async (request) => {
   if (reason.trim().length > MAX_REASON_LENGTH) {
     throw new HttpsError(
       "invalid-argument",
-      `Reason cannot exceed ${MAX_REASON_LENGTH} characters.`
+      `Reason cannot exceed ${MAX_REASON_LENGTH} characters.`,
     );
   }
   if (description !== undefined && description !== null) {
@@ -37,7 +37,7 @@ export const reportSession = onCall({invoker: "public"}, async (request) => {
     if (description.length > MAX_DESC_LENGTH) {
       throw new HttpsError(
         "invalid-argument",
-        `Description cannot exceed ${MAX_DESC_LENGTH} characters.`
+        `Description cannot exceed ${MAX_DESC_LENGTH} characters.`,
       );
     }
   }
@@ -53,7 +53,9 @@ export const reportSession = onCall({invoker: "public"}, async (request) => {
   let encryptionKey: string | null = null;
 
   const activeSnap = await db
-    .collection("active_sessions").doc(sessionId).get();
+    .collection("active_sessions")
+    .doc(sessionId)
+    .get();
   if (activeSnap.exists) {
     const data = activeSnap.data();
     if (!data) {
@@ -64,12 +66,11 @@ export const reportSession = onCall({invoker: "public"}, async (request) => {
     }
     encryptionKey = (data.encryptionKey as string | undefined) ?? null;
   } else {
-    const keySnap = await db
-      .collection("session_keys").doc(sessionId).get();
+    const keySnap = await db.collection("session_keys").doc(sessionId).get();
     if (!keySnap.exists) {
       throw new HttpsError(
         "not-found",
-        "Session not found or retention window has expired."
+        "Session not found or retention window has expired.",
       );
     }
     const keyData = keySnap.data();
@@ -90,7 +91,10 @@ export const reportSession = onCall({invoker: "public"}, async (request) => {
   // Mark all messages as flagged and remove their TTL — they must persist
   // for the moderation investigation.
   const msgsSnap = await db
-    .collection("chat_rooms").doc(sessionId).collection("messages").get();
+    .collection("chat_rooms")
+    .doc(sessionId)
+    .collection("messages")
+    .get();
 
   if (!msgsSnap.empty) {
     const batch = db.batch();
@@ -107,8 +111,7 @@ export const reportSession = onCall({invoker: "public"}, async (request) => {
     sessionId,
     encryptionKey,
     reason: reason.trim(),
-    description: typeof description === "string" ?
-      description.trim() : null,
+    description: typeof description === "string" ? description.trim() : null,
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
     status: "pending",
   });

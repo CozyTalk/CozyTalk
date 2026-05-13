@@ -44,7 +44,7 @@ tools/            ← CLI tools (reserved, empty)
 cd apps/mobile
 
 flutter pub get                                              # install deps
-dart run build_runner build --delete-conflicting-outputs    # regenerate Freezed + Riverpod code
+dart run build_runner build    # regenerate Freezed + Riverpod code
 flutter run                                                  # run on Android
 flutter run -d chrome                                        # run on Web
 flutter test                                                 # run tests
@@ -98,7 +98,7 @@ features/<feature>/
 
 1. Copy the `hello` feature folder as a template.
 2. Rename every class/file: `Hello` → `YourFeature`.
-3. Run `dart run build_runner build --delete-conflicting-outputs`.
+3. Run `dart run build_runner build`.
 4. Never put Firebase SDK calls outside `datasources/`.
 5. Never put business logic inside a `Screen` or `Notifier` — that belongs in a UseCase.
 
@@ -211,6 +211,22 @@ See `PROJECT_CONTEXT.md` for full schema and security rules.
 - **Test fakes** — `_FakeXxxNotifier` must track invocations (`callCount`) so tests assert behavior, not just rendered UI.
 - **No unbounded ListViews** — all lists must use `ListView.builder` or `SliverList` with item count. No `children: [...]` for dynamic lists.
 - **SVG assets (Moods/Drinks icebreakers)** — must be cached and compressed. Use `flutter_svg` with asset precaching.
+
+---
+
+## Code Style
+
+All rules below are enforced by CI. Do not write code that needs a `// ignore:` suppression to pass.
+
+**Dart** — style owned by `dart format`, rules by `flutter_lints`:
+- Always use `{}` on `if`/`for`/`while` bodies (`curly_braces_in_flow_control_structures`)
+- Single quotes for strings; trailing commas on multi-line arg lists
+- No `print()` — use structured logging (`avoid_print` is active)
+
+**TypeScript** — style owned by Prettier (`functions/.prettierrc`), logic by ESLint:
+- Double quotes, 2-space indent, trailing commas everywhere, semicolons required, no bracket spacing (`{foo: bar}`)
+- Every `function` declaration (including `_`-prefixed helpers) needs a JSDoc block with `@param` + `@return`; `const` arrow functions are exempt
+- No implicit `any`; explicit types required
 
 ---
 

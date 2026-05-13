@@ -32,9 +32,7 @@ class _ReportDialogState extends State<ReportDialog> {
   Widget build(BuildContext context) {
     return Dialog(
       insetPadding: const EdgeInsets.symmetric(horizontal: 24),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       backgroundColor: Colors.white,
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 340),
@@ -61,8 +59,11 @@ class _ReportDialogState extends State<ReportDialog> {
                           padding: EdgeInsets.zero,
                           constraints: const BoxConstraints(),
                           onPressed: () => Navigator.pop(context),
-                          icon: const Icon(Icons.close,
-                              size: 28, color: Colors.black),
+                          icon: const Icon(
+                            Icons.close,
+                            size: 28,
+                            color: Colors.black,
+                          ),
                         ),
                       ),
                     ],
@@ -96,16 +97,23 @@ class _ReportDialogState extends State<ReportDialog> {
         Row(
           children: [
             Expanded(
-                child: _buildButton('Cancel',
-                    isGray: true, onTap: () => Navigator.pop(context))),
+              child: _buildButton(
+                'Cancel',
+                isGray: true,
+                onTap: () => Navigator.pop(context),
+              ),
+            ),
             const SizedBox(width: 12),
             Expanded(
-                child: _buildButton('Next',
-                    onTap: _selectedOptions.isEmpty
-                        ? null
-                        : () => setState(() => _step = 2))),
+              child: _buildButton(
+                'Next',
+                onTap: _selectedOptions.isEmpty
+                    ? null
+                    : () => setState(() => _step = 2),
+              ),
+            ),
           ],
-        )
+        ),
       ],
     );
   }
@@ -142,11 +150,16 @@ class _ReportDialogState extends State<ReportDialog> {
             ),
             child: const Column(
               children: [
-                Icon(Icons.add_photo_alternate_outlined,
-                    color: Colors.grey, size: 32),
+                Icon(
+                  Icons.add_photo_alternate_outlined,
+                  color: Colors.grey,
+                  size: 32,
+                ),
                 SizedBox(height: 8),
-                Text('Tap to add photo',
-                    style: TextStyle(color: Colors.grey, fontSize: 12)),
+                Text(
+                  'Tap to add photo',
+                  style: TextStyle(color: Colors.grey, fontSize: 12),
+                ),
               ],
             ),
           ),
@@ -155,14 +168,21 @@ class _ReportDialogState extends State<ReportDialog> {
         Row(
           children: [
             Expanded(
-                child: _buildButton('Back',
-                    isGray: true, onTap: () => setState(() => _step = 1))),
+              child: _buildButton(
+                'Back',
+                isGray: true,
+                onTap: () => setState(() => _step = 1),
+              ),
+            ),
             const SizedBox(width: 12),
             Expanded(
-                child: _buildButton('Submit',
-                    onTap: () => setState(() => _step = 3))),
+              child: _buildButton(
+                'Submit',
+                onTap: () => setState(() => _step = 3),
+              ),
+            ),
           ],
-        )
+        ),
       ],
     );
   }
@@ -183,8 +203,7 @@ class _ReportDialogState extends State<ReportDialog> {
           style: TextStyle(fontSize: 15, color: Colors.black87, height: 1.4),
         ),
         const SizedBox(height: 32),
-        _buildButton('Done',
-            width: 140, onTap: () => Navigator.pop(context)),
+        _buildButton('Done', width: 140, onTap: () => Navigator.pop(context)),
         const SizedBox(height: 8),
       ],
     );
@@ -203,7 +222,7 @@ class _ReportDialogState extends State<ReportDialog> {
             color: Colors.black.withValues(alpha: 0.04),
             blurRadius: 10,
             offset: const Offset(0, 4),
-          )
+          ),
         ],
       ),
       child: Padding(
@@ -221,19 +240,21 @@ class _ReportDialogState extends State<ReportDialog> {
                     decoration: BoxDecoration(
                       border: Border.all(color: Colors.black26),
                       borderRadius: BorderRadius.circular(6),
-                      color:
-                          isSelected ? Colors.black : Colors.transparent,
+                      color: isSelected ? Colors.black : Colors.transparent,
                     ),
                     child: isSelected
-                        ? const Icon(Icons.check,
-                            size: 16, color: Colors.white)
+                        ? const Icon(Icons.check, size: 16, color: Colors.white)
                         : null,
                   ),
                   const SizedBox(width: 16),
                   Expanded(
-                    child: Text(title,
-                        style: const TextStyle(
-                            fontSize: 15, fontWeight: FontWeight.w500)),
+                    child: Text(
+                      title,
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -247,16 +268,16 @@ class _ReportDialogState extends State<ReportDialog> {
                     filled: true,
                     fillColor: Colors.white,
                     contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 10),
+                      horizontal: 16,
+                      vertical: 10,
+                    ),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(20),
-                      borderSide:
-                          const BorderSide(color: Colors.black12),
+                      borderSide: const BorderSide(color: Colors.black12),
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(20),
-                      borderSide:
-                          const BorderSide(color: Colors.black12),
+                      borderSide: const BorderSide(color: Colors.black12),
                     ),
                   ),
                 ),
@@ -267,22 +288,23 @@ class _ReportDialogState extends State<ReportDialog> {
     );
   }
 
-  Widget _buildInputContainer(
-      {required String label,
-      required String trailing,
-      required Widget child}) {
+  Widget _buildInputContainer({
+    required String label,
+    required String trailing,
+    required Widget child,
+  }) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        border:
-            Border.all(color: Colors.black.withValues(alpha: 0.08)),
+        border: Border.all(color: Colors.black.withValues(alpha: 0.08)),
         boxShadow: [
           BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
-              blurRadius: 10,
-              offset: const Offset(0, 4)),
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
         ],
       ),
       child: Column(
@@ -291,12 +313,17 @@ class _ReportDialogState extends State<ReportDialog> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(label,
-                  style: const TextStyle(
-                      fontWeight: FontWeight.bold, fontSize: 15)),
-              Text(trailing,
-                  style: const TextStyle(
-                      color: Colors.grey, fontSize: 13)),
+              Text(
+                label,
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 15,
+                ),
+              ),
+              Text(
+                trailing,
+                style: const TextStyle(color: Colors.grey, fontSize: 13),
+              ),
             ],
           ),
           const SizedBox(height: 8),
@@ -306,29 +333,34 @@ class _ReportDialogState extends State<ReportDialog> {
     );
   }
 
-  Widget _buildButton(String text,
-      {bool isGray = false, VoidCallback? onTap, double? width}) {
+  Widget _buildButton(
+    String text, {
+    bool isGray = false,
+    VoidCallback? onTap,
+    double? width,
+  }) {
     return SizedBox(
       width: width,
       height: 48,
       child: ElevatedButton(
         onPressed: onTap,
         style: ElevatedButton.styleFrom(
-          backgroundColor:
-              isGray ? const Color(0xFFE0E0E0) : const Color(0xFFDEF1C2),
+          backgroundColor: isGray
+              ? const Color(0xFFE0E0E0)
+              : const Color(0xFFDEF1C2),
           foregroundColor: Colors.black,
           elevation: 0,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
             side: BorderSide(
-                color: isGray
-                    ? Colors.transparent
-                    : const Color(0xFFC7D2B5)),
+              color: isGray ? Colors.transparent : const Color(0xFFC7D2B5),
+            ),
           ),
         ),
-        child: Text(text,
-            style: const TextStyle(
-                fontWeight: FontWeight.w900, fontSize: 15)),
+        child: Text(
+          text,
+          style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15),
+        ),
       ),
     );
   }

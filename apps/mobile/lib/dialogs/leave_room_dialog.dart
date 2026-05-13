@@ -10,9 +10,7 @@ class LeaveRoomDialog extends StatelessWidget {
       backgroundColor: Colors.white,
       elevation: 0,
       insetPadding: const EdgeInsets.symmetric(horizontal: 32),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(24),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(24, 22, 24, 20),
         child: Column(

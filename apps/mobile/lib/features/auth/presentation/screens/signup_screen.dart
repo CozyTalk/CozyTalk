@@ -66,9 +66,12 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                   border: const OutlineInputBorder(),
                   suffixIcon: IconButton(
                     icon: Icon(
-                      _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                      _obscurePassword
+                          ? Icons.visibility_off
+                          : Icons.visibility,
                     ),
-                    onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                    onPressed: () =>
+                        setState(() => _obscurePassword = !_obscurePassword),
                   ),
                 ),
                 validator: _validatePassword,
@@ -85,7 +88,8 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                     icon: Icon(
                       _obscureConfirm ? Icons.visibility_off : Icons.visibility,
                     ),
-                    onPressed: () => setState(() => _obscureConfirm = !_obscureConfirm),
+                    onPressed: () =>
+                        setState(() => _obscureConfirm = !_obscureConfirm),
                   ),
                 ),
                 validator: _validateConfirmPassword,
@@ -124,7 +128,9 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
 
   void _submit() {
     if (!(_formKey.currentState?.validate() ?? false)) return;
-    ref.read(authNotifierProvider.notifier).signUp(
+    ref
+        .read(authNotifierProvider.notifier)
+        .signUp(
           email: _emailController.text.trim(),
           password: _passwordController.text,
         );
@@ -133,7 +139,9 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
   String? _validateEmail(String? value) {
     if (value == null || value.trim().isEmpty) return 'Email is required.';
     final emailRegex = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
-    if (!emailRegex.hasMatch(value.trim())) return 'Enter a valid email address.';
+    if (!emailRegex.hasMatch(value.trim())) {
+      return 'Enter a valid email address.';
+    }
     return null;
   }
 
