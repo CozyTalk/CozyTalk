@@ -13,7 +13,8 @@ class _FakeAuthNotifier extends AuthNotifier {
 
   final AuthState _initial;
 
-  _FakeAuthNotifier({AuthState initial = const AuthState()}) : _initial = initial;
+  _FakeAuthNotifier({AuthState initial = const AuthState()})
+    : _initial = initial;
 
   @override
   AuthState build() => _initial;
@@ -32,7 +33,10 @@ class _FakeAuthNotifier extends AuthNotifier {
   Future<void> signInAnonymously() async => signInAnonymouslyCount++;
 
   @override
-  Future<void> signUp({required String email, required String password}) async {}
+  Future<void> signUp({
+    required String email,
+    required String password,
+  }) async {}
 
   @override
   Future<void> signOut() async {}
@@ -47,8 +51,9 @@ Widget _buildLoginScreen(_FakeAuthNotifier fake) {
 
 void main() {
   group('LoginScreen', () {
-    testWidgets('renders email field, password field and sign in button',
-        (tester) async {
+    testWidgets('renders email field, password field and sign in button', (
+      tester,
+    ) async {
       await tester.pumpWidget(_buildLoginScreen(_FakeAuthNotifier()));
 
       expect(find.widgetWithText(TextFormField, 'Email'), findsOneWidget);
@@ -63,7 +68,9 @@ void main() {
       expect(find.text('Continue as Guest'), findsOneWidget);
     });
 
-    testWidgets('shows email required error when email is empty', (tester) async {
+    testWidgets('shows email required error when email is empty', (
+      tester,
+    ) async {
       await tester.pumpWidget(_buildLoginScreen(_FakeAuthNotifier()));
 
       await tester.tap(find.widgetWithText(ElevatedButton, 'Sign In'));
@@ -72,57 +79,80 @@ void main() {
       expect(find.text('Email is required.'), findsOneWidget);
     });
 
-    testWidgets('shows invalid email error for malformed email', (tester) async {
+    testWidgets('shows invalid email error for malformed email', (
+      tester,
+    ) async {
       await tester.pumpWidget(_buildLoginScreen(_FakeAuthNotifier()));
 
-      await tester.enterText(find.widgetWithText(TextFormField, 'Email'), 'notanemail');
+      await tester.enterText(
+        find.widgetWithText(TextFormField, 'Email'),
+        'notanemail',
+      );
       await tester.tap(find.widgetWithText(ElevatedButton, 'Sign In'));
       await tester.pump();
 
       expect(find.text('Enter a valid email address.'), findsOneWidget);
     });
 
-    testWidgets('shows password required error when password is empty', (tester) async {
+    testWidgets('shows password required error when password is empty', (
+      tester,
+    ) async {
       await tester.pumpWidget(_buildLoginScreen(_FakeAuthNotifier()));
 
       await tester.enterText(
-          find.widgetWithText(TextFormField, 'Email'), 'a@b.com');
+        find.widgetWithText(TextFormField, 'Email'),
+        'a@b.com',
+      );
       await tester.tap(find.widgetWithText(ElevatedButton, 'Sign In'));
       await tester.pump();
 
       expect(find.text('Password is required.'), findsOneWidget);
     });
 
-    testWidgets('shows short password error when password is under 6 chars',
-        (tester) async {
+    testWidgets('shows short password error when password is under 6 chars', (
+      tester,
+    ) async {
       await tester.pumpWidget(_buildLoginScreen(_FakeAuthNotifier()));
 
       await tester.enterText(
-          find.widgetWithText(TextFormField, 'Email'), 'a@b.com');
+        find.widgetWithText(TextFormField, 'Email'),
+        'a@b.com',
+      );
       await tester.enterText(
-          find.widgetWithText(TextFormField, 'Password'), 'abc');
+        find.widgetWithText(TextFormField, 'Password'),
+        'abc',
+      );
       await tester.tap(find.widgetWithText(ElevatedButton, 'Sign In'));
       await tester.pump();
 
-      expect(find.text('Password must be at least 6 characters.'), findsOneWidget);
+      expect(
+        find.text('Password must be at least 6 characters.'),
+        findsOneWidget,
+      );
     });
 
-    testWidgets('calls signIn with trimmed email and password on valid submit',
-        (tester) async {
-      final fake = _FakeAuthNotifier();
-      await tester.pumpWidget(_buildLoginScreen(fake));
+    testWidgets(
+      'calls signIn with trimmed email and password on valid submit',
+      (tester) async {
+        final fake = _FakeAuthNotifier();
+        await tester.pumpWidget(_buildLoginScreen(fake));
 
-      await tester.enterText(
-          find.widgetWithText(TextFormField, 'Email'), '  user@example.com  ');
-      await tester.enterText(
-          find.widgetWithText(TextFormField, 'Password'), 'password123');
-      await tester.tap(find.widgetWithText(ElevatedButton, 'Sign In'));
-      await tester.pump();
+        await tester.enterText(
+          find.widgetWithText(TextFormField, 'Email'),
+          '  user@example.com  ',
+        );
+        await tester.enterText(
+          find.widgetWithText(TextFormField, 'Password'),
+          'password123',
+        );
+        await tester.tap(find.widgetWithText(ElevatedButton, 'Sign In'));
+        await tester.pump();
 
-      expect(fake.signInCount, 1);
-      expect(fake.lastEmail, 'user@example.com');
-      expect(fake.lastPassword, 'password123');
-    });
+        expect(fake.signInCount, 1);
+        expect(fake.lastEmail, 'user@example.com');
+        expect(fake.lastPassword, 'password123');
+      },
+    );
 
     testWidgets('shows error message from state.error', (tester) async {
       final fake = _FakeAuthNotifier(
@@ -145,8 +175,9 @@ void main() {
       expect(find.byType(CircularProgressIndicator), findsOneWidget);
     });
 
-    testWidgets('calls signInWithGoogle when Google button is tapped',
-        (tester) async {
+    testWidgets('calls signInWithGoogle when Google button is tapped', (
+      tester,
+    ) async {
       final fake = _FakeAuthNotifier();
       await tester.pumpWidget(_buildLoginScreen(fake));
 
@@ -156,8 +187,9 @@ void main() {
       expect(fake.signInWithGoogleCount, 1);
     });
 
-    testWidgets('calls signInAnonymously when guest button is tapped',
-        (tester) async {
+    testWidgets('calls signInAnonymously when guest button is tapped', (
+      tester,
+    ) async {
       final fake = _FakeAuthNotifier();
       await tester.pumpWidget(_buildLoginScreen(fake));
 

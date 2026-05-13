@@ -62,22 +62,22 @@ class MyApp extends StatelessWidget {
         theme: AppTheme.theme,
         initialRoute: AppRoutes.home, // TODO: revert to AppRoutes.home
         routes: {
-          AppRoutes.home:             (_) => const HomeScreen(),
-          AppRoutes.notification:     (_) => const NotificationScreen(),
-          AppRoutes.profile:          (_) => const ProfileScreen(),
-          AppRoutes.blocked:          (_) => const BlockedScreen(),
-          AppRoutes.dressUp:          (_) => const DressUpScreen(),
-          AppRoutes.mood:             (_) => const MoodScreen(),
-          AppRoutes.friends:          (_) => const FriendsScreen(),
-          AppRoutes.friendChat:       (_) => const FriendChatScreen(),
-          AppRoutes.chooseRoomType:   (_) => const ChooseRoomTypeScreen(),
+          AppRoutes.home: (_) => const HomeScreen(),
+          AppRoutes.notification: (_) => const NotificationScreen(),
+          AppRoutes.profile: (_) => const ProfileScreen(),
+          AppRoutes.blocked: (_) => const BlockedScreen(),
+          AppRoutes.dressUp: (_) => const DressUpScreen(),
+          AppRoutes.mood: (_) => const MoodScreen(),
+          AppRoutes.friends: (_) => const FriendsScreen(),
+          AppRoutes.friendChat: (_) => const FriendChatScreen(),
+          AppRoutes.chooseRoomType: (_) => const ChooseRoomTypeScreen(),
           AppRoutes.selectBackground: (ctx) {
             final args = ModalRoute.of(ctx)?.settings.arguments as String?;
             return SelectBackgroundScreen(roomType: args);
           },
-          AppRoutes.joinRoomId:       (_) => const JoinRoomIdScreen(),
-          AppRoutes.chatScreen:       (_) => const ChatScreen(),
-          AppRoutes.groupChatScreen:  (_) => const GroupChatScreen(),
+          AppRoutes.joinRoomId: (_) => const JoinRoomIdScreen(),
+          AppRoutes.chatScreen: (_) => const ChatScreen(),
+          AppRoutes.groupChatScreen: (_) => const GroupChatScreen(),
         },
       );
     }

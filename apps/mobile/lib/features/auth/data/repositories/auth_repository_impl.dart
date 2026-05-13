@@ -24,13 +24,19 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
-  Future<AuthUser> signUp({required String email, required String password}) async {
+  Future<AuthUser> signUp({
+    required String email,
+    required String password,
+  }) async {
     final model = await _datasource.signUp(email: email, password: password);
     return model.toEntity();
   }
 
   @override
-  Future<AuthUser> signIn({required String email, required String password}) async {
+  Future<AuthUser> signIn({
+    required String email,
+    required String password,
+  }) async {
     final model = await _datasource.signIn(email: email, password: password);
     return model.toEntity();
   }

@@ -18,22 +18,22 @@ class _SelectBackgroundScreenState extends State<SelectBackgroundScreen> {
     {
       'id': 'kao_tapu',
       'title': 'Kao Tapu',
-      'image': 'assets/images/backgrounds/kao_tapu.png'
+      'image': 'assets/images/backgrounds/kao_tapu.png',
     },
     {
       'id': 'red_lotus_lake',
       'title': 'Red Lotus Lake',
-      'image': 'assets/images/backgrounds/red_lotus_lake.png'
+      'image': 'assets/images/backgrounds/red_lotus_lake.png',
     },
     {
       'id': 'sea_of_cloud',
       'title': 'The Sea of Cloud',
-      'image': 'assets/images/backgrounds/sea_of_cloud.png'
+      'image': 'assets/images/backgrounds/sea_of_cloud.png',
     },
     {
       'id': 'lumphini_park',
       'title': 'Lumphini Park',
-      'image': 'assets/images/backgrounds/lumphini_park.png'
+      'image': 'assets/images/backgrounds/lumphini_park.png',
     },
   ];
 
@@ -50,9 +50,7 @@ class _SelectBackgroundScreenState extends State<SelectBackgroundScreen> {
             width: double.infinity,
             decoration: const BoxDecoration(
               color: AppColors.brownDeep,
-              borderRadius: BorderRadius.vertical(
-                top: Radius.circular(35),
-              ),
+              borderRadius: BorderRadius.vertical(top: Radius.circular(35)),
             ),
             child: SafeArea(
               bottom: false,
@@ -79,10 +77,15 @@ class _SelectBackgroundScreenState extends State<SelectBackgroundScreen> {
                             ),
                           ],
                           border: Border.all(
-                              color: Colors.grey.shade300, width: 1.5),
+                            color: Colors.grey.shade300,
+                            width: 1.5,
+                          ),
                         ),
-                        child: const Icon(Icons.chevron_left,
-                            color: Colors.black, size: 30),
+                        child: const Icon(
+                          Icons.chevron_left,
+                          color: Colors.black,
+                          size: 30,
+                        ),
                       ),
                     ),
                     const Spacer(),
@@ -90,9 +93,10 @@ class _SelectBackgroundScreenState extends State<SelectBackgroundScreen> {
                       'Select background',
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 22,
-                          fontWeight: FontWeight.w800),
+                        color: Colors.white,
+                        fontSize: 22,
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
                     const Spacer(),
                     const SizedBox(width: 48),
@@ -130,9 +134,10 @@ class _SelectBackgroundScreenState extends State<SelectBackgroundScreen> {
                       ),
                       boxShadow: [
                         BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.1),
-                            blurRadius: 10,
-                            offset: const Offset(0, 5)),
+                          color: Colors.black.withValues(alpha: 0.1),
+                          blurRadius: 10,
+                          offset: const Offset(0, 5),
+                        ),
                       ],
                     ),
                     child: Column(
@@ -142,14 +147,16 @@ class _SelectBackgroundScreenState extends State<SelectBackgroundScreen> {
                           flex: 3,
                           child: ClipRRect(
                             borderRadius: const BorderRadius.vertical(
-                                top: Radius.circular(20)),
+                              top: Radius.circular(20),
+                            ),
                             child: Image.asset(
                               loc['image']!,
                               fit: BoxFit.cover,
                               errorBuilder: (context, error, stackTrace) =>
                                   Container(
-                                      color: Colors.grey.shade300,
-                                      child: const Icon(Icons.image)),
+                                    color: Colors.grey.shade300,
+                                    child: const Icon(Icons.image),
+                                  ),
                             ),
                           ),
                         ),
@@ -160,9 +167,10 @@ class _SelectBackgroundScreenState extends State<SelectBackgroundScreen> {
                               loc['title']!,
                               textAlign: TextAlign.center,
                               style: const TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w800,
-                                  color: Colors.black),
+                                fontSize: 14,
+                                fontWeight: FontWeight.w800,
+                                color: Colors.black,
+                              ),
                             ),
                           ),
                         ),
@@ -186,7 +194,8 @@ class _SelectBackgroundScreenState extends State<SelectBackgroundScreen> {
                     onPressed: selectedLocation != null
                         ? () {
                             final selectedLocData = locations.firstWhere(
-                                (loc) => loc['id'] == selectedLocation);
+                              (loc) => loc['id'] == selectedLocation,
+                            );
 
                             if (roomType == 'group' || roomType == 'create') {
                               Navigator.pushNamed(
@@ -215,22 +224,34 @@ class _SelectBackgroundScreenState extends State<SelectBackgroundScreen> {
                       foregroundColor: Colors.black,
                       elevation: 4,
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 40, vertical: 16),
+                        horizontal: 40,
+                        vertical: 16,
+                      ),
                       shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(20)),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
                     ),
-                    child: const Text("Let's go!",
-                        style: TextStyle(
-                            fontSize: 18, fontWeight: FontWeight.bold)),
+                    child: const Text(
+                      "Let's go!",
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ),
                   const Spacer(),
                   Container(
                     width: 45,
                     height: 45,
                     decoration: const BoxDecoration(
-                        color: Color(0xFF6B5E5B), shape: BoxShape.circle),
-                    child: const Icon(Icons.keyboard_arrow_down,
-                        color: Colors.white, size: 30),
+                      color: Color(0xFF6B5E5B),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.keyboard_arrow_down,
+                      color: Colors.white,
+                      size: 30,
+                    ),
                   ),
                 ],
               ),

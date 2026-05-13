@@ -35,8 +35,10 @@ class _FakeChatDatasource implements ChatDatasource {
       Stream.value(typingUsers);
 
   @override
-  Future<void> sendMessage({required String sessionId, required String text}) async =>
-      sendMessageCount++;
+  Future<void> sendMessage({
+    required String sessionId,
+    required String text,
+  }) async => sendMessageCount++;
 
   @override
   Future<void> setTyping({
@@ -50,14 +52,14 @@ class _FakeChatDatasource implements ChatDatasource {
   }
 
   @override
-  Future<void> endSession({required String sessionId}) async => endSessionCount++;
+  Future<void> endSession({required String sessionId}) async =>
+      endSessionCount++;
 
   @override
   Future<String> joinProtoSession({
     required String sessionId,
     required String uid,
-  }) async =>
-      'Test User';
+  }) async => 'Test User';
 }
 
 Future<ChatMessageModel> _encryptModel({
@@ -86,7 +88,8 @@ Future<ChatMessageModel> _encryptModel({
 }
 
 // 32 zero bytes as a 64-char hex string.
-const _testKeyHex = '0000000000000000000000000000000000000000000000000000000000000000';
+const _testKeyHex =
+    '0000000000000000000000000000000000000000000000000000000000000000';
 final _testKeyBytes = List<int>.filled(32, 0);
 
 void main() {
@@ -167,8 +170,10 @@ void main() {
           keyBytes: _testKeyBytes,
           timestamp: 0,
         );
-        final datasource =
-            _FakeChatDatasource(keyHex: _testKeyHex, messages: [model]);
+        final datasource = _FakeChatDatasource(
+          keyHex: _testKeyHex,
+          messages: [model],
+        );
         final repo = ChatRepositoryImpl(datasource);
 
         final messages = await repo.watchMessages('s').first;
@@ -179,8 +184,10 @@ void main() {
     group('watchTypingUsers', () {
       test('delegates to datasource', () async {
         const users = [TypingUser(uid: 'u1', displayName: 'Alice')];
-        final datasource =
-            _FakeChatDatasource(keyHex: _testKeyHex, typingUsers: users);
+        final datasource = _FakeChatDatasource(
+          keyHex: _testKeyHex,
+          typingUsers: users,
+        );
         final repo = ChatRepositoryImpl(datasource);
 
         final result = await repo.watchTypingUsers('session-1').first;

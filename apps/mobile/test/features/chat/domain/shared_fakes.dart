@@ -30,7 +30,10 @@ class FakeChatRepository implements ChatRepository {
   }
 
   @override
-  Future<void> sendMessage({required String sessionId, required String text}) async {
+  Future<void> sendMessage({
+    required String sessionId,
+    required String text,
+  }) async {
     sendMessageCount++;
     lastSessionId = sessionId;
     lastText = text;

@@ -15,30 +15,38 @@ class SongDialog extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Now playing',
-                style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 20,
-                    fontWeight: FontWeight.w900)),
+            const Text(
+              'Now playing',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 20,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
             const SizedBox(height: 12),
             Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(20)),
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+              ),
               child: Row(
                 children: [
-                  const Icon(Icons.album_outlined,
-                      size: 45, color: Colors.black),
+                  const Icon(
+                    Icons.album_outlined,
+                    size: 45,
+                    color: Colors.black,
+                  ),
                   const SizedBox(width: 12),
                   const Expanded(
                     child: Text(
-                        'ALIE BLACKCOBRA - มือเปล่า (PUT\nTHE GUN DOWN) (Lyric Video)',
-                        style: TextStyle(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 13,
-                            height: 1.3)),
+                      'ALIE BLACKCOBRA - มือเปล่า (PUT\nTHE GUN DOWN) (Lyric Video)',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                        height: 1.3,
+                      ),
+                    ),
                   ),
                   const SizedBox(width: 8),
                   Container(
@@ -47,30 +55,41 @@ class SongDialog extends StatelessWidget {
                       color: const Color(0xFFFFCCAA),
                       borderRadius: BorderRadius.circular(10),
                       border: Border.all(
-                          color: const Color(0xFFCF5733), width: 1.5),
+                        color: const Color(0xFFCF5733),
+                        width: 1.5,
+                      ),
                     ),
-                    child: const Icon(Icons.close,
-                        color: Color(0xFFCF5733), size: 22),
+                    child: const Icon(
+                      Icons.close,
+                      color: Color(0xFFCF5733),
+                      size: 22,
+                    ),
                   ),
                 ],
               ),
             ),
             const SizedBox(height: 24),
-            const Text('Queue',
-                style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 20,
-                    fontWeight: FontWeight.w900)),
+            const Text(
+              'Queue',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 20,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
             const SizedBox(height: 12),
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(20)),
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+              ),
               child: Column(
                 children: [
-                  _queueItem('1.',
-                      'Jeff Satur - ของขวัญปีใหม่ (Golden\nNight) 【Official Music Video】'),
+                  _queueItem(
+                    '1.',
+                    'Jeff Satur - ของขวัญปีใหม่ (Golden\nNight) 【Official Music Video】',
+                  ),
                   const SizedBox(height: 20),
                   _queueItem('2.', ''),
                   const SizedBox(height: 20),
@@ -89,10 +108,13 @@ class SongDialog extends StatelessWidget {
                       filled: true,
                       fillColor: Colors.white,
                       contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 20, vertical: 16),
+                        horizontal: 20,
+                        vertical: 16,
+                      ),
                       border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(30),
-                          borderSide: BorderSide.none),
+                        borderRadius: BorderRadius.circular(30),
+                        borderSide: BorderSide.none,
+                      ),
                     ),
                   ),
                 ),
@@ -103,14 +125,18 @@ class SongDialog extends StatelessWidget {
                     width: 55,
                     height: 55,
                     decoration: BoxDecoration(
-                        color: const Color(0xFFEAC163),
-                        borderRadius: BorderRadius.circular(16)),
-                    child: const Icon(Icons.send,
-                        color: Color(0xFF6B5E5B), size: 28),
+                      color: const Color(0xFFEAC163),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: const Icon(
+                      Icons.send,
+                      color: Color(0xFF6B5E5B),
+                      size: 28,
+                    ),
                   ),
                 ),
               ],
-            )
+            ),
           ],
         ),
       ),
@@ -121,19 +147,25 @@ class SongDialog extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(num,
-            style: const TextStyle(
-                fontWeight: FontWeight.w900,
-                fontSize: 16,
-                color: Colors.black)),
+        Text(
+          num,
+          style: const TextStyle(
+            fontWeight: FontWeight.w900,
+            fontSize: 16,
+            color: Colors.black,
+          ),
+        ),
         const SizedBox(width: 16),
         Expanded(
-          child: Text(text,
-              style: const TextStyle(
-                  fontWeight: FontWeight.w500,
-                  fontSize: 14,
-                  color: Colors.black87,
-                  height: 1.3)),
+          child: Text(
+            text,
+            style: const TextStyle(
+              fontWeight: FontWeight.w500,
+              fontSize: 14,
+              color: Colors.black87,
+              height: 1.3,
+            ),
+          ),
         ),
         Container(
           padding: const EdgeInsets.all(4),

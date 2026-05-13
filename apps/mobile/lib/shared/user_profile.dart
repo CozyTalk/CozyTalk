@@ -4,10 +4,7 @@ class UserProfileState {
   final String username;
   final String interest;
 
-  const UserProfileState({
-    this.username = 'Somtum',
-    this.interest = '',
-  });
+  const UserProfileState({this.username = 'Somtum', this.interest = ''});
 
   UserProfileState copyWith({String? username, String? interest}) =>
       UserProfileState(
@@ -32,5 +29,5 @@ class UserProfileNotifier extends Notifier<UserProfileState> {
 
 final userProfileProvider =
     NotifierProvider<UserProfileNotifier, UserProfileState>(
-  UserProfileNotifier.new,
-);
+      UserProfileNotifier.new,
+    );

@@ -7,9 +7,8 @@ part 'hello_message_model.g.dart';
 
 @freezed
 abstract class HelloMessageModel with _$HelloMessageModel {
-  const factory HelloMessageModel({
-    required String message,
-  }) = _HelloMessageModel;
+  const factory HelloMessageModel({required String message}) =
+      _HelloMessageModel;
 
   factory HelloMessageModel.fromJson(Map<String, dynamic> json) =>
       _$HelloMessageModelFromJson(json);

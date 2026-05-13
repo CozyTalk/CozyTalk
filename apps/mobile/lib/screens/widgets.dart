@@ -73,7 +73,7 @@ class CozyCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(radius),
         boxShadow: [
           BoxShadow(
-            color: AppColors.brownDeep.withValues(alpha:0.08),
+            color: AppColors.brownDeep.withValues(alpha: 0.08),
             blurRadius: 8,
             offset: const Offset(0, 3),
           ),
@@ -94,11 +94,8 @@ class UserAvatarWidget extends StatelessWidget {
     return Image.asset(
       'assets/images/UserAvatar.png',
       height: size,
-      errorBuilder: (_, __, ___) => Icon(
-        Icons.person,
-        size: size,
-        color: AppColors.brownDeep,
-      ),
+      errorBuilder: (_, __, ___) =>
+          Icon(Icons.person, size: size, color: AppColors.brownDeep),
     );
   }
 }

@@ -11,7 +11,8 @@ class _FakeAuthNotifier extends AuthNotifier {
 
   final AuthState _initial;
 
-  _FakeAuthNotifier({AuthState initial = const AuthState()}) : _initial = initial;
+  _FakeAuthNotifier({AuthState initial = const AuthState()})
+    : _initial = initial;
 
   @override
   AuthState build() => _initial;
@@ -24,7 +25,10 @@ class _FakeAuthNotifier extends AuthNotifier {
   }
 
   @override
-  Future<void> signIn({required String email, required String password}) async {}
+  Future<void> signIn({
+    required String email,
+    required String password,
+  }) async {}
 
   @override
   Future<void> signInWithGoogle() async {}
@@ -45,13 +49,17 @@ Widget _buildSignupScreen(_FakeAuthNotifier fake) {
 
 void main() {
   group('SignupScreen', () {
-    testWidgets('renders email, password and confirm password fields',
-        (tester) async {
+    testWidgets('renders email, password and confirm password fields', (
+      tester,
+    ) async {
       await tester.pumpWidget(_buildSignupScreen(_FakeAuthNotifier()));
 
       expect(find.widgetWithText(TextFormField, 'Email'), findsOneWidget);
       expect(find.widgetWithText(TextFormField, 'Password'), findsOneWidget);
-      expect(find.widgetWithText(TextFormField, 'Confirm Password'), findsOneWidget);
+      expect(
+        find.widgetWithText(TextFormField, 'Confirm Password'),
+        findsOneWidget,
+      );
     });
 
     testWidgets('shows email required error on empty submit', (tester) async {
@@ -67,28 +75,41 @@ void main() {
       await tester.pumpWidget(_buildSignupScreen(_FakeAuthNotifier()));
 
       await tester.enterText(
-          find.widgetWithText(TextFormField, 'Email'), 'a@b.com');
+        find.widgetWithText(TextFormField, 'Email'),
+        'a@b.com',
+      );
       await tester.enterText(
-          find.widgetWithText(TextFormField, 'Password'), 'password1');
+        find.widgetWithText(TextFormField, 'Password'),
+        'password1',
+      );
       await tester.enterText(
-          find.widgetWithText(TextFormField, 'Confirm Password'), 'password2');
+        find.widgetWithText(TextFormField, 'Confirm Password'),
+        'password2',
+      );
       await tester.tap(find.widgetWithText(ElevatedButton, 'Create Account'));
       await tester.pump();
 
       expect(find.text('Passwords do not match.'), findsOneWidget);
     });
 
-    testWidgets('calls signUp with email and password on valid submit',
-        (tester) async {
+    testWidgets('calls signUp with email and password on valid submit', (
+      tester,
+    ) async {
       final fake = _FakeAuthNotifier();
       await tester.pumpWidget(_buildSignupScreen(fake));
 
       await tester.enterText(
-          find.widgetWithText(TextFormField, 'Email'), 'new@example.com');
+        find.widgetWithText(TextFormField, 'Email'),
+        'new@example.com',
+      );
       await tester.enterText(
-          find.widgetWithText(TextFormField, 'Password'), 'secret123');
+        find.widgetWithText(TextFormField, 'Password'),
+        'secret123',
+      );
       await tester.enterText(
-          find.widgetWithText(TextFormField, 'Confirm Password'), 'secret123');
+        find.widgetWithText(TextFormField, 'Confirm Password'),
+        'secret123',
+      );
       await tester.tap(find.widgetWithText(ElevatedButton, 'Create Account'));
       await tester.pump();
 
@@ -109,7 +130,9 @@ void main() {
       expect(find.text('This email is already registered.'), findsOneWidget);
     });
 
-    testWidgets('shows loading indicator when status is loading', (tester) async {
+    testWidgets('shows loading indicator when status is loading', (
+      tester,
+    ) async {
       final fake = _FakeAuthNotifier(
         initial: const AuthState(status: AuthStatus.loading),
       );
@@ -122,23 +145,35 @@ void main() {
       await tester.pumpWidget(_buildSignupScreen(_FakeAuthNotifier()));
 
       await tester.enterText(
-          find.widgetWithText(TextFormField, 'Email'), 'a@b.com');
+        find.widgetWithText(TextFormField, 'Email'),
+        'a@b.com',
+      );
       await tester.enterText(
-          find.widgetWithText(TextFormField, 'Password'), '12345');
+        find.widgetWithText(TextFormField, 'Password'),
+        '12345',
+      );
       await tester.tap(find.widgetWithText(ElevatedButton, 'Create Account'));
       await tester.pump();
 
-      expect(find.text('Password must be at least 6 characters.'), findsOneWidget);
+      expect(
+        find.text('Password must be at least 6 characters.'),
+        findsOneWidget,
+      );
     });
 
-    testWidgets('shows confirm password required error when confirm is empty',
-        (tester) async {
+    testWidgets('shows confirm password required error when confirm is empty', (
+      tester,
+    ) async {
       await tester.pumpWidget(_buildSignupScreen(_FakeAuthNotifier()));
 
       await tester.enterText(
-          find.widgetWithText(TextFormField, 'Email'), 'a@b.com');
+        find.widgetWithText(TextFormField, 'Email'),
+        'a@b.com',
+      );
       await tester.enterText(
-          find.widgetWithText(TextFormField, 'Password'), 'password1');
+        find.widgetWithText(TextFormField, 'Password'),
+        'password1',
+      );
       await tester.tap(find.widgetWithText(ElevatedButton, 'Create Account'));
       await tester.pump();
 

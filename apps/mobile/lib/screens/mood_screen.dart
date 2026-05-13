@@ -32,7 +32,6 @@ class _MoodScreenState extends ConsumerState<MoodScreen> {
 
   @override
   Widget build(BuildContext context) {
-
     return Scaffold(
       backgroundColor: AppColors.scaffoldBg,
       body: Stack(
@@ -42,7 +41,12 @@ class _MoodScreenState extends ConsumerState<MoodScreen> {
               _buildCustomAppBar(context),
               Expanded(
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.only(left: 20, right: 20, top: 24, bottom: 120),
+                  padding: const EdgeInsets.only(
+                    left: 20,
+                    right: 20,
+                    top: 24,
+                    bottom: 120,
+                  ),
                   child: Column(
                     children: [
                       Container(
@@ -53,7 +57,7 @@ class _MoodScreenState extends ConsumerState<MoodScreen> {
                           borderRadius: BorderRadius.circular(25),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withValues(alpha:0.12),
+                              color: Colors.black.withValues(alpha: 0.12),
                               blurRadius: 12,
                               offset: const Offset(0, 4),
                             ),
@@ -76,7 +80,9 @@ class _MoodScreenState extends ConsumerState<MoodScreen> {
                                 bottom: -15,
                                 child: LayeredAvatar(
                                   boxSize: 130,
-                                  accessoryOverlay: ref.watch(avatarProvider).accessory,
+                                  accessoryOverlay: ref
+                                      .watch(avatarProvider)
+                                      .accessory,
                                   moodOverlay: _selected != null
                                       ? AvatarOverlays.mood[_selected]
                                       : ref.watch(avatarProvider).mood,
@@ -93,12 +99,13 @@ class _MoodScreenState extends ConsumerState<MoodScreen> {
                         shrinkWrap: true,
                         physics: const NeverScrollableScrollPhysics(),
                         padding: EdgeInsets.zero,
-                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 3,
-                          crossAxisSpacing: 15,
-                          mainAxisSpacing: 15,
-                          childAspectRatio: 0.85,
-                        ),
+                        gridDelegate:
+                            const SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 3,
+                              crossAxisSpacing: 15,
+                              mainAxisSpacing: 15,
+                              childAspectRatio: 0.85,
+                            ),
                         itemCount: _moods.length,
                         itemBuilder: (_, i) {
                           final mood = _moods[i];
@@ -108,17 +115,23 @@ class _MoodScreenState extends ConsumerState<MoodScreen> {
                             child: AnimatedContainer(
                               duration: const Duration(milliseconds: 200),
                               curve: Curves.easeOut,
-                              transform: Matrix4.translationValues(0, sel ? -10.0 : 0, 0),
+                              transform: Matrix4.translationValues(
+                                0,
+                                sel ? -10.0 : 0,
+                                0,
+                              ),
                               decoration: BoxDecoration(
                                 color: Colors.white,
                                 borderRadius: BorderRadius.circular(22),
                                 border: Border.all(
-                                  color: sel ? const Color(0xFFCE5E42) : Colors.grey.shade300,
+                                  color: sel
+                                      ? const Color(0xFFCE5E42)
+                                      : Colors.grey.shade300,
                                   width: sel ? 2.5 : 1.5,
                                 ),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: Colors.black.withValues(alpha:0.08),
+                                    color: Colors.black.withValues(alpha: 0.08),
                                     blurRadius: 10,
                                     offset: const Offset(0, 4),
                                   ),
@@ -132,7 +145,10 @@ class _MoodScreenState extends ConsumerState<MoodScreen> {
                                     height: 45,
                                     width: 45,
                                     fit: BoxFit.contain,
-                                    errorBuilder: (_, __, ___) => const Icon(Icons.sentiment_satisfied, size: 40),
+                                    errorBuilder: (_, __, ___) => const Icon(
+                                      Icons.sentiment_satisfied,
+                                      size: 40,
+                                    ),
                                   ),
                                   const SizedBox(height: 10),
                                   Text(
@@ -164,7 +180,10 @@ class _MoodScreenState extends ConsumerState<MoodScreen> {
               child: GestureDetector(
                 onTap: () => Navigator.pop(context, _selected),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 48,
+                    vertical: 12,
+                  ),
                   decoration: BoxDecoration(
                     color: const Color(0xFFDEF1C2),
                     borderRadius: BorderRadius.circular(20),
@@ -174,7 +193,7 @@ class _MoodScreenState extends ConsumerState<MoodScreen> {
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withValues(alpha:0.15),
+                        color: Colors.black.withValues(alpha: 0.15),
                         blurRadius: 8,
                         offset: const Offset(0, 4),
                       ),
@@ -223,10 +242,10 @@ class _MoodScreenState extends ConsumerState<MoodScreen> {
                     border: Border.all(color: Colors.grey.shade300, width: 1.5),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withValues(alpha:0.08),
+                        color: Colors.black.withValues(alpha: 0.08),
                         blurRadius: 10,
                         offset: const Offset(0, 4),
-                      )
+                      ),
                     ],
                   ),
                   child: SvgPicture.asset(

@@ -28,9 +28,10 @@ class _ChatScreenState extends State<ChatScreen> {
 
   List<ChatMessage> messages = [
     ChatMessage(
-        type: 'warning',
-        text:
-            'Keep it friendly! Please be respectful and protect your personal info. Report any suspicious behavior to help keep our community safe.'),
+      type: 'warning',
+      text:
+          'Keep it friendly! Please be respectful and protect your personal info. Report any suspicious behavior to help keep our community safe.',
+    ),
     ChatMessage(type: 'system', text: 'Kaitom Hop in', time: '27 April 2026'),
     ChatMessage(type: 'other', text: 'Hello.', time: '10:00 pm'),
     ChatMessage(type: 'me', text: 'Hello 🍪🙏🔥😣', time: '10:00 pm'),
@@ -39,7 +40,7 @@ class _ChatScreenState extends State<ChatScreen> {
   final List<String> topics = [
     "What drink do you usually order?\nWhy do you like it?",
     "Is there anything you haven't done\nyet but would like to try?",
-    "What is your favorite movie\nand why?"
+    "What is your favorite movie\nand why?",
   ];
 
   @override
@@ -65,8 +66,9 @@ class _ChatScreenState extends State<ChatScreen> {
   void _sendMessage() {
     if (_msgController.text.trim().isEmpty) return;
     setState(() {
-      messages
-          .add(ChatMessage(type: 'me', text: _msgController.text, time: 'Now'));
+      messages.add(
+        ChatMessage(type: 'me', text: _msgController.text, time: 'Now'),
+      );
     });
     _msgController.clear();
     _scrollToBottom();
@@ -83,7 +85,8 @@ class _ChatScreenState extends State<ChatScreen> {
   void _shuffleTopic() {
     setState(() {
       messages.add(
-          ChatMessage(type: 'system', text: 'Kaitom, shuffle the topics!'));
+        ChatMessage(type: 'system', text: 'Kaitom, shuffle the topics!'),
+      );
       messages.add(ChatMessage(type: 'card', text: topics[1]));
     });
     _scrollToBottom();
@@ -98,7 +101,8 @@ class _ChatScreenState extends State<ChatScreen> {
     final args =
         ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
     final roomName = args?['roomName'] ?? 'Red Lotus Lake';
-    final bgImage = args?['bgImage'] ?? 'assets/images/backgrounds/red_lotus_lake.png';
+    final bgImage =
+        args?['bgImage'] ?? 'assets/images/backgrounds/red_lotus_lake.png';
 
     return PopScope(
       canPop: false,
@@ -113,9 +117,7 @@ class _ChatScreenState extends State<ChatScreen> {
               width: double.infinity,
               decoration: const BoxDecoration(
                 color: AppColors.brownDeep,
-                borderRadius: BorderRadius.vertical(
-                  top: Radius.circular(35),
-                ),
+                borderRadius: BorderRadius.vertical(top: Radius.circular(35)),
               ),
               child: SafeArea(
                 bottom: false,
@@ -127,8 +129,9 @@ class _ChatScreenState extends State<ChatScreen> {
                     children: [
                       GestureDetector(
                         onTap: () => showDialog(
-                            context: context,
-                            builder: (_) => const LeaveRoomDialog()),
+                          context: context,
+                          builder: (_) => const LeaveRoomDialog(),
+                        ),
                         child: Container(
                           width: 48,
                           height: 48,
@@ -144,10 +147,15 @@ class _ChatScreenState extends State<ChatScreen> {
                               ),
                             ],
                             border: Border.all(
-                                color: Colors.grey.shade300, width: 1.5),
+                              color: Colors.grey.shade300,
+                              width: 1.5,
+                            ),
                           ),
-                          child: const Icon(Icons.chevron_left,
-                              color: Colors.black, size: 30),
+                          child: const Icon(
+                            Icons.chevron_left,
+                            color: Colors.black,
+                            size: 30,
+                          ),
                         ),
                       ),
                       const SizedBox(width: 16),
@@ -156,14 +164,21 @@ class _ChatScreenState extends State<ChatScreen> {
                           mainAxisAlignment: MainAxisAlignment.center,
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(roomName,
-                                style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.bold)),
-                            const Text('Room ID: —',
-                                style: TextStyle(
-                                    color: Colors.white70, fontSize: 12)),
+                            Text(
+                              roomName,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const Text(
+                              'Room ID: —',
+                              style: TextStyle(
+                                color: Colors.white70,
+                                fontSize: 12,
+                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -180,10 +195,12 @@ class _ChatScreenState extends State<ChatScreen> {
               child: Stack(
                 children: [
                   Positioned.fill(
-                    child: Image.asset(bgImage,
-                        fit: BoxFit.cover,
-                        errorBuilder: (c, e, s) =>
-                            Container(color: Colors.grey.shade400)),
+                    child: Image.asset(
+                      bgImage,
+                      fit: BoxFit.cover,
+                      errorBuilder: (c, e, s) =>
+                          Container(color: Colors.grey.shade400),
+                    ),
                   ),
                   Positioned(
                     bottom: 0,
@@ -213,11 +230,13 @@ class _ChatScreenState extends State<ChatScreen> {
                     child: Column(
                       children: [
                         _sideButton(
-                            Icons.music_note,
-                            'Song',
-                            () => showDialog(
-                                context: context,
-                                builder: (_) => const SongDialog())),
+                          Icons.music_note,
+                          'Song',
+                          () => showDialog(
+                            context: context,
+                            builder: (_) => const SongDialog(),
+                          ),
+                        ),
                         const SizedBox(height: 10),
                         _sideButton(Icons.style, 'Topic', _sendTopicCard),
                       ],
@@ -262,10 +281,13 @@ class _ChatScreenState extends State<ChatScreen> {
                         filled: true,
                         fillColor: Colors.white,
                         border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(20),
-                            borderSide: BorderSide.none),
+                          borderRadius: BorderRadius.circular(20),
+                          borderSide: BorderSide.none,
+                        ),
                         contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 14),
+                          horizontal: 16,
+                          vertical: 14,
+                        ),
                       ),
                       onSubmitted: (_) => _sendMessage(),
                     ),
@@ -277,8 +299,9 @@ class _ChatScreenState extends State<ChatScreen> {
                       width: 50,
                       height: 50,
                       decoration: BoxDecoration(
-                          color: const Color(0xFFEAC163),
-                          borderRadius: BorderRadius.circular(16)),
+                        color: const Color(0xFFEAC163),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
                       child: const Icon(Icons.send, color: Color(0xFF6B5E5B)),
                     ),
                   ),
@@ -297,18 +320,22 @@ class _ChatScreenState extends State<ChatScreen> {
       child: Container(
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: [
-              BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.1), blurRadius: 4)
-            ]),
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.1),
+              blurRadius: 4,
+            ),
+          ],
+        ),
         child: Column(
           children: [
             Icon(icon, color: Colors.black, size: 24),
-            Text(text,
-                style:
-                    const TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
+            Text(
+              text,
+              style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
+            ),
           ],
         ),
       ),
@@ -320,15 +347,19 @@ class _ChatScreenState extends State<ChatScreen> {
       margin: const EdgeInsets.only(bottom: 20),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-          color: const Color(0xFFF3D4BA),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0xFFC87A5B))),
-      child: Text(text,
-          textAlign: TextAlign.center,
-          style: const TextStyle(
-              color: Color(0xFF836151),
-              fontSize: 13,
-              fontWeight: FontWeight.w500)),
+        color: const Color(0xFFF3D4BA),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFC87A5B)),
+      ),
+      child: Text(
+        text,
+        textAlign: TextAlign.center,
+        style: const TextStyle(
+          color: Color(0xFF836151),
+          fontSize: 13,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
     );
   }
 
@@ -338,10 +369,13 @@ class _ChatScreenState extends State<ChatScreen> {
         margin: const EdgeInsets.symmetric(vertical: 8),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
         decoration: BoxDecoration(
-            border: Border.all(color: Colors.black26),
-            borderRadius: BorderRadius.circular(20)),
-        child: Text(text,
-            style: const TextStyle(fontSize: 12, color: Colors.black54)),
+          border: Border.all(color: Colors.black26),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Text(
+          text,
+          style: const TextStyle(fontSize: 12, color: Colors.black54),
+        ),
       ),
     );
   }
@@ -350,8 +384,9 @@ class _ChatScreenState extends State<ChatScreen> {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
-        mainAxisAlignment:
-            isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
+        mainAxisAlignment: isMe
+            ? MainAxisAlignment.end
+            : MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           if (!isMe)
@@ -369,23 +404,28 @@ class _ChatScreenState extends State<ChatScreen> {
           if (!isMe) const SizedBox(width: 8),
           if (isMe)
             Padding(
-                padding: const EdgeInsets.only(right: 8),
-                child: Text(time,
-                    style:
-                        const TextStyle(fontSize: 10, color: Colors.black54))),
+              padding: const EdgeInsets.only(right: 8),
+              child: Text(
+                time,
+                style: const TextStyle(fontSize: 10, color: Colors.black54),
+              ),
+            ),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
-                color: isMe ? const Color(0xFFF1CEE4) : const Color(0xFFDCEBCE),
-                borderRadius: BorderRadius.circular(20)),
+              color: isMe ? const Color(0xFFF1CEE4) : const Color(0xFFDCEBCE),
+              borderRadius: BorderRadius.circular(20),
+            ),
             child: Text(text, style: const TextStyle(fontSize: 15)),
           ),
           if (!isMe)
             Padding(
-                padding: const EdgeInsets.only(left: 8),
-                child: Text(time,
-                    style:
-                        const TextStyle(fontSize: 10, color: Colors.black54))),
+              padding: const EdgeInsets.only(left: 8),
+              child: Text(
+                time,
+                style: const TextStyle(fontSize: 10, color: Colors.black54),
+              ),
+            ),
           if (isMe) const SizedBox(width: 8),
           if (isMe)
             const CircleAvatar(
@@ -448,16 +488,18 @@ class _ChatScreenState extends State<ChatScreen> {
               color: const Color(0xFFEAC163),
               borderRadius: BorderRadius.circular(20),
               boxShadow: const [
-                BoxShadow(color: Colors.black12, blurRadius: 4)
+                BoxShadow(color: Colors.black12, blurRadius: 4),
               ],
             ),
             child: const Text(
               'shuffle',
               style: TextStyle(
-                  fontWeight: FontWeight.bold, color: Color(0xFF6B5E5B)),
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF6B5E5B),
+              ),
             ),
           ),
-        )
+        ),
       ],
     );
   }

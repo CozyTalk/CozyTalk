@@ -17,7 +17,6 @@ class ProfileScreen extends ConsumerStatefulWidget {
 }
 
 class _ProfileScreenState extends ConsumerState<ProfileScreen> {
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -31,7 +30,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 SliverFillRemaining(
                   hasScrollBody: false,
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 24,
+                    ),
                     child: Column(
                       children: [
                         // ── Profile Info Card ──
@@ -50,12 +52,17 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                       borderRadius: BorderRadius.circular(16),
                                       boxShadow: [
                                         BoxShadow(
-                                          color: Colors.black.withValues(alpha: 0.08),
+                                          color: Colors.black.withValues(
+                                            alpha: 0.08,
+                                          ),
                                           blurRadius: 8,
                                           offset: const Offset(0, 3),
-                                        )
+                                        ),
                                       ],
-                                      border: Border.all(color: Colors.grey.shade200, width: 1.5),
+                                      border: Border.all(
+                                        color: Colors.grey.shade200,
+                                        width: 1.5,
+                                      ),
                                     ),
                                     child: ClipRRect(
                                       borderRadius: BorderRadius.circular(14),
@@ -64,8 +71,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                         child: Center(
                                           child: LayeredAvatar(
                                             boxSize: 62,
-                                            moodOverlay: ref.watch(avatarProvider).mood,
-                                            accessoryOverlay: ref.watch(avatarProvider).accessory,
+                                            moodOverlay: ref
+                                                .watch(avatarProvider)
+                                                .mood,
+                                            accessoryOverlay: ref
+                                                .watch(avatarProvider)
+                                                .accessory,
                                           ),
                                         ),
                                       ),
@@ -74,26 +85,45 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                   const SizedBox(width: 20),
                                   Expanded(
                                     child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
                                         const Text(
                                           'Username',
-                                          style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16, color: Colors.black),
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.w900,
+                                            fontSize: 16,
+                                            color: Colors.black,
+                                          ),
                                         ),
                                         const SizedBox(height: 6),
                                         Text(
-                                          ref.watch(userProfileProvider).username,
-                                          style: const TextStyle(fontSize: 15, color: Colors.black),
+                                          ref
+                                              .watch(userProfileProvider)
+                                              .username,
+                                          style: const TextStyle(
+                                            fontSize: 15,
+                                            color: Colors.black,
+                                          ),
                                         ),
                                         const SizedBox(height: 18),
                                         const Text(
                                           'Interest',
-                                          style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16, color: Colors.black),
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.w900,
+                                            fontSize: 16,
+                                            color: Colors.black,
+                                          ),
                                         ),
                                         const SizedBox(height: 6),
                                         Text(
-                                          ref.watch(userProfileProvider).interest,
-                                          style: const TextStyle(fontSize: 15, color: Colors.black),
+                                          ref
+                                              .watch(userProfileProvider)
+                                              .interest,
+                                          style: const TextStyle(
+                                            fontSize: 15,
+                                            color: Colors.black,
+                                          ),
                                         ),
                                       ],
                                     ),
@@ -105,7 +135,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                 right: 0,
                                 child: GestureDetector(
                                   onTap: () async {
-                                    final profile = ref.read(userProfileProvider);
+                                    final profile = ref.read(
+                                      userProfileProvider,
+                                    );
                                     final result = await Navigator.push(
                                       context,
                                       MaterialPageRoute(
@@ -116,13 +148,23 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                       ),
                                     );
                                     if (result is Map && mounted) {
-                                      ref.read(userProfileProvider.notifier).update(
-                                        username: result['name'] as String? ?? profile.username,
-                                        interest: result['interest'] as String? ?? profile.interest,
-                                      );
+                                      ref
+                                          .read(userProfileProvider.notifier)
+                                          .update(
+                                            username:
+                                                result['name'] as String? ??
+                                                profile.username,
+                                            interest:
+                                                result['interest'] as String? ??
+                                                profile.interest,
+                                          );
                                     }
                                   },
-                                  child: SvgPicture.asset('assets/images/icons/Edit.svg', width: 24, height: 24),
+                                  child: SvgPicture.asset(
+                                    'assets/images/icons/Edit.svg',
+                                    width: 24,
+                                    height: 24,
+                                  ),
                                 ),
                               ),
                             ],
@@ -135,13 +177,20 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                           child: Row(
                             children: const [
                               Text(
-                                'Email :', 
-                                style: TextStyle(fontWeight: FontWeight.w900, fontSize: 15, color: Colors.black),
+                                'Email :',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w900,
+                                  fontSize: 15,
+                                  color: Colors.black,
+                                ),
                               ),
                               SizedBox(width: 12),
                               Text(
-                                'Sekloso@gmail.com', 
-                                style: TextStyle(fontSize: 15, color: Colors.black),
+                                'Sekloso@gmail.com',
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  color: Colors.black,
+                                ),
                               ),
                             ],
                           ),
@@ -150,12 +199,21 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
                         // ── Blocked Card ──
                         _buildCard(
-                          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const BlockedScreen())),
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const BlockedScreen(),
+                            ),
+                          ),
                           child: Row(
                             children: const [
                               Text(
-                                'Blocked', 
-                                style: TextStyle(fontWeight: FontWeight.w900, fontSize: 15, color: Colors.black),
+                                'Blocked',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w900,
+                                  fontSize: 15,
+                                  color: Colors.black,
+                                ),
                               ),
                             ],
                           ),
@@ -178,31 +236,48 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                               ),
                               const SizedBox(width: 12),
                               const Text(
-                                'Contact us', 
-                                style: TextStyle(fontWeight: FontWeight.w900, fontSize: 15, color: Colors.black),
+                                'Contact us',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w900,
+                                  fontSize: 15,
+                                  color: Colors.black,
+                                ),
                               ),
                               const Spacer(),
                               const Text(
-                                '@CozyTalk', 
-                                style: TextStyle(fontWeight: FontWeight.w900, fontSize: 15, color: Colors.black),
+                                '@CozyTalk',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w900,
+                                  fontSize: 15,
+                                  color: Colors.black,
+                                ),
                               ),
                             ],
                           ),
                         ),
-                        
+
                         const Spacer(),
                         const SizedBox(height: 24),
 
                         // ── Log out Card ──
                         _buildCard(
-                          onTap: () => ref.read(authNotifierProvider.notifier).signOut(),
+                          onTap: () =>
+                              ref.read(authNotifierProvider.notifier).signOut(),
                           child: Row(
                             children: [
-                              SvgPicture.asset('assets/images/icons/LogOut.svg', width: 24, height: 24),
+                              SvgPicture.asset(
+                                'assets/images/icons/LogOut.svg',
+                                width: 24,
+                                height: 24,
+                              ),
                               const SizedBox(width: 12),
                               const Text(
-                                'Log out', 
-                                style: TextStyle(fontWeight: FontWeight.w900, fontSize: 15, color: Colors.black),
+                                'Log out',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w900,
+                                  fontSize: 15,
+                                  color: Colors.black,
+                                ),
                               ),
                             ],
                           ),
@@ -222,7 +297,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   // --- Reusable AppBar & Card ---
   Widget _buildCustomAppBar(BuildContext context) {
     return Container(
-      decoration: const BoxDecoration(color: Color(0xFF695959), borderRadius: BorderRadius.vertical(top: Radius.circular(35))),
+      decoration: const BoxDecoration(
+        color: Color(0xFF695959),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(35)),
+      ),
       child: SafeArea(
         bottom: false,
         child: Container(
@@ -241,15 +319,29 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(color: Colors.grey.shade300, width: 1.5),
-                    boxShadow: [BoxShadow(color: Colors.black.withValues(alpha:0.08), blurRadius: 10, offset: const Offset(0, 4))],
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.08),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
                   ),
-                  child: SvgPicture.asset('assets/images/icons/Back.svg', width: 26, height: 26),
+                  child: SvgPicture.asset(
+                    'assets/images/icons/Back.svg',
+                    width: 26,
+                    height: 26,
+                  ),
                 ),
               ),
               const SizedBox(width: 16),
               const Text(
-                'Profile', 
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: Colors.white),
+                'Profile',
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w900,
+                  color: Colors.white,
+                ),
               ),
             ],
           ),
@@ -258,17 +350,28 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 
-  Widget _buildCard({required Widget child, EdgeInsetsGeometry? padding, VoidCallback? onTap}) {
+  Widget _buildCard({
+    required Widget child,
+    EdgeInsetsGeometry? padding,
+    VoidCallback? onTap,
+  }) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
         width: double.infinity,
-        padding: padding ?? const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+        padding:
+            padding ?? const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(color: Colors.grey.shade300, width: 1.5),
-          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha:0.08), blurRadius: 10, offset: const Offset(0, 4))],
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.08),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
         child: child,
       ),

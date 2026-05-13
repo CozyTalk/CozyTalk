@@ -22,8 +22,14 @@ void main() {
     });
 
     test('returns the created AuthUser', () async {
-      repo.returnUser = const AuthUser(uid: 'new-user', email: 'new@example.com');
-      final result = await usecase(email: 'new@example.com', password: 'pass123');
+      repo.returnUser = const AuthUser(
+        uid: 'new-user',
+        email: 'new@example.com',
+      );
+      final result = await usecase(
+        email: 'new@example.com',
+        password: 'pass123',
+      );
       expect(result.uid, 'new-user');
       expect(result.email, 'new@example.com');
     });

@@ -80,7 +80,10 @@ class _ThoughtBubbleDialogState extends State<_ThoughtBubbleDialog> {
                     alignment: Alignment.centerRight,
                     child: Text(
                       '${val.text.length}/$_maxLength',
-                      style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey.shade500,
+                      ),
                     ),
                   ),
                 ),
@@ -95,12 +98,29 @@ class _ThoughtBubbleDialogState extends State<_ThoughtBubbleDialog> {
                         maxLength: _maxLength,
                         maxLines: 3,
                         autofocus: true,
-                        buildCounter: (_, {required currentLength, required isFocused, maxLength}) => null,
-                        style: const TextStyle(fontSize: 16, color: Colors.black87),
+                        buildCounter:
+                            (
+                              _, {
+                              required currentLength,
+                              required isFocused,
+                              maxLength,
+                            }) => null,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          color: Colors.black87,
+                        ),
                         decoration: InputDecoration(
                           hintText: 'Type here...',
-                          hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14),
-                          contentPadding: const EdgeInsets.fromLTRB(14, 12, 36, 12),
+                          hintStyle: TextStyle(
+                            color: Colors.grey.shade400,
+                            fontSize: 14,
+                          ),
+                          contentPadding: const EdgeInsets.fromLTRB(
+                            14,
+                            12,
+                            36,
+                            12,
+                          ),
                           isDense: true,
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
@@ -112,7 +132,10 @@ class _ThoughtBubbleDialogState extends State<_ThoughtBubbleDialog> {
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: AppColors.brownDeep, width: 1.5),
+                            borderSide: const BorderSide(
+                              color: AppColors.brownDeep,
+                              width: 1.5,
+                            ),
                           ),
                         ),
                       ),
@@ -173,7 +196,10 @@ class _ThoughtBubbleDialogState extends State<_ThoughtBubbleDialog> {
                     'assets/images/icons/Close.svg',
                     width: 30,
                     height: 30,
-                    colorFilter: const ColorFilter.mode(Colors.black, BlendMode.srcIn),
+                    colorFilter: const ColorFilter.mode(
+                      Colors.black,
+                      BlendMode.srcIn,
+                    ),
                   ),
                 ),
               ),
@@ -184,4 +210,3 @@ class _ThoughtBubbleDialogState extends State<_ThoughtBubbleDialog> {
     );
   }
 }
-

@@ -32,7 +32,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(chatNotifierProvider.notifier).enterSession(
+      ref
+          .read(chatNotifierProvider.notifier)
+          .enterSession(
             sessionId: widget.sessionId,
             currentUserId: widget.currentUserId,
             currentUserDisplayName: widget.currentUserDisplayName,
@@ -70,8 +72,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             label: 'Skip to next person',
             button: true,
             child: TextButton(
-              onPressed:
-                  state.status == SessionStatus.chatting ? _endSession : null,
+              onPressed: state.status == SessionStatus.chatting
+                  ? _endSession
+                  : null,
               child: const Text(
                 'Skip',
                 style: TextStyle(color: Colors.white, fontSize: 16),
@@ -93,12 +96,13 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 : ListView.builder(
                     controller: _scrollController,
                     padding: const EdgeInsets.symmetric(
-                        vertical: 8, horizontal: 12),
+                      vertical: 8,
+                      horizontal: 12,
+                    ),
                     itemCount: state.messages.length,
                     itemBuilder: (context, index) {
                       final message = state.messages[index];
-                      final isMine =
-                          message.senderId == state.currentUserId;
+                      final isMine = message.senderId == state.currentUserId;
                       return _MessageBubble(
                         text: message.text,
                         displayName: message.displayName,
@@ -111,12 +115,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             _TypingIndicator(typingUsers: state.typingUsers),
           if (state.error != null)
             Padding(
-              padding: const EdgeInsets.symmetric(
-                  horizontal: 12, vertical: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
               child: Text(
                 state.error!,
-                style:
-                    const TextStyle(color: Colors.red, fontSize: 12),
+                style: const TextStyle(color: Colors.red, fontSize: 12),
                 textAlign: TextAlign.center,
               ),
             ),
@@ -211,7 +213,9 @@ class _MessageBubble extends StatelessWidget {
                 ),
               Container(
                 padding: const EdgeInsets.symmetric(
-                    horizontal: 14, vertical: 10),
+                  horizontal: 14,
+                  vertical: 10,
+                ),
                 decoration: BoxDecoration(
                   color: isMine
                       ? theme.colorScheme.primary
@@ -341,7 +345,9 @@ class _InputBar extends StatelessWidget {
                   decoration: InputDecoration(
                     hintText: 'Type a message…',
                     contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 10),
+                      horizontal: 16,
+                      vertical: 10,
+                    ),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(24),
                     ),
@@ -359,8 +365,7 @@ class _InputBar extends StatelessWidget {
                 child: isSending
                     ? const Padding(
                         padding: EdgeInsets.all(12),
-                        child:
-                            CircularProgressIndicator(strokeWidth: 2),
+                        child: CircularProgressIndicator(strokeWidth: 2),
                       )
                     : IconButton(
                         onPressed: onSend,
@@ -403,8 +408,7 @@ class _DisconnectedScreen extends StatelessWidget {
               const SizedBox(height: 8),
               Text(
                 'The conversation has ended.',
-                style: TextStyle(
-                    color: Theme.of(context).colorScheme.outline),
+                style: TextStyle(color: Theme.of(context).colorScheme.outline),
                 textAlign: TextAlign.center,
               ),
             ],

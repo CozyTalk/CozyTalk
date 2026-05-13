@@ -13,7 +13,8 @@ class _FakeChatNotifier extends ChatNotifier {
   String? lastSentText;
   int endSessionCount = 0;
 
-  _FakeChatNotifier({ChatState initial = const ChatState()}) : _initial = initial;
+  _FakeChatNotifier({ChatState initial = const ChatState()})
+    : _initial = initial;
 
   @override
   ChatState build() => _initial;
@@ -53,8 +54,9 @@ Widget _buildChatScreen(_FakeChatNotifier fake) {
 
 void main() {
   group('ChatScreen', () {
-    testWidgets('shows "Say hello!" placeholder when messages list is empty',
-        (tester) async {
+    testWidgets('shows "Say hello!" placeholder when messages list is empty', (
+      tester,
+    ) async {
       final fake = _FakeChatNotifier(
         initial: const ChatState(
           status: SessionStatus.chatting,
@@ -67,8 +69,9 @@ void main() {
       expect(find.text('Say hello!'), findsOneWidget);
     });
 
-    testWidgets('renders message bubbles when messages are present',
-        (tester) async {
+    testWidgets('renders message bubbles when messages are present', (
+      tester,
+    ) async {
       final ts = DateTime.now();
       final fake = _FakeChatNotifier(
         initial: ChatState(
@@ -99,8 +102,9 @@ void main() {
       expect(find.text('hey!'), findsOneWidget);
     });
 
-    testWidgets('shows disconnected screen when status is disconnected',
-        (tester) async {
+    testWidgets('shows disconnected screen when status is disconnected', (
+      tester,
+    ) async {
       final fake = _FakeChatNotifier(
         initial: const ChatState(status: SessionStatus.disconnected),
       );
@@ -110,8 +114,9 @@ void main() {
       expect(find.text('The conversation has ended.'), findsOneWidget);
     });
 
-    testWidgets('shows typing indicator when other users are typing',
-        (tester) async {
+    testWidgets('shows typing indicator when other users are typing', (
+      tester,
+    ) async {
       final fake = _FakeChatNotifier(
         initial: const ChatState(
           status: SessionStatus.chatting,
@@ -126,7 +131,9 @@ void main() {
       expect(find.text('Bob is typing…'), findsOneWidget);
     });
 
-    testWidgets('typing indicator hidden when no one is typing', (tester) async {
+    testWidgets('typing indicator hidden when no one is typing', (
+      tester,
+    ) async {
       final fake = _FakeChatNotifier(
         initial: const ChatState(
           status: SessionStatus.chatting,
@@ -157,8 +164,9 @@ void main() {
       expect(fake.lastSentText, 'test message');
     });
 
-    testWidgets('tapping send with empty text does not call sendMessage',
-        (tester) async {
+    testWidgets('tapping send with empty text does not call sendMessage', (
+      tester,
+    ) async {
       final fake = _FakeChatNotifier(
         initial: const ChatState(
           status: SessionStatus.chatting,
@@ -202,8 +210,9 @@ void main() {
       expect(find.byType(CircularProgressIndicator), findsOneWidget);
     });
 
-    testWidgets('typing indicator shows two names when two users are typing',
-        (tester) async {
+    testWidgets('typing indicator shows two names when two users are typing', (
+      tester,
+    ) async {
       final fake = _FakeChatNotifier(
         initial: const ChatState(
           status: SessionStatus.chatting,

@@ -134,7 +134,11 @@ class _FriendsScreenState extends State<FriendsScreen> {
                       child: Center(
                         child: friend.avatar.isNotEmpty
                             ? LayeredAvatar(boxSize: 48)
-                            : const Icon(Icons.person, color: Colors.grey, size: 35),
+                            : const Icon(
+                                Icons.person,
+                                color: Colors.grey,
+                                size: 35,
+                              ),
                       ),
                     ),
                   ),
@@ -207,7 +211,8 @@ class _FriendsScreenState extends State<FriendsScreen> {
                             AppRoutes.groupChatScreen,
                             arguments: {
                               'roomName': "${friend.name}'s Room",
-                              'bgImage': 'assets/images/backgrounds/kao_tapu.png',
+                              'bgImage':
+                                  'assets/images/backgrounds/kao_tapu.png',
                             },
                           ),
                           child: _buildJoinButton(),
@@ -292,7 +297,11 @@ class _FriendsScreenState extends State<FriendsScreen> {
               context: context,
               friend: friend,
               onNoteSaved: (newNote) {
-                setState(() => _friends[index].note = newNote.isNotEmpty ? newNote : null);
+                setState(
+                  () => _friends[index].note = newNote.isNotEmpty
+                      ? newNote
+                      : null,
+                );
               },
             );
           case 'Block':
@@ -375,9 +384,16 @@ class _FriendsScreenState extends State<FriendsScreen> {
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: Colors.grey.shade300, width: 1.5),
+                      border: Border.all(
+                        color: Colors.grey.shade300,
+                        width: 1.5,
+                      ),
                     ),
-                    child: SvgPicture.asset('assets/images/icons/Back.svg', width: 26, height: 26),
+                    child: SvgPicture.asset(
+                      'assets/images/icons/Back.svg',
+                      width: 26,
+                      height: 26,
+                    ),
                   ),
                 ),
                 const SizedBox(width: 16),
