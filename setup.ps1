@@ -31,12 +31,38 @@ function Require-Cmd($cmd, $label, $hint = "") {
 }
 
 Require-Cmd flutter "flutter" "https://docs.flutter.dev/get-started/install"
-Require-Cmd node    "node"    "Install Node.js 24+ from https://nodejs.org"
-Require-Cmd npm     "npm"
+$dartVerLine = & dart --version 2>&1 | Select-Object -First 1
+$dartMatch = [regex]::Match($dartVerLine, '(\d+)\.(\d+)\.\d+')
+if ($dartMatch.Success) {
+    $dartMajor = [int]$dartMatch.Groups[1].Value
+    $dartMinor = [int]$dartMatch.Groups[2].Value
+    if ($dartMajor -lt 3 -or ($dartMajor -eq 3 -and $dartMinor -lt 9)) {
+        fail "Dart $($dartMatch.Value) is too old — sdk: ^3.9.0 required (run: flutter upgrade)"
+    }
+}
+
+Require-Cmd node "node" "Install Node.js 24+ from https://nodejs.org"
+$nodeVer = & node --version 2>&1
+$nodeMajor = [int]($nodeVer -replace 'v(\d+).*', '$1')
+if ($nodeMajor -lt 24) {
+    warn "Node $nodeMajor detected — project targets Node 24 (package.json engines)"
+    info "Upgrade: https://nodejs.org"
+}
+
+Require-Cmd npm "npm"
 
 if (Get-Command java -ErrorAction SilentlyContinue) {
-    $javaVer = & java -version 2>&1 | Select-Object -First 1
-    ok "java  $javaVer"
+    $javaVerLine = & java -version 2>&1 | Select-Object -First 1
+    ok "java  $javaVerLine"
+    $javaMatch = [regex]::Match($javaVerLine, '"(\d+)(?:\.(\d+))?')
+    if ($javaMatch.Success) {
+        $javaMajor = [int]$javaMatch.Groups[1].Value
+        if ($javaMajor -eq 1) { $javaMajor = [int]$javaMatch.Groups[2].Value }
+        if ($javaMajor -lt 17) {
+            warn "Java $javaMajor detected — Java 17+ required for Android builds"
+            info "Install JDK 17+ from https://adoptium.net"
+        }
+    }
 } else {
     warn "java not found — needed for Android builds"
     info "Install JDK 17+ from https://adoptium.net"
