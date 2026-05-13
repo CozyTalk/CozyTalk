@@ -45,8 +45,15 @@ require() {
 }
 
 require flutter  "flutter"  "https://docs.flutter.dev/get-started/install"
-require node     "node"     "Install Node.js 20+ from https://nodejs.org"
+require node     "node"     "Install Node.js 24+ from https://nodejs.org"
 require npm      "npm"
+
+if command -v java &>/dev/null; then
+  ok "java  ${DIM}$(java -version 2>&1 | head -1)${RESET}"
+else
+  warn "java not found — needed for Android builds"
+  info "Install JDK 17+ from https://adoptium.net"
+fi
 
 if command -v firebase &>/dev/null; then
   ok "firebase  ${DIM}$(firebase --version 2>&1 | head -1)${RESET}"
@@ -65,8 +72,7 @@ ok "Flutter packages ready"
 # ── Code generation ───────────────────────────────────────────────────────────
 step "Code generation  ${DIM}(Freezed + Riverpod)${RESET}"
 info "build_runner build  →  apps/mobile"
-(cd apps/mobile && dart run build_runner build --delete-conflicting-outputs 2>&1 \
-  | grep -E '^\[|^Done|^Succeeded|error:' || true)
+(cd apps/mobile && dart run build_runner build --delete-conflicting-outputs)
 ok "Generated code up to date"
 
 # ── Cloud Functions ───────────────────────────────────────────────────────────
@@ -74,6 +80,15 @@ step "Cloud Functions dependencies"
 info "npm install  →  functions/"
 (cd functions && npm install --silent)
 ok "Node packages ready"
+
+# ── .env ──────────────────────────────────────────────────────────────────────
+step ".env"
+if [[ ! -f apps/mobile/.env ]]; then
+  cp apps/mobile/.env.example apps/mobile/.env
+  ok "Created apps/mobile/.env  ${DIM}(USE_EMULATOR=true — points at local emulators)${RESET}"
+else
+  ok "apps/mobile/.env already exists"
+fi
 
 # ── Git hooks ─────────────────────────────────────────────────────────────────
 step "Git hooks"

@@ -31,8 +31,16 @@ function Require-Cmd($cmd, $label, $hint = "") {
 }
 
 Require-Cmd flutter "flutter" "https://docs.flutter.dev/get-started/install"
-Require-Cmd node    "node"    "Install Node.js 20+ from https://nodejs.org"
+Require-Cmd node    "node"    "Install Node.js 24+ from https://nodejs.org"
 Require-Cmd npm     "npm"
+
+if (Get-Command java -ErrorAction SilentlyContinue) {
+    $javaVer = & java -version 2>&1 | Select-Object -First 1
+    ok "java  $javaVer"
+} else {
+    warn "java not found — needed for Android builds"
+    info "Install JDK 17+ from https://adoptium.net"
+}
 
 if (Get-Command firebase -ErrorAction SilentlyContinue) {
     $fbVer = & firebase --version 2>&1 | Select-Object -First 1
@@ -74,6 +82,17 @@ $code = $LASTEXITCODE
 Pop-Location
 if ($code -ne 0) { fail "npm install failed" }
 ok "Node packages ready"
+
+# ── .env ──────────────────────────────────────────────────────────────────────
+step ".env"
+$envFile = Join-Path $mobileDir '.env'
+$envExample = Join-Path $mobileDir '.env.example'
+if (-not (Test-Path $envFile)) {
+    Copy-Item $envExample $envFile
+    ok ".env created from .env.example  (USE_EMULATOR=true — points at local emulators)"
+} else {
+    ok "apps/mobile/.env already exists"
+}
 
 # ── Git hooks ─────────────────────────────────────────────────────────────────
 step "Git hooks"
