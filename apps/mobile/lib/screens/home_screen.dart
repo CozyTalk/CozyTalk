@@ -88,21 +88,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       children: [
                         _QuickAction(
-                          imagePath: 'assets/images/DressUp.svg',
+                          imagePath: 'assets/images/icons/DressUp.svg',
                           label: 'Dress Up!',
                           imageWidth: 35,
                           imageHeight: 35,
                           onTap: _navigateDressUp,
                         ),
                         _QuickAction(
-                          imagePath: 'assets/images/Mood.svg',
+                          imagePath: 'assets/images/icons/Mood.svg',
                           label: 'Mood',
                           imageWidth: 38,
                           imageHeight: 38,
                           onTap: _navigateMood,
                         ),
                         _QuickAction(
-                          imagePath: 'assets/images/Friends.svg',
+                          imagePath: 'assets/images/icons/Friends.svg',
                           label: 'Friends',
                           imageWidth: 39,
                           imageHeight: 39,
@@ -202,7 +202,7 @@ class _TopBar extends StatelessWidget {
                         ),
                       ),
                       child: SvgPicture.asset(
-                        'assets/images/Notification.svg',
+                        'assets/images/icons/Notification.svg',
                         width: 25,
                         height: 25,
                       ),
@@ -252,7 +252,7 @@ class _TopBar extends StatelessWidget {
                     ),
                   ),
                   child: SvgPicture.asset(
-                    'assets/images/User.svg',
+                    'assets/images/icons/User.svg',
                     width: 27,
                     height: 27,
                   ),
@@ -324,7 +324,7 @@ class _AvatarCardState extends State<_AvatarCard> {
                   child: Transform.scale(
                     scale: 1.15,
                     child: Image.asset(
-                      'assets/images/HomeBg.png',
+                      'assets/images/backgrounds/HomeBg.png',
                       fit: BoxFit.cover,
                       alignment: Alignment.center,
                       errorBuilder: (_, __, ___) => Container(color: AppColors.tanGreen),
@@ -552,7 +552,7 @@ class _LetsChatButton extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             SvgPicture.asset(
-              'assets/images/LetsChat.svg',
+              'assets/images/icons/LetsChat.svg',
               width: 42,
               height: 42,
             ),

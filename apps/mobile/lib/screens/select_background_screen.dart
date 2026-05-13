@@ -18,22 +18,22 @@ class _SelectBackgroundScreenState extends State<SelectBackgroundScreen> {
     {
       'id': 'kao_tapu',
       'title': 'Kao Tapu',
-      'image': 'assets/images/kao_tapu.png'
+      'image': 'assets/images/backgrounds/kao_tapu.png'
     },
     {
       'id': 'red_lotus_lake',
       'title': 'Red Lotus Lake',
-      'image': 'assets/images/red_lotus_lake.png'
+      'image': 'assets/images/backgrounds/red_lotus_lake.png'
     },
     {
       'id': 'sea_of_cloud',
       'title': 'The Sea of Cloud',
-      'image': 'assets/images/sea_of_cloud.png'
+      'image': 'assets/images/backgrounds/sea_of_cloud.png'
     },
     {
       'id': 'lumphini_park',
       'title': 'Lumphini Park',
-      'image': 'assets/images/lumphini_park.png'
+      'image': 'assets/images/backgrounds/lumphini_park.png'
     },
   ];
 

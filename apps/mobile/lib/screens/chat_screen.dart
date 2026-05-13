@@ -98,7 +98,7 @@ class _ChatScreenState extends State<ChatScreen> {
     final args =
         ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
     final roomName = args?['roomName'] ?? 'Red Lotus Lake';
-    final bgImage = args?['bgImage'] ?? 'assets/images/red_lotus_lake.png';
+    final bgImage = args?['bgImage'] ?? 'assets/images/backgrounds/red_lotus_lake.png';
 
     return PopScope(
       canPop: false,
