@@ -348,9 +348,8 @@ class _TypingIndicatorState extends State<_TypingIndicator>
                         height: 7,
                         margin: const EdgeInsets.symmetric(horizontal: 2),
                         decoration: BoxDecoration(
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.outline.withOpacity(_dotScale(i).value),
+                          color: Theme.of(context).colorScheme.outline
+                              .withValues(alpha: _dotScale(i).value),
                           shape: BoxShape.circle,
                         ),
                       ),

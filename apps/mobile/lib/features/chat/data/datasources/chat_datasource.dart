@@ -164,7 +164,7 @@ class ChatDatasourceImpl implements ChatDatasource {
         await ref.set({
           'isTyping': true,
           'displayName': displayName,
-          if (photoUrl != null) 'photoUrl': photoUrl,
+          if (photoUrl case final url?) 'photoUrl': url,
         });
       } else {
         await ref.remove();
