@@ -208,7 +208,7 @@ class _FriendProfileDialogState extends State<_FriendProfileDialog> {
               const Spacer(),
               ValueListenableBuilder<TextEditingValue>(
                 valueListenable: _noteCtrl,
-                builder: (_, val, __) => Text(
+                builder: (_, val, _) => Text(
                   '${val.text.length}/$_maxNote',
                   style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
                 ),

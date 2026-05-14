@@ -76,7 +76,7 @@ class _ThoughtBubbleDialogState extends State<_ThoughtBubbleDialog> {
                 // Counter
                 ValueListenableBuilder<TextEditingValue>(
                   valueListenable: _ctrl,
-                  builder: (_, val, __) => Align(
+                  builder: (_, val, _) => Align(
                     alignment: Alignment.centerRight,
                     child: Text(
                       '${val.text.length}/$_maxLength',
@@ -91,7 +91,7 @@ class _ThoughtBubbleDialogState extends State<_ThoughtBubbleDialog> {
                 // Text field + clear button
                 ValueListenableBuilder<TextEditingValue>(
                   valueListenable: _ctrl,
-                  builder: (_, val, __) => Stack(
+                  builder: (_, val, _) => Stack(
                     children: [
                       TextField(
                         controller: _ctrl,
