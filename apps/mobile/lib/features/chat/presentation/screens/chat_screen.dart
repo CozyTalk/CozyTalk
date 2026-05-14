@@ -389,7 +389,8 @@ class _UserAvatar extends StatelessWidget {
         ? user.displayName[0].toUpperCase()
         : '?';
 
-    final ImageProvider? image = (photoUrl != null && photoUrl.startsWith('https://'))
+    final ImageProvider? image =
+        (photoUrl != null && photoUrl.startsWith('https://'))
         ? NetworkImage(photoUrl)
         : null;
 
