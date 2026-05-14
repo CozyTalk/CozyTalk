@@ -134,7 +134,7 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
                               // Username
                               ValueListenableBuilder(
                                 valueListenable: _usernameCtrl,
-                                builder: (_, val, __) => Row(
+                                builder: (_, val, _) => Row(
                                   children: [
                                     const Text(
                                       'Username',
@@ -184,7 +184,7 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
                               // Interest
                               ValueListenableBuilder(
                                 valueListenable: _interestCtrl,
-                                builder: (_, val, __) => Row(
+                                builder: (_, val, _) => Row(
                                   mainAxisAlignment:
                                       MainAxisAlignment.spaceBetween,
                                   children: [
@@ -338,7 +338,7 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
   }) {
     return ValueListenableBuilder<TextEditingValue>(
       valueListenable: controller,
-      builder: (_, val, __) => Stack(
+      builder: (_, val, _) => Stack(
         children: [
           TextField(
             controller: controller,

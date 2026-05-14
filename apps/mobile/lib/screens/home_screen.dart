@@ -331,7 +331,7 @@ class _AvatarCardState extends State<_AvatarCard> {
                       'assets/images/backgrounds/HomeBg.png',
                       fit: BoxFit.cover,
                       alignment: Alignment.center,
-                      errorBuilder: (_, __, ___) =>
+                      errorBuilder: (_, _, _) =>
                           Container(color: AppColors.tanGreen),
                     ),
                   ),
@@ -346,7 +346,7 @@ class _AvatarCardState extends State<_AvatarCard> {
                     width: 90,
                     height: 90,
                     fit: BoxFit.contain,
-                    errorBuilder: (_, __, ___) => Container(
+                    errorBuilder: (_, _, _) => Container(
                       width: 90,
                       height: 90,
                       decoration: BoxDecoration(
