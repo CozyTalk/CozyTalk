@@ -96,12 +96,13 @@ class _AuthRouter extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final authState = ref.watch(authNotifierProvider);
-    return switch (authState.status) {
+    final status = ref.watch(authNotifierProvider.select((s) => s.status));
+    final user = ref.watch(authNotifierProvider.select((s) => s.user));
+    return switch (status) {
       AuthStatus.authenticated => feature_chat.ChatScreen(
         sessionId: 'proto-dev-1',
         currentUserId: FirebaseAuth.instance.currentUser?.uid ?? '',
-        currentUserDisplayName: authState.user?.displayName,
+        currentUserDisplayName: user?.displayName,
         currentUserPhotoUrl: FirebaseAuth.instance.currentUser?.photoURL,
       ),
       AuthStatus.idle => const Scaffold(

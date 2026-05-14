@@ -261,6 +261,7 @@ class _TypingIndicator extends StatefulWidget {
 class _TypingIndicatorState extends State<_TypingIndicator>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
+  late final List<Animation<double>> _dotAnimations;
 
   @override
   void initState() {
@@ -269,6 +270,7 @@ class _TypingIndicatorState extends State<_TypingIndicator>
       vsync: this,
       duration: const Duration(milliseconds: 1200),
     )..repeat();
+    _dotAnimations = List.generate(3, _dotScale);
   }
 
   @override
@@ -342,14 +344,14 @@ class _TypingIndicatorState extends State<_TypingIndicator>
                   mainAxisSize: MainAxisSize.min,
                   children: List.generate(3, (i) {
                     return AnimatedBuilder(
-                      animation: _dotScale(i),
+                      animation: _dotAnimations[i],
                       builder: (context, _) => Container(
                         width: 7,
                         height: 7,
                         margin: const EdgeInsets.symmetric(horizontal: 2),
                         decoration: BoxDecoration(
                           color: Theme.of(context).colorScheme.outline
-                              .withValues(alpha: _dotScale(i).value),
+                              .withValues(alpha: _dotAnimations[i].value),
                           shape: BoxShape.circle,
                         ),
                       ),
@@ -387,15 +389,15 @@ class _UserAvatar extends StatelessWidget {
         ? user.displayName[0].toUpperCase()
         : '?';
 
-    final safeImageUrl = (photoUrl != null && photoUrl.startsWith('https://'))
-        ? photoUrl
+    final ImageProvider? image = (photoUrl != null && photoUrl.startsWith('https://'))
+        ? NetworkImage(photoUrl)
         : null;
 
     return CircleAvatar(
       radius: 16,
-      backgroundImage: safeImageUrl != null ? NetworkImage(safeImageUrl) : null,
+      backgroundImage: image,
       backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-      child: safeImageUrl == null
+      child: image == null
           ? Text(
               initial,
               style: TextStyle(

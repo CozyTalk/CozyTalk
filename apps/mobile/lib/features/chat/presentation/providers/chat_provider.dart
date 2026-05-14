@@ -191,9 +191,7 @@ class ChatNotifier extends Notifier<ChatState> {
         displayName: state.currentUserDisplayName ?? 'Anonymous',
         photoUrl: state.currentUserPhotoUrl,
       );
-    } catch (_) {
-      // Typing errors are non-fatal.
-    }
+    } catch (_) {}
   }
 
   Future<void> endSession() async {
