@@ -27,8 +27,6 @@ import 'screens/select_background_screen.dart';
 import 'screens/join_room_id_screen.dart';
 import 'screens/chat_screen.dart';
 import 'screens/group_chat_screen.dart';
-import 'screens/admin_console_screen.dart';
-
 const _useEmulator = bool.fromEnvironment('USE_EMULATOR', defaultValue: true);
 
 // TOGGLE: flip to true for legacy UI home (design preview), false for chatroom backend testing
