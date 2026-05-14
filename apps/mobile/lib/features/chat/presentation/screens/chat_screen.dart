@@ -11,12 +11,14 @@ class ChatScreen extends ConsumerStatefulWidget {
   final String sessionId;
   final String currentUserId;
   final String? currentUserDisplayName;
+  final String? currentUserPhotoUrl;
 
   const ChatScreen({
     super.key,
     required this.sessionId,
     required this.currentUserId,
     this.currentUserDisplayName,
+    this.currentUserPhotoUrl,
   });
 
   @override
@@ -38,6 +40,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             sessionId: widget.sessionId,
             currentUserId: widget.currentUserId,
             currentUserDisplayName: widget.currentUserDisplayName,
+            currentUserPhotoUrl: widget.currentUserPhotoUrl,
           );
     });
   }
@@ -245,7 +248,7 @@ class _MessageBubble extends StatelessWidget {
   }
 }
 
-// ── Group typing indicator ────────────────────────────────────────────────────
+// ── Typing indicator ──────────────────────────────────────────────────────────
 
 class _TypingIndicator extends StatefulWidget {
   final List<TypingUser> typingUsers;
@@ -258,16 +261,14 @@ class _TypingIndicator extends StatefulWidget {
 class _TypingIndicatorState extends State<_TypingIndicator>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
-  late final Animation<double> _opacity;
 
   @override
   void initState() {
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 700),
-    )..repeat(reverse: true);
-    _opacity = Tween<double>(begin: 0.3, end: 1.0).animate(_controller);
+      duration: const Duration(milliseconds: 1200),
+    )..repeat();
   }
 
   @override
@@ -276,24 +277,85 @@ class _TypingIndicatorState extends State<_TypingIndicator>
     super.dispose();
   }
 
+  Animation<double> _dotScale(int index) {
+    final start = index * 0.2;
+    return TweenSequence<double>([
+      TweenSequenceItem(
+        tween: Tween(begin: 0.4, end: 1.0)
+            .chain(CurveTween(curve: Curves.easeOut)),
+        weight: 30,
+      ),
+      TweenSequenceItem(
+        tween: Tween(begin: 1.0, end: 0.4)
+            .chain(CurveTween(curve: Curves.easeIn)),
+        weight: 30,
+      ),
+      TweenSequenceItem(
+        tween: ConstantTween(0.4),
+        weight: 40,
+      ),
+    ]).animate(
+      CurvedAnimation(
+        parent: _controller,
+        curve: Interval(start, (start + 0.6).clamp(0.0, 1.0)),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final label = _buildLabel(widget.typingUsers);
+    final users = widget.typingUsers;
+    if (users.isEmpty) return const SizedBox.shrink();
+
+    final first = users.first;
+    final semanticLabel = _buildLabel(users);
+
     return Align(
       alignment: Alignment.centerLeft,
       child: Padding(
-        padding: const EdgeInsets.only(left: 16, bottom: 4),
+        padding: const EdgeInsets.only(left: 12, bottom: 6),
         child: Semantics(
-          label: label,
-          child: FadeTransition(
-            opacity: _opacity,
-            child: Text(
-              label,
-              style: TextStyle(
-                color: Theme.of(context).colorScheme.outline,
-                fontSize: 13,
+          label: semanticLabel,
+          excludeSemantics: true,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              _UserAvatar(user: first),
+              const SizedBox(width: 6),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(16),
+                    topRight: Radius.circular(16),
+                    bottomRight: Radius.circular(16),
+                    bottomLeft: Radius.circular(4),
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: List.generate(3, (i) {
+                    return AnimatedBuilder(
+                      animation: _dotScale(i),
+                      builder: (context, _) => Container(
+                        width: 7,
+                        height: 7,
+                        margin: const EdgeInsets.symmetric(horizontal: 2),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context)
+                              .colorScheme
+                              .outline
+                              .withOpacity(_dotScale(i).value),
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                    );
+                  }),
+                ),
               ),
-            ),
+            ],
           ),
         ),
       ),
@@ -307,6 +369,41 @@ class _TypingIndicatorState extends State<_TypingIndicator>
       return '${users[0].displayName} and ${users[1].displayName} are typing…';
     }
     return 'Several people are typing…';
+  }
+}
+
+// ── User avatar ───────────────────────────────────────────────────────────────
+
+class _UserAvatar extends StatelessWidget {
+  final TypingUser user;
+  const _UserAvatar({required this.user});
+
+  @override
+  Widget build(BuildContext context) {
+    final photoUrl = user.photoUrl;
+    final initial = user.displayName.isNotEmpty
+        ? user.displayName[0].toUpperCase()
+        : '?';
+
+    final safeImageUrl = (photoUrl != null && photoUrl.startsWith('https://'))
+        ? photoUrl
+        : null;
+
+    return CircleAvatar(
+      radius: 16,
+      backgroundImage: safeImageUrl != null ? NetworkImage(safeImageUrl) : null,
+      backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+      child: safeImageUrl == null
+          ? Text(
+              initial,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: Theme.of(context).colorScheme.onPrimaryContainer,
+              ),
+            )
+          : null,
+    );
   }
 }
 

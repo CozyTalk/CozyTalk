@@ -19,6 +19,7 @@ abstract class ChatDatasource {
     required bool isTyping,
     required String currentUid,
     required String displayName,
+    String? photoUrl,
   });
   Future<void> endSession({required String sessionId});
 
@@ -93,6 +94,7 @@ class ChatDatasourceImpl implements ChatDatasource {
             return TypingUser(
               uid: e.key as String,
               displayName: v['displayName'] as String? ?? 'Anonymous',
+              photoUrl: v['photoUrl'] as String?,
             );
           })
           .toList();
@@ -153,11 +155,17 @@ class ChatDatasourceImpl implements ChatDatasource {
     required bool isTyping,
     required String currentUid,
     required String displayName,
+    String? photoUrl,
   }) async {
     if (sessionId.startsWith('proto-')) {
+      if (currentUid.isEmpty) return;
       final ref = _db.ref('typing/$sessionId/$currentUid');
       if (isTyping) {
-        await ref.set({'isTyping': true, 'displayName': displayName});
+        await ref.set({
+          'isTyping': true,
+          'displayName': displayName,
+          if (photoUrl != null) 'photoUrl': photoUrl,
+        });
       } else {
         await ref.remove();
       }
