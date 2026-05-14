@@ -281,19 +281,20 @@ class _TypingIndicatorState extends State<_TypingIndicator>
     final start = index * 0.2;
     return TweenSequence<double>([
       TweenSequenceItem(
-        tween: Tween(begin: 0.4, end: 1.0)
-            .chain(CurveTween(curve: Curves.easeOut)),
+        tween: Tween(
+          begin: 0.4,
+          end: 1.0,
+        ).chain(CurveTween(curve: Curves.easeOut)),
         weight: 30,
       ),
       TweenSequenceItem(
-        tween: Tween(begin: 1.0, end: 0.4)
-            .chain(CurveTween(curve: Curves.easeIn)),
+        tween: Tween(
+          begin: 1.0,
+          end: 0.4,
+        ).chain(CurveTween(curve: Curves.easeIn)),
         weight: 30,
       ),
-      TweenSequenceItem(
-        tween: ConstantTween(0.4),
-        weight: 40,
-      ),
+      TweenSequenceItem(tween: ConstantTween(0.4), weight: 40),
     ]).animate(
       CurvedAnimation(
         parent: _controller,
@@ -324,7 +325,10 @@ class _TypingIndicatorState extends State<_TypingIndicator>
               _UserAvatar(user: first),
               const SizedBox(width: 6),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 10,
+                ),
                 decoration: BoxDecoration(
                   color: Theme.of(context).colorScheme.surfaceContainerHighest,
                   borderRadius: const BorderRadius.only(
@@ -344,10 +348,9 @@ class _TypingIndicatorState extends State<_TypingIndicator>
                         height: 7,
                         margin: const EdgeInsets.symmetric(horizontal: 2),
                         decoration: BoxDecoration(
-                          color: Theme.of(context)
-                              .colorScheme
-                              .outline
-                              .withOpacity(_dotScale(i).value),
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.outline.withOpacity(_dotScale(i).value),
                           shape: BoxShape.circle,
                         ),
                       ),

@@ -92,13 +92,16 @@ void main() {
       expect(updated.currentUserPhotoUrl, 'https://example.com/photo.jpg');
     });
 
-    test('copyWith clears currentUserPhotoUrl with explicit null (sentinel)', () {
-      final state = ChatState(
-        currentUserPhotoUrl: 'https://example.com/photo.jpg',
-      );
-      final cleared = state.copyWith(currentUserPhotoUrl: null);
-      expect(cleared.currentUserPhotoUrl, isNull);
-    });
+    test(
+      'copyWith clears currentUserPhotoUrl with explicit null (sentinel)',
+      () {
+        final state = ChatState(
+          currentUserPhotoUrl: 'https://example.com/photo.jpg',
+        );
+        final cleared = state.copyWith(currentUserPhotoUrl: null);
+        expect(cleared.currentUserPhotoUrl, isNull);
+      },
+    );
 
     test('copyWith toggles isSending', () {
       const state = ChatState();
