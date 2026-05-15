@@ -20,4 +20,8 @@ class AvatarRepositoryImpl implements AvatarRepository {
   @override
   Future<void> updateMood(String uid, String? moodKey) =>
       _datasource.updateMood(uid, moodKey);
+
+  @override
+  Future<void> updateDecoration(String uid, String? hatKey, String? moodKey) =>
+      _datasource.updateDecoration(uid, hatKey, moodKey);
 }

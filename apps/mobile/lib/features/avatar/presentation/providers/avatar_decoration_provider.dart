@@ -7,6 +7,7 @@ import '../../data/repositories/avatar_repository_impl.dart';
 import '../../domain/entities/avatar_decoration.dart';
 import '../../domain/repositories/avatar_repository.dart';
 import '../../domain/usecases/get_avatar_decoration.dart';
+import '../../domain/usecases/update_decoration.dart';
 import '../../domain/usecases/update_hat.dart';
 import '../../domain/usecases/update_mood.dart';
 
@@ -28,6 +29,10 @@ final _updateHatProvider = Provider<UpdateHat>(
 
 final _updateMoodProvider = Provider<UpdateMood>(
   (ref) => UpdateMood(ref.watch(_avatarRepositoryProvider)),
+);
+
+final _updateDecorationProvider = Provider<UpdateDecoration>(
+  (ref) => UpdateDecoration(ref.watch(_avatarRepositoryProvider)),
 );
 
 final avatarDecorationNotifierProvider =
@@ -90,12 +95,15 @@ class AvatarDecorationNotifier extends Notifier<AvatarDecorationState> {
     state = state.copyWith(status: AvatarDecorationStatus.saving, error: null);
     try {
       await ref.read(_updateHatProvider)(uid, hatKey);
-      final confirmed = await ref.read(_getAvatarDecorationProvider)(uid);
+      final updated = AvatarDecoration(
+        hatKey: hatKey,
+        moodKey: state.decoration?.moodKey,
+      );
       state = state.copyWith(
         status: AvatarDecorationStatus.idle,
-        decoration: confirmed,
+        decoration: updated,
       );
-      _syncToSharedProvider(confirmed);
+      _syncToSharedProvider(updated);
     } catch (e) {
       state = state.copyWith(
         status: AvatarDecorationStatus.error,
@@ -109,12 +117,35 @@ class AvatarDecorationNotifier extends Notifier<AvatarDecorationState> {
     state = state.copyWith(status: AvatarDecorationStatus.saving, error: null);
     try {
       await ref.read(_updateMoodProvider)(uid, moodKey);
-      final confirmed = await ref.read(_getAvatarDecorationProvider)(uid);
+      final updated = AvatarDecoration(
+        hatKey: state.decoration?.hatKey,
+        moodKey: moodKey,
+      );
       state = state.copyWith(
         status: AvatarDecorationStatus.idle,
-        decoration: confirmed,
+        decoration: updated,
       );
-      _syncToSharedProvider(confirmed);
+      _syncToSharedProvider(updated);
+    } catch (e) {
+      state = state.copyWith(
+        status: AvatarDecorationStatus.error,
+        error: e.toString(),
+      );
+    }
+  }
+
+  Future<void> updateDecoration(
+      String uid, String? hatKey, String? moodKey) async {
+    if (state.status == AvatarDecorationStatus.saving) return;
+    state = state.copyWith(status: AvatarDecorationStatus.saving, error: null);
+    try {
+      await ref.read(_updateDecorationProvider)(uid, hatKey, moodKey);
+      final updated = AvatarDecoration(hatKey: hatKey, moodKey: moodKey);
+      state = state.copyWith(
+        status: AvatarDecorationStatus.idle,
+        decoration: updated,
+      );
+      _syncToSharedProvider(updated);
     } catch (e) {
       state = state.copyWith(
         status: AvatarDecorationStatus.error,

@@ -6,6 +6,7 @@ abstract class AvatarDatasource {
   Future<AvatarDecorationModel?> getDecoration(String uid);
   Future<void> updateHat(String uid, String? hatKey);
   Future<void> updateMood(String uid, String? moodKey);
+  Future<void> updateDecoration(String uid, String? hatKey, String? moodKey);
 }
 
 class AvatarDatasourceImpl implements AvatarDatasource {
@@ -14,19 +15,15 @@ class AvatarDatasourceImpl implements AvatarDatasource {
 
   @override
   Future<AvatarDecorationModel?> getDecoration(String uid) async {
-    final doc = await _db
-        .collection('users')
-        .doc(uid)
-        .get(const GetOptions(source: Source.server));
+    final doc = await _db.collection('users').doc(uid).get();
     if (!doc.exists || doc.data() == null) return null;
-    final data = Map<String, dynamic>.from(doc.data()!);
-    return AvatarDecorationModel.fromJson(data);
+    return AvatarDecorationModel.fromJson(doc.data()!);
   }
 
   @override
   Future<void> updateHat(String uid, String? hatKey) async {
     final docRef = _db.collection('users').doc(uid);
-    final doc = await docRef.get(const GetOptions(source: Source.server));
+    final doc = await docRef.get();
     if (doc.exists) {
       // update() is safe on existing docs and correctly uses FieldValue.delete()
       // to remove the field when hatKey is null.
@@ -39,7 +36,7 @@ class AvatarDatasourceImpl implements AvatarDatasource {
         'role': 'user',
         'createdAt': FieldValue.serverTimestamp(),
         'lastSeen': FieldValue.serverTimestamp(),
-        'hatKey': ?hatKey,
+        'hatKey': hatKey,
       });
     }
   }
@@ -47,7 +44,7 @@ class AvatarDatasourceImpl implements AvatarDatasource {
   @override
   Future<void> updateMood(String uid, String? moodKey) async {
     final docRef = _db.collection('users').doc(uid);
-    final doc = await docRef.get(const GetOptions(source: Source.server));
+    final doc = await docRef.get();
     if (doc.exists) {
       await docRef.update({'moodKey': moodKey ?? FieldValue.delete()});
     } else {
@@ -56,7 +53,29 @@ class AvatarDatasourceImpl implements AvatarDatasource {
         'role': 'user',
         'createdAt': FieldValue.serverTimestamp(),
         'lastSeen': FieldValue.serverTimestamp(),
-        'moodKey': ?moodKey,
+        'moodKey': moodKey,
+      });
+    }
+  }
+
+  @override
+  Future<void> updateDecoration(
+      String uid, String? hatKey, String? moodKey) async {
+    final docRef = _db.collection('users').doc(uid);
+    final doc = await docRef.get();
+    if (doc.exists) {
+      await docRef.update({
+        'hatKey': hatKey ?? FieldValue.delete(),
+        'moodKey': moodKey ?? FieldValue.delete(),
+      });
+    } else {
+      await docRef.set({
+        'uid': uid,
+        'role': 'user',
+        'createdAt': FieldValue.serverTimestamp(),
+        'lastSeen': FieldValue.serverTimestamp(),
+        'hatKey': hatKey,
+        'moodKey': moodKey,
       });
     }
   }

@@ -60,28 +60,21 @@ class _AvatarPickerScreenState extends ConsumerState<AvatarPickerScreen> {
     setState(() => _isSaving = true);
 
     final notifier = ref.read(avatarDecorationNotifierProvider.notifier);
-    bool anyError = false;
 
-    if (_hatChanged) {
+    // If both hat and mood changed, update atomically
+    if (_hatChanged && _moodChanged) {
+      await notifier.updateDecoration(uid, _pendingHatKey, _pendingMoodKey);
+    } else if (_hatChanged) {
       await notifier.updateHat(uid, _pendingHatKey);
-      if (ref.read(avatarDecorationNotifierProvider).status ==
-          AvatarDecorationStatus.error) {
-        anyError = true;
-      }
-    }
-
-    if (_moodChanged && !anyError) {
+    } else if (_moodChanged) {
       await notifier.updateMood(uid, _pendingMoodKey);
-      if (ref.read(avatarDecorationNotifierProvider).status ==
-          AvatarDecorationStatus.error) {
-        anyError = true;
-      }
     }
 
     if (!mounted) return;
     setState(() => _isSaving = false);
 
-    if (!anyError) {
+    if (ref.read(avatarDecorationNotifierProvider).status !=
+        AvatarDecorationStatus.error) {
       Navigator.of(context).pop();
     }
     // On error, stay on screen — the error banner is shown in the body.
