@@ -246,19 +246,40 @@ Anonymous users get a minimal doc on first sign-in (`uid`, `role: 'user'`, `crea
 | Field | Type | Notes |
 |---|---|---|
 | `createdAt` | timestamp | must be `request.time` (rules enforced) |
-| `status` | string | `'waiting'` on create (rules enforced) |
-| `updatedAt` | timestamp | client-updatable only; Cloud Function sets `status` |
+| `status` | string | `'waiting'` → `'matching'` → `'matched'` (CF-managed) |
+| `updatedAt` | timestamp | client-updatable only |
+| `mode` | string | `'1v1'` \| `'group'` |
+| `roomId` | string? | set by CF when matched (1v1 only) |
 
-### `active_sessions/{sessionId}` (Firestore)
+### `rooms/{roomId}` (Firestore) — Primary Room Collection
+All new rooms (1v1 + group). Doc ID is the 5-char user-facing room ID. CF-only writer except `isLocked` on custom rooms. Expired rooms keep a tombstone forever to prevent ID reuse.
+
+| Field | Type | Notes |
+|---|---|---|
+| `roomId` | string | 5-char alphanumeric, matches doc ID |
+| `roomType` | string | `'public'` \| `'custom'` |
+| `mode` | string | `'1v1'` \| `'group'` |
+| `status` | string | `'active'` \| `'padding'` \| `'expired'` |
+| `maxUsers` | number | `2` for 1v1, `5` for group |
+| `memberCount` | number | 0–maxUsers |
+| `users` | string[] | current member UIDs |
+| `isLocked` | boolean | custom rooms only; participants update directly via rules |
+| `createdAt` | timestamp | server timestamp |
+| `paddingUntil` | timestamp? | set when last user leaves; `expireRooms` cron cleans up after |
+| `encryptionKey` | string | hex AES-256 key, generated at room creation |
+
+Expired tombstone shape: `{ status: 'expired', expiredAt: Timestamp, users: [] }`
+
+### `active_sessions/{sessionId}` (Firestore) — Legacy
+**Proto-session backward compat only.** New sessions use `rooms/{roomId}`.
+
 | Field | Type | Notes |
 |---|---|---|
 | `users` | string[] | `[uid1, uid2]` — used by Firestore rules |
-| `roomId` | string | equals `sessionId` (same ID in RTDB) |
+| `roomId` | string | equals `sessionId` |
 | `createdAt` | timestamp | |
 | `endedAt` | timestamp? | set on session end |
 | `status` | string | `'active'` \| `'ended'` |
-
-`sessionId === roomId` — one ID links Firestore metadata to RTDB messages. Cloud Function is the only writer.
 
 ### `reports/{reportId}` (Firestore)
 | Field | Type | Notes |
@@ -272,14 +293,16 @@ Anonymous users get a minimal doc on first sign-in (`uid`, `role: 'user'`, `crea
 | `createdAt` | timestamp | |
 | `status` | string | `'pending'` \| `'reviewed'` \| `'dismissed'` |
 
-### `messages/{roomId}/{messageId}` (RTDB)
-| Field | Type |
-|---|---|
-| `senderId` | string |
-| `text` | string |
-| `timestamp` | number (ms) |
+### RTDB Real-time Paths
 
-Destroyed by Cloud Function on session end. Snapshot saved to `reports.chatLog` if reported.
+| Path | Value | Notes |
+|---|---|---|
+| `rooms/{roomId}/members/{uid}` | `true` | CF-written membership anchor for new rooms |
+| `typing/{roomId}/{uid}` | `{ isTyping, displayName }` | Client-written; auto-removed on leave |
+| `presence/{roomId}/{uid}` | string (displayName) | Client-written; `onDisconnect().remove()` on disconnect |
+| `sessions/{roomId}/users/{uid}` | `true` | Legacy proto-session compat only |
+
+Presence and typing data are removed by `leaveRoom` CF on explicit leave, and by `expireRooms` CF on room expiry.
 
 ### Local Cache (Drift)
 
@@ -295,10 +318,10 @@ Profile data is the only thing worth caching — live chat is inherently online-
 
 | Phase | Work | Status |
 |---|---|---|
-| **1.0 Frontend & UI** | UI/UX design, Auth screens, Waiting screen, Chat Room UI (bubbles, typing, SVGs, Skip) | Auth screens done; remaining screens not yet built |
-| **2.0 Backend & Matchmaking** | Matchmaking Cloud Function (race-condition safe), RTDB messaging, session cleanup/lifecycle, word censor, reporting | Not started |
-| **3.0 Logic & Integration** | Session state machine (Idle→Searching→Matched→Disconnected), network drop detection, offline alerts, biometric/passkey auth | Not started |
-| **4.0 Testing & Management** | Concurrency/race condition tests, cross-platform UI tests (Android + Web), accessibility sweeps, performance profiling | Not started |
+| **1.0 Frontend & UI** | UI/UX design, Auth screens, Waiting screen, Chat Room UI (bubbles, typing, SVGs, Skip) | Auth complete; main UI screens complete (not yet wired to backend) |
+| **2.0 Backend & Matchmaking** | Matchmaking Cloud Functions (race-condition safe), session cleanup/lifecycle, word censor, reporting | **Partially complete** — 10 matchmaking CFs done, Flutter feature + 216 tests; word censor + group reporting deferred |
+| **3.0 Logic & Integration** | Wire main UI to matchmaking backend, session state machine, network drop detection, biometric/passkey auth | Not started |
+| **4.0 Testing & Management** | Cross-platform UI tests (Android + Web), accessibility sweeps, performance profiling | Not started |
 
 ---
 

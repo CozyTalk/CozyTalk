@@ -192,13 +192,30 @@ Emulator ports: Auth `9099`, Functions `5001`, Firestore `8080`, RTDB `9000`. Se
 | Collection | Purpose |
 |---|---|
 | `users/{uid}` | User profile. Fields: `uid`, `email`, `role` (`user`\|`admin`), `createdAt`, `lastSeen`, `displayName?`, `photoUrl?`. |
-| `waiting_pool/{uid}` | Matchmaking queue. Fields: `createdAt`, `status`, `updatedAt`. |
-| `active_sessions/{sessionId}` | Active chat. Has `users: [uid1, uid2]`. Write-locked to Cloud Functions only. |
+| `waiting_pool/{uid}` | Matchmaking queue. Fields: `createdAt`, `status`, `updatedAt`, `mode`, `roomId?`. |
+| `rooms/{roomId}` | All active/padding/expired rooms (1v1 + group). 5-char alphanumeric ID. Write-locked to Cloud Functions only except `isLocked` on custom rooms. |
+| `active_sessions/{sessionId}` | **Legacy proto-sessions only.** New rooms use `rooms/{roomId}`. |
 | `reports/{reportId}` | Moderation reports. Admin-only read. Chat log retained here if reported. |
 
-Realtime DB: `messages/{roomId}/{messageId}` — live chat messages (ephemeral, destroyed on session end).
+Realtime DB: `rooms/{roomId}/members/{uid}` — CF-written membership anchor; `typing/{roomId}/{uid}`, `presence/{roomId}/{uid}` for real-time state.
 
 See `PROJECT_CONTEXT.md` for full schema and security rules.
+
+---
+
+## Matchmaking Feature (`features/matchmaking/`)
+
+The `matchmaking` feature is fully implemented as the **third reference implementation** (alongside `hello` and `auth`).
+
+**Cloud Functions (10 total, in `functions/src/matchmaking/`):**
+`joinGroupRoom`, `createCustomRoom`, `joinRoomById`, `leaveRoom`, `join1v1Pool`, `cancel1v1Pool`, `match1v1Users` (Firestore trigger), `expireRooms` (cron `*/2 * * * *`), `setRoomLock`, and `_utils` (shared helpers).
+
+**Flutter feature:** full Clean Architecture at `features/matchmaking/`. Backend test entry point: `HelloScreen` → "Test Matchmaking" button (`_useMainUI = false`).
+
+**Key design decisions:**
+- `rooms/{roomId}` is the unified collection for all new rooms; 5-char alphanumeric ID is atomically claimed via `create()` with retry
+- Slot reservation uses Firestore transactions; expiry uses a scheduled function that re-checks `memberCount == 0` before deleting
+- `isLocked` lives in Firestore (queryable for matchmaking); participants update it directly via security rules (custom rooms only)
 
 ---
 

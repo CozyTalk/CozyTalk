@@ -16,8 +16,23 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
 
+    // Checks rooms/{sessionId} (new matchmaking system)
+    function _isRoomsParticipant(sessionId) {
+      return exists(/databases/$(database)/documents/rooms/$(sessionId))
+        && request.auth.uid in
+           get(/databases/$(database)/documents/rooms/$(sessionId)).data.users;
+    }
+
+    // Checks active_sessions/{sessionId} (proto-session backward compat)
+    function _isActiveSessionParticipant(sessionId) {
+      return exists(/databases/$(database)/documents/active_sessions/$(sessionId))
+        && request.auth.uid in
+           get(/databases/$(database)/documents/active_sessions/$(sessionId)).data.users;
+    }
+
     function isChatRoomParticipant(sessionId) {
-      return isSignedIn() && request.auth.uid in get(/databases/$(database)/documents/active_sessions/$(sessionId)).data.users;
+      return isSignedIn()
+        && (_isRoomsParticipant(sessionId) || _isActiveSessionParticipant(sessionId));
     }
 
     // ── users ────────────────────────────────────────────────────────────────
@@ -40,36 +55,79 @@ service cloud.firestore {
 
       allow create: if isOwner(userId)
         && request.resource.data.createdAt == request.time
-        && request.resource.data.status == 'waiting';
+        && request.resource.data.status == 'waiting'
+        && request.resource.data.keys().hasAll(['createdAt', 'status', 'mode', 'updatedAt', 'roomId']);
 
-      // clients can only cancel (stay 'waiting') — Cloud Functions set 'matched'
+      // clients can only touch updatedAt — Cloud Functions set status/roomId
       allow update: if isOwner(userId)
         && request.resource.data.diff(resource.data)
             .affectedKeys().hasOnly(['updatedAt'])
         && request.resource.data.updatedAt == request.time;
     }
 
+    // ── rooms ─────────────────────────────────────────────────────────────────
+    // Cloud Functions are the sole writers except for the isLocked field on
+    // custom rooms, which any current member may toggle directly.
+    match /rooms/{roomId} {
+      // Members read active/padding rooms; tombstones (status=='expired', users:[])
+      // are readable by any signed-in user so clients can surface "expired" errors.
+      allow read: if isSignedIn() && (
+        resource.data.status == 'expired' ||
+        request.auth.uid in resource.data.users
+      );
+
+      allow create, delete: if false;
+
+      // Members may toggle isLocked on custom rooms only
+      allow update: if isSignedIn()
+        && request.auth.uid in resource.data.users
+        && resource.data.roomType == 'custom'
+        && resource.data.status != 'expired'
+        && request.resource.data.diff(resource.data)
+            .affectedKeys().hasOnly(['isLocked']);
+    }
+
     // ── active_sessions ──────────────────────────────────────────────────────
-    // Cloud Functions are the only writers — client write is always false.
+    // Legacy proto-session support — new sessions use rooms/{roomId}.
     match /active_sessions/{sessionId} {
-      allow read: if isSignedIn() && (sessionId.matches('proto-.*') || request.auth.uid in resource.data.users);
+      allow read: if isSignedIn() && (
+        sessionId.matches('proto-.*') ||
+        request.auth.uid in resource.data.users
+      );
       allow write: if false;
     }
 
     // ── reports ──────────────────────────────────────────────────────────────
     match /reports/{reportId} {
       allow create: if isSignedIn()
-        && request.resource.data.keys().hasOnly(['reporterId', 'reportedUserId', 'sessionId', 'reason', 'description', 'chatLog', 'createdAt', 'status'])
-        && request.resource.data.keys().hasAll(['reporterId', 'reportedUserId', 'sessionId', 'reason', 'chatLog', 'createdAt', 'status'])
+        && request.resource.data.keys().hasOnly([
+            'reporterId', 'reportedUserId', 'sessionId', 'reason',
+            'description', 'chatLog', 'createdAt', 'status'
+           ])
+        && request.resource.data.keys().hasAll([
+            'reporterId', 'reportedUserId', 'sessionId', 'reason',
+            'chatLog', 'createdAt', 'status'
+           ])
         && request.resource.data.reporterId == request.auth.uid
         && request.resource.data.status == 'pending'
         && request.resource.data.createdAt == request.time;
       allow read, update, delete: if isAdmin();
     }
+
+    // ── chat_rooms/messages ───────────────────────────────────────────────────
+    // Participant check spans both rooms (new) and active_sessions (legacy).
     match /chat_rooms/{sessionId}/messages/{messageId} {
-      allow read: if isSignedIn() && (sessionId.matches('proto-.*') || isChatRoomParticipant(sessionId));
-      allow create: if isSignedIn() && (sessionId.matches('proto-.*') || isChatRoomParticipant(sessionId))
-        && request.resource.data.keys().hasAll(['senderId', 'displayName', 'encryptedText', 'iv', 'authTag', 'timestamp', 'expiresAt', 'flagged'])
+      allow read: if isSignedIn() && (
+        sessionId.matches('proto-.*') ||
+        isChatRoomParticipant(sessionId)
+      );
+
+      allow create: if isSignedIn()
+        && (sessionId.matches('proto-.*') || isChatRoomParticipant(sessionId))
+        && request.resource.data.keys().hasAll([
+            'senderId', 'displayName', 'encryptedText',
+            'iv', 'authTag', 'timestamp', 'expiresAt', 'flagged'
+           ])
         && request.resource.data.senderId == request.auth.uid
         && request.resource.data.displayName is string
         && request.resource.data.displayName.size() <= 200
@@ -82,6 +140,7 @@ service cloud.firestore {
         && request.resource.data.timestamp is timestamp
         && request.resource.data.expiresAt is timestamp
         && request.resource.data.flagged == false;
+
       allow update, delete: if false;
     }
   }
