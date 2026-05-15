@@ -28,9 +28,9 @@ CozyTalk is a **cross-platform stranger chat app** targeting **Android and Web**
 
 ### Cloud Functions (`functions/`)
 - TypeScript, Firebase Functions v2
-- Deployed: `helloWorld` (echo, proof-of-concept — to be replaced by matchmaking)
+- 16 functions deployed across two regions (see Cloud Functions table in Firebase Configuration)
 - Max 10 instances (cost control)
-- Matchmaking logic **must** live here — never on client
+- Matchmaking and chat logic **must** live here — never on client
 
 ### Firebase Project
 - **Project ID:** `cozytalk-5d984`
@@ -137,88 +137,76 @@ Three widget tests for `HelloScreen` using `_FakeHelloNotifier` with `callCount`
 
 ### Firestore Security Rules — `firestore.rules` (deployed ✓)
 
-```
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
+See `firestore.rules` for the canonical source. Key helper functions and per-collection rules:
 
-    function isSignedIn() {
-      return request.auth != null;
-    }
+**Helper functions:**
+- `isSignedIn()` — `request.auth != null`
+- `isOwner(uid)` — signed in and `request.auth.uid == uid`
+- `isAdmin()` — signed in + `users/{uid}.role == 'admin'`
+- `_isRoomsParticipant(sessionId)` — uid in `rooms/{sessionId}.users`
+- `_isActiveSessionParticipant(sessionId)` — uid in `active_sessions/{sessionId}.users`
+- `isChatRoomParticipant(sessionId)` — either of the above (spans new rooms + legacy sessions)
 
-    function isOwner(uid) {
-      return isSignedIn() && request.auth.uid == uid;
-    }
+**Per-collection rules summary:**
 
-    function isAdmin() {
-      return isSignedIn()
-        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
-        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
-    }
-
-    function isSessionParticipant() {
-      return isSignedIn() && request.auth.uid in resource.data.users;
-    }
-
-    match /users/{userId} {
-      allow read: if isOwner(userId);
-      allow create: if isOwner(userId)
-        && request.resource.data.uid == userId
-        && request.resource.data.role == 'user';
-      allow update: if isOwner(userId)
-        && !request.resource.data.diff(resource.data)
-            .affectedKeys().hasAny(['role', 'uid']);
-    }
-
-    match /waiting_pool/{userId} {
-      allow read, delete: if isOwner(userId);
-      allow create: if isOwner(userId)
-        && request.resource.data.createdAt == request.time
-        && request.resource.data.status == 'waiting';
-      // clients can only touch updatedAt — Cloud Functions set status='matched'
-      allow update: if isOwner(userId)
-        && request.resource.data.diff(resource.data)
-            .affectedKeys().hasOnly(['updatedAt'])
-        && request.resource.data.updatedAt == request.time;
-    }
-
-    match /active_sessions/{sessionId} {
-      allow read: if isSessionParticipant();
-      allow write: if false;
-    }
-
-    match /reports/{reportId} {
-      allow create: if isSignedIn()
-        && request.resource.data.keys().hasOnly(['reporterId', 'reportedUserId', 'sessionId', 'reason', 'description', 'chatLog', 'createdAt', 'status'])
-        && request.resource.data.keys().hasAll(['reporterId', 'reportedUserId', 'sessionId', 'reason', 'chatLog', 'createdAt', 'status'])
-        && request.resource.data.reporterId == request.auth.uid
-        && request.resource.data.status == 'pending'
-        && request.resource.data.createdAt == request.time;
-      allow read, update, delete: if isAdmin();
-    }
-  }
-}
-```
+| Collection | read | create | update | delete |
+|---|---|---|---|---|
+| `users/{userId}` | owner only | owner; `role=='user'`, `uid==userId` | owner; `role`+`uid` immutable | — |
+| `waiting_pool/{userId}` | owner | owner; `createdAt==request.time`, `status=='waiting'`, required keys present | owner; only `updatedAt` field, must equal `request.time` | owner |
+| `rooms/{roomId}` | member or expired tombstone (any signed-in) | false (CF only) | member on custom room; only `isLocked` field | false |
+| `active_sessions/{sessionId}` | member or `proto-*` prefix (any signed-in) | false | false | false |
+| `reports/{reportId}` | admin only | signed-in; `reporterId==uid`, `status=='pending'`, required fields | admin only | admin only |
+| `chat_rooms/{sessionId}/messages/{messageId}` | participant or `proto-*` | participant; required encrypted fields, `senderId==uid`, text ≤12 KB | false | false |
 
 ### Realtime Database — `database.rules.json` (deployed ✓)
 
 **URL:** `https://cozytalk-5d984-default-rtdb.asia-southeast1.firebasedatabase.app`
 
-All nodes are participant-scoped — access gates on `sessions/{roomId}/users/{uid}` membership. See `database.rules.json` for full rules.
+See `database.rules.json` for the canonical source. All nodes require `auth != null` at minimum.
 
-| Node | Value | Notes |
-|---|---|---|
-| `sessions/{roomId}/users/{uid}` | `true` | Written by Cloud Function; auth anchor for all other nodes |
-| `messages/{roomId}/{messageId}` | `{ senderId, text, timestamp }` | Append-only, max 1000 chars; destroyed on session end |
-| `typing/{roomId}/{uid}` | `true` | Set while typing, deleted when done |
-| `presence/{roomId}/{uid}` | `true` | Set on connect; `onDisconnect().remove()` handles drops |
+| Node | Value | Access | Notes |
+|---|---|---|---|
+| `rooms/{roomId}/members/{uid}` | boolean | Read: room member; Write: owner | CF-written membership anchor for new rooms |
+| `sessions/{roomId}/users/{uid}` | `true` | Read: room member; Write: false | Legacy proto-session compat; auth anchor for `messages/` |
+| `messages/{roomId}/{messageId}` | `{ senderId, text, timestamp }` | Read: `sessions/` member; Write: `sessions/` member (append-only, no edit/delete) | Max 1000 chars; destroyed on session end |
+| `typing/{roomId}/{uid}` | `{ isTyping: bool, displayName: string }` | Read: any signed-in; Write: owner | `displayName` max 100 chars |
+| `presence/{roomId}/{uid}` | string (displayName) | Read: any signed-in; Write: owner | Max 30 chars; `onDisconnect().remove()` |
+| `nameQueue/{roomId}` | any | Read/Write: any signed-in | Transient display name exchange on room join |
+| `pool_presence/{uid}` | boolean | Read/Write: owner | Tracks whether user is actively in the waiting pool |
 
 ### Firestore Indexes — `firestore.indexes.json` (deployed ✓)
 
 | Collection | Fields | Query |
 |---|---|---|
-| `waiting_pool` | `status ASC, createdAt ASC` | Matchmaking: oldest waiting user |
+| `waiting_pool` | `status ASC, createdAt ASC` | Legacy: oldest waiting user (no mode filter) |
+| `waiting_pool` | `mode ASC, status ASC, createdAt ASC` | Matchmaking: oldest waiting user by mode |
+| `waiting_pool` | `mode ASC, status ASC, updatedAt ASC` | Matchmaking: most-recently-updated waiting user by mode |
 | `reports` | `status ASC, createdAt DESC` | Admin dashboard: pending reports by time |
+| `rooms` | `mode ASC, status ASC, isLocked ASC, memberCount ASC` | Group room picker: available unlocked rooms by fill level |
+| `rooms` | `status ASC, paddingUntil ASC` | `expireRooms` cron: find rooms past their padding window |
+
+### Cloud Functions — deployed (16 total)
+
+| Function | Trigger | Region | Module |
+|---|---|---|---|
+| `helloWorld` | callable | us-central1 | — |
+| `joinGroupRoom` | callable | us-central1 | matchmaking |
+| `createCustomRoom` | callable | us-central1 | matchmaking |
+| `joinRoomById` | callable | us-central1 | matchmaking |
+| `leaveRoom` | callable | us-central1 | matchmaking |
+| `join1v1Pool` | callable | us-central1 | matchmaking |
+| `cancel1v1Pool` | callable | us-central1 | matchmaking |
+| `setRoomLock` | callable | us-central1 | matchmaking |
+| `expireRooms` | scheduled (`*/2 * * * *`) | us-central1 | matchmaking |
+| `match1v1Users` | Firestore onCreate `waiting_pool/{uid}` | asia-southeast1 | matchmaking |
+| `cleanupMember` | RTDB onDelete `rooms/{roomId}/members/{uid}` | asia-southeast1 | matchmaking |
+| `cleanupPoolMember` | RTDB onDelete `pool_presence/{uid}` | asia-southeast1 | matchmaking |
+| `sendMessage` | callable | us-central1 | chat |
+| `endSession` | callable | us-central1 | chat |
+| `reportSession` | callable | us-central1 | chat |
+| `seedTtlCollections` | HTTP GET | us-central1 | dev (one-time setup) |
+
+`setTyping` source exists (`functions/src/chat/setTyping.ts`) but is not yet deployed.
 
 ### Feature Flags — Firebase Remote Config
 
@@ -288,21 +276,51 @@ Expired tombstone shape: `{ status: 'expired', expiredAt: Timestamp, users: [] }
 | `reportedUserId` | string | UID of reported user |
 | `sessionId` | string | session where it occurred |
 | `chatLog` | map[] | snapshot of messages retained for review |
-| `reason` | string | |
-| `description` | string? | |
+| `reason` | string | max 500 chars |
+| `description` | string? | max 2000 chars |
 | `createdAt` | timestamp | |
 | `status` | string | `'pending'` \| `'reviewed'` \| `'dismissed'` |
 
-### RTDB Real-time Paths
+### `chat_rooms/{sessionId}/messages/{messageId}` (Firestore)
+Encrypted message store. Written by the `sendMessage` CF. TTL policy on `expiresAt` auto-deletes messages after the retention window (3 days). Destroyed immediately by `leaveRoom`/`endSession` unless a report is pending.
 
-| Path | Value | Notes |
+| Field | Type | Notes |
 |---|---|---|
-| `rooms/{roomId}/members/{uid}` | `true` | CF-written membership anchor for new rooms |
-| `typing/{roomId}/{uid}` | `{ isTyping, displayName }` | Client-written; auto-removed on leave |
-| `presence/{roomId}/{uid}` | string (displayName) | Client-written; `onDisconnect().remove()` on disconnect |
-| `sessions/{roomId}/users/{uid}` | `true` | Legacy proto-session compat only |
+| `senderId` | string | UID of sender |
+| `displayName` | string | display name at time of send; max 200 chars |
+| `encryptedText` | string | base64 AES-256-GCM ciphertext; max 12 KB |
+| `iv` | string | base64 GCM IV; max 24 chars |
+| `authTag` | string | base64 GCM auth tag; max 32 chars |
+| `timestamp` | timestamp | server timestamp |
+| `expiresAt` | timestamp | TTL field — Firestore auto-deletes after this |
+| `flagged` | boolean | always `false` at creation; set by `reportSession` CF |
 
-Presence and typing data are removed by `leaveRoom` CF on explicit leave, and by `expireRooms` CF on room expiry.
+### `session_keys/{sessionId}` (Firestore)
+Archives the AES-256 room encryption key so moderators can decrypt flagged messages within the 3-day retention window. Created by `endSession` CF. TTL policy on `expiresAt`.
+
+| Field | Type | Notes |
+|---|---|---|
+| `sessionId` | string | matches doc ID |
+| `encryptionKey` | string | hex AES-256 key |
+| `users` | string[] | `[uid1, uid2]` |
+| `createdAt` | timestamp | original session creation time |
+| `expiresAt` | timestamp | 3 days after session end; TTL field |
+| `flagged` | boolean | set to `true` by `reportSession` to prevent premature TTL deletion |
+
+### RTDB Real-time Paths
+See the RTDB rules table above (under Firebase Configuration) for the full path list with access controls. Summary:
+
+| Path | Purpose |
+|---|---|
+| `rooms/{roomId}/members/{uid}` | CF-written membership anchor (new rooms) |
+| `sessions/{roomId}/users/{uid}` | Legacy proto-session membership anchor |
+| `messages/{roomId}/{messageId}` | Append-only chat messages (legacy sessions) |
+| `typing/{roomId}/{uid}` | Real-time typing indicator |
+| `presence/{roomId}/{uid}` | Real-time presence; `onDisconnect().remove()` |
+| `nameQueue/{roomId}` | Transient display name exchange on room join |
+| `pool_presence/{uid}` | Whether user is actively in the waiting pool |
+
+Presence, typing, and nameQueue data are removed by `leaveRoom` CF on explicit leave and by `expireRooms` on room expiry. `cleanupMember` (RTDB trigger) fires when a `rooms/{roomId}/members/{uid}` node is deleted to handle abrupt disconnects.
 
 ### Local Cache (Drift)
 
@@ -319,7 +337,7 @@ Profile data is the only thing worth caching — live chat is inherently online-
 | Phase | Work | Status |
 |---|---|---|
 | **1.0 Frontend & UI** | UI/UX design, Auth screens, Waiting screen, Chat Room UI (bubbles, typing, SVGs, Skip) | Auth complete; main UI screens complete (not yet wired to backend) |
-| **2.0 Backend & Matchmaking** | Matchmaking Cloud Functions (race-condition safe), session cleanup/lifecycle, word censor, reporting | **Partially complete** — 10 matchmaking CFs done, Flutter feature + 216 tests; word censor + group reporting deferred |
+| **2.0 Backend & Matchmaking** | Matchmaking Cloud Functions (race-condition safe), session cleanup/lifecycle, word censor, reporting | **Largely complete** — 16 CFs deployed (matchmaking + chat + dev); Flutter matchmaking feature + tests done; word censor + group reporting deferred |
 | **3.0 Logic & Integration** | Wire main UI to matchmaking backend, session state machine, network drop detection, biometric/passkey auth | Not started |
 | **4.0 Testing & Management** | Cross-platform UI tests (Android + Web), accessibility sweeps, performance profiling | Not started |
 
@@ -373,7 +391,11 @@ CozyTalk/
 │   │               └── screens/      ← LoginScreen, SignupScreen
 │   ├── test/widget_test.dart
 │   └── .env.example                  ← committed; USE_EMULATOR=true by default
-├── functions/src/index.ts            ← helloWorld Cloud Function
+├── functions/src/
+│   ├── index.ts                      ← exports all functions
+│   ├── matchmaking/                  ← 12 matchmaking CFs + _utils.ts + __tests__/
+│   ├── chat/                         ← endSession, sendMessage, reportSession, setTyping, (onProtoPresenceDeleted disabled)
+│   └── dev/                          ← seedTtlCollections (one-time setup; remove after use)
 ├── firestore.rules                   ← deployed Firestore security rules
 ├── database.rules.json               ← deployed RTDB security rules
 ├── firestore.indexes.json            ← Firestore composite indexes

@@ -196,8 +196,10 @@ Emulator ports: Auth `9099`, Functions `5001`, Firestore `8080`, RTDB `9000`. Se
 | `rooms/{roomId}` | All active/padding/expired rooms (1v1 + group). 5-char alphanumeric ID. Write-locked to Cloud Functions only except `isLocked` on custom rooms. |
 | `active_sessions/{sessionId}` | **Legacy proto-sessions only.** New rooms use `rooms/{roomId}`. |
 | `reports/{reportId}` | Moderation reports. Admin-only read. Chat log retained here if reported. |
+| `chat_rooms/{sessionId}/messages/{messageId}` | AES-256-GCM encrypted messages written by `sendMessage` CF. Fields: `senderId`, `displayName`, `encryptedText`, `iv`, `authTag`, `timestamp`, `expiresAt`, `flagged`. TTL policy on `expiresAt` (3-day retention). |
+| `session_keys/{sessionId}` | Archived room encryption keys, written by `endSession` CF. Fields: `sessionId`, `encryptionKey`, `users`, `createdAt`, `expiresAt`, `flagged`. TTL policy on `expiresAt`. |
 
-Realtime DB: `rooms/{roomId}/members/{uid}` — CF-written membership anchor; `typing/{roomId}/{uid}`, `presence/{roomId}/{uid}` for real-time state.
+Realtime DB: `rooms/{roomId}/members/{uid}` — CF-written membership anchor; `typing/{roomId}/{uid}`, `presence/{roomId}/{uid}`, `nameQueue/{roomId}`, `pool_presence/{uid}` for real-time state. See `PROJECT_CONTEXT.md` for full RTDB path table.
 
 See [`PROJECT_CONTEXT.md`](PROJECT_CONTEXT.md) for full schema and security rules.
 
@@ -207,8 +209,11 @@ See [`PROJECT_CONTEXT.md`](PROJECT_CONTEXT.md) for full schema and security rule
 
 The `matchmaking` feature is fully implemented as the **third reference implementation** (alongside `hello` and `auth`). See [`features/matchmaking/`](apps/mobile/lib/features/matchmaking/) and [`functions/src/matchmaking/`](functions/src/matchmaking/).
 
-**Cloud Functions (10 total):**
-`joinGroupRoom`, `createCustomRoom`, `joinRoomById`, `leaveRoom`, `join1v1Pool`, `cancel1v1Pool`, `match1v1Users` (Firestore trigger), `expireRooms` (cron `*/2 * * * *`), `setRoomLock`, and `_utils` (shared helpers).
+**Matchmaking Cloud Functions (12 in `functions/src/matchmaking/`):**
+`joinGroupRoom`, `createCustomRoom`, `joinRoomById`, `leaveRoom`, `join1v1Pool`, `cancel1v1Pool`, `setRoomLock`, `expireRooms` (cron `*/2 * * * *`), `match1v1Users` (Firestore trigger), `cleanupMember` (RTDB trigger, asia-southeast1), `cleanupPoolMember` (RTDB trigger, asia-southeast1), and `_utils` (shared helpers, not exported).
+
+**Chat Cloud Functions (in `functions/src/chat/`):**
+`sendMessage` (AES-256-GCM encrypt + write to `chat_rooms/`), `endSession` (archive encryption key, destroy RTDB data), `reportSession` (retain chat log for moderation), `setTyping` (source present, not yet deployed).
 
 **Flutter feature:** full Clean Architecture at `features/matchmaking/`. Backend test entry point: `HelloScreen` → "Test Matchmaking" button (`_useMainUI = false`).
 
