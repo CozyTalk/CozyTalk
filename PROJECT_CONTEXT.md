@@ -337,7 +337,7 @@ Profile data is the only thing worth caching — live chat is inherently online-
 | Phase | Work | Status |
 |---|---|---|
 | **1.0 Frontend & UI** | UI/UX design, Auth screens, Waiting screen, Chat Room UI (bubbles, typing, SVGs, Skip) | Auth complete; main UI screens complete (not yet wired to backend) |
-| **2.0 Backend & Matchmaking** | Matchmaking Cloud Functions (race-condition safe), session cleanup/lifecycle, word censor, reporting | **Largely complete** — 16 CFs deployed (matchmaking + chat + dev); Flutter matchmaking feature + tests done; word censor + group reporting deferred |
+| **2.0 Backend & Matchmaking** | Matchmaking Cloud Functions (race-condition safe), session cleanup/lifecycle, word censor, reporting | **Largely complete** — 16 CFs deployed (matchmaking + chat + dev); Flutter matchmaking feature + Clean Architecture done; 43 Jest CF integration tests + 43 Flutter integration tests passing; word censor + group reporting deferred |
 | **3.0 Logic & Integration** | Wire main UI to matchmaking backend, session state machine, network drop detection, biometric/passkey auth | Not started |
 | **4.0 Testing & Management** | Cross-platform UI tests (Android + Web), accessibility sweeps, performance profiling | Not started |
 
@@ -351,6 +351,18 @@ Profile data is the only thing worth caching — live chat is inherently online-
 | **Security** | Zero High/Critical vulnerabilities; secret scan clean; no plaintext secrets |
 | **Accessibility** | WCAG 2.2 AA on all screens (semantic labels, contrast, dynamic type) |
 | **Performance** | No unbounded ListViews; SVGs cached/compressed; no jank on message scroll |
+
+### Test Coverage (~175+ tests total)
+
+| Suite | Count | Location | Requires |
+|---|---|---|---|
+| Flutter unit + widget | ~132 tests | `apps/mobile/test/` | Nothing |
+| Cloud Functions Jest | 43 tests | `functions/src/matchmaking/__tests__/matchmaking.test.ts` | `./dev.sh --emulator-only` |
+| Flutter integration | 43 tests | `apps/mobile/integration_test/matchmaking_advanced_test.dart` | Emulators + Android device |
+
+**CF Jest test topics (7 describe groups):** priority room selection, secondary random distribution, padding state lifecycle, RTDB cleanup after leave, 1v1 pool full flow, concurrent join races, complete end-to-end flows.
+
+**Jest vs Flutter integration:** Jest tests run on the host (no Android clock skew) so timing bounds are tight (≤35s padding). Flutter integration tests use ≤60s bounds to account for Android emulator clock offset.
 
 ---
 

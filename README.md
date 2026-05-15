@@ -46,6 +46,7 @@ Linux / macOS:
 ./dev.sh --web        # emulators + Flutter on Chrome
 ./dev.sh --prod       # Flutter → live Firebase (Android)
 ./dev.sh --prod --web # Flutter → live Firebase (Chrome)
+./dev.sh --emulator-only   # emulators only — no Flutter (for integration/Jest tests)
 ```
 
 Windows (PowerShell):
@@ -54,9 +55,15 @@ Windows (PowerShell):
 .\dev.ps1 --web        # emulators + Flutter on Chrome
 .\dev.ps1 --prod       # Flutter → live Firebase (Android)
 .\dev.ps1 --prod --web # Flutter → live Firebase (Chrome)
+.\dev.ps1 --emulator-only  # emulators only — no Flutter (for integration/Jest tests)
 ```
 
-The dev script starts the Firebase emulators in the background, waits until they're ready, then launches Flutter. `Ctrl+C` shuts everything down cleanly.
+The dev script starts the Firebase emulators in the background, waits until all four ports are ready, then launches Flutter. `Ctrl+C` shuts everything down cleanly.
+
+**Running Cloud Functions integration tests** (in a second terminal while emulators are up):
+```bash
+cd functions && npm test
+```
 
 ---
 

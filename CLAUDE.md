@@ -61,12 +61,19 @@ npm run build        # compile TypeScript
 npm run lint         # lint
 npm run serve        # start local emulator (port 5001)
 npm run deploy       # deploy to Firebase (lint + build run first via predeploy hooks)
+npm test             # run Jest integration tests (requires emulators running — use --emulator-only first)
+npm test -- --verbose                          # per-test output
+npm test -- --testNamePattern "priority"       # single describe group
 ```
+
+Jest tests: `functions/src/matchmaking/__tests__/matchmaking.test.ts` — 43 tests across 7 describe groups covering all matchmaking scenarios.
 
 ### Dev scripts
 Run `./setup.sh` (Linux/macOS) or `.\setup.ps1` (Windows) to install all dependencies and run code generation in one step.
 
-Run `./dev.sh` (Linux/macOS) or `.\dev.ps1` (Windows) to start emulators and Flutter together. Both accept `--web` and `--prod` flags.
+Run `./dev.sh` (Linux/macOS) or `.\dev.ps1` (Windows) to start emulators and Flutter together. Both accept `--web`, `--prod`, and `--emulator-only` flags.
+
+Run `./dev.sh --emulator-only` (Linux/macOS) or `.\dev.ps1 --emulator-only` (Windows) to start Firebase emulators only — no Flutter — for running integration tests in a separate terminal.
 
 ### Fresh clone setup
 Edit [`apps/mobile/.env.example`](apps/mobile/.env.example) — set `USE_EMULATOR=true` to point at the local emulator.
@@ -297,7 +304,13 @@ This codebase is developed by specialized agents orchestrated by a lead:
 
 ## Testing
 
-Run: `cd apps/mobile && flutter test`
+**Three test suites:**
+
+| Suite | Command | Requires |
+|---|---|---|
+| Flutter unit + widget | `cd apps/mobile && flutter test` | Nothing |
+| Cloud Functions (Jest) | `cd functions && npm test` | Emulators (`./dev.sh --emulator-only`) |
+| Flutter integration | `cd apps/mobile && flutter test integration_test/matchmaking_advanced_test.dart` | Emulators + Android device |
 
 Test files mirror source structure under `test/features/<feature>/domain/`, `data/`, `presentation/`. See [`test/features/hello/`](apps/mobile/test/features/hello/) and [`test/features/auth/`](apps/mobile/test/features/auth/) for reference.
 
