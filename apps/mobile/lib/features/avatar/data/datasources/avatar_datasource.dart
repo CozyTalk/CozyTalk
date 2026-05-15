@@ -14,7 +14,11 @@ class AvatarDatasourceImpl implements AvatarDatasource {
   AvatarDatasourceImpl(this._db);
 
   @override
+  Future<AvatarDecorationModel?> getDecoration(String uid) async {
     final doc = await _db.collection('users').doc(uid).get();
+    if (!doc.exists || doc.data() == null) return null;
+    final data = Map<String, dynamic>.from(doc.data()!);
+    return AvatarDecorationModel.fromJson(data);
   }
 
   @override
@@ -33,7 +37,7 @@ class AvatarDatasourceImpl implements AvatarDatasource {
         'role': 'user',
         'createdAt': FieldValue.serverTimestamp(),
         'lastSeen': FieldValue.serverTimestamp(),
-        'hatKey': hatKey,
+        if (hatKey != null) 'hatKey': hatKey,
       });
     }
   }
@@ -50,14 +54,17 @@ class AvatarDatasourceImpl implements AvatarDatasource {
         'role': 'user',
         'createdAt': FieldValue.serverTimestamp(),
         'lastSeen': FieldValue.serverTimestamp(),
-        'moodKey': moodKey,
+        if (moodKey != null) 'moodKey': moodKey,
       });
     }
   }
 
   @override
   Future<void> updateDecoration(
-      String uid, String? hatKey, String? moodKey) async {
+    String uid,
+    String? hatKey,
+    String? moodKey,
+  ) async {
     final docRef = _db.collection('users').doc(uid);
     final doc = await docRef.get();
     if (doc.exists) {
@@ -71,8 +78,8 @@ class AvatarDatasourceImpl implements AvatarDatasource {
         'role': 'user',
         'createdAt': FieldValue.serverTimestamp(),
         'lastSeen': FieldValue.serverTimestamp(),
-        'hatKey': hatKey,
-        'moodKey': moodKey,
+        if (hatKey != null) 'hatKey': hatKey,
+        if (moodKey != null) 'moodKey': moodKey,
       });
     }
   }
