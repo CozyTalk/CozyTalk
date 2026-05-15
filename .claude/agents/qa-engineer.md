@@ -62,6 +62,29 @@ class _LoadingFakeNotifier extends FooNotifier {
 ### Session state tests
 Test all four states of the session state machine: `idle`, `searching`, `chatting`, `disconnected`. Each state should have a fake that pre-sets that state so you can verify the correct UI is shown.
 
+### Matchmaking state tests
+The matchmaking notifier has six states: `idle`, `searching`, `waiting1v1`, `matched`, `creating`, `error`. Test UI rendering for all six by constructing a `_FakeMatchmakingNotifier` with the target initial state. Also test all `copyWith` sentinel patterns (roomId, currentRoom, error must clear with explicit null).
+
+### Matchmaking fake repository pattern
+```dart
+class FakeMatchmakingRepository implements MatchmakingRepository {
+  int joinGroupRoomCalls = 0;
+  String? lastSetRoomLockId;
+  bool? lastSetRoomLockValue;
+  Exception? error;
+  // ... configurable return values per method
+
+  @override
+  Future<({String roomId, bool isNewRoom})> joinGroupRoom() async {
+    joinGroupRoomCalls++;
+    if (error != null) throw error!;
+    return (roomId: 'Ab3Kz', isNewRoom: false);
+  }
+  // ...
+}
+```
+See `test/features/matchmaking/domain/shared_fakes.dart` for the full canonical implementation.
+
 ### Concurrency / race condition tests
 When testing the matchmaking flow, verify that:
 - Two clients entering `waiting_pool` simultaneously are paired exactly once
