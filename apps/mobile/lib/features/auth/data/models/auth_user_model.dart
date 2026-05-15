@@ -18,5 +18,6 @@ abstract class AuthUserModel with _$AuthUserModel {
 }
 
 extension AuthUserModelX on AuthUserModel {
-  AuthUser toEntity() => AuthUser(uid: uid, email: email, displayName: displayName);
+  AuthUser toEntity() =>
+      AuthUser(uid: uid, email: email, displayName: displayName);
 }

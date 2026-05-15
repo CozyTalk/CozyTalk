@@ -36,10 +36,34 @@ class _DressUpScreenState extends ConsumerState<DressUpScreen> {
 
   static const List<_DressItem> _items = [
     _DressItem('Cap', 'assets/images/dressup/Cap.png', 'Cap', 80, 55),
-    _DressItem('Beanie', 'assets/images/dressup/Pinkbeanie.png', 'Beanie', 85, 55),
-    _DressItem('Witch', 'assets/images/dressup/WitchHat.png', 'Witch Hat', 90, 70),
-    _DressItem('Glasses', 'assets/images/dressup/Sunglasses.png', 'Sunglasses', 55, 30),
-    _DressItem('Cat Headband', 'assets/images/dressup/CatHeadband.png', 'Cat Headband', 65, 70),
+    _DressItem(
+      'Beanie',
+      'assets/images/dressup/Pinkbeanie.png',
+      'Beanie',
+      85,
+      55,
+    ),
+    _DressItem(
+      'Witch',
+      'assets/images/dressup/WitchHat.png',
+      'Witch Hat',
+      90,
+      70,
+    ),
+    _DressItem(
+      'Glasses',
+      'assets/images/dressup/Sunglasses.png',
+      'Sunglasses',
+      55,
+      30,
+    ),
+    _DressItem(
+      'Cat Headband',
+      'assets/images/dressup/CatHeadband.png',
+      'Cat Headband',
+      65,
+      70,
+    ),
     _DressItem('Crown', 'assets/images/dressup/Crown.png', 'Crown', 100, 35),
   ];
 
@@ -234,7 +258,10 @@ class _DressUpScreenState extends ConsumerState<DressUpScreen> {
               child: GestureDetector(
                 onTap: () => Navigator.pop(context, _selected),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 48,
+                    vertical: 12,
+                  ),
                   decoration: BoxDecoration(
                     color: const Color(0xFFDEF1C2),
                     borderRadius: BorderRadius.circular(20),
@@ -296,7 +323,7 @@ class _DressUpScreenState extends ConsumerState<DressUpScreen> {
                         color: Colors.black.withValues(alpha: 0.08),
                         blurRadius: 10,
                         offset: const Offset(0, 4),
-                      )
+                      ),
                     ],
                   ),
                   child: SvgPicture.asset(

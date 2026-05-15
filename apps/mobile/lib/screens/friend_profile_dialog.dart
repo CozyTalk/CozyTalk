@@ -15,7 +15,8 @@ void showFriendProfileDialog({
   showDialog(
     context: context,
     barrierColor: Colors.black.withValues(alpha: 0.35),
-    builder: (_) => _FriendProfileDialog(friend: friend, onNoteSaved: onNoteSaved),
+    builder: (_) =>
+        _FriendProfileDialog(friend: friend, onNoteSaved: onNoteSaved),
   );
 }
 
@@ -114,7 +115,10 @@ class _FriendProfileDialogState extends State<_FriendProfileDialog> {
                     'assets/images/icons/Close.svg',
                     width: 30,
                     height: 30,
-                    colorFilter: const ColorFilter.mode(Colors.black, BlendMode.srcIn),
+                    colorFilter: const ColorFilter.mode(
+                      Colors.black,
+                      BlendMode.srcIn,
+                    ),
                   ),
                 ),
               ),
@@ -162,17 +166,31 @@ class _FriendProfileDialogState extends State<_FriendProfileDialog> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // Username
-        const Text('Username',
-            style: TextStyle(fontWeight: FontWeight.w900, fontSize: 15, color: Colors.black)),
+        const Text(
+          'Username',
+          style: TextStyle(
+            fontWeight: FontWeight.w900,
+            fontSize: 15,
+            color: Colors.black,
+          ),
+        ),
         const SizedBox(height: 2),
-        Text(widget.friend.username,
-            style: const TextStyle(fontSize: 13, color: Colors.black87)),
+        Text(
+          widget.friend.username,
+          style: const TextStyle(fontSize: 13, color: Colors.black87),
+        ),
         const SizedBox(height: 14),
         // Note label row
         Row(
           children: [
-            const Text('Note',
-                style: TextStyle(fontWeight: FontWeight.w900, fontSize: 15, color: Colors.black)),
+            const Text(
+              'Note',
+              style: TextStyle(
+                fontWeight: FontWeight.w900,
+                fontSize: 15,
+                color: Colors.black,
+              ),
+            ),
             const SizedBox(width: 5),
             GestureDetector(
               onTap: _startEdit,
@@ -180,17 +198,19 @@ class _FriendProfileDialogState extends State<_FriendProfileDialog> {
                 'assets/images/icons/Edit.svg',
                 width: 22,
                 height: 22,
-                colorFilter: const ColorFilter.mode(Colors.black87, BlendMode.srcIn),
+                colorFilter: const ColorFilter.mode(
+                  Colors.black87,
+                  BlendMode.srcIn,
+                ),
               ),
             ),
             if (_editing) ...[
               const Spacer(),
               ValueListenableBuilder<TextEditingValue>(
                 valueListenable: _noteCtrl,
-                builder: (_, val, __) => Text(
+                builder: (_, val, _) => Text(
                   '${val.text.length}/$_maxNote',
-                  style:
-                      TextStyle(fontSize: 12, color: Colors.grey.shade500),
+                  style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
                 ),
               ),
             ],
@@ -200,24 +220,29 @@ class _FriendProfileDialogState extends State<_FriendProfileDialog> {
         // Note value or input
         if (!_editing)
           Text(
-              widget.friend.note?.isNotEmpty == true ? widget.friend.note! : '—',
-              style: const TextStyle(fontSize: 13, color: Colors.black87),
-            )
+            widget.friend.note?.isNotEmpty == true ? widget.friend.note! : '—',
+            style: const TextStyle(fontSize: 13, color: Colors.black87),
+          )
         else
           SizedBox(
             height: 38,
             child: TextField(
               controller: _noteCtrl,
               maxLength: _maxNote,
-              buildCounter: (_, {required currentLength,
+              buildCounter:
+                  (
+                    _, {
+                    required currentLength,
                     required isFocused,
-                    maxLength}) =>
-                  null,
+                    maxLength,
+                  }) => null,
               autofocus: true,
               style: const TextStyle(fontSize: 13),
               decoration: InputDecoration(
-                contentPadding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 9,
+                ),
                 isDense: true,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10),
@@ -229,8 +254,10 @@ class _FriendProfileDialogState extends State<_FriendProfileDialog> {
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10),
-                  borderSide:
-                      const BorderSide(color: AppColors.brownDeep, width: 1.5),
+                  borderSide: const BorderSide(
+                    color: AppColors.brownDeep,
+                    width: 1.5,
+                  ),
                 ),
               ),
             ),
@@ -244,8 +271,14 @@ class _FriendProfileDialogState extends State<_FriendProfileDialog> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Interest',
-            style: TextStyle(fontWeight: FontWeight.w900, fontSize: 15, color: Colors.black)),
+        const Text(
+          'Interest',
+          style: TextStyle(
+            fontWeight: FontWeight.w900,
+            fontSize: 15,
+            color: Colors.black,
+          ),
+        ),
         const SizedBox(height: 4),
         Text(
           widget.friend.interest.isNotEmpty ? widget.friend.interest : '—',
@@ -279,4 +312,3 @@ class _FriendProfileDialogState extends State<_FriendProfileDialog> {
     );
   }
 }
-

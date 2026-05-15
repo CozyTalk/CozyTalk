@@ -59,15 +59,24 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
                 SliverFillRemaining(
                   hasScrollBody: false,
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 24,
+                    ),
                     child: Column(
                       children: [
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 30),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 20,
+                            vertical: 30,
+                          ),
                           decoration: BoxDecoration(
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(20),
-                            border: Border.all(color: Colors.grey.shade300, width: 1.5),
+                            border: Border.all(
+                              color: Colors.grey.shade300,
+                              width: 1.5,
+                            ),
                             boxShadow: [
                               BoxShadow(
                                 color: Colors.black.withValues(alpha: 0.08),
@@ -87,10 +96,15 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
                                   decoration: BoxDecoration(
                                     color: Colors.white,
                                     borderRadius: BorderRadius.circular(16),
-                                    border: Border.all(color: Colors.grey.shade200, width: 1.5),
+                                    border: Border.all(
+                                      color: Colors.grey.shade200,
+                                      width: 1.5,
+                                    ),
                                     boxShadow: [
                                       BoxShadow(
-                                        color: Colors.black.withValues(alpha: 0.05),
+                                        color: Colors.black.withValues(
+                                          alpha: 0.05,
+                                        ),
                                         blurRadius: 5,
                                         offset: const Offset(0, 2),
                                       ),
@@ -103,8 +117,12 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
                                       child: Center(
                                         child: LayeredAvatar(
                                           boxSize: 62,
-                                          moodOverlay: ref.watch(avatarProvider).mood,
-                                          accessoryOverlay: ref.watch(avatarProvider).accessory,
+                                          moodOverlay: ref
+                                              .watch(avatarProvider)
+                                              .mood,
+                                          accessoryOverlay: ref
+                                              .watch(avatarProvider)
+                                              .accessory,
                                         ),
                                       ),
                                     ),
@@ -116,32 +134,49 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
                               // Username
                               ValueListenableBuilder(
                                 valueListenable: _usernameCtrl,
-                                builder: (_, val, __) => Row(
+                                builder: (_, val, _) => Row(
                                   children: [
                                     const Text(
                                       'Username',
-                                      style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16, color: Colors.black),
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w900,
+                                        fontSize: 16,
+                                        color: Colors.black,
+                                      ),
                                     ),
                                     const SizedBox(width: 8),
                                     const Text(
                                       'Do not use your real name',
-                                      style: TextStyle(fontSize: 11, color: Color(0xFFD9453F)),
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        color: Color(0xFFD9453F),
+                                      ),
                                     ),
                                     const Spacer(),
                                     Text(
                                       '${val.text.length}/$_maxUsername',
-                                      style: const TextStyle(fontSize: 12, color: Colors.black),
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.black,
+                                      ),
                                     ),
                                   ],
                                 ),
                               ),
                               const SizedBox(height: 8),
-                              _buildTextField(controller: _usernameCtrl, maxLength: _maxUsername, hintText: 'What do you go by?'),
+                              _buildTextField(
+                                controller: _usernameCtrl,
+                                maxLength: _maxUsername,
+                                hintText: 'What do you go by?',
+                              ),
                               if (_usernameError) ...[
                                 const SizedBox(height: 4),
                                 const Text(
                                   '*Username is required',
-                                  style: TextStyle(fontSize: 11, color: Color(0xFFD9453F)),
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: Color(0xFFD9453F),
+                                  ),
                                 ),
                               ],
                               const SizedBox(height: 24),
@@ -149,22 +184,35 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
                               // Interest
                               ValueListenableBuilder(
                                 valueListenable: _interestCtrl,
-                                builder: (_, val, __) => Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                builder: (_, val, _) => Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
                                   children: [
                                     const Text(
                                       'Interest',
-                                      style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16, color: Colors.black),
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w900,
+                                        fontSize: 16,
+                                        color: Colors.black,
+                                      ),
                                     ),
                                     Text(
                                       '${val.text.length}/$_maxInterest',
-                                      style: const TextStyle(fontSize: 12, color: Colors.black),
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.black,
+                                      ),
                                     ),
                                   ],
                                 ),
                               ),
                               const SizedBox(height: 8),
-                              _buildTextField(controller: _interestCtrl, maxLength: _maxInterest, maxLines: 5, hintText: 'What are you into?'),
+                              _buildTextField(
+                                controller: _interestCtrl,
+                                maxLength: _maxInterest,
+                                maxLines: 5,
+                                hintText: 'What are you into?',
+                              ),
                             ],
                           ),
                         ),
@@ -185,11 +233,17 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
                             });
                           },
                           child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 12),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 48,
+                              vertical: 12,
+                            ),
                             decoration: BoxDecoration(
                               color: const Color(0xFFDEF1C2),
                               borderRadius: BorderRadius.circular(20),
-                              border: Border.all(color: const Color(0xFFC7D2B5), width: 1.5),
+                              border: Border.all(
+                                color: const Color(0xFFC7D2B5),
+                                width: 1.5,
+                              ),
                               boxShadow: [
                                 BoxShadow(
                                   color: Colors.black.withValues(alpha: 0.1),
@@ -200,7 +254,11 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
                             ),
                             child: const Text(
                               'Save',
-                              style: TextStyle(color: Colors.black, fontSize: 16, fontWeight: FontWeight.w900),
+                              style: TextStyle(
+                                color: Colors.black,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w900,
+                              ),
                             ),
                           ),
                         ),
@@ -242,16 +300,28 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(color: Colors.grey.shade300, width: 1.5),
                     boxShadow: [
-                      BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 10, offset: const Offset(0, 4)),
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.08),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
                     ],
                   ),
-                  child: SvgPicture.asset('assets/images/icons/Back.svg', width: 26, height: 26),
+                  child: SvgPicture.asset(
+                    'assets/images/icons/Back.svg',
+                    width: 26,
+                    height: 26,
+                  ),
                 ),
               ),
               const SizedBox(width: 16),
               const Text(
                 'Edit Profile',
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: Colors.white),
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w900,
+                  color: Colors.white,
+                ),
               ),
             ],
           ),
@@ -268,7 +338,7 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
   }) {
     return ValueListenableBuilder<TextEditingValue>(
       valueListenable: controller,
-      builder: (_, val, __) => Stack(
+      builder: (_, val, _) => Stack(
         children: [
           TextField(
             controller: controller,
@@ -281,7 +351,12 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
               hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14),
               filled: true,
               fillColor: Colors.white,
-              contentPadding: EdgeInsets.fromLTRB(14, 12, val.text.isNotEmpty ? 36 : 14, 12),
+              contentPadding: EdgeInsets.fromLTRB(
+                14,
+                12,
+                val.text.isNotEmpty ? 36 : 14,
+                12,
+              ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
                 borderSide: BorderSide(color: Colors.grey.shade300, width: 1.5),
@@ -302,7 +377,10 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
                   'assets/images/icons/Close.svg',
                   width: 24,
                   height: 24,
-                  colorFilter: const ColorFilter.mode(Colors.grey, BlendMode.srcIn),
+                  colorFilter: const ColorFilter.mode(
+                    Colors.grey,
+                    BlendMode.srcIn,
+                  ),
                 ),
               ),
             ),

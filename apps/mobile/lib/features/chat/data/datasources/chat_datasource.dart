@@ -19,6 +19,7 @@ abstract class ChatDatasource {
     required bool isTyping,
     required String currentUid,
     required String displayName,
+    String? photoUrl,
   });
   Future<void> endSession({required String sessionId});
 
@@ -93,6 +94,7 @@ class ChatDatasourceImpl implements ChatDatasource {
             return TypingUser(
               uid: e.key as String,
               displayName: v['displayName'] as String? ?? 'Anonymous',
+              photoUrl: v['photoUrl'] as String?,
             );
           })
           .toList();
@@ -110,10 +112,11 @@ class ChatDatasourceImpl implements ChatDatasource {
       // Read the name claimed during joinProtoSession; fall back if presence
       // was lost (e.g. reconnect before re-join).
       final nameSnap = await _db.ref('presence/$sessionId/$uid').get();
-      final name = nameSnap.value as String?
-          ?? _auth.currentUser?.displayName
-          ?? _auth.currentUser?.email
-          ?? 'Anonymous';
+      final name =
+          nameSnap.value as String? ??
+          _auth.currentUser?.displayName ??
+          _auth.currentUser?.email ??
+          'Anonymous';
 
       final keyBytes = await _protoKeyBytes(sessionId);
       final algorithm = AesGcm.with256bits();
@@ -152,11 +155,17 @@ class ChatDatasourceImpl implements ChatDatasource {
     required bool isTyping,
     required String currentUid,
     required String displayName,
+    String? photoUrl,
   }) async {
     if (sessionId.startsWith('proto-')) {
+      if (currentUid.isEmpty) return;
       final ref = _db.ref('typing/$sessionId/$currentUid');
       if (isTyping) {
-        await ref.set({'isTyping': true, 'displayName': displayName});
+        await ref.set({
+          'isTyping': true,
+          'displayName': displayName,
+          'photoUrl': ?photoUrl,
+        });
       } else {
         await ref.remove();
       }
@@ -224,24 +233,53 @@ class ChatDatasourceImpl implements ChatDatasource {
   }
 
   Future<List<int>> _protoKeyBytes(String sessionId) async {
-    final hash = await Sha256().hash(utf8.encode('cozytalk-proto-v1:$sessionId'));
+    final hash = await Sha256().hash(
+      utf8.encode('cozytalk-proto-v1:$sessionId'),
+    );
     return hash.bytes;
   }
 
   // UID-derived seed ensures the same user gets the same name in an empty room; steps forward on collision.
   static String _anonymousName(String uid, Set<String> taken) {
     const adjectives = [
-      'Brave', 'Calm', 'Cozy', 'Daring', 'Eager',
-      'Fluffy', 'Gentle', 'Happy', 'Kind', 'Lucky',
-      'Mellow', 'Noble', 'Quiet', 'Swift', 'Witty',
+      'Brave',
+      'Calm',
+      'Cozy',
+      'Daring',
+      'Eager',
+      'Fluffy',
+      'Gentle',
+      'Happy',
+      'Kind',
+      'Lucky',
+      'Mellow',
+      'Noble',
+      'Quiet',
+      'Swift',
+      'Witty',
     ];
     const animals = [
-      'Bear', 'Crane', 'Deer', 'Duck', 'Fox',
-      'Frog', 'Hawk', 'Lynx', 'Otter', 'Owl',
-      'Panda', 'Quail', 'Seal', 'Wolf', 'Wren',
+      'Bear',
+      'Crane',
+      'Deer',
+      'Duck',
+      'Fox',
+      'Frog',
+      'Hawk',
+      'Lynx',
+      'Otter',
+      'Owl',
+      'Panda',
+      'Quail',
+      'Seal',
+      'Wolf',
+      'Wren',
     ];
     final total = adjectives.length * animals.length;
-    final seed = uid.codeUnits.fold(5381, (h, c) => ((h << 5) + h + c) & 0x7FFFFFFF);
+    final seed = uid.codeUnits.fold(
+      5381,
+      (h, c) => ((h << 5) + h + c) & 0x7FFFFFFF,
+    );
     for (var i = 0; i < total; i++) {
       final idx = (seed + i) % total;
       final name =

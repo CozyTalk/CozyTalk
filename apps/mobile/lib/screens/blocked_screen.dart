@@ -52,8 +52,9 @@ class _BlockedScreenState extends State<BlockedScreen> {
                 : ListView.separated(
                     padding: const EdgeInsets.symmetric(horizontal: 20),
                     itemCount: _blocked.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 16),
-                    itemBuilder: (context, i) => _buildBlockedCard(context, _blocked[i], i),
+                    separatorBuilder: (_, _) => const SizedBox(height: 16),
+                    itemBuilder: (context, i) =>
+                        _buildBlockedCard(context, _blocked[i], i),
                   ),
           ),
         ],
@@ -66,9 +67,7 @@ class _BlockedScreenState extends State<BlockedScreen> {
     return Container(
       decoration: const BoxDecoration(
         color: AppColors.brownDeep,
-        borderRadius: BorderRadius.vertical(
-          top: Radius.circular(35), 
-        ),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(35)),
       ),
       child: SafeArea(
         bottom: false,
@@ -92,12 +91,9 @@ class _BlockedScreenState extends State<BlockedScreen> {
                         color: Colors.black.withValues(alpha: 0.08),
                         blurRadius: 10,
                         offset: const Offset(0, 4),
-                      )
+                      ),
                     ],
-                    border: Border.all(
-                      color: Colors.grey.shade300,
-                      width: 1.5,
-                    ),
+                    border: Border.all(color: Colors.grey.shade300, width: 1.5),
                   ),
                   child: SvgPicture.asset(
                     'assets/images/icons/Back.svg',
@@ -134,7 +130,7 @@ class _BlockedScreenState extends State<BlockedScreen> {
             color: Colors.black.withValues(alpha: 0.08),
             blurRadius: 10,
             offset: const Offset(0, 4),
-          )
+          ),
         ],
         border: Border.all(color: Colors.grey.shade300, width: 1.5),
       ),
@@ -159,7 +155,7 @@ class _BlockedScreenState extends State<BlockedScreen> {
                     color: Colors.black.withValues(alpha: 0.05),
                     blurRadius: 5,
                     offset: const Offset(0, 2),
-                  )
+                  ),
                 ],
                 border: Border.all(color: Colors.grey.shade200, width: 1.5),
               ),
@@ -202,7 +198,7 @@ class _BlockedScreenState extends State<BlockedScreen> {
                     color: Colors.black.withValues(alpha: 0.05),
                     blurRadius: 4,
                     offset: const Offset(0, 2),
-                  )
+                  ),
                 ],
               ),
               child: const Text(

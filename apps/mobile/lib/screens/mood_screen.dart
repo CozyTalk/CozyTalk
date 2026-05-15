@@ -224,7 +224,10 @@ class _MoodScreenState extends ConsumerState<MoodScreen> {
               child: GestureDetector(
                 onTap: () => Navigator.pop(context, _selected),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 48,
+                    vertical: 12,
+                  ),
                   decoration: BoxDecoration(
                     color: const Color(0xFFDEF1C2),
                     borderRadius: BorderRadius.circular(20),
@@ -286,7 +289,7 @@ class _MoodScreenState extends ConsumerState<MoodScreen> {
                         color: Colors.black.withValues(alpha: 0.08),
                         blurRadius: 10,
                         offset: const Offset(0, 4),
-                      )
+                      ),
                     ],
                   ),
                   child: SvgPicture.asset(

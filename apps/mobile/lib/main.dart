@@ -11,6 +11,7 @@ import 'firebase_options.dart';
 import 'features/auth/presentation/providers/auth_provider.dart';
 import 'features/auth/presentation/screens/login_screen.dart';
 import 'features/hello/presentation/screens/hello_screen.dart';
+import 'features/chat/presentation/screens/chat_screen.dart' as feature_chat;
 // main UI imports
 import 'theme/app_theme.dart';
 import 'theme/app_routes.dart';
@@ -30,7 +31,7 @@ import 'screens/group_chat_screen.dart';
 const _useEmulator = bool.fromEnvironment('USE_EMULATOR', defaultValue: true);
 
 // TOGGLE: flip to true for legacy UI home (design preview), false for chatroom backend testing
-const _useMainUI = true;
+const _useMainUI = false;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -58,24 +59,24 @@ class MyApp extends StatelessWidget {
         title: 'CozyTalk',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.theme,
-        initialRoute: AppRoutes.home, // TODO: revert to AppRoutes.home
+        initialRoute: AppRoutes.home,
         routes: {
-          AppRoutes.home:             (_) => const HomeScreen(),
-          AppRoutes.notification:     (_) => const NotificationScreen(),
-          AppRoutes.profile:          (_) => const ProfileScreen(),
-          AppRoutes.blocked:          (_) => const BlockedScreen(),
-          AppRoutes.dressUp:          (_) => const DressUpScreen(),
-          AppRoutes.mood:             (_) => const MoodScreen(),
-          AppRoutes.friends:          (_) => const FriendsScreen(),
-          AppRoutes.friendChat:       (_) => const FriendChatScreen(),
-          AppRoutes.chooseRoomType:   (_) => const ChooseRoomTypeScreen(),
+          AppRoutes.home: (_) => const HomeScreen(),
+          AppRoutes.notification: (_) => const NotificationScreen(),
+          AppRoutes.profile: (_) => const ProfileScreen(),
+          AppRoutes.blocked: (_) => const BlockedScreen(),
+          AppRoutes.dressUp: (_) => const DressUpScreen(),
+          AppRoutes.mood: (_) => const MoodScreen(),
+          AppRoutes.friends: (_) => const FriendsScreen(),
+          AppRoutes.friendChat: (_) => const FriendChatScreen(),
+          AppRoutes.chooseRoomType: (_) => const ChooseRoomTypeScreen(),
           AppRoutes.selectBackground: (ctx) {
             final args = ModalRoute.of(ctx)?.settings.arguments as String?;
             return SelectBackgroundScreen(roomType: args);
           },
-          AppRoutes.joinRoomId:       (_) => const JoinRoomIdScreen(),
-          AppRoutes.chatScreen:       (_) => const ChatScreen(),
-          AppRoutes.groupChatScreen:  (_) => const GroupChatScreen(),
+          AppRoutes.joinRoomId: (_) => const JoinRoomIdScreen(),
+          AppRoutes.chatScreen: (_) => const ChatScreen(),
+          AppRoutes.groupChatScreen: (_) => const GroupChatScreen(),
         },
       );
     }
@@ -95,8 +96,14 @@ class _AuthRouter extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final status = ref.watch(authNotifierProvider.select((s) => s.status));
+    final user = ref.watch(authNotifierProvider.select((s) => s.user));
     return switch (status) {
-      AuthStatus.authenticated => const HelloScreen(),
+      AuthStatus.authenticated => feature_chat.ChatScreen(
+        sessionId: 'proto-dev-1',
+        currentUserId: FirebaseAuth.instance.currentUser?.uid ?? '',
+        currentUserDisplayName: user?.displayName,
+        currentUserPhotoUrl: FirebaseAuth.instance.currentUser?.photoURL,
+      ),
       AuthStatus.idle => const Scaffold(
         body: Center(child: CircularProgressIndicator()),
       ),

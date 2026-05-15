@@ -22,7 +22,9 @@ export const endSession = onCall({invoker: "public"}, async (request) => {
   const rtdb = admin.database();
 
   const sessionDoc = await db
-    .collection("active_sessions").doc(sessionId).get();
+    .collection("active_sessions")
+    .doc(sessionId)
+    .get();
   if (!sessionDoc.exists) {
     throw new HttpsError("not-found", "Session not found.");
   }
@@ -39,16 +41,19 @@ export const endSession = onCall({invoker: "public"}, async (request) => {
   // flagged messages within the retention window.
   const encryptionKey = sessionData.encryptionKey as string | undefined;
   if (encryptionKey) {
-    await db.collection("session_keys").doc(sessionId).set({
-      sessionId,
-      encryptionKey,
-      users: sessionData.users,
-      createdAt: sessionData.createdAt ?? null,
-      expiresAt: admin.firestore.Timestamp.fromMillis(
-        Date.now() + RETENTION_MS
-      ),
-      flagged: false,
-    });
+    await db
+      .collection("session_keys")
+      .doc(sessionId)
+      .set({
+        sessionId,
+        encryptionKey,
+        users: sessionData.users,
+        createdAt: sessionData.createdAt ?? null,
+        expiresAt: admin.firestore.Timestamp.fromMillis(
+          Date.now() + RETENTION_MS,
+        ),
+        flagged: false,
+      });
   }
 
   // Remove real-time presence data — clients lose live visibility immediately.
@@ -69,6 +74,13 @@ export const endSession = onCall({invoker: "public"}, async (request) => {
   return {success: true};
 });
 
+/**
+ * Recursively deletes all messages in a chat room in batches.
+ * @param {admin.firestore.Firestore} db - Firestore instance.
+ * @param {string} sessionId - The room whose messages to delete.
+ * @param {number} batchSize - Documents to delete per batch.
+ * @return {Promise<void>}
+ */
 async function _deleteMessages(
   db: admin.firestore.Firestore,
   sessionId: string,

@@ -55,7 +55,8 @@ class _HelloScreenState extends ConsumerState<HelloScreen> {
                     builder: (_) => ChatScreen(
                       sessionId: 'proto-session-001',
                       currentUserId: user.uid,
-                      currentUserDisplayName: user.displayName ?? user.email ?? 'You',
+                      currentUserDisplayName:
+                          user.displayName ?? user.email ?? 'You',
                     ),
                   ),
                 );

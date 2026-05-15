@@ -29,10 +29,7 @@ class ChatRepositoryImpl implements ChatRepository {
       _datasource.watchTypingUsers(sessionId);
 
   @override
-  Future<void> sendMessage({
-    required String sessionId,
-    required String text,
-  }) =>
+  Future<void> sendMessage({required String sessionId, required String text}) =>
       _datasource.sendMessage(sessionId: sessionId, text: text);
 
   @override
@@ -41,13 +38,14 @@ class ChatRepositoryImpl implements ChatRepository {
     required bool isTyping,
     required String currentUid,
     required String displayName,
-  }) =>
-      _datasource.setTyping(
-        sessionId: sessionId,
-        isTyping: isTyping,
-        currentUid: currentUid,
-        displayName: displayName,
-      );
+    String? photoUrl,
+  }) => _datasource.setTyping(
+    sessionId: sessionId,
+    isTyping: isTyping,
+    currentUid: currentUid,
+    displayName: displayName,
+    photoUrl: photoUrl,
+  );
 
   @override
   Future<void> endSession({required String sessionId}) =>

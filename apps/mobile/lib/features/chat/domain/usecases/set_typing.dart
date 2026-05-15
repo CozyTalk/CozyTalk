@@ -9,11 +9,12 @@ class SetTyping {
     required bool isTyping,
     required String currentUid,
     required String displayName,
-  }) =>
-      _repository.setTyping(
-        sessionId: sessionId,
-        isTyping: isTyping,
-        currentUid: currentUid,
-        displayName: displayName,
-      );
+    String? photoUrl,
+  }) => _repository.setTyping(
+    sessionId: sessionId,
+    isTyping: isTyping,
+    currentUid: currentUid,
+    displayName: displayName,
+    photoUrl: photoUrl,
+  );
 }

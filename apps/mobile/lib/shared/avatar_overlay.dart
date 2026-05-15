@@ -5,11 +5,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 // LayeredAvatar recomputes positions for any target box size automatically.
 class AvatarOverlay {
   final String path;
-  final double top;      // from card top in HomeScreen (270px card)
-  final double cx;       // horizontal offset from avatar horizontal centre
+  final double top; // from card top in HomeScreen (270px card)
+  final double cx; // horizontal offset from avatar horizontal centre
   final double w;
   final double h;
-  final bool aboveMood;  // true → renders above the mood layer (e.g. glasses)
+  final bool aboveMood; // true → renders above the mood layer (e.g. glasses)
 
   const AvatarOverlay({
     required this.path,
@@ -49,7 +49,6 @@ class AvatarState {
   final AvatarOverlay? mood;
   final AvatarOverlay? accessory;
   const AvatarState({this.mood, this.accessory});
-
 }
 
 class AvatarNotifier extends Notifier<AvatarState> {
@@ -63,5 +62,6 @@ class AvatarNotifier extends Notifier<AvatarState> {
       state = AvatarState(mood: state.mood, accessory: v);
 }
 
-final avatarProvider =
-    NotifierProvider<AvatarNotifier, AvatarState>(AvatarNotifier.new);
+final avatarProvider = NotifierProvider<AvatarNotifier, AvatarState>(
+  AvatarNotifier.new,
+);

@@ -51,8 +51,9 @@ final _endSessionProvider = Provider<EndSession>(
   (ref) => EndSession(ref.watch(_chatRepositoryProvider)),
 );
 
-final chatNotifierProvider =
-    NotifierProvider<ChatNotifier, ChatState>(ChatNotifier.new);
+final chatNotifierProvider = NotifierProvider<ChatNotifier, ChatState>(
+  ChatNotifier.new,
+);
 
 const _sentinel = Object();
 
@@ -61,6 +62,7 @@ class ChatState {
   final String? sessionId;
   final String? currentUserId;
   final String? currentUserDisplayName;
+  final String? currentUserPhotoUrl;
   final List<ChatMessage> messages;
   final List<TypingUser> typingUsers;
   final bool isSending;
@@ -71,6 +73,7 @@ class ChatState {
     this.sessionId,
     this.currentUserId,
     this.currentUserDisplayName,
+    this.currentUserPhotoUrl,
     this.messages = const [],
     this.typingUsers = const [],
     this.isSending = false,
@@ -82,26 +85,28 @@ class ChatState {
     Object? sessionId = _sentinel,
     Object? currentUserId = _sentinel,
     Object? currentUserDisplayName = _sentinel,
+    Object? currentUserPhotoUrl = _sentinel,
     List<ChatMessage>? messages,
     List<TypingUser>? typingUsers,
     bool? isSending,
     Object? error = _sentinel,
-  }) =>
-      ChatState(
-        status: status ?? this.status,
-        sessionId:
-            sessionId == _sentinel ? this.sessionId : sessionId as String?,
-        currentUserId: currentUserId == _sentinel
-            ? this.currentUserId
-            : currentUserId as String?,
-        currentUserDisplayName: currentUserDisplayName == _sentinel
-            ? this.currentUserDisplayName
-            : currentUserDisplayName as String?,
-        messages: messages ?? this.messages,
-        typingUsers: typingUsers ?? this.typingUsers,
-        isSending: isSending ?? this.isSending,
-        error: error == _sentinel ? this.error : error as String?,
-      );
+  }) => ChatState(
+    status: status ?? this.status,
+    sessionId: sessionId == _sentinel ? this.sessionId : sessionId as String?,
+    currentUserId: currentUserId == _sentinel
+        ? this.currentUserId
+        : currentUserId as String?,
+    currentUserDisplayName: currentUserDisplayName == _sentinel
+        ? this.currentUserDisplayName
+        : currentUserDisplayName as String?,
+    currentUserPhotoUrl: currentUserPhotoUrl == _sentinel
+        ? this.currentUserPhotoUrl
+        : currentUserPhotoUrl as String?,
+    messages: messages ?? this.messages,
+    typingUsers: typingUsers ?? this.typingUsers,
+    isSending: isSending ?? this.isSending,
+    error: error == _sentinel ? this.error : error as String?,
+  );
 }
 
 class ChatNotifier extends Notifier<ChatState> {
@@ -115,6 +120,7 @@ class ChatNotifier extends Notifier<ChatState> {
     required String sessionId,
     required String currentUserId,
     String? currentUserDisplayName,
+    String? currentUserPhotoUrl,
   }) {
     _cancelSubscriptions();
     state = ChatState(
@@ -122,6 +128,7 @@ class ChatNotifier extends Notifier<ChatState> {
       sessionId: sessionId,
       currentUserId: currentUserId,
       currentUserDisplayName: currentUserDisplayName,
+      currentUserPhotoUrl: currentUserPhotoUrl,
     );
 
     if (sessionId.startsWith('proto-')) {
@@ -154,12 +161,8 @@ class ChatNotifier extends Notifier<ChatState> {
           onError: (Object e) => state = state.copyWith(error: e.toString()),
         );
 
-    _typingSub = ref
-        .read(_watchTypingUsersProvider)(sessionId)
-        .listen((users) {
-      final others = users
-          .where((u) => u.uid != state.currentUserId)
-          .toList();
+    _typingSub = ref.read(_watchTypingUsersProvider)(sessionId).listen((users) {
+      final others = users.where((u) => u.uid != state.currentUserId).toList();
       state = state.copyWith(typingUsers: others);
     });
   }
@@ -186,10 +189,9 @@ class ChatNotifier extends Notifier<ChatState> {
         isTyping: isTyping,
         currentUid: uid,
         displayName: state.currentUserDisplayName ?? 'Anonymous',
+        photoUrl: state.currentUserPhotoUrl,
       );
-    } catch (_) {
-      // Typing errors are non-fatal.
-    }
+    } catch (_) {}
   }
 
   Future<void> endSession() async {

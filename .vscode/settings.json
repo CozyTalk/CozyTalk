@@ -1,0 +1,24 @@
+{
+  "[dart]": {
+    "editor.formatOnSave": true,
+    "editor.defaultFormatter": "Dart-Code.dart-code",
+    "editor.codeActionsOnSave": {
+      "source.fixAll": "always"
+    }
+  },
+  "[typescript]": {
+    "editor.formatOnSave": true,
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.codeActionsOnSave": {
+      "source.fixAll.eslint": "always"
+    }
+  },
+  "[javascript]": {
+    "editor.formatOnSave": true,
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.codeActionsOnSave": {
+      "source.fixAll.eslint": "always"
+    }
+  },
+  "files.eol": "\n"
+}

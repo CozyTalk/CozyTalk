@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+MOBILE="$REPO_ROOT/apps/mobile"
+
+printf "\n  Running Flutter tests before push...\n\n"
+
+cd "$MOBILE"
+flutter test --no-pub
+
+printf "\n  All tests passed.\n\n"

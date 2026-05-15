@@ -47,7 +47,11 @@ class _UserProfileDialogState extends State<UserProfileDialog> {
                       color: Colors.white.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: const Icon(Icons.close, size: 20, color: Colors.white),
+                    child: const Icon(
+                      Icons.close,
+                      size: 20,
+                      color: Colors.white,
+                    ),
                   ),
                 ),
               ),
@@ -80,18 +84,22 @@ class _UserProfileDialogState extends State<UserProfileDialog> {
                             color: Colors.grey.shade100,
                             borderRadius: BorderRadius.circular(16),
                             border: Border.all(
-                                color: Colors.grey.shade200, width: 1.5),
+                              color: Colors.grey.shade200,
+                              width: 1.5,
+                            ),
                           ),
-                          child: const Icon(Icons.person,
-                              color: Colors.grey, size: 40),
+                          child: const Icon(
+                            Icons.person,
+                            color: Colors.grey,
+                            size: 40,
+                          ),
                         ),
                         const SizedBox(height: 12),
                         Row(
                           children: [
                             // Add friend button
                             GestureDetector(
-                              onTap: () =>
-                                  setState(() => isFriendAdded = true),
+                              onTap: () => setState(() => isFriendAdded = true),
                               child: Container(
                                 padding: const EdgeInsets.all(8),
                                 decoration: BoxDecoration(
@@ -121,8 +129,9 @@ class _UserProfileDialogState extends State<UserProfileDialog> {
                             // Report button
                             GestureDetector(
                               onTap: () => showDialog(
-                                  context: context,
-                                  builder: (_) => const ReportDialog()),
+                                context: context,
+                                builder: (_) => const ReportDialog(),
+                              ),
                               child: Container(
                                 padding: const EdgeInsets.all(8),
                                 decoration: BoxDecoration(
@@ -154,33 +163,37 @@ class _UserProfileDialogState extends State<UserProfileDialog> {
                           const Text(
                             'Username',
                             style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.black54),
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.black54,
+                            ),
                           ),
                           const SizedBox(height: 2),
                           Text(
                             widget.username,
                             style: const TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w900,
-                                color: Colors.black),
+                              fontSize: 18,
+                              fontWeight: FontWeight.w900,
+                              color: Colors.black,
+                            ),
                           ),
                           const SizedBox(height: 14),
                           const Text(
                             'Interest',
                             style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.black54),
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.black54,
+                            ),
                           ),
                           const SizedBox(height: 4),
                           const Text(
                             'I love TikTok very much.\nTikTok is the best\napplication in the world.',
                             style: TextStyle(
-                                fontSize: 14,
-                                color: Colors.black87,
-                                height: 1.4),
+                              fontSize: 14,
+                              color: Colors.black87,
+                              height: 1.4,
+                            ),
                           ),
                         ],
                       ),

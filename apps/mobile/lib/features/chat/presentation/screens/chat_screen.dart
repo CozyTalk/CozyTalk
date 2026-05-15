@@ -11,12 +11,14 @@ class ChatScreen extends ConsumerStatefulWidget {
   final String sessionId;
   final String currentUserId;
   final String? currentUserDisplayName;
+  final String? currentUserPhotoUrl;
 
   const ChatScreen({
     super.key,
     required this.sessionId,
     required this.currentUserId,
     this.currentUserDisplayName,
+    this.currentUserPhotoUrl,
   });
 
   @override
@@ -32,10 +34,13 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(chatNotifierProvider.notifier).enterSession(
+      ref
+          .read(chatNotifierProvider.notifier)
+          .enterSession(
             sessionId: widget.sessionId,
             currentUserId: widget.currentUserId,
             currentUserDisplayName: widget.currentUserDisplayName,
+            currentUserPhotoUrl: widget.currentUserPhotoUrl,
           );
     });
   }
@@ -70,8 +75,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             label: 'Skip to next person',
             button: true,
             child: TextButton(
-              onPressed:
-                  state.status == SessionStatus.chatting ? _endSession : null,
+              onPressed: state.status == SessionStatus.chatting
+                  ? _endSession
+                  : null,
               child: const Text(
                 'Skip',
                 style: TextStyle(color: Colors.white, fontSize: 16),
@@ -93,12 +99,13 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 : ListView.builder(
                     controller: _scrollController,
                     padding: const EdgeInsets.symmetric(
-                        vertical: 8, horizontal: 12),
+                      vertical: 8,
+                      horizontal: 12,
+                    ),
                     itemCount: state.messages.length,
                     itemBuilder: (context, index) {
                       final message = state.messages[index];
-                      final isMine =
-                          message.senderId == state.currentUserId;
+                      final isMine = message.senderId == state.currentUserId;
                       return _MessageBubble(
                         text: message.text,
                         displayName: message.displayName,
@@ -111,12 +118,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             _TypingIndicator(typingUsers: state.typingUsers),
           if (state.error != null)
             Padding(
-              padding: const EdgeInsets.symmetric(
-                  horizontal: 12, vertical: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
               child: Text(
                 state.error!,
-                style:
-                    const TextStyle(color: Colors.red, fontSize: 12),
+                style: const TextStyle(color: Colors.red, fontSize: 12),
                 textAlign: TextAlign.center,
               ),
             ),
@@ -211,7 +216,9 @@ class _MessageBubble extends StatelessWidget {
                 ),
               Container(
                 padding: const EdgeInsets.symmetric(
-                    horizontal: 14, vertical: 10),
+                  horizontal: 14,
+                  vertical: 10,
+                ),
                 decoration: BoxDecoration(
                   color: isMine
                       ? theme.colorScheme.primary
@@ -241,7 +248,7 @@ class _MessageBubble extends StatelessWidget {
   }
 }
 
-// ── Group typing indicator ────────────────────────────────────────────────────
+// ── Typing indicator ──────────────────────────────────────────────────────────
 
 class _TypingIndicator extends StatefulWidget {
   final List<TypingUser> typingUsers;
@@ -254,16 +261,16 @@ class _TypingIndicator extends StatefulWidget {
 class _TypingIndicatorState extends State<_TypingIndicator>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
-  late final Animation<double> _opacity;
+  late final List<Animation<double>> _dotAnimations;
 
   @override
   void initState() {
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 700),
-    )..repeat(reverse: true);
-    _opacity = Tween<double>(begin: 0.3, end: 1.0).animate(_controller);
+      duration: const Duration(milliseconds: 1200),
+    )..repeat();
+    _dotAnimations = List.generate(3, _dotScale);
   }
 
   @override
@@ -272,24 +279,87 @@ class _TypingIndicatorState extends State<_TypingIndicator>
     super.dispose();
   }
 
+  Animation<double> _dotScale(int index) {
+    final start = index * 0.2;
+    return TweenSequence<double>([
+      TweenSequenceItem(
+        tween: Tween(
+          begin: 0.4,
+          end: 1.0,
+        ).chain(CurveTween(curve: Curves.easeOut)),
+        weight: 30,
+      ),
+      TweenSequenceItem(
+        tween: Tween(
+          begin: 1.0,
+          end: 0.4,
+        ).chain(CurveTween(curve: Curves.easeIn)),
+        weight: 30,
+      ),
+      TweenSequenceItem(tween: ConstantTween(0.4), weight: 40),
+    ]).animate(
+      CurvedAnimation(
+        parent: _controller,
+        curve: Interval(start, (start + 0.6).clamp(0.0, 1.0)),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final label = _buildLabel(widget.typingUsers);
+    final users = widget.typingUsers;
+    if (users.isEmpty) return const SizedBox.shrink();
+
+    final first = users.first;
+    final semanticLabel = _buildLabel(users);
+
     return Align(
       alignment: Alignment.centerLeft,
       child: Padding(
-        padding: const EdgeInsets.only(left: 16, bottom: 4),
+        padding: const EdgeInsets.only(left: 12, bottom: 6),
         child: Semantics(
-          label: label,
-          child: FadeTransition(
-            opacity: _opacity,
-            child: Text(
-              label,
-              style: TextStyle(
-                color: Theme.of(context).colorScheme.outline,
-                fontSize: 13,
+          label: semanticLabel,
+          excludeSemantics: true,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              _UserAvatar(user: first),
+              const SizedBox(width: 6),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 10,
+                ),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(16),
+                    topRight: Radius.circular(16),
+                    bottomRight: Radius.circular(16),
+                    bottomLeft: Radius.circular(4),
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: List.generate(3, (i) {
+                    return AnimatedBuilder(
+                      animation: _dotAnimations[i],
+                      builder: (context, _) => Container(
+                        width: 7,
+                        height: 7,
+                        margin: const EdgeInsets.symmetric(horizontal: 2),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.outline
+                              .withValues(alpha: _dotAnimations[i].value),
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                    );
+                  }),
+                ),
               ),
-            ),
+            ],
           ),
         ),
       ),
@@ -303,6 +373,42 @@ class _TypingIndicatorState extends State<_TypingIndicator>
       return '${users[0].displayName} and ${users[1].displayName} are typing…';
     }
     return 'Several people are typing…';
+  }
+}
+
+// ── User avatar ───────────────────────────────────────────────────────────────
+
+class _UserAvatar extends StatelessWidget {
+  final TypingUser user;
+  const _UserAvatar({required this.user});
+
+  @override
+  Widget build(BuildContext context) {
+    final photoUrl = user.photoUrl;
+    final initial = user.displayName.isNotEmpty
+        ? user.displayName[0].toUpperCase()
+        : '?';
+
+    final ImageProvider? image =
+        (photoUrl != null && photoUrl.startsWith('https://'))
+        ? NetworkImage(photoUrl)
+        : null;
+
+    return CircleAvatar(
+      radius: 16,
+      backgroundImage: image,
+      backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+      child: image == null
+          ? Text(
+              initial,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: Theme.of(context).colorScheme.onPrimaryContainer,
+              ),
+            )
+          : null,
+    );
   }
 }
 
@@ -341,7 +447,9 @@ class _InputBar extends StatelessWidget {
                   decoration: InputDecoration(
                     hintText: 'Type a message…',
                     contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 10),
+                      horizontal: 16,
+                      vertical: 10,
+                    ),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(24),
                     ),
@@ -359,8 +467,7 @@ class _InputBar extends StatelessWidget {
                 child: isSending
                     ? const Padding(
                         padding: EdgeInsets.all(12),
-                        child:
-                            CircularProgressIndicator(strokeWidth: 2),
+                        child: CircularProgressIndicator(strokeWidth: 2),
                       )
                     : IconButton(
                         onPressed: onSend,
@@ -403,8 +510,7 @@ class _DisconnectedScreen extends StatelessWidget {
               const SizedBox(height: 8),
               Text(
                 'The conversation has ended.',
-                style: TextStyle(
-                    color: Theme.of(context).colorScheme.outline),
+                style: TextStyle(color: Theme.of(context).colorScheme.outline),
                 textAlign: TextAlign.center,
               ),
             ],

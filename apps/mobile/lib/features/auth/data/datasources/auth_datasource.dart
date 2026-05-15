@@ -9,8 +9,14 @@ abstract class AuthDatasource {
   Stream<AuthUserModel?> watchAuthState();
   Future<AuthUserModel> signInAnonymously();
   Future<AuthUserModel> signInWithGoogle();
-  Future<AuthUserModel> signUp({required String email, required String password});
-  Future<AuthUserModel> signIn({required String email, required String password});
+  Future<AuthUserModel> signUp({
+    required String email,
+    required String password,
+  });
+  Future<AuthUserModel> signIn({
+    required String email,
+    required String password,
+  });
   Future<void> signOut();
 }
 
@@ -22,17 +28,25 @@ class AuthDatasourceImpl implements AuthDatasource {
 
   @override
   Stream<AuthUserModel?> watchAuthState() => _auth.authStateChanges().map(
-        (user) => user == null
-            ? null
-            : AuthUserModel(uid: user.uid, email: user.email, displayName: user.displayName),
-      );
+    (user) => user == null
+        ? null
+        : AuthUserModel(
+            uid: user.uid,
+            email: user.email,
+            displayName: user.displayName,
+          ),
+  );
 
   @override
   Future<AuthUserModel> signInAnonymously() async {
     try {
       final credential = await _auth.signInAnonymously();
       final user = credential.user!;
-      return AuthUserModel(uid: user.uid, email: user.email, displayName: user.displayName);
+      return AuthUserModel(
+        uid: user.uid,
+        email: user.email,
+        displayName: user.displayName,
+      );
     } on FirebaseAuthException catch (e) {
       throw Exception(_authErrorMessage(e.code));
     }
@@ -61,7 +75,11 @@ class AuthDatasourceImpl implements AuthDatasource {
           'lastSeen': FieldValue.serverTimestamp(),
         });
       }
-      return AuthUserModel(uid: user.uid, email: user.email, displayName: user.displayName);
+      return AuthUserModel(
+        uid: user.uid,
+        email: user.email,
+        displayName: user.displayName,
+      );
     } on FirebaseAuthException catch (e) {
       throw Exception(_authErrorMessage(e.code));
     }
@@ -85,7 +103,11 @@ class AuthDatasourceImpl implements AuthDatasource {
         'createdAt': FieldValue.serverTimestamp(),
         'lastSeen': FieldValue.serverTimestamp(),
       });
-      return AuthUserModel(uid: user.uid, email: user.email, displayName: user.displayName);
+      return AuthUserModel(
+        uid: user.uid,
+        email: user.email,
+        displayName: user.displayName,
+      );
     } on FirebaseAuthException catch (e) {
       throw Exception(_authErrorMessage(e.code));
     }
@@ -102,7 +124,11 @@ class AuthDatasourceImpl implements AuthDatasource {
         password: password,
       );
       final user = credential.user!;
-      return AuthUserModel(uid: user.uid, email: user.email, displayName: user.displayName);
+      return AuthUserModel(
+        uid: user.uid,
+        email: user.email,
+        displayName: user.displayName,
+      );
     } on FirebaseAuthException catch (e) {
       throw Exception(_authErrorMessage(e.code));
     }
@@ -113,11 +139,12 @@ class AuthDatasourceImpl implements AuthDatasource {
 }
 
 String _authErrorMessage(String code) => switch (code) {
-      'user-not-found' || 'wrong-password' || 'invalid-credential' =>
-        'Invalid email or password.',
-      'email-already-in-use' => 'This email is already registered.',
-      'invalid-email' => 'Please enter a valid email address.',
-      'weak-password' => 'Password must be at least 6 characters.',
-      'too-many-requests' => 'Too many attempts. Please try again later.',
-      _ => 'Authentication failed. Please try again.',
-    };
+  'user-not-found' ||
+  'wrong-password' ||
+  'invalid-credential' => 'Invalid email or password.',
+  'email-already-in-use' => 'This email is already registered.',
+  'invalid-email' => 'Please enter a valid email address.',
+  'weak-password' => 'Password must be at least 6 characters.',
+  'too-many-requests' => 'Too many attempts. Please try again later.',
+  _ => 'Authentication failed. Please try again.',
+};

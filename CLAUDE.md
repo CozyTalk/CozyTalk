@@ -1,5 +1,11 @@
 # CozyTalk — Claude Code Project Guide
 
+## Pull Requests
+
+Always use the template at `.github/pull_request_template.md` when creating PRs in this repo. Read the file first, then fill every section — do not skip or delete sections, use `N/A` where not applicable. Pass the body via heredoc to `gh pr create` to preserve formatting.
+
+---
+
 ## What is this project?
 
 CozyTalk is a **cross-platform stranger chat app** (anonymous 1-on-1 matching, like Omegle) targeting **Android and Web**. Users join a waiting pool, a Cloud Function matches two of them, and they chat via Firebase Realtime Database. The core purpose is to provide a low-pressure, authentic interaction space to combat social media performance fatigue.
@@ -38,7 +44,7 @@ tools/            ← CLI tools (reserved, empty)
 cd apps/mobile
 
 flutter pub get                                              # install deps
-dart run build_runner build --delete-conflicting-outputs    # regenerate Freezed + Riverpod code
+dart run build_runner build    # regenerate Freezed + Riverpod code
 flutter run                                                  # run on Android
 flutter run -d chrome                                        # run on Web
 flutter test                                                 # run tests
@@ -92,7 +98,7 @@ features/<feature>/
 
 1. Copy the `hello` feature folder as a template.
 2. Rename every class/file: `Hello` → `YourFeature`.
-3. Run `dart run build_runner build --delete-conflicting-outputs`.
+3. Run `dart run build_runner build`.
 4. Never put Firebase SDK calls outside `datasources/`.
 5. Never put business logic inside a `Screen` or `Notifier` — that belongs in a UseCase.
 
@@ -208,6 +214,22 @@ See `PROJECT_CONTEXT.md` for full schema and security rules.
 
 ---
 
+## Code Style
+
+All rules below are enforced by CI. Do not write code that needs a `// ignore:` suppression to pass.
+
+**Dart** — style owned by `dart format`, rules by `flutter_lints`:
+- Always use `{}` on `if`/`for`/`while` bodies (`curly_braces_in_flow_control_structures`)
+- Single quotes for strings; trailing commas on multi-line arg lists
+- No `print()` — use structured logging (`avoid_print` is active)
+
+**TypeScript** — style owned by Prettier (`functions/.prettierrc`), logic by ESLint:
+- Double quotes, 2-space indent, trailing commas everywhere, semicolons required, no bracket spacing (`{foo: bar}`)
+- Every `function` declaration (including `_`-prefixed helpers) needs a JSDoc block with `@param` + `@return`; `const` arrow functions are exempt
+- No implicit `any`; explicit types required
+
+---
+
 ## The Do-Not-Do List
 
 | ❌ Do NOT | Reason |
@@ -253,10 +275,55 @@ This codebase is developed by specialized agents orchestrated by a lead:
 
 ## Testing
 
-- Widget tests: `apps/mobile/test/`
-- Use `_FakeXxxNotifier extends XxxNotifier` + `overrideWith(() => fake)`
-- No real Firebase in tests
-- Run: `cd apps/mobile && flutter test`
+Run: `cd apps/mobile && flutter test`
+
+Test files mirror source structure under `test/features/<feature>/domain/`, `data/`, `presentation/`.
+
+**When adding a feature, write all of these:**
+
+| Layer | What to test |
+|---|---|
+| `domain/entities/` | Construction, optional fields default to null |
+| `domain/usecases/` | Args forwarded correctly, result returned, exception propagates |
+| `data/models/` | `fromJson` with all fields, with nulls, with extra unknown keys; `toEntity()` maps correctly |
+| `data/repositories/` | Call counts, arg forwarding, model→entity conversion, exception propagation; stream repos use `Stream.value(...)` |
+| `presentation/providers/` | `State.copyWith` preserves fields, sets nullables, **clears nullables with explicit `null`** (sentinel guard) |
+| `presentation/screens/` | Renders key widgets, validation errors, valid submit calls notifier, error/loading states |
+
+**Fake patterns:**
+
+```dart
+// Use case test — inline and file-private when the interface is only used in one file
+class _FakeMyRepository implements MyRepository {
+  String? lastArg; MyEntity? returnValue; Exception? error;
+  @override Future<MyEntity> doThing(String arg) async {
+    lastArg = arg; if (error != null) throw error!; return returnValue!;
+  }
+  @override Future<void> other() => throw UnimplementedError();
+}
+
+// When the same interface is tested across 3+ files, extract to shared_fakes.dart
+// in the same domain/ directory (public name, no underscore).
+// See: test/features/auth/domain/shared_fakes.dart (FakeAuthRepository)
+//      test/features/chat/domain/shared_fakes.dart  (FakeChatRepository)
+
+// Screen widget test — extend Notifier, override build() to avoid Firebase
+class _FakeMyNotifier extends MyNotifier {
+  final MyState _initial; int callCount = 0;
+  _FakeMyNotifier({MyState initial = const MyState()}) : _initial = initial;
+  @override MyState build() => _initial;  // never call super.build()
+  @override Future<void> doThing() async => callCount++;
+}
+// Wrap: ProviderScope(overrides: [myProvider.overrideWith(() => fake)], child: ...)
+```
+
+**Hard rules:**
+- No Firebase SDK in any test file
+- No mockito — hand-written fakes only
+- `_FakeXxxNotifier` must override `build()` — default `build()` touches Firebase and throws
+- Domain tests: no `flutter` or Firebase imports
+- Fresh fake in each `setUp` — never share mutable fakes across tests
+- Enum tests: one `containsAll` + length assertion, not one test per value
 
 ---
 
