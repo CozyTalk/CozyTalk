@@ -156,7 +156,10 @@ class _DressUpScreenState extends ConsumerState<DressUpScreen> {
               ),
 
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 14,
+                ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
@@ -188,12 +191,13 @@ class _DressUpScreenState extends ConsumerState<DressUpScreen> {
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
                     padding: EdgeInsets.zero,
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 3,
-                      crossAxisSpacing: 15,
-                      mainAxisSpacing: 15,
-                      childAspectRatio: 0.85,
-                    ),
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 3,
+                          crossAxisSpacing: 15,
+                          mainAxisSpacing: 15,
+                          childAspectRatio: 0.85,
+                        ),
                     itemCount: _items.length,
                     itemBuilder: (_, i) {
                       final item = _items[i];
@@ -203,12 +207,18 @@ class _DressUpScreenState extends ConsumerState<DressUpScreen> {
                         child: AnimatedContainer(
                           duration: const Duration(milliseconds: 200),
                           curve: Curves.easeOut,
-                          transform: Matrix4.translationValues(0, sel ? -10.0 : 0, 0),
+                          transform: Matrix4.translationValues(
+                            0,
+                            sel ? -10.0 : 0,
+                            0,
+                          ),
                           decoration: BoxDecoration(
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(22),
                             border: Border.all(
-                              color: sel ? const Color(0xFFCE5E42) : Colors.grey.shade300,
+                              color: sel
+                                  ? const Color(0xFFCE5E42)
+                                  : Colors.grey.shade300,
                               width: sel ? 2.5 : 1.5,
                             ),
                             boxShadow: [

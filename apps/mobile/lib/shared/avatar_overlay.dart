@@ -26,21 +26,94 @@ class AvatarOverlays {
   AvatarOverlays._();
 
   static const Map<String, AvatarOverlay> mood = {
-    'Happy':    AvatarOverlay(path: 'assets/images/moods/Happy.png',    top: 130, cx: 0, w: 33, h: 33),
-    'Thrilled': AvatarOverlay(path: 'assets/images/moods/Thrilled.png', top: 130, cx: 0, w: 36, h: 36),
-    'Sad':      AvatarOverlay(path: 'assets/images/moods/Sad.png',      top: 130, cx: 0, w: 37, h: 37),
-    'Lonely':   AvatarOverlay(path: 'assets/images/moods/Lonely.png',   top: 130, cx: 0, w: 33, h: 33),
-    'Silly':    AvatarOverlay(path: 'assets/images/moods/Silly.png',    top: 132, cx: 0, w: 33, h: 33),
-    'Grumpy':   AvatarOverlay(path: 'assets/images/moods/Grumpy.png',   top: 127, cx: 0, w: 39, h: 39),
+    'Happy': AvatarOverlay(
+      path: 'assets/images/moods/Happy.png',
+      top: 130,
+      cx: 0,
+      w: 33,
+      h: 33,
+    ),
+    'Thrilled': AvatarOverlay(
+      path: 'assets/images/moods/Thrilled.png',
+      top: 130,
+      cx: 0,
+      w: 36,
+      h: 36,
+    ),
+    'Sad': AvatarOverlay(
+      path: 'assets/images/moods/Sad.png',
+      top: 130,
+      cx: 0,
+      w: 37,
+      h: 37,
+    ),
+    'Lonely': AvatarOverlay(
+      path: 'assets/images/moods/Lonely.png',
+      top: 130,
+      cx: 0,
+      w: 33,
+      h: 33,
+    ),
+    'Silly': AvatarOverlay(
+      path: 'assets/images/moods/Silly.png',
+      top: 132,
+      cx: 0,
+      w: 33,
+      h: 33,
+    ),
+    'Grumpy': AvatarOverlay(
+      path: 'assets/images/moods/Grumpy.png',
+      top: 127,
+      cx: 0,
+      w: 39,
+      h: 39,
+    ),
   };
 
   static const Map<String, AvatarOverlay> accessory = {
-    'Cap':          AvatarOverlay(path: 'assets/images/dressup/Cap.png',          top: 100, cx: -4, w: 56, h: 50),
-    'Beanie':       AvatarOverlay(path: 'assets/images/dressup/Pinkbeanie.png',   top: 97, cx: 0, w: 52, h: 46),
-    'Witch':        AvatarOverlay(path: 'assets/images/dressup/WitchHat.png',     top: 82, cx: 0, w: 60, h: 70),
-    'Glasses':      AvatarOverlay(path: 'assets/images/dressup/Sunglasses.png',   top: 134, cx: 0, w: 60, h: 24, aboveMood: true),
-    'Cat Headband': AvatarOverlay(path: 'assets/images/dressup/CatHeadband.png',  top: 98, cx: 1, w: 67, h: 65),
-    'Crown':        AvatarOverlay(path: 'assets/images/dressup/Crown.png',        top: 100, cx: 0, w: 52, h: 32),
+    'Cap': AvatarOverlay(
+      path: 'assets/images/dressup/Cap.png',
+      top: 100,
+      cx: -4,
+      w: 56,
+      h: 50,
+    ),
+    'Beanie': AvatarOverlay(
+      path: 'assets/images/dressup/Pinkbeanie.png',
+      top: 97,
+      cx: 0,
+      w: 52,
+      h: 46,
+    ),
+    'Witch': AvatarOverlay(
+      path: 'assets/images/dressup/WitchHat.png',
+      top: 82,
+      cx: 0,
+      w: 60,
+      h: 70,
+    ),
+    'Glasses': AvatarOverlay(
+      path: 'assets/images/dressup/Sunglasses.png',
+      top: 134,
+      cx: 0,
+      w: 60,
+      h: 24,
+      aboveMood: true,
+    ),
+    'Cat Headband': AvatarOverlay(
+      path: 'assets/images/dressup/CatHeadband.png',
+      top: 98,
+      cx: 1,
+      w: 67,
+      h: 65,
+    ),
+    'Crown': AvatarOverlay(
+      path: 'assets/images/dressup/Crown.png',
+      top: 100,
+      cx: 0,
+      w: 52,
+      h: 32,
+    ),
   };
 }
 

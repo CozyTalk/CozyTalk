@@ -107,7 +107,9 @@ class _FriendsScreenState extends State<FriendsScreen> {
   void initState() {
     super.initState();
     _friends = List<Friend>.from(_mockFriends);
-    _searchCtrl.addListener(() => setState(() => _query = _searchCtrl.text.trim().toLowerCase()));
+    _searchCtrl.addListener(
+      () => setState(() => _query = _searchCtrl.text.trim().toLowerCase()),
+    );
   }
 
   @override
@@ -118,9 +120,13 @@ class _FriendsScreenState extends State<FriendsScreen> {
 
   List<Friend> get _filtered => _query.isEmpty
       ? _friends
-      : _friends.where((f) =>
-          f.displayName.toLowerCase().contains(_query) ||
-          f.username.toLowerCase().contains(_query)).toList();
+      : _friends
+            .where(
+              (f) =>
+                  f.displayName.toLowerCase().contains(_query) ||
+                  f.username.toLowerCase().contains(_query),
+            )
+            .toList();
 
   @override
   Widget build(BuildContext context) {
@@ -198,7 +204,11 @@ class _FriendsScreenState extends State<FriendsScreen> {
     return GestureDetector(
       onTap: () {
         setState(() => _friends[index].unreadCount = 0);
-        Navigator.pushNamed(context, AppRoutes.friendChat, arguments: _friends[index]);
+        Navigator.pushNamed(
+          context,
+          AppRoutes.friendChat,
+          arguments: _friends[index],
+        );
       },
       child: Container(
         width: double.infinity,
@@ -230,7 +240,10 @@ class _FriendsScreenState extends State<FriendsScreen> {
                         decoration: BoxDecoration(
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: Colors.grey.shade200, width: 1.5),
+                          border: Border.all(
+                            color: Colors.grey.shade200,
+                            width: 1.5,
+                          ),
                           boxShadow: [
                             BoxShadow(
                               color: Colors.black.withValues(alpha: 0.06),
@@ -246,7 +259,11 @@ class _FriendsScreenState extends State<FriendsScreen> {
                             child: Center(
                               child: friend.avatar.isNotEmpty
                                   ? LayeredAvatar(boxSize: 48)
-                                  : const Icon(Icons.person, color: Colors.grey, size: 35),
+                                  : const Icon(
+                                      Icons.person,
+                                      color: Colors.grey,
+                                      size: 35,
+                                    ),
                             ),
                           ),
                         ),
@@ -328,13 +345,13 @@ class _FriendsScreenState extends State<FriendsScreen> {
                   room: friend.room!,
                   onJoin: friend.room!.canJoin
                       ? () => Navigator.pushNamed(
-                            context,
-                            AppRoutes.groupChatScreen,
-                            arguments: {
-                              'roomName': friend.room!.name,
-                              'bgImage': friend.room!.thumbnail,
-                            },
-                          )
+                          context,
+                          AppRoutes.groupChatScreen,
+                          arguments: {
+                            'roomName': friend.room!.name,
+                            'bgImage': friend.room!.thumbnail,
+                          },
+                        )
                       : null,
                 ),
               ),
@@ -369,7 +386,11 @@ class _FriendsScreenState extends State<FriendsScreen> {
   Widget _buildMoreButton(Friend friend, int index) {
     return PopupMenuButton<String>(
       padding: EdgeInsets.zero,
-      icon: SvgPicture.asset('assets/images/icons/ThreeDot.svg', width: 36, height: 36),
+      icon: SvgPicture.asset(
+        'assets/images/icons/ThreeDot.svg',
+        width: 36,
+        height: 36,
+      ),
       color: Colors.white,
       elevation: 3,
       shape: RoundedRectangleBorder(
@@ -435,7 +456,11 @@ class _FriendsScreenState extends State<FriendsScreen> {
           child: Center(
             child: Text(
               label,
-              style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 14, color: Colors.black),
+              style: const TextStyle(
+                fontWeight: FontWeight.w900,
+                fontSize: 14,
+                color: Colors.black,
+              ),
             ),
           ),
         ),
@@ -481,7 +506,11 @@ class _FriendsScreenState extends State<FriendsScreen> {
                 const SizedBox(width: 16),
                 const Text(
                   'Friends',
-                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: Colors.white),
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w900,
+                    color: Colors.white,
+                  ),
                 ),
               ],
             ),

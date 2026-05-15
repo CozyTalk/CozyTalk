@@ -51,20 +51,20 @@ class Friend {
     Object? room = _sentinel,
     String? avatar,
     String? interest,
-  }) =>
-      Friend(
-        name: name ?? this.name,
-        username: username ?? this.username,
-        note: note == _sentinel ? this.note : note as String?,
-        lastMessage: lastMessage ?? this.lastMessage,
-        isOnline: isOnline ?? this.isOnline,
-        unreadCount: unreadCount ?? this.unreadCount,
-        room: room == _sentinel ? this.room : room as RoomInfo?,
-        avatar: avatar ?? this.avatar,
-        interest: interest ?? this.interest,
-      );
+  }) => Friend(
+    name: name ?? this.name,
+    username: username ?? this.username,
+    note: note == _sentinel ? this.note : note as String?,
+    lastMessage: lastMessage ?? this.lastMessage,
+    isOnline: isOnline ?? this.isOnline,
+    unreadCount: unreadCount ?? this.unreadCount,
+    room: room == _sentinel ? this.room : room as RoomInfo?,
+    avatar: avatar ?? this.avatar,
+    interest: interest ?? this.interest,
+  );
 
-  String get displayName => (note != null && note!.isNotEmpty) ? note! : username;
+  String get displayName =>
+      (note != null && note!.isNotEmpty) ? note! : username;
 }
 
 const _sentinel = Object();

@@ -141,13 +141,13 @@ class _FriendChatScreenState extends State<FriendChatScreen> {
                 backgroundColor: Colors.white,
                 onJoin: _friend.room!.canJoin
                     ? () => Navigator.pushNamed(
-                          context,
-                          '/group-chat',
-                          arguments: {
-                            'roomName': _friend.room!.name,
-                            'bgImage': _friend.room!.thumbnail,
-                          },
-                        )
+                        context,
+                        '/group-chat',
+                        arguments: {
+                          'roomName': _friend.room!.name,
+                          'bgImage': _friend.room!.thumbnail,
+                        },
+                      )
                     : null,
               ),
             ),

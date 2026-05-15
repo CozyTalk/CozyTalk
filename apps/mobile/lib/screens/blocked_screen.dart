@@ -16,8 +16,22 @@ class BlockedScreen extends StatefulWidget {
 class _BlockedScreenState extends State<BlockedScreen> {
   static const int _maxBlocked = 5;
   final List<Friend> _blocked = [
-    Friend(name: 'Somchai', username: 'somchai99', lastMessage: '', isOnline: false, avatar: 'assets/images/UserAvatar.png', interest: ''),
-    Friend(name: 'Somying', username: 'somying55', lastMessage: '', isOnline: false, avatar: 'assets/images/UserAvatar.png', interest: ''),
+    Friend(
+      name: 'Somchai',
+      username: 'somchai99',
+      lastMessage: '',
+      isOnline: false,
+      avatar: 'assets/images/UserAvatar.png',
+      interest: '',
+    ),
+    Friend(
+      name: 'Somying',
+      username: 'somying55',
+      lastMessage: '',
+      isOnline: false,
+      avatar: 'assets/images/UserAvatar.png',
+      interest: '',
+    ),
   ];
 
   @override

@@ -109,7 +109,9 @@ class _MoodScreenState extends ConsumerState<MoodScreen> {
                           bottom: -15,
                           child: LayeredAvatar(
                             boxSize: 130,
-                            accessoryOverlay: ref.watch(avatarProvider).accessory,
+                            accessoryOverlay: ref
+                                .watch(avatarProvider)
+                                .accessory,
                             moodOverlay: _selected != null
                                 ? AvatarOverlays.mood[_selected]
                                 : ref.watch(avatarProvider).mood,
@@ -122,7 +124,10 @@ class _MoodScreenState extends ConsumerState<MoodScreen> {
               ),
 
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 14,
+                ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
@@ -154,12 +159,13 @@ class _MoodScreenState extends ConsumerState<MoodScreen> {
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
                     padding: EdgeInsets.zero,
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 3,
-                      crossAxisSpacing: 15,
-                      mainAxisSpacing: 15,
-                      childAspectRatio: 0.85,
-                    ),
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 3,
+                          crossAxisSpacing: 15,
+                          mainAxisSpacing: 15,
+                          childAspectRatio: 0.85,
+                        ),
                     itemCount: _moods.length,
                     itemBuilder: (_, i) {
                       final mood = _moods[i];
@@ -169,12 +175,18 @@ class _MoodScreenState extends ConsumerState<MoodScreen> {
                         child: AnimatedContainer(
                           duration: const Duration(milliseconds: 200),
                           curve: Curves.easeOut,
-                          transform: Matrix4.translationValues(0, sel ? -10.0 : 0, 0),
+                          transform: Matrix4.translationValues(
+                            0,
+                            sel ? -10.0 : 0,
+                            0,
+                          ),
                           decoration: BoxDecoration(
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(22),
                             border: Border.all(
-                              color: sel ? const Color(0xFFCE5E42) : Colors.grey.shade300,
+                              color: sel
+                                  ? const Color(0xFFCE5E42)
+                                  : Colors.grey.shade300,
                               width: sel ? 2.5 : 1.5,
                             ),
                             boxShadow: [
@@ -193,8 +205,10 @@ class _MoodScreenState extends ConsumerState<MoodScreen> {
                                 height: 45,
                                 width: 45,
                                 fit: BoxFit.contain,
-                                errorBuilder: (_, e, s) =>
-                                    const Icon(Icons.sentiment_satisfied, size: 40),
+                                errorBuilder: (_, e, s) => const Icon(
+                                  Icons.sentiment_satisfied,
+                                  size: 40,
+                                ),
                               ),
                               const SizedBox(height: 10),
                               Text(

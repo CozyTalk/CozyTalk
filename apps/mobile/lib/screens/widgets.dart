@@ -109,7 +109,10 @@ class FriendRoomCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: backgroundColor,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.gray.withValues(alpha: 0.25), width: 1),
+        border: Border.all(
+          color: AppColors.gray.withValues(alpha: 0.25),
+          width: 1,
+        ),
       ),
       child: Row(
         children: [
@@ -120,11 +123,8 @@ class FriendRoomCard extends StatelessWidget {
               width: 44,
               height: 44,
               fit: BoxFit.cover,
-              errorBuilder: (_, _, _) => Container(
-                width: 44,
-                height: 44,
-                color: Colors.grey.shade200,
-              ),
+              errorBuilder: (_, _, _) =>
+                  Container(width: 44, height: 44, color: Colors.grey.shade200),
             ),
           ),
           const SizedBox(width: 10),
@@ -160,15 +160,24 @@ class FriendRoomCard extends StatelessWidget {
                           : 'assets/images/icons/Group.svg',
                       width: 13,
                       height: 13,
-                      colorFilter: const ColorFilter.mode(AppColors.brownDeep, BlendMode.srcIn),
+                      colorFilter: const ColorFilter.mode(
+                        AppColors.brownDeep,
+                        BlendMode.srcIn,
+                      ),
                     ),
                     const SizedBox(width: 4),
                     Text(
                       '${room.current}/${room.max}',
-                      style: const TextStyle(fontSize: 12, color: AppColors.brownDeep),
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.brownDeep,
+                      ),
                     ),
                     if (!room.isOneOnOne && room.isLocked) ...[
-                      const Text('  ·  ', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                      const Text(
+                        '  ·  ',
+                        style: TextStyle(fontSize: 12, color: Colors.grey),
+                      ),
                       _StatusPill(room: room),
                     ],
                   ],
@@ -203,10 +212,20 @@ class _StatusPill extends StatelessWidget {
               'assets/images/icons/Lock.svg',
               width: 10,
               height: 10,
-              colorFilter: const ColorFilter.mode(AppColors.brownDeep, BlendMode.srcIn),
+              colorFilter: const ColorFilter.mode(
+                AppColors.brownDeep,
+                BlendMode.srcIn,
+              ),
             ),
             const SizedBox(width: 3),
-            const Text('Locked', style: TextStyle(fontSize: 11, color: AppColors.brownDeep, fontWeight: FontWeight.w700)),
+            const Text(
+              'Locked',
+              style: TextStyle(
+                fontSize: 11,
+                color: AppColors.brownDeep,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
           ],
         ),
       );
@@ -217,7 +236,14 @@ class _StatusPill extends StatelessWidget {
         color: Colors.grey.shade200,
         borderRadius: BorderRadius.circular(20),
       ),
-      child: const Text('Full', style: TextStyle(fontSize: 11, color: Colors.grey, fontWeight: FontWeight.w700)),
+      child: const Text(
+        'Full',
+        style: TextStyle(
+          fontSize: 11,
+          color: Colors.grey,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
     );
   }
 }
@@ -239,7 +265,14 @@ class _ActionButton extends StatelessWidget {
             borderRadius: BorderRadius.circular(20),
             border: Border.all(color: const Color(0xFFC7D2B5), width: 1.5),
           ),
-          child: const Text('Join', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w900, color: Color(0xFF4A553F))),
+          child: const Text(
+            'Join',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w900,
+              color: Color(0xFF4A553F),
+            ),
+          ),
         ),
       );
     }
@@ -253,7 +286,11 @@ class _ActionButton extends StatelessWidget {
       ),
       child: Text(
         'Join',
-        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w900, color: Colors.grey.shade400),
+        style: TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.w900,
+          color: Colors.grey.shade400,
+        ),
       ),
     );
   }
@@ -282,7 +319,10 @@ class AvatarActionButton extends StatelessWidget {
           svgPath,
           width: 28,
           height: 28,
-          colorFilter: const ColorFilter.mode(AppColors.brownDeep, BlendMode.srcIn),
+          colorFilter: const ColorFilter.mode(
+            AppColors.brownDeep,
+            BlendMode.srcIn,
+          ),
         ),
       ),
     );
