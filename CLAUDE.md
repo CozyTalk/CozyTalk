@@ -2,7 +2,7 @@
 
 ## Pull Requests
 
-Always use the template at `.github/pull_request_template.md` when creating PRs in this repo. Read the file first, then fill every section — do not skip or delete sections, use `N/A` where not applicable. Pass the body via heredoc to `gh pr create` to preserve formatting.
+Always use the template at [`.github/pull_request_template.md`](.github/pull_request_template.md) when creating PRs in this repo. Read the file first, then fill every section — do not skip or delete sections, use `N/A` where not applicable. Pass the body via heredoc to `gh pr create` to preserve formatting.
 
 ---
 
@@ -43,13 +43,13 @@ tools/            ← CLI tools (reserved, empty)
 ```bash
 cd apps/mobile
 
-flutter pub get                                              # install deps
-dart run build_runner build    # regenerate Freezed + Riverpod code
-flutter run                                                  # run on Android
-flutter run -d chrome                                        # run on Web
-flutter test                                                 # run tests
-flutter build apk                                            # build Android
-flutter build web                                            # build Web
+flutter pub get                    # install deps
+dart run build_runner build        # regenerate Freezed + Riverpod code
+flutter run                        # run on Android
+flutter run -d chrome              # run on Web
+flutter test                       # run tests
+flutter build apk                  # build Android
+flutter build web                  # build Web
 ```
 
 ### Cloud Functions
@@ -69,7 +69,7 @@ Run `./setup.sh` (Linux/macOS) or `.\setup.ps1` (Windows) to install all depende
 Run `./dev.sh` (Linux/macOS) or `.\dev.ps1` (Windows) to start emulators and Flutter together. Both accept `--web` and `--prod` flags.
 
 ### Fresh clone setup
-Edit `apps/mobile/.env.example` — set `USE_EMULATOR=true` to point at the local emulator.
+Edit [`apps/mobile/.env.example`](apps/mobile/.env.example) — set `USE_EMULATOR=true` to point at the local emulator.
 
 ---
 
@@ -96,7 +96,7 @@ features/<feature>/
 
 ### Adding a new feature
 
-1. Copy the `hello` feature folder as a template.
+1. Copy the [`features/hello/`](apps/mobile/lib/features/hello/) folder as a template.
 2. Rename every class/file: `Hello` → `YourFeature`.
 3. Run `dart run build_runner build`.
 4. Never put Firebase SDK calls outside `datasources/`.
@@ -125,7 +125,7 @@ The Notifier for the chat feature must model all four states explicitly — neve
 
 ## State Management Pattern (Riverpod)
 
-Every feature's `presentation/providers/<feature>_provider.dart` does two things:
+Every feature's `presentation/providers/<feature>_provider.dart` does two things. See [`features/hello/presentation/providers/hello_provider.dart`](apps/mobile/lib/features/hello/presentation/providers/hello_provider.dart) as the canonical example.
 
 **1. DI wiring** — builds the dependency chain bottom-up:
 ```dart
@@ -155,7 +155,7 @@ class FooNotifier extends Notifier<FooState> {
 
 ## Models: Freezed + JSON Serializable
 
-All data-layer models use `@freezed`. Never hand-roll `toJson`/`fromJson`.
+All data-layer models use `@freezed`. Never hand-roll `toJson`/`fromJson`. See [`features/hello/data/models/`](apps/mobile/lib/features/hello/data/models/) for a working example.
 
 ```dart
 @freezed
@@ -199,15 +199,15 @@ Emulator ports: Auth `9099`, Functions `5001`, Firestore `8080`, RTDB `9000`. Se
 
 Realtime DB: `rooms/{roomId}/members/{uid}` — CF-written membership anchor; `typing/{roomId}/{uid}`, `presence/{roomId}/{uid}` for real-time state.
 
-See `PROJECT_CONTEXT.md` for full schema and security rules.
+See [`PROJECT_CONTEXT.md`](PROJECT_CONTEXT.md) for full schema and security rules.
 
 ---
 
 ## Matchmaking Feature (`features/matchmaking/`)
 
-The `matchmaking` feature is fully implemented as the **third reference implementation** (alongside `hello` and `auth`).
+The `matchmaking` feature is fully implemented as the **third reference implementation** (alongside `hello` and `auth`). See [`features/matchmaking/`](apps/mobile/lib/features/matchmaking/) and [`functions/src/matchmaking/`](functions/src/matchmaking/).
 
-**Cloud Functions (10 total, in `functions/src/matchmaking/`):**
+**Cloud Functions (10 total):**
 `joinGroupRoom`, `createCustomRoom`, `joinRoomById`, `leaveRoom`, `join1v1Pool`, `cancel1v1Pool`, `match1v1Users` (Firestore trigger), `expireRooms` (cron `*/2 * * * *`), `setRoomLock`, and `_utils` (shared helpers).
 
 **Flutter feature:** full Clean Architecture at `features/matchmaking/`. Backend test entry point: `HelloScreen` → "Test Matchmaking" button (`_useMainUI = false`).
@@ -240,7 +240,7 @@ All rules below are enforced by CI. Do not write code that needs a `// ignore:` 
 - Single quotes for strings; trailing commas on multi-line arg lists
 - No `print()` — use structured logging (`avoid_print` is active)
 
-**TypeScript** — style owned by Prettier (`functions/.prettierrc`), logic by ESLint:
+**TypeScript** — style owned by Prettier ([`functions/.prettierrc`](functions/.prettierrc)), logic by ESLint:
 - Double quotes, 2-space indent, trailing commas everywhere, semicolons required, no bracket spacing (`{foo: bar}`)
 - Every `function` declaration (including `_`-prefixed helpers) needs a JSDoc block with `@param` + `@return`; `const` arrow functions are exempt
 - No implicit `any`; explicit types required
@@ -278,10 +278,10 @@ This codebase is developed by specialized agents orchestrated by a lead:
 
 | Agent | File | Responsibility |
 |---|---|---|
-| Architect | `.claude/agents/architect.md` | System design, schema, cross-cutting decisions |
-| Flutter Engineer | `.claude/agents/flutter-engineer.md` | Feature implementation, UI, tests |
-| QA Engineer | `.claude/agents/qa-engineer.md` | Test strategy, quality gates |
-| Security Reviewer | `.claude/agents/security-reviewer.md` | Auth, rules, secrets, compliance |
+| Architect | [`.claude/agents/architect.md`](.claude/agents/architect.md) | System design, schema, cross-cutting decisions |
+| Flutter Engineer | [`.claude/agents/flutter-engineer.md`](.claude/agents/flutter-engineer.md) | Feature implementation, UI, tests |
+| QA Engineer | [`.claude/agents/qa-engineer.md`](.claude/agents/qa-engineer.md) | Test strategy, quality gates |
+| Security Reviewer | [`.claude/agents/security-reviewer.md`](.claude/agents/security-reviewer.md) | Auth, rules, secrets, compliance |
 
 **Rules:**
 - For any complex task, output a step-by-step plan for approval before writing code.
@@ -294,7 +294,7 @@ This codebase is developed by specialized agents orchestrated by a lead:
 
 Run: `cd apps/mobile && flutter test`
 
-Test files mirror source structure under `test/features/<feature>/domain/`, `data/`, `presentation/`.
+Test files mirror source structure under `test/features/<feature>/domain/`, `data/`, `presentation/`. See [`test/features/hello/`](apps/mobile/test/features/hello/) and [`test/features/auth/`](apps/mobile/test/features/auth/) for reference.
 
 **When adding a feature, write all of these:**
 
@@ -346,7 +346,7 @@ class _FakeMyNotifier extends MyNotifier {
 
 ## Auth Feature (`features/auth/`)
 
-The `auth` feature is fully implemented and is the **second reference implementation** (alongside `hello`).
+The `auth` feature is the **second reference implementation** (alongside `hello`). See [`features/auth/`](apps/mobile/lib/features/auth/).
 
 **Use cases:** `SignUp`, `SignIn`, `SignOut`, `SignInAnonymously`, `SignInWithGoogle`
 
@@ -360,10 +360,34 @@ The `auth` feature is fully implemented and is the **second reference implementa
 
 **Firestore user doc creation:** written by the datasource on `signUp` and on first-time Google sign-in (`additionalUserInfo.isNewUser == true`). Anonymous users do not get a Firestore doc.
 
-**`_AuthRouter`** (in `main.dart`) watches `authNotifierProvider` and routes: `authenticated` → `HelloScreen`, `idle` → loading spinner, anything else → `LoginScreen`.
+**`_AuthRouter`** (in [`main.dart`](apps/mobile/lib/main.dart)) watches `authNotifierProvider` and routes: `authenticated` → `HelloScreen`, `idle` → loading spinner, anything else → `LoginScreen`.
 
 ---
 
 ## Environment Config
 
-`main.dart` reads `USE_EMULATOR` via `bool.fromEnvironment` (compile-time constant, default `true`). Set it in `.env.example` or pass `--dart-define=USE_EMULATOR=false` for production builds. Never put real secrets here. Use `--dart-define-from-file` for secrets.
+[`main.dart`](apps/mobile/lib/main.dart) reads `USE_EMULATOR` via `bool.fromEnvironment` (compile-time constant, default `true`). Set it in [`.env.example`](apps/mobile/.env.example) or pass `--dart-define=USE_EMULATOR=false` for production builds. Never put real secrets here. Use `--dart-define-from-file` for secrets.
+
+---
+
+## AI Behavior Rules (Claude Code)
+
+These rules apply to **all contributors** using Claude Code in this repo.
+
+### Authorship
+
+Write all output — code, comments, commit messages, PR descriptions, docs — as a human developer would. No AI signatures, no "generated with" footers, no co-author tags, no attribution lines of any kind. This applies everywhere: source files, git commits, pull requests, markdown files, config files, changelogs.
+
+Commit messages must read like a developer wrote them: concise, past-tense or imperative, focused on what changed and why. No boilerplate, no meta-commentary about the AI tool that produced them.
+
+### Lock Files
+
+Never manually edit lock files (`pubspec.lock`, `package-lock.json`, `yarn.lock`, etc.).
+
+If a lock file needs updating:
+1. Edit the manifest (`pubspec.yaml`, `package.json`, etc.)
+2. Run the package manager to regenerate it:
+   - Dart/Flutter: `flutter pub get`
+   - Node: `npm install`
+
+The lock file is always a derived artifact of the manifest. Editing it directly creates drift that CI will reject.
