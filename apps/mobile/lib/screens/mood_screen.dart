@@ -101,7 +101,7 @@ class _MoodScreenState extends ConsumerState<MoodScreen> {
                           child: Image.asset(
                             'assets/images/backgrounds/MoodBg.png',
                             fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) =>
+                            errorBuilder: (_, e, s) =>
                                 Container(color: AppColors.tanGreen),
                           ),
                         ),
@@ -193,7 +193,7 @@ class _MoodScreenState extends ConsumerState<MoodScreen> {
                                 height: 45,
                                 width: 45,
                                 fit: BoxFit.contain,
-                                errorBuilder: (_, __, ___) =>
+                                errorBuilder: (_, e, s) =>
                                     const Icon(Icons.sentiment_satisfied, size: 40),
                               ),
                               const SizedBox(height: 10),
