@@ -26,8 +26,6 @@ export {match1v1Users} from "./matchmaking/match1v1Users";
 export {expireRooms} from "./matchmaking/expireRooms";
 export {setRoomLock} from "./matchmaking/setRoomLock";
 
-// ── ONE-TIME SETUP: remove after TTL policy is configured ────────────────────
-export {seedTtlCollections} from "./dev/seedTtlCollections";
 
 export const helloWorld = onCall({invoker: "public", cors: true}, (request) => {
   if (!request.auth) {
