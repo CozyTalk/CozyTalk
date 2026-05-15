@@ -27,15 +27,18 @@ cd "$ROOT_DIR"
 # ── Args ──────────────────────────────────────────────────────────────────────
 USE_PROD=false
 USE_WEB=false
+EMULATOR_ONLY=false
 
 for arg in "$@"; do
   case "$arg" in
-    --prod)   USE_PROD=true ;;
-    --web)    USE_WEB=true ;;
+    --prod)          USE_PROD=true ;;
+    --web)           USE_WEB=true ;;
+    --emulator-only) EMULATOR_ONLY=true ;;
     --help|-h)
-      printf "\n${BOLD}Usage:${RESET} ./dev.sh [--prod] [--web]\n\n"
-      printf "  ${BOLD}--prod${RESET}  Connect to live Firebase instead of local emulators\n"
-      printf "  ${BOLD}--web${RESET}   Run on Chrome instead of Android\n\n"
+      printf "\n${BOLD}Usage:${RESET} ./dev.sh [--prod] [--web] [--emulator-only]\n\n"
+      printf "  ${BOLD}--prod${RESET}           Connect to live Firebase instead of local emulators\n"
+      printf "  ${BOLD}--web${RESET}            Run on Chrome instead of Android\n"
+      printf "  ${BOLD}--emulator-only${RESET}  Start Firebase emulators only — no Flutter (for integration tests)\n\n"
       printf "  ${GRAY}Without flags: emulator mode, Flutter will ask which device${RESET}\n\n"
       exit 0
       ;;
@@ -45,13 +48,19 @@ for arg in "$@"; do
   esac
 done
 
+if $EMULATOR_ONLY && $USE_PROD; then
+  fail "--emulator-only and --prod are mutually exclusive"
+fi
+
 # ── Header ────────────────────────────────────────────────────────────────────
 printf "\n"
 printf "  ${MAGENTA}${BOLD}CozyTalk${RESET}  ${GRAY}·  dev runner${RESET}\n"
 printf "$HR\n\n"
 
 # ── Mode summary ──────────────────────────────────────────────────────────────
-if $USE_WEB; then
+if $EMULATOR_ONLY; then
+  PLATFORM="none (emulator-only)"
+elif $USE_WEB; then
   PLATFORM="Chrome"
 else
   PLATFORM="auto-detect"
@@ -195,8 +204,22 @@ if ! $USE_PROD; then
 fi
 
 # ── Flutter ───────────────────────────────────────────────────────────────────
-printf "\n"
-log "Starting Flutter${USE_WEB:+ on Chrome}…"
-printf "\n$HR\n\n"
+if $EMULATOR_ONLY; then
+  printf "\n"
+  ok "Emulators ready — run your integration tests now"
+  info "Example: cd functions && npm test"
+  printf "\n$HR\n\n"
+  printf "  ${GRAY}Press Ctrl+C to stop emulators.${RESET}\n\n"
+  if [[ -n "$EMULATOR_PID" ]]; then
+    wait "$EMULATOR_PID"
+  else
+    # Emulators were already running before this session; just sleep until Ctrl+C.
+    sleep infinity
+  fi
+else
+  printf "\n"
+  log "Starting Flutter${USE_WEB:+ on Chrome}…"
+  printf "\n$HR\n\n"
 
-(cd apps/mobile && flutter run "${FLUTTER_ARGS[@]}")
+  (cd apps/mobile && flutter run "${FLUTTER_ARGS[@]}")
+fi
