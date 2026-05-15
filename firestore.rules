@@ -56,6 +56,8 @@ service cloud.firestore {
       allow create: if isOwner(userId)
         && request.resource.data.createdAt == request.time
         && request.resource.data.status == 'waiting'
+        && request.resource.data.mode in ['1v1', 'group']
+        && request.resource.data.roomId == null
         && request.resource.data.keys().hasAll(['createdAt', 'status', 'mode', 'updatedAt', 'roomId']);
 
       // clients can only touch updatedAt — Cloud Functions set status/roomId
@@ -112,6 +114,12 @@ service cloud.firestore {
         && request.resource.data.status == 'pending'
         && request.resource.data.createdAt == request.time;
       allow read, update, delete: if isAdmin();
+    }
+
+    // ── session_keys ─────────────────────────────────────────────────────────
+    // Written and read by Cloud Functions only via admin SDK — deny all client access.
+    match /session_keys/{sessionId} {
+      allow read, write: if false;
     }
 
     // ── chat_rooms/messages ───────────────────────────────────────────────────

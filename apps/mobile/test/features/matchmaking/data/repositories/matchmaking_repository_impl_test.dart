@@ -84,6 +84,9 @@ class _FakeMatchmakingDatasource implements MatchmakingDatasource {
 
   @override
   Future<void> registerRoomPresence(String roomId) async {}
+
+  @override
+  String? getCurrentUserId() => null;
 }
 
 void main() {

@@ -138,13 +138,13 @@ class MatchmakingNotifier extends Notifier<MatchmakingState> {
     );
     try {
       final result = await ref.read(_joinGroupRoomProvider)();
-      _subscribeToRoom(result.roomId);
       state = state.copyWith(
         status: MatchmakingStatus.matched,
         roomId: result.roomId,
         isNewRoom: result.isNewRoom,
         error: null,
       );
+      _subscribeToRoom(result.roomId);
     } catch (e) {
       state = state.copyWith(
         status: MatchmakingStatus.error,
@@ -154,7 +154,12 @@ class MatchmakingNotifier extends Notifier<MatchmakingState> {
   }
 
   Future<void> createCustomRoom() async {
-    if (state.status == MatchmakingStatus.creating) return;
+    if (state.status == MatchmakingStatus.creating ||
+        state.status == MatchmakingStatus.matched ||
+        state.status == MatchmakingStatus.searching ||
+        state.status == MatchmakingStatus.waiting1v1) {
+      return;
+    }
     state = state.copyWith(
       status: MatchmakingStatus.creating,
       error: null,
@@ -162,13 +167,13 @@ class MatchmakingNotifier extends Notifier<MatchmakingState> {
     );
     try {
       final roomId = await ref.read(_createCustomRoomProvider)();
-      _subscribeToRoom(roomId);
       state = state.copyWith(
         status: MatchmakingStatus.matched,
         roomId: roomId,
         isNewRoom: false,
         error: null,
       );
+      _subscribeToRoom(roomId);
     } catch (e) {
       state = state.copyWith(
         status: MatchmakingStatus.error,
@@ -178,6 +183,12 @@ class MatchmakingNotifier extends Notifier<MatchmakingState> {
   }
 
   Future<void> joinRoomById(String roomId) async {
+    if (state.status == MatchmakingStatus.matched ||
+        state.status == MatchmakingStatus.searching ||
+        state.status == MatchmakingStatus.creating ||
+        state.status == MatchmakingStatus.waiting1v1) {
+      return;
+    }
     state = state.copyWith(
       status: MatchmakingStatus.searching,
       error: null,
@@ -185,13 +196,13 @@ class MatchmakingNotifier extends Notifier<MatchmakingState> {
     );
     try {
       final result = await ref.read(_joinRoomByIdProvider)(roomId);
-      _subscribeToRoom(result.roomId);
       state = state.copyWith(
         status: MatchmakingStatus.matched,
         roomId: result.roomId,
         isNewRoom: false,
         error: null,
       );
+      _subscribeToRoom(result.roomId);
     } catch (e) {
       state = state.copyWith(
         status: MatchmakingStatus.error,
@@ -222,7 +233,12 @@ class MatchmakingNotifier extends Notifier<MatchmakingState> {
   }
 
   Future<void> join1v1Pool() async {
-    if (state.status == MatchmakingStatus.waiting1v1) return;
+    if (state.status == MatchmakingStatus.waiting1v1 ||
+        state.status == MatchmakingStatus.matched ||
+        state.status == MatchmakingStatus.searching ||
+        state.status == MatchmakingStatus.creating) {
+      return;
+    }
     state = state.copyWith(
       status: MatchmakingStatus.waiting1v1,
       error: null,
@@ -230,7 +246,7 @@ class MatchmakingNotifier extends Notifier<MatchmakingState> {
     );
     try {
       await ref.read(_join1v1PoolProvider)();
-      final uid = FirebaseAuth.instance.currentUser?.uid;
+      final uid = ref.read(_matchmakingDatasourceProvider).getCurrentUserId();
       if (uid == null) throw Exception('Not signed in.');
       // Pass _lastKnownRoomId so the stream skips any stale 'matched' entry
       // the Firestore cache delivers before the CF's reset propagates.
@@ -311,27 +327,26 @@ class MatchmakingNotifier extends Notifier<MatchmakingState> {
             state = state.copyWith(currentRoom: room);
           },
           onError: (Object e) {
-            final msg = e.toString();
-            if (msg.contains('permission-denied') ||
-                msg.contains('PERMISSION_DENIED')) {
-              _lastKnownRoomId = state.roomId;
-              _cancelSubscriptions();
-              state = state.copyWith(
-                status: MatchmakingStatus.error,
-                error: 'Room access lost. Please try again.',
-                roomId: null,
-                currentRoom: null,
-              );
-            } else {
-              state = state.copyWith(error: msg);
-            }
+            _lastKnownRoomId = state.roomId;
+            _cancelSubscriptions();
+            final isPermissionDenied = (e is FirebaseException &&
+                    e.code == 'permission-denied') ||
+                e.toString().contains('permission-denied');
+            state = state.copyWith(
+              status: MatchmakingStatus.error,
+              error: isPermissionDenied
+                  ? 'Room access lost. Please try again.'
+                  : 'Connection error. Please try again.',
+              roomId: null,
+              currentRoom: null,
+            );
           },
         );
   }
 
   void _requeue1v1() {
     _cancelSubscriptions();
-    final uid = FirebaseAuth.instance.currentUser?.uid;
+    final uid = ref.read(_matchmakingDatasourceProvider).getCurrentUserId();
     if (uid == null) {
       state = const MatchmakingState();
       return;

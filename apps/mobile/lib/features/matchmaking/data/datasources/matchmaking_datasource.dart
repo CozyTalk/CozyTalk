@@ -22,6 +22,9 @@ abstract class MatchmakingDatasource {
   /// Registers RTDB onDisconnect cleanup for the given room.
   /// Call this after any room join so browser-close auto-cleans RTDB membership.
   Future<void> registerRoomPresence(String roomId);
+
+  /// Returns the UID of the currently signed-in user, or null if not signed in.
+  String? getCurrentUserId();
 }
 
 class MatchmakingDatasourceImpl implements MatchmakingDatasource {
@@ -146,6 +149,9 @@ class MatchmakingDatasourceImpl implements MatchmakingDatasource {
   @override
   Future<void> registerRoomPresence(String roomId) =>
       _registerDisconnect(roomId);
+
+  @override
+  String? getCurrentUserId() => _auth.currentUser?.uid;
 
   Future<void> _registerDisconnect(String roomId) async {
     final uid = _auth.currentUser?.uid;
