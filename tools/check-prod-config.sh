@@ -40,42 +40,54 @@ printf "\n  ${BLD}CozyTalk — production config check${RST}  (project: ${PROJEC
 
 # ── Get a GCP access token ────────────────────────────────────────────────────
 # The Firestore TTL field API requires a Google OAuth access token.
-# Try three sources in order.
+# Tried in order: env var → gcloud → firebase-tools stored token → refresh exchange.
 
 ACCESS_TOKEN="${GOOGLE_ACCESS_TOKEN:-}"
 
+# gcloud (if installed)
 if [ -z "$ACCESS_TOKEN" ] && command -v gcloud > /dev/null 2>&1; then
   ACCESS_TOKEN=$(gcloud auth print-access-token 2>/dev/null || true)
 fi
 
-if [ -z "$ACCESS_TOKEN" ] && command -v npx > /dev/null 2>&1; then
-  # firebase-tools stores a refresh token after `firebase login`.
-  # We can exchange it for an access token via the Google OAuth endpoint.
-  # The token lives at ~/.config/configstore/firebase-tools.json
-  REFRESH_TOKEN=$(node -e "
+# firebase login stores tokens in configstore. Read access_token directly first
+# (firebase-tools refreshes it on every CLI command, so it's usually fresh).
+# Fall back to exchanging the refresh_token if the access_token is missing.
+if [ -z "$ACCESS_TOKEN" ] && command -v node > /dev/null 2>&1; then
+  ACCESS_TOKEN=$(node -e "
     try {
+      const fs = require('fs');
       const p = require('os').homedir() + '/.config/configstore/firebase-tools.json';
-      const d = JSON.parse(require('fs').readFileSync(p, 'utf8'));
-      const t = d.tokens && (d.tokens.refresh_token || (d.tokens[Object.keys(d.tokens)[0]] && d.tokens[Object.keys(d.tokens)[0]].refresh_token));
-      if (t) process.stdout.write(t);
+      const d = JSON.parse(fs.readFileSync(p, 'utf8'));
+      const tok = d.tokens;
+      if (!tok) { process.exit(0); }
+      // Use the stored access_token — valid for ~1 h after any firebase command.
+      if (tok.access_token) { process.stdout.write(tok.access_token); process.exit(0); }
+      // Otherwise surface the refresh_token so the shell can exchange it below.
+      const rt = tok.refresh_token;
+      if (rt) process.stdout.write('REFRESH:' + rt);
     } catch(_) {}
   " 2>/dev/null || true)
 
-  if [ -n "$REFRESH_TOKEN" ]; then
-    RESP=$(curl -sf -X POST https://oauth2.googleapis.com/token \
-      -d "client_id=563584335869-fgrhgmd47bqnekij5i8b5pr03ho849e6.apps.googleusercontent.com" \
-      -d "client_secret=j9iVZfS8yvTGRKQbTMCS-SnX" \
-      -d "refresh_token=${REFRESH_TOKEN}" \
-      -d "grant_type=refresh_token" 2>/dev/null || true)
-    ACCESS_TOKEN=$(echo "$RESP" | grep -o '"access_token":"[^"]*"' | cut -d'"' -f4 || true)
-  fi
+  # If we only got a refresh token, exchange it for an access token.
+  case "$ACCESS_TOKEN" in
+    REFRESH:*)
+      REFRESH_TOKEN="${ACCESS_TOKEN#REFRESH:}"
+      ACCESS_TOKEN=""
+      RESP=$(curl -sf -X POST https://oauth2.googleapis.com/token \
+        -d "client_id=563584335869-fgrhgmd47bqnekij5i8b5pr03ho849e6.apps.googleusercontent.com" \
+        -d "client_secret=j9iVZfS8yvTGRKQbTMCS-SnX" \
+        -d "refresh_token=${REFRESH_TOKEN}" \
+        -d "grant_type=refresh_token" 2>/dev/null || true)
+      ACCESS_TOKEN=$(printf '%s' "$RESP" | grep -o '"access_token":"[^"]*"' | cut -d'"' -f4 || true)
+      ;;
+  esac
 fi
 
 if [ -z "$ACCESS_TOKEN" ]; then
-  warn "Could not get a GCP access token — Firestore TTL checks will be skipped."
-  printf "\n     To enable TTL checks, run one of:\n"
-  printf "       gcloud auth login\n"
-  printf "       firebase login   (then re-run this script)\n\n"
+  warn "Could not read a GCP access token from firebase-tools — TTL checks will be skipped."
+  printf "\n     You are logged in, but the token could not be read automatically.\n"
+  printf "     Run any firebase command to refresh the stored token, then retry:\n\n"
+  printf "       npx firebase-tools projects:list && ./tools/check-prod-config.sh\n\n"
 fi
 
 # ── 1. Firestore TTL policies ─────────────────────────────────────────────────
@@ -95,6 +107,8 @@ check_ttl() {
     STATE=$(echo "$RESP" | grep -o '"state":"[^"]*"' | head -1 | tr -d '"' | cut -d: -f2)
     fail "${LABEL}  — TTL present but state='${STATE}' (not ACTIVE)"
     printf "         Fix in Firebase console: Firestore → Indexes tab → TTL\n"
+  elif echo "$RESP" | grep -qE '"code": *(401|403)|UNAUTHENTICATED|PERMISSION_DENIED'; then
+    warn "${LABEL}  — auth token expired; re-run after: npx firebase-tools projects:list"
   else
     fail "${LABEL}  — TTL policy NOT configured on field '${FIELD}'"
     printf "         Fix in Firebase console:\n"
