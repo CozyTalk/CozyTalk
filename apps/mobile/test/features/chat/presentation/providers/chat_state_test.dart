@@ -12,6 +12,7 @@ void main() {
       expect(state.sessionId, isNull);
       expect(state.currentUserId, isNull);
       expect(state.currentUserDisplayName, isNull);
+      expect(state.currentUserPhotoUrl, isNull);
       expect(state.messages, isEmpty);
       expect(state.typingUsers, isEmpty);
       expect(state.isSending, isFalse);
@@ -83,6 +84,25 @@ void main() {
       expect(updated.typingUsers.length, 1);
     });
 
+    test('copyWith sets currentUserPhotoUrl', () {
+      const state = ChatState();
+      final updated = state.copyWith(
+        currentUserPhotoUrl: 'https://example.com/photo.jpg',
+      );
+      expect(updated.currentUserPhotoUrl, 'https://example.com/photo.jpg');
+    });
+
+    test(
+      'copyWith clears currentUserPhotoUrl with explicit null (sentinel)',
+      () {
+        final state = ChatState(
+          currentUserPhotoUrl: 'https://example.com/photo.jpg',
+        );
+        final cleared = state.copyWith(currentUserPhotoUrl: null);
+        expect(cleared.currentUserPhotoUrl, isNull);
+      },
+    );
+
     test('copyWith toggles isSending', () {
       const state = ChatState();
       expect(state.copyWith(isSending: true).isSending, isTrue);
@@ -105,6 +125,7 @@ void main() {
         sessionId: 'room-1',
         currentUserId: 'user-1',
         currentUserDisplayName: 'Alice',
+        currentUserPhotoUrl: 'https://example.com/photo.jpg',
         messages: msgs,
         typingUsers: const [TypingUser(uid: 'u2', displayName: 'Bob')],
         isSending: true,
@@ -114,6 +135,7 @@ void main() {
       expect(copy.status, SessionStatus.chatting);
       expect(copy.sessionId, 'room-1');
       expect(copy.currentUserId, 'user-1');
+      expect(copy.currentUserPhotoUrl, 'https://example.com/photo.jpg');
       expect(copy.messages.length, 1);
       expect(copy.typingUsers.length, 1);
       expect(copy.isSending, isTrue);

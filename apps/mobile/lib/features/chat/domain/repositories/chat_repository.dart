@@ -10,6 +10,7 @@ abstract class ChatRepository {
     required bool isTyping,
     required String currentUid,
     required String displayName,
+    String? photoUrl,
   });
   Future<void> endSession({required String sessionId});
 }

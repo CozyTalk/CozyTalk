@@ -12,6 +12,8 @@ class _FakeChatNotifier extends ChatNotifier {
   int sendMessageCount = 0;
   String? lastSentText;
   int endSessionCount = 0;
+  int setTypingCount = 0;
+  bool? lastIsTyping;
 
   _FakeChatNotifier({ChatState initial = const ChatState()})
     : _initial = initial;
@@ -24,6 +26,7 @@ class _FakeChatNotifier extends ChatNotifier {
     required String sessionId,
     required String currentUserId,
     String? currentUserDisplayName,
+    String? currentUserPhotoUrl,
   }) {}
 
   @override
@@ -33,7 +36,10 @@ class _FakeChatNotifier extends ChatNotifier {
   }
 
   @override
-  Future<void> setTyping(bool isTyping) async {}
+  Future<void> setTyping(bool isTyping) async {
+    setTypingCount++;
+    lastIsTyping = isTyping;
+  }
 
   @override
   Future<void> endSession() async => endSessionCount++;
@@ -128,7 +134,33 @@ void main() {
       await tester.pumpWidget(_buildChatScreen(fake));
       await tester.pump();
 
-      expect(find.text('Bob is typing…'), findsOneWidget);
+      expect(find.byType(CircleAvatar), findsOneWidget);
+      expect(
+        tester.getSemantics(find.byType(CircleAvatar).first),
+        isNot(throwsA(anything)),
+      );
+    });
+
+    testWidgets('typing indicator shows accessible label for typing user', (
+      tester,
+    ) async {
+      final handle = tester.ensureSemantics();
+      try {
+        final fake = _FakeChatNotifier(
+          initial: const ChatState(
+            status: SessionStatus.chatting,
+            sessionId: 'test-session',
+            currentUserId: 'user-1',
+            typingUsers: [TypingUser(uid: 'user-2', displayName: 'Bob')],
+          ),
+        );
+        await tester.pumpWidget(_buildChatScreen(fake));
+        await tester.pump();
+
+        expect(find.bySemanticsLabel('Bob is typing…'), findsOneWidget);
+      } finally {
+        handle.dispose();
+      }
     });
 
     testWidgets('typing indicator hidden when no one is typing', (
@@ -143,7 +175,7 @@ void main() {
       );
       await tester.pumpWidget(_buildChatScreen(fake));
 
-      expect(find.textContaining('is typing'), findsNothing);
+      expect(find.byType(CircleAvatar), findsNothing);
     });
 
     testWidgets('tapping send with text calls sendMessage', (tester) async {
@@ -210,24 +242,115 @@ void main() {
       expect(find.byType(CircularProgressIndicator), findsOneWidget);
     });
 
-    testWidgets('typing indicator shows two names when two users are typing', (
+    testWidgets('typing indicator shows several-people label for 3+ users', (
       tester,
     ) async {
+      final handle = tester.ensureSemantics();
+      try {
+        final fake = _FakeChatNotifier(
+          initial: const ChatState(
+            status: SessionStatus.chatting,
+            sessionId: 'test-session',
+            currentUserId: 'user-1',
+            typingUsers: [
+              TypingUser(uid: 'u2', displayName: 'Alice'),
+              TypingUser(uid: 'u3', displayName: 'Bob'),
+              TypingUser(uid: 'u4', displayName: 'Carol'),
+            ],
+          ),
+        );
+        await tester.pumpWidget(_buildChatScreen(fake));
+        await tester.pump();
+
+        expect(
+          find.bySemanticsLabel('Several people are typing…'),
+          findsOneWidget,
+        );
+      } finally {
+        handle.dispose();
+      }
+    });
+
+    testWidgets('typing indicator shows two names in accessibility label', (
+      tester,
+    ) async {
+      final handle = tester.ensureSemantics();
+      try {
+        final fake = _FakeChatNotifier(
+          initial: const ChatState(
+            status: SessionStatus.chatting,
+            sessionId: 'test-session',
+            currentUserId: 'user-1',
+            typingUsers: [
+              TypingUser(uid: 'u2', displayName: 'Bob'),
+              TypingUser(uid: 'u3', displayName: 'Carol'),
+            ],
+          ),
+        );
+        await tester.pumpWidget(_buildChatScreen(fake));
+        await tester.pump();
+
+        expect(
+          find.bySemanticsLabel('Bob and Carol are typing…'),
+          findsOneWidget,
+        );
+      } finally {
+        handle.dispose();
+      }
+    });
+
+    testWidgets('entering text calls setTyping(true)', (tester) async {
       final fake = _FakeChatNotifier(
         initial: const ChatState(
           status: SessionStatus.chatting,
           sessionId: 'test-session',
           currentUserId: 'user-1',
-          typingUsers: [
-            TypingUser(uid: 'u2', displayName: 'Bob'),
-            TypingUser(uid: 'u3', displayName: 'Carol'),
-          ],
         ),
       );
       await tester.pumpWidget(_buildChatScreen(fake));
+
+      await tester.enterText(find.byType(TextField), 'hello');
       await tester.pump();
 
-      expect(find.text('Bob and Carol are typing…'), findsOneWidget);
+      expect(fake.setTypingCount, greaterThan(0));
+      expect(fake.lastIsTyping, isTrue);
+    });
+
+    testWidgets('clearing text calls setTyping(false)', (tester) async {
+      final fake = _FakeChatNotifier(
+        initial: const ChatState(
+          status: SessionStatus.chatting,
+          sessionId: 'test-session',
+          currentUserId: 'user-1',
+        ),
+      );
+      await tester.pumpWidget(_buildChatScreen(fake));
+
+      await tester.enterText(find.byType(TextField), 'hello');
+      await tester.pump();
+      await tester.enterText(find.byType(TextField), '');
+      await tester.pump();
+
+      expect(fake.lastIsTyping, isFalse);
+    });
+
+    testWidgets('sending a message calls setTyping(false)', (tester) async {
+      final fake = _FakeChatNotifier(
+        initial: const ChatState(
+          status: SessionStatus.chatting,
+          sessionId: 'test-session',
+          currentUserId: 'user-1',
+        ),
+      );
+      await tester.pumpWidget(_buildChatScreen(fake));
+
+      await tester.enterText(find.byType(TextField), 'hello');
+      await tester.pump();
+      await tester.tap(find.byIcon(Icons.send_rounded));
+      await tester.pump();
+
+      expect(fake.lastIsTyping, isFalse);
+      expect(fake.sendMessageCount, 1);
     });
   });
 }

@@ -62,6 +62,7 @@ class ChatState {
   final String? sessionId;
   final String? currentUserId;
   final String? currentUserDisplayName;
+  final String? currentUserPhotoUrl;
   final List<ChatMessage> messages;
   final List<TypingUser> typingUsers;
   final bool isSending;
@@ -72,6 +73,7 @@ class ChatState {
     this.sessionId,
     this.currentUserId,
     this.currentUserDisplayName,
+    this.currentUserPhotoUrl,
     this.messages = const [],
     this.typingUsers = const [],
     this.isSending = false,
@@ -83,6 +85,7 @@ class ChatState {
     Object? sessionId = _sentinel,
     Object? currentUserId = _sentinel,
     Object? currentUserDisplayName = _sentinel,
+    Object? currentUserPhotoUrl = _sentinel,
     List<ChatMessage>? messages,
     List<TypingUser>? typingUsers,
     bool? isSending,
@@ -96,6 +99,9 @@ class ChatState {
     currentUserDisplayName: currentUserDisplayName == _sentinel
         ? this.currentUserDisplayName
         : currentUserDisplayName as String?,
+    currentUserPhotoUrl: currentUserPhotoUrl == _sentinel
+        ? this.currentUserPhotoUrl
+        : currentUserPhotoUrl as String?,
     messages: messages ?? this.messages,
     typingUsers: typingUsers ?? this.typingUsers,
     isSending: isSending ?? this.isSending,
@@ -114,6 +120,7 @@ class ChatNotifier extends Notifier<ChatState> {
     required String sessionId,
     required String currentUserId,
     String? currentUserDisplayName,
+    String? currentUserPhotoUrl,
   }) {
     _cancelSubscriptions();
     state = ChatState(
@@ -121,6 +128,7 @@ class ChatNotifier extends Notifier<ChatState> {
       sessionId: sessionId,
       currentUserId: currentUserId,
       currentUserDisplayName: currentUserDisplayName,
+      currentUserPhotoUrl: currentUserPhotoUrl,
     );
 
     _joinProtoThenSubscribe(sessionId, currentUserId);
@@ -189,10 +197,9 @@ class ChatNotifier extends Notifier<ChatState> {
         isTyping: isTyping,
         currentUid: uid,
         displayName: state.currentUserDisplayName ?? 'Anonymous',
+        photoUrl: state.currentUserPhotoUrl,
       );
-    } catch (_) {
-      // Typing errors are non-fatal.
-    }
+    } catch (_) {}
   }
 
   Future<void> endSession() async {

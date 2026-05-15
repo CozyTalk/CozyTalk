@@ -35,5 +35,26 @@ void main() {
       );
       expect(repo.lastIsTyping, isFalse);
     });
+
+    test('passes optional photoUrl to repository', () async {
+      await usecase(
+        sessionId: 'room-1',
+        isTyping: true,
+        currentUid: 'user-1',
+        displayName: 'Alice',
+        photoUrl: 'https://example.com/alice.jpg',
+      );
+      expect(repo.lastPhotoUrl, 'https://example.com/alice.jpg');
+    });
+
+    test('photoUrl defaults to null when omitted', () async {
+      await usecase(
+        sessionId: 'room-1',
+        isTyping: true,
+        currentUid: 'user-1',
+        displayName: 'Alice',
+      );
+      expect(repo.lastPhotoUrl, isNull);
+    });
   });
 }
