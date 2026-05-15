@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../features/auth/presentation/providers/auth_provider.dart';
+import '../../../../features/avatar/presentation/screens/avatar_picker_screen.dart';
 import '../../../../features/chat/presentation/screens/chat_screen.dart';
 import '../providers/hello_provider.dart';
 
@@ -63,6 +64,17 @@ class _HelloScreenState extends ConsumerState<HelloScreen> {
               },
               icon: const Icon(Icons.chat_bubble_outline),
               label: const Text('Open prototype chat'),
+            ),
+            const SizedBox(height: 8),
+            OutlinedButton.icon(
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const AvatarPickerScreen(),
+                ),
+              ),
+              icon: const Icon(Icons.face),
+              label: const Text('Test avatar picker'),
             ),
             const SizedBox(height: 32),
             if (state.isLoading)
