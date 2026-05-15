@@ -158,7 +158,7 @@ check_fn "joinGroupRoom"     "us-central1"
 hr "3. Cloud Scheduler"
 
 if echo "$FUNCTIONS_OUTPUT" | grep -q "expireRooms"; then
-  ok "expireRooms is deployed — Cloud Scheduler job exists"
+  ok "expireRooms is deployed"
   warn "Cannot verify job is ENABLED via CLI"
   printf "         Manually check: GCP console → Cloud Scheduler\n"
   printf "         Job name: firebase-schedule-expireRooms-us-central1\n"

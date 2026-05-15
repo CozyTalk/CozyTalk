@@ -138,7 +138,7 @@ export const match1v1Users = onDocumentCreated(
       } catch (rtdbErr) {
         // Non-fatal: Firestore state is clean. Flutter clients call
         // registerRoomPresence() on match which sets up their own RTDB entries.
-        logger.error("RTDB membership write failed after match — clients will self-heal", {
+        logger.error("RTDB membership write failed after match", {
           roomId,
           triggerUid,
           candidateId: candidate.id,

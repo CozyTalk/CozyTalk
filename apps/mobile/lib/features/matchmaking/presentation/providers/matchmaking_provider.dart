@@ -293,7 +293,7 @@ class MatchmakingNotifier extends Notifier<MatchmakingState> {
         .listen(
           (room) {
             if (room == null) {
-              // Room document vanished while we were matched — go idle cleanly.
+              // Room document vanished while we were matched — go idle.
               if (state.status == MatchmakingStatus.matched) {
                 _lastKnownRoomId = state.roomId;
                 _cancelSubscriptions();
@@ -303,7 +303,7 @@ class MatchmakingNotifier extends Notifier<MatchmakingState> {
               }
               return;
             }
-            // Room expired (tombstone) — transition to idle without an error.
+            // Room expired (tombstone) — transition to idle.
             if (room.status == RoomStatus.expired) {
               _lastKnownRoomId = state.roomId;
               _cancelSubscriptions();
@@ -316,8 +316,7 @@ class MatchmakingNotifier extends Notifier<MatchmakingState> {
               return;
             }
             // 1v1 partner left (backend sets room to padding and re-queues us).
-            // Detect this and automatically re-subscribe to the match stream
-            // so we get matched with the next available user (e.g. Host C).
+            // Re-subscribe to the match stream so we get matched with the next available user (e.g. Host C).
             if (state.status == MatchmakingStatus.matched &&
                 room.mode == RoomMode.oneToOne &&
                 room.status == RoomStatus.padding) {

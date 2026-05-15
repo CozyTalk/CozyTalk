@@ -206,7 +206,7 @@ fi
 # ── Flutter ───────────────────────────────────────────────────────────────────
 if $EMULATOR_ONLY; then
   printf "\n"
-  ok "Emulators ready — run your integration tests now"
+  ok "Emulators ready"
   info "Example: cd functions && npm test"
   printf "\n$HR\n\n"
   printf "  ${GRAY}Press Ctrl+C to stop emulators.${RESET}\n\n"

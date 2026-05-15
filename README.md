@@ -194,7 +194,7 @@ Every push runs two GitHub Actions jobs:
 | `flutter-quality` | build_runner up to date, dart format, flutter analyze, flutter test --coverage |
 | `functions-quality` | ESLint, TypeScript build, Jest integration tests (starts emulators automatically) |
 
-The pre-push git hook mirrors CI locally so a push only reaches GitHub once it's already green. It runs automatically — no configuration needed.
+The pre-push git hook runs the same checks locally before any push reaches GitHub.
 
 ---
 

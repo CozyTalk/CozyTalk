@@ -57,7 +57,7 @@ export const endSession = onCall(
         });
     }
 
-    // Remove real-time presence data — clients lose live visibility immediately.
+    // Remove real-time presence data.
     await Promise.all([
       rtdb.ref(`typing/${sessionId}`).remove(),
       rtdb.ref(`presence/${sessionId}`).remove(),

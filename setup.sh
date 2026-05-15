@@ -105,7 +105,7 @@ ok "Node packages ready"
 step ".env"
 if [[ ! -f apps/mobile/.env ]]; then
   cp apps/mobile/.env.example apps/mobile/.env
-  ok "Created apps/mobile/.env  ${DIM}(USE_EMULATOR=true — points at local emulators)${RESET}"
+  ok "Created apps/mobile/.env  ${DIM}(USE_EMULATOR=true)${RESET}"
 else
   ok "apps/mobile/.env already exists"
 fi

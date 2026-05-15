@@ -21,7 +21,7 @@ step "Checking prerequisites"
 
 function Require-Cmd($cmd, $label, $hint = "") {
     if (Get-Command $cmd -ErrorAction SilentlyContinue) {
-        $ver = & $cmd --version 2>&1 | Select-Object -First 1
+        $ver = (& $cmd --version 2>&1)[0].ToString()
         ok "$label  $ver"
     } elseif ($hint) {
         fail "$label not found -- $hint"
@@ -31,7 +31,7 @@ function Require-Cmd($cmd, $label, $hint = "") {
 }
 
 Require-Cmd flutter "flutter" "https://docs.flutter.dev/get-started/install"
-$dartVerLine = & dart --version 2>&1 | Select-Object -First 1
+$dartVerLine = (& dart --version 2>&1)[0].ToString()
 $dartMatch = [regex]::Match($dartVerLine, '(\d+)\.(\d+)\.\d+')
 if ($dartMatch.Success) {
     $dartMajor = [int]$dartMatch.Groups[1].Value
@@ -52,8 +52,8 @@ if ($nodeMajor -lt 24) {
 Require-Cmd npm "npm"
 
 if (Get-Command java -ErrorAction SilentlyContinue) {
-    # java -version writes to stderr; 2>&1 captures it in PowerShell 7 on all platforms.
-    $javaVerLine = (& java -version 2>&1) | Select-Object -First 1
+    # java -version writes to stderr; index [0] + ToString() works on PS 5.1 and PS 7.
+    $javaVerLine = (& java -version 2>&1)[0].ToString()
     ok "java  $javaVerLine"
     $javaMatch = [regex]::Match($javaVerLine, '"(\d+)(?:\.(\d+))?')
     if ($javaMatch.Success) {
@@ -116,13 +116,16 @@ $envFile = Join-Path $mobileDir '.env'
 $envExample = Join-Path $mobileDir '.env.example'
 if (-not (Test-Path $envFile)) {
     Copy-Item $envExample $envFile
-    ok ".env created from .env.example  (USE_EMULATOR=true -- points at local emulators)"
+    ok ".env created from .env.example  (USE_EMULATOR=true)"
 } else {
     ok "apps/mobile/.env already exists"
 }
 
 # -- Git hooks -----------------------------------------------------------------
 step "Git hooks"
+if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
+    fail "git not found -- install Git from https://git-scm.com"
+}
 & git config core.hooksPath .githooks
 ok "pre-commit hook active (dart format + prettier auto-fix; dart analyze + eslint gate)"
 ok "pre-push hook active   (flutter test + functions lint + tsc)"

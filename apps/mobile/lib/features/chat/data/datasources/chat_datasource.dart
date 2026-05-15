@@ -242,7 +242,7 @@ class ChatDatasourceImpl implements ChatDatasource {
     return hash.bytes;
   }
 
-  // UID-derived seed ensures the same user gets the same name in an empty room; steps forward on collision.
+  // UID-derived seed so the same user gets the same name in an empty room; steps forward on collision.
   static String _anonymousName(String uid, Set<String> taken) {
     const adjectives = [
       'Brave',

@@ -121,7 +121,7 @@ Full authentication flow following the same Clean Architecture pattern.
 Initialises Firebase, points to emulators (Auth `9099`, Functions `5001`, Firestore `8080`) when `USE_EMULATOR=true`. No automatic sign-in — `_AuthRouter` widget watches `authNotifierProvider` and routes to `LoginScreen` or `HelloScreen`.
 
 ### Tests (`test/widget_test.dart`)
-Three widget tests for `HelloScreen` using `_FakeHelloNotifier` with `callCount` — all passing.
+Three widget tests for `HelloScreen` using `_FakeHelloNotifier` with `callCount`.
 
 ---
 
