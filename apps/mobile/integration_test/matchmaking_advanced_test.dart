@@ -151,7 +151,10 @@ void main() {
 
     final distinct = counts.values.where((c) => c > 0).length;
     expect(distinct, greaterThanOrEqualTo(3));
-    expect(counts.values.reduce(max), lessThan(8));
+    // Sanity bound only: catches a completely degenerate picker (all 20 into
+    // one room). Not a distribution test — tight bounds on 20 samples are
+    // statistically flaky (~11% failure at <8 with uniform 5-room distribution).
+    expect(counts.values.reduce(max), lessThan(16));
   });
 
   test(
@@ -711,9 +714,12 @@ void main() {
       );
       final diffSeconds =
           (paddingMs - DateTime.now().millisecondsSinceEpoch) / 1000;
+      // Upper bound is 60s (not 35s) to tolerate Android emulator clock skew
+      // vs the host running Firebase. The real assertion is "not 5-minute
+      // group padding (300s)".
       expect(
         diffSeconds,
-        lessThan(35),
+        lessThan(60),
         reason:
             '1v1 padding should be ~30s, got ${diffSeconds.toStringAsFixed(1)}s',
       );
