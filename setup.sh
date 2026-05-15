@@ -113,7 +113,8 @@ fi
 # ── Git hooks ─────────────────────────────────────────────────────────────────
 step "Git hooks"
 git config core.hooksPath .githooks
-ok "pre-push hook active  ${DIM}(runs flutter test before every push)${RESET}"
+ok "pre-commit hook active  ${DIM}(dart format + prettier auto-fix; dart analyze + eslint gate)${RESET}"
+ok "pre-push hook active    ${DIM}(flutter test + functions lint + tsc)${RESET}"
 
 # ── Done ──────────────────────────────────────────────────────────────────────
 printf "\n$HR\n\n"

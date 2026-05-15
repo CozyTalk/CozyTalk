@@ -52,7 +52,8 @@ if ($nodeMajor -lt 24) {
 Require-Cmd npm "npm"
 
 if (Get-Command java -ErrorAction SilentlyContinue) {
-    $javaVerLine = cmd /c 'java -version 2>&1' | Select-Object -First 1
+    # java -version writes to stderr; 2>&1 captures it in PowerShell 7 on all platforms.
+    $javaVerLine = (& java -version 2>&1) | Select-Object -First 1
     ok "java  $javaVerLine"
     $javaMatch = [regex]::Match($javaVerLine, '"(\d+)(?:\.(\d+))?')
     if ($javaMatch.Success) {
@@ -123,7 +124,8 @@ if (-not (Test-Path $envFile)) {
 # -- Git hooks -----------------------------------------------------------------
 step "Git hooks"
 & git config core.hooksPath .githooks
-ok "pre-push hook active (runs flutter test before every push)"
+ok "pre-commit hook active (dart format + prettier auto-fix; dart analyze + eslint gate)"
+ok "pre-push hook active   (flutter test + functions lint + tsc)"
 
 # -- Done ----------------------------------------------------------------------
 Write-Host ""
