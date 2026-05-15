@@ -7,10 +7,8 @@ part 'avatar_decoration_model.g.dart';
 
 @freezed
 abstract class AvatarDecorationModel with _$AvatarDecorationModel {
-  const factory AvatarDecorationModel({
-    String? hatKey,
-    String? moodKey,
-  }) = _AvatarDecorationModel;
+  const factory AvatarDecorationModel({String? hatKey, String? moodKey}) =
+      _AvatarDecorationModel;
 
   factory AvatarDecorationModel.fromJson(Map<String, dynamic> json) =>
       _$AvatarDecorationModelFromJson(json);

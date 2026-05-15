@@ -81,9 +81,7 @@ class _HelloScreenState extends ConsumerState<HelloScreen> {
             OutlinedButton.icon(
               onPressed: () => Navigator.push(
                 context,
-                MaterialPageRoute(
-                  builder: (_) => const AvatarPickerScreen(),
-                ),
+                MaterialPageRoute(builder: (_) => const AvatarPickerScreen()),
               ),
               icon: const Icon(Icons.face),
               label: const Text('Test avatar picker'),
