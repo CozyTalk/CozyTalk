@@ -100,10 +100,12 @@ class _AvatarPickerScreenState extends ConsumerState<AvatarPickerScreen> {
     // whatever is in Firestore (decoration) otherwise.
     final previewHatKey = _hatChanged ? _pendingHatKey : decoration?.hatKey;
     final previewMoodKey = _moodChanged ? _pendingMoodKey : decoration?.moodKey;
-    final previewHat =
-        previewHatKey != null ? AvatarOverlays.accessory[previewHatKey] : null;
-    final previewMood =
-        previewMoodKey != null ? AvatarOverlays.mood[previewMoodKey] : null;
+    final previewHat = previewHatKey != null
+        ? AvatarOverlays.accessory[previewHatKey]
+        : null;
+    final previewMood = previewMoodKey != null
+        ? AvatarOverlays.mood[previewMoodKey]
+        : null;
 
     final isBusy = _isSaving || status == AvatarDecorationStatus.saving;
 
@@ -124,10 +126,7 @@ class _AvatarPickerScreenState extends ConsumerState<AvatarPickerScreen> {
             Semantics(
               label: 'Save avatar',
               button: true,
-              child: TextButton(
-                onPressed: _save,
-                child: const Text('Save'),
-              ),
+              child: TextButton(onPressed: _save, child: const Text('Save')),
             ),
         ],
       ),
@@ -162,7 +161,9 @@ class _AvatarPickerScreenState extends ConsumerState<AvatarPickerScreen> {
                 _PickerRow(
                   items: _hats,
                   overlays: AvatarOverlays.accessory,
-                  selectedKey: _hatChanged ? _pendingHatKey : decoration?.hatKey,
+                  selectedKey: _hatChanged
+                      ? _pendingHatKey
+                      : decoration?.hatKey,
                   onClear: () => setState(() {
                     _pendingHatKey = null;
                     _hatChanged = true;
@@ -187,7 +188,9 @@ class _AvatarPickerScreenState extends ConsumerState<AvatarPickerScreen> {
                 _PickerRow(
                   items: _moods,
                   overlays: AvatarOverlays.mood,
-                  selectedKey: _moodChanged ? _pendingMoodKey : decoration?.moodKey,
+                  selectedKey: _moodChanged
+                      ? _pendingMoodKey
+                      : decoration?.moodKey,
                   onClear: () => setState(() {
                     _pendingMoodKey = null;
                     _moodChanged = true;
@@ -252,10 +255,7 @@ class _PickerRow extends StatelessWidget {
         itemCount: items.length + 1,
         itemBuilder: (context, index) {
           if (index == 0) {
-            return _NoneTile(
-              isSelected: selectedKey == null,
-              onTap: onClear,
-            );
+            return _NoneTile(isSelected: selectedKey == null, onTap: onClear);
           }
           final item = items[index - 1];
           final overlay = overlays[item.key];

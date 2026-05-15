@@ -32,8 +32,8 @@ final _updateMoodProvider = Provider<UpdateMood>(
 
 final avatarDecorationNotifierProvider =
     NotifierProvider<AvatarDecorationNotifier, AvatarDecorationState>(
-  AvatarDecorationNotifier.new,
-);
+      AvatarDecorationNotifier.new,
+    );
 
 enum AvatarDecorationStatus { idle, loading, saving, error }
 
