@@ -12,19 +12,22 @@ $ROOT_DIR = Split-Path -Parent $MyInvocation.MyCommand.Definition
 Set-Location $ROOT_DIR
 
 # -- Args ----------------------------------------------------------------------
-$USE_PROD = $false
-$USE_WEB  = $false
+$USE_PROD      = $false
+$USE_WEB       = $false
+$EMULATOR_ONLY = $false
 
 foreach ($arg in $args) {
     switch ($arg) {
-        '--prod' { $USE_PROD = $true }
-        '--web'  { $USE_WEB  = $true }
+        '--prod'          { $USE_PROD      = $true }
+        '--web'           { $USE_WEB       = $true }
+        '--emulator-only' { $EMULATOR_ONLY = $true }
         { $_ -in '--help', '-h' } {
             Write-Host ""
-            Write-Host "  Usage: .\dev.ps1 [--prod] [--web]" -ForegroundColor White
+            Write-Host "  Usage: .\dev.ps1 [--prod] [--web] [--emulator-only]" -ForegroundColor White
             Write-Host ""
-            Write-Host "  --prod  Connect to live Firebase instead of local emulators"
-            Write-Host "  --web   Run on Chrome instead of Android"
+            Write-Host "  --prod           Connect to live Firebase instead of local emulators"
+            Write-Host "  --web            Run on Chrome instead of Android"
+            Write-Host "  --emulator-only  Start Firebase emulators only -- no Flutter (for integration tests)"
             Write-Host ""
             Write-Host "  Without flags: emulator mode, Flutter will ask which device" -ForegroundColor DarkGray
             Write-Host ""
@@ -34,13 +37,19 @@ foreach ($arg in $args) {
     }
 }
 
+if ($EMULATOR_ONLY -and $USE_PROD) {
+    fail "--emulator-only and --prod are mutually exclusive"
+}
+
 # -- Header --------------------------------------------------------------------
 Write-Host ""
 Write-Host "  CozyTalk  -  dev runner" -ForegroundColor Magenta
 hr
 Write-Host ""
 
-$PLATFORM = if ($USE_WEB)  { "Chrome" }             else { "auto-detect" }
+$PLATFORM = if ($EMULATOR_ONLY) { "none (emulator-only)" }
+            elseif ($USE_WEB)   { "Chrome" }
+            else                { "auto-detect" }
 $BACKEND  = if ($USE_PROD) { "Production Firebase" } else { "Local emulators" }
 
 Write-Host "  Platform  $PLATFORM"
@@ -68,8 +77,7 @@ function Test-Port([int]$Port) {
 
 # -- Emulator state ------------------------------------------------------------
 $EmulatorProcess = $null
-$EmulatorOut     = $null
-$EmulatorErr     = $null
+$LogFile         = $null
 
 function Stop-Emulators {
     if ($null -ne $EmulatorProcess -and -not $EmulatorProcess.HasExited) {
@@ -77,24 +85,19 @@ function Stop-Emulators {
         Write-Host "  Stopping emulators..." -ForegroundColor DarkGray
         & taskkill /F /T /PID $EmulatorProcess.Id 2>$null
     }
-    foreach ($f in @($EmulatorOut, $EmulatorErr)) {
-        if ($null -ne $f -and (Test-Path $f)) {
-            Remove-Item $f -Force -ErrorAction SilentlyContinue
-        }
+    if ($null -ne $LogFile) {
+        Write-Host "  Session log saved -> $LogFile" -ForegroundColor DarkGray
     }
     Write-Host "  Done." -ForegroundColor DarkGray
     Write-Host ""
 }
 
 function Show-EmulatorTail {
-    $lines = @()
-    if ($null -ne $EmulatorOut -and (Test-Path $EmulatorOut)) {
-        $lines += Get-Content $EmulatorOut -ErrorAction SilentlyContinue
+    if ($null -ne $LogFile -and (Test-Path $LogFile)) {
+        Get-Content $LogFile -ErrorAction SilentlyContinue |
+            Select-Object -Last 20 |
+            ForEach-Object { Write-Host "    $_" }
     }
-    if ($null -ne $EmulatorErr -and (Test-Path $EmulatorErr)) {
-        $lines += Get-Content $EmulatorErr -ErrorAction SilentlyContinue
-    }
-    $lines | Select-Object -Last 20 | ForEach-Object { Write-Host "    $_" }
 }
 
 # -- Build Flutter args --------------------------------------------------------
@@ -102,7 +105,8 @@ $FLUTTER_ARGS = @()
 if ($USE_WEB)  { $FLUTTER_ARGS += '-d', 'chrome' }
 if ($USE_PROD) { $FLUTTER_ARGS += '--dart-define=USE_EMULATOR=false' }
 
-$mobileDir = Join-Path (Join-Path $ROOT_DIR 'apps') 'mobile'
+$mobileDir    = Join-Path (Join-Path $ROOT_DIR 'apps') 'mobile'
+$functionsDir = Join-Path $ROOT_DIR 'functions'
 
 try {
     # -- Emulator startup ------------------------------------------------------
@@ -111,20 +115,42 @@ try {
             Stop-ProcessOnPort $port
         }
 
-        $EmulatorOut = [System.IO.Path]::GetTempFileName()
-        $EmulatorErr = [System.IO.Path]::GetTempFileName()
+        # Set up persistent log directory and timestamped session file.
+        $logsDir = Join-Path $ROOT_DIR 'logs'
+        if (-not (Test-Path $logsDir)) { New-Item -ItemType Directory -Path $logsDir | Out-Null }
+        $timestamp = Get-Date -Format 'yyyy-MM-dd_HH-mm-ss'
+        $LogFile   = Join-Path $logsDir "emulator-$timestamp.log"
 
-        $functionsDir = Join-Path $ROOT_DIR 'functions'
+        # Rotate: keep last 10 emulator session logs.
+        Get-ChildItem -Path $logsDir -Filter 'emulator-20*.log' |
+            Sort-Object LastWriteTime -Descending |
+            Select-Object -Skip 10 |
+            Remove-Item -Force -ErrorAction SilentlyContinue
+
+        log "Building Cloud Functions..."
+        $buildOut      = & npm --prefix $functionsDir run build 2>&1
+        $buildExitCode = $LASTEXITCODE
+        $buildOut | Out-File -FilePath $LogFile -Encoding utf8
+        if ($buildExitCode -ne 0) {
+            Write-Host ""
+            Write-Host "  [x]  Build failed. Last log:" -ForegroundColor Red
+            Write-Host ""
+            Show-EmulatorTail
+            Write-Host ""
+            exit 1
+        }
+        ok "Functions built"
 
         log "Starting Firebase emulators..."
-        info "Logs -> $EmulatorOut"
+        info "Session log -> $LogFile"
+        info "Emulator UI -> http://127.0.0.1:4000"
         Write-Host ""
 
+        # Use cmd.exe so 2>&1 combines stdout+stderr into one log file.
+        $emulatorCmd = "firebase emulators:start --only functions,auth,firestore,database >> `"$LogFile`" 2>&1"
         $EmulatorProcess = Start-Process -FilePath 'cmd.exe' `
-            -ArgumentList '/c', 'npm run serve' `
-            -WorkingDirectory $functionsDir `
-            -RedirectStandardOutput $EmulatorOut `
-            -RedirectStandardError  $EmulatorErr `
+            -ArgumentList '/c', $emulatorCmd `
+            -WorkingDirectory $ROOT_DIR `
             -PassThru -NoNewWindow
 
         $MAX_WAIT = 90
@@ -159,11 +185,26 @@ try {
             Write-Host " ready" -ForegroundColor Green
         }
 
-        Wait-ForPort "auth"     9099
-        Wait-ForPort "database" 9000
+        Wait-ForPort "auth"      9099
+        Wait-ForPort "database"  9000
+        Wait-ForPort "firestore" 8080
+        Wait-ForPort "functions" 5001
         ok "Emulator UI -> http://127.0.0.1:4000"
         Write-Host ""
         hr
+    }
+
+    # -- Emulator-only mode ----------------------------------------------------
+    if ($EMULATOR_ONLY) {
+        Write-Host ""
+        ok "Emulators ready -- run your integration tests now"
+        info "Example: cd functions; npm test"
+        Write-Host ""
+        hr
+        Write-Host ""
+        Write-Host "  Press Ctrl+C to stop emulators." -ForegroundColor DarkGray
+        Write-Host ""
+        while ($true) { Start-Sleep -Seconds 1 }
     }
 
     # -- Flutter ---------------------------------------------------------------

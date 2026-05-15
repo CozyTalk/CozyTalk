@@ -3,9 +3,9 @@
 # Runs on every push — slower is fine since it prevents wasted CI minutes.
 # Uses POSIX sh + relative paths — works on Linux, macOS, and Windows (Git Bash).
 #
-# Mirrors ci.yml exactly:
+# Mirrors ci.yml exactly, plus a pubspec.lock drift check:
 #   flutter-quality:  build_runner → git diff check → dart format check →
-#                     flutter analyze → flutter test
+#                     flutter analyze → flutter test → pubspec.lock check
 #   functions-quality: npm run lint → npm run build
 
 REPO=$(git rev-parse --show-toplevel)
@@ -61,7 +61,22 @@ if ! (cd "$REPO/apps/mobile" && flutter test --no-pub 2>&1); then
   FAIL=1
 fi
 
-# ── 5. functions: npm run lint (mirrors CI) ───────────────────────────────────
+# ── 5. pubspec.lock consistency (catches lock drift after pubspec.yaml edits) ─
+printf "  pubspec.lock check...    "
+(cd "$REPO/apps/mobile" && flutter pub get --no-pub-cache > /dev/null 2>&1) || true
+if git diff --quiet apps/mobile/pubspec.lock 2>/dev/null; then
+  printf "ok\n"
+else
+  printf "OUT OF SYNC\n\n"
+  printf "  pubspec.lock differs from pubspec.yaml. Commit the updated lock:\n\n"
+  printf "    flutter pub get\n"
+  printf "    git add apps/mobile/pubspec.lock\n"
+  printf "    git commit -m 'chore(deps): update pubspec.lock'\n\n"
+  git checkout HEAD -- apps/mobile/pubspec.lock 2>/dev/null || true
+  FAIL=1
+fi
+
+# ── 6. functions: npm run lint (mirrors CI) ───────────────────────────────────
 printf "\n  npm run lint...          "
 if (cd "$REPO/functions" && npm run lint > /dev/null 2>&1); then
   printf "ok\n"
@@ -72,7 +87,7 @@ else
   FAIL=1
 fi
 
-# ── 6. functions: npm run build / tsc (mirrors CI) ───────────────────────────
+# ── 7. functions: npm run build / tsc (mirrors CI) ───────────────────────────
 printf "  npm run build...         "
 if (cd "$REPO/functions" && npm run build > /dev/null 2>&1); then
   printf "ok\n"
