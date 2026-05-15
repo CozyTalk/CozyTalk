@@ -95,7 +95,8 @@ describe("priority", () => {
 
     const distinct = Object.values(counts).filter((c) => c > 0).length;
     expect(distinct).toBeGreaterThanOrEqual(2);
-    expect(Math.max(...Object.values(counts))).toBeLessThan(9);
+    // Sanity bound: P(max ≥ 11) ≈ 0.014% with uniform 3-room dist (< 9 was ~1.1%).
+    expect(Math.max(...Object.values(counts))).toBeLessThan(11);
   });
 
   test("after first 1-member room fills, next joiner picks the remaining 1-member room", async () => {
