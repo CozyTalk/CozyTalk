@@ -63,8 +63,12 @@ export const resetEmulatorData = async (): Promise<void> => {
 export const rtdbGet = async (
   path: string,
 ): Promise<{value: unknown; exists: boolean}> => {
+  const params = new URLSearchParams({"ns": "cozytalk-5d984-default-rtdb"});
+  if (currentIdToken) {
+    params.set("auth", currentIdToken);
+  }
   const res = await fetch(
-    `http://127.0.0.1:9000/${path}.json?ns=cozytalk-5d984-default-rtdb`,
+    `http://127.0.0.1:9000/${path}.json?${params}`,
   );
   const data: unknown = await res.json();
   return {value: data, exists: data !== null};

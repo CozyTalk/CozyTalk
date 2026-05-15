@@ -161,14 +161,18 @@ async function _healGhostRooms(
     if ((doc.data().memberCount as number) <= 0) return;
     const rtdbSnap = await rtdb.ref(`rooms/${doc.id}/members`).get();
     if (rtdbSnap.exists()) return;
-    await db
-      .collection("rooms")
-      .doc(doc.id)
-      .update({
+    const roomRef = db.collection("rooms").doc(doc.id);
+    await db.runTransaction(async (tx) => {
+      const current = await tx.get(roomRef);
+      if (!current.exists) return;
+      const d = current.data()!;
+      if (d.status !== "active" || (d.memberCount as number) <= 0) return;
+      tx.update(roomRef, {
         memberCount: 0,
         status: "padding",
         paddingUntil: Timestamp.fromMillis(Date.now() + 60 * 1000),
       });
+    });
     logger.info("Healed ghost room", {roomId: doc.id});
   });
 

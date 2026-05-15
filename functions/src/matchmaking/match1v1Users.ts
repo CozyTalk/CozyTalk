@@ -130,10 +130,21 @@ export const match1v1Users = onDocumentCreated(
       }
 
       // Write RTDB membership for both so they can stream presence/typing.
-      await Promise.all([
-        rtdb.ref(`rooms/${roomId}/members/${triggerUid}`).set(true),
-        rtdb.ref(`rooms/${roomId}/members/${candidate.id}`).set(true),
-      ]);
+      try {
+        await Promise.all([
+          rtdb.ref(`rooms/${roomId}/members/${triggerUid}`).set(true),
+          rtdb.ref(`rooms/${roomId}/members/${candidate.id}`).set(true),
+        ]);
+      } catch (rtdbErr) {
+        // Non-fatal: Firestore state is clean. Flutter clients call
+        // registerRoomPresence() on match which sets up their own RTDB entries.
+        logger.error("RTDB membership write failed after match — clients will self-heal", {
+          roomId,
+          triggerUid,
+          candidateId: candidate.id,
+          rtdbErr,
+        });
+      }
 
       logger.info("1v1 users matched", {
         triggerUid,
