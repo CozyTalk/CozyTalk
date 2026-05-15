@@ -5,6 +5,7 @@ import '../models/friend.dart';
 import '../dialogs/report_dialog.dart';
 import '../shared/layered_avatar.dart';
 import 'friend_profile_dialog.dart';
+import 'widgets.dart';
 
 // Mock conversation history per friend name — ready to swap with real API
 final Map<String, List<ChatMessage>> _mockConversations = {
@@ -119,6 +120,37 @@ class _FriendChatScreenState extends State<FriendChatScreen> {
       body: Column(
         children: [
           _buildHeader(context),
+          if (_friend.room != null && _friend.isOnline)
+            Container(
+              margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.grey.shade200, width: 1.5),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.06),
+                    blurRadius: 8,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
+              ),
+              child: FriendRoomCard(
+                room: _friend.room!,
+                showLabel: true,
+                backgroundColor: Colors.white,
+                onJoin: _friend.room!.canJoin
+                    ? () => Navigator.pushNamed(
+                          context,
+                          '/group-chat',
+                          arguments: {
+                            'roomName': _friend.room!.name,
+                            'bgImage': _friend.room!.thumbnail,
+                          },
+                        )
+                    : null,
+              ),
+            ),
           Expanded(
             child: ListView(
               controller: _scrollCtrl,

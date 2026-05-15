@@ -81,6 +81,13 @@ flutter:
     - assets/images/icons/Friends.svg
     - assets/images/icons/DressUp.svg
     - assets/images/icons/Close.svg
+    - assets/images/icons/Search.svg
+    - assets/images/icons/1on1.svg
+    - assets/images/icons/Group.svg
+    - assets/images/icons/Lock.svg
+    - assets/images/icons/Undo.svg
+    - assets/images/icons/Redo.svg
+    - assets/images/icons/Trash.svg
     - assets/images/moods/Happy.png
     - assets/images/moods/Sad.png
     - assets/images/moods/Thrilled.png

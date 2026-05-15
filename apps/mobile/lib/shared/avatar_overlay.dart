@@ -54,7 +54,7 @@ class AvatarState {
 
 class AvatarNotifier extends Notifier<AvatarState> {
   @override
-  AvatarState build() => const AvatarState();
+  AvatarState build() => AvatarState(mood: AvatarOverlays.mood['Happy']);
 
   void setMood(AvatarOverlay? v) =>
       state = AvatarState(mood: v, accessory: state.accessory);
