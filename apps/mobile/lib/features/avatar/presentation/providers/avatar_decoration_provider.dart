@@ -135,7 +135,10 @@ class AvatarDecorationNotifier extends Notifier<AvatarDecorationState> {
   }
 
   Future<void> updateDecoration(
-      String uid, String? hatKey, String? moodKey) async {
+    String uid,
+    String? hatKey,
+    String? moodKey,
+  ) async {
     if (state.status == AvatarDecorationStatus.saving) return;
     state = state.copyWith(status: AvatarDecorationStatus.saving, error: null);
     try {
