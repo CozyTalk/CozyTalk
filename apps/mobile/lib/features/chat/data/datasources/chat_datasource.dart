@@ -42,6 +42,17 @@ class ChatDatasourceImpl implements ChatDatasource {
       final bytes = await _protoKeyBytes(sessionId);
       return bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
     }
+
+    // Check rooms collection first (new matchmaking system).
+    final roomDoc = await _firestore.collection('rooms').doc(sessionId).get();
+    if (roomDoc.exists) {
+      final data = Map<String, dynamic>.from(roomDoc.data()!);
+      final key = data['encryptionKey'] as String?;
+      if (key == null) throw Exception('Encryption key not set for room.');
+      return key;
+    }
+
+    // Fallback: legacy active_sessions (proto and old 1v1 sessions).
     final doc = await _firestore
         .collection('active_sessions')
         .doc(sessionId)
@@ -154,20 +165,12 @@ class ChatDatasourceImpl implements ChatDatasource {
     required String currentUid,
     required String displayName,
   }) async {
-    if (sessionId.startsWith('proto-')) {
-      final ref = _db.ref('typing/$sessionId/$currentUid');
-      if (isTyping) {
-        await ref.set({'isTyping': true, 'displayName': displayName});
-      } else {
-        await ref.remove();
-      }
-      return;
+    final ref = _db.ref('typing/$sessionId/$currentUid');
+    if (isTyping) {
+      await ref.set({'isTyping': true, 'displayName': displayName});
+    } else {
+      await ref.remove();
     }
-
-    await _functions.httpsCallable('setTyping').call({
-      'sessionId': sessionId,
-      'isTyping': isTyping,
-    });
   }
 
   @override

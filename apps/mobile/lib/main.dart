@@ -30,8 +30,8 @@ import 'screens/group_chat_screen.dart';
 
 const _useEmulator = bool.fromEnvironment('USE_EMULATOR', defaultValue: true);
 
-// TOGGLE: flip to true for legacy UI home (design preview), false for chatroom backend testing
-const _useMainUI = true;
+// TOGGLE: flip to true actual frontend, false for chatroom backend testing
+const _useMainUI = false;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
