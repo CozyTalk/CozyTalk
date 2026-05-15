@@ -1,12 +1,3 @@
-/**
- * Import function triggers from their respective submodules:
- *
- * import {onCall} from "firebase-functions/v2/https";
- * import {onDocumentWritten} from "firebase-functions/v2/firestore";
- *
- * See a full list of supported triggers at https://firebase.google.com/docs/functions
- */
-
 import {setGlobalOptions} from "firebase-functions/v2";
 import {onCall, HttpsError} from "firebase-functions/v2/https";
 import * as logger from "firebase-functions/logger";
@@ -16,15 +7,29 @@ admin.initializeApp();
 
 setGlobalOptions({maxInstances: 10});
 
+// ── Chat (existing) ───────────────────────────────────────────────────────────
 export {sendMessage} from "./chat/sendMessage";
 export {endSession} from "./chat/endSession";
 export {reportSession} from "./chat/reportSession";
 // setTyping: no Cloud Function — clients write directly to RTDB.
 
-// ── ONE-TIME SETUP: remove after TTL policy is configured ───────────────────
+// ── Matchmaking ───────────────────────────────────────────────────────────────
+export {joinGroupRoom} from "./matchmaking/joinGroupRoom";
+export {cleanupMember} from "./matchmaking/cleanupMember";
+export {cleanupPoolMember} from "./matchmaking/cleanupPoolMember";
+export {createCustomRoom} from "./matchmaking/createCustomRoom";
+export {joinRoomById} from "./matchmaking/joinRoomById";
+export {leaveRoom} from "./matchmaking/leaveRoom";
+export {join1v1Pool} from "./matchmaking/join1v1Pool";
+export {cancel1v1Pool} from "./matchmaking/cancel1v1Pool";
+export {match1v1Users} from "./matchmaking/match1v1Users";
+export {expireRooms} from "./matchmaking/expireRooms";
+export {setRoomLock} from "./matchmaking/setRoomLock";
+
+// ── ONE-TIME SETUP: remove after TTL policy is configured ────────────────────
 export {seedTtlCollections} from "./dev/seedTtlCollections";
 
-export const helloWorld = onCall({invoker: "public"}, (request) => {
+export const helloWorld = onCall({invoker: "public", cors: true}, (request) => {
   if (!request.auth) {
     throw new HttpsError("unauthenticated", "Must be signed in.");
   }
