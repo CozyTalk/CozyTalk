@@ -14,10 +14,7 @@ class AvatarDatasourceImpl implements AvatarDatasource {
   AvatarDatasourceImpl(this._db);
 
   @override
-  Future<AvatarDecorationModel?> getDecoration(String uid) async {
     final doc = await _db.collection('users').doc(uid).get();
-    if (!doc.exists || doc.data() == null) return null;
-    return AvatarDecorationModel.fromJson(doc.data()!);
   }
 
   @override
