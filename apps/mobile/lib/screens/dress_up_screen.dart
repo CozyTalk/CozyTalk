@@ -135,7 +135,7 @@ class _DressUpScreenState extends ConsumerState<DressUpScreen> {
                           child: Image.asset(
                             'assets/images/backgrounds/DressUpBg.png',
                             fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) =>
+                            errorBuilder: (_, _, _) =>
                                 Container(color: AppColors.tanGreen),
                           ),
                         ),
@@ -227,7 +227,7 @@ class _DressUpScreenState extends ConsumerState<DressUpScreen> {
                                 height: 45,
                                 width: 45,
                                 fit: BoxFit.contain,
-                                errorBuilder: (_, __, ___) =>
+                                errorBuilder: (_, _, _) =>
                                     const Icon(Icons.style, size: 40),
                               ),
                               const SizedBox(height: 10),
