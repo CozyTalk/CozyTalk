@@ -146,6 +146,80 @@ export const tryCancelPool = async (): Promise<void> => {
   } catch (_) {}
 };
 
+// ── Admin write helpers ───────────────────────────────────────────────────────
+
+function _toFirestoreValue(val: unknown): Record<string, unknown> {
+  if (val === null || val === undefined) return {nullValue: null};
+  if (typeof val === "boolean") return {booleanValue: val};
+  if (typeof val === "number") {
+    return Number.isInteger(val)
+      ? {integerValue: String(val)}
+      : {doubleValue: val};
+  }
+  if (typeof val === "string") return {stringValue: val};
+  if (Array.isArray(val)) {
+    return {arrayValue: {values: val.map(_toFirestoreValue)}};
+  }
+  if (typeof val === "object") {
+    const fields: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(val as Record<string, unknown>)) {
+      fields[k] = _toFirestoreValue(v);
+    }
+    return {mapValue: {fields}};
+  }
+  return {stringValue: String(val)};
+}
+
+/**
+ * Creates or overwrites a Firestore document via the emulator admin REST API.
+ * Bypasses security rules (Bearer owner).
+ */
+export const adminFirestoreSet = async (
+  path: string,
+  data: Record<string, unknown>,
+): Promise<void> => {
+  const fields: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(data)) {
+    fields[k] = _toFirestoreValue(v);
+  }
+  const res = await fetch(
+    `http://127.0.0.1:8080/v1/projects/cozytalk-5d984/databases/(default)/documents/${path}`,
+    {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer owner",
+      },
+      body: JSON.stringify({fields}),
+    },
+  );
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`adminFirestoreSet failed (${res.status}): ${body}`);
+  }
+};
+
+/**
+ * Lists all documents in a Firestore collection or subcollection path.
+ * Returns an array of decoded document data objects.
+ */
+export const adminFirestoreList = async (
+  collectionPath: string,
+): Promise<Array<Record<string, unknown>>> => {
+  const res = await fetch(
+    `http://127.0.0.1:8080/v1/projects/cozytalk-5d984/databases/(default)/documents/${collectionPath}`,
+    {headers: {Authorization: "Bearer owner"}},
+  );
+  if (res.status === 404) return [];
+  const body = (await res.json()) as {
+    documents?: Array<{fields?: Record<string, unknown>}>;
+  };
+  if (!body.documents) return [];
+  return body.documents.map((d) =>
+    d.fields ? decodeFirestoreFields(d.fields) : {},
+  );
+};
+
 export const buildRoom = async (targetSize: number): Promise<string> => {
   signOut();
   await signInAnon();
