@@ -38,11 +38,13 @@ class ChatRepositoryImpl implements ChatRepository {
     required bool isTyping,
     required String currentUid,
     required String displayName,
+    String? photoUrl,
   }) => _datasource.setTyping(
     sessionId: sessionId,
     isTyping: isTyping,
     currentUid: currentUid,
     displayName: displayName,
+    photoUrl: photoUrl,
   );
 
   @override

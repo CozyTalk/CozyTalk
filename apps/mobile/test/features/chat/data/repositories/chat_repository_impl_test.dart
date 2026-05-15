@@ -46,6 +46,7 @@ class _FakeChatDatasource implements ChatDatasource {
     required bool isTyping,
     required String currentUid,
     required String displayName,
+    String? photoUrl,
   }) async {
     setTypingCount++;
     lastIsTyping = isTyping;
