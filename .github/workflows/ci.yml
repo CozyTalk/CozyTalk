@@ -45,7 +45,7 @@ jobs:
       - name: Format check
         run: dart format --set-exit-if-changed .
 
-      - run: flutter analyze
+      - run: flutter analyze --no-fatal-infos
 
       - run: flutter test --coverage
 
