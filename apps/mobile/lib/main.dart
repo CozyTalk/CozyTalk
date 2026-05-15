@@ -11,7 +11,6 @@ import 'firebase_options.dart';
 import 'features/auth/presentation/providers/auth_provider.dart';
 import 'features/auth/presentation/screens/login_screen.dart';
 import 'features/hello/presentation/screens/hello_screen.dart';
-import 'features/chat/presentation/screens/chat_screen.dart' as feature_chat;
 // main UI imports
 import 'theme/app_theme.dart';
 import 'theme/app_routes.dart';
@@ -97,14 +96,8 @@ class _AuthRouter extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final status = ref.watch(authNotifierProvider.select((s) => s.status));
-    final user = ref.watch(authNotifierProvider.select((s) => s.user));
     return switch (status) {
-      AuthStatus.authenticated => feature_chat.ChatScreen(
-        sessionId: 'proto-dev-1',
-        currentUserId: FirebaseAuth.instance.currentUser?.uid ?? '',
-        currentUserDisplayName: user?.displayName,
-        currentUserPhotoUrl: FirebaseAuth.instance.currentUser?.photoURL,
-      ),
+      AuthStatus.authenticated => const HelloScreen(),
       AuthStatus.idle => const Scaffold(
         body: Center(child: CircularProgressIndicator()),
       ),
