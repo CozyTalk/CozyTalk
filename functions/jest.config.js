@@ -1,0 +1,16 @@
+/** @type {import('jest').Config} */
+module.exports = {
+  preset: "ts-jest",
+  testEnvironment: "node",
+  globals: {
+    "ts-jest": {
+      tsconfig: "tsconfig.test.json",
+    },
+  },
+  testMatch: ["**/__tests__/**/*.test.ts"],
+  testTimeout: 60_000,
+  // Test suites share a single Firebase emulator instance. Running them in
+  // parallel causes resetEmulatorData() in one suite to wipe state being
+  // actively used by the other, producing non-deterministic failures.
+  maxWorkers: 1,
+};

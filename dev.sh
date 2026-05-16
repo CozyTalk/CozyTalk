@@ -27,15 +27,18 @@ cd "$ROOT_DIR"
 # ── Args ──────────────────────────────────────────────────────────────────────
 USE_PROD=false
 USE_WEB=false
+EMULATOR_ONLY=false
 
 for arg in "$@"; do
   case "$arg" in
-    --prod)   USE_PROD=true ;;
-    --web)    USE_WEB=true ;;
+    --prod)          USE_PROD=true ;;
+    --web)           USE_WEB=true ;;
+    --emulator-only) EMULATOR_ONLY=true ;;
     --help|-h)
-      printf "\n${BOLD}Usage:${RESET} ./dev.sh [--prod] [--web]\n\n"
-      printf "  ${BOLD}--prod${RESET}  Connect to live Firebase instead of local emulators\n"
-      printf "  ${BOLD}--web${RESET}   Run on Chrome instead of Android\n\n"
+      printf "\n${BOLD}Usage:${RESET} ./dev.sh [--prod] [--web] [--emulator-only]\n\n"
+      printf "  ${BOLD}--prod${RESET}           Connect to live Firebase instead of local emulators\n"
+      printf "  ${BOLD}--web${RESET}            Run on Chrome instead of Android\n"
+      printf "  ${BOLD}--emulator-only${RESET}  Start Firebase emulators only — no Flutter (for integration tests)\n\n"
       printf "  ${GRAY}Without flags: emulator mode, Flutter will ask which device${RESET}\n\n"
       exit 0
       ;;
@@ -45,13 +48,19 @@ for arg in "$@"; do
   esac
 done
 
+if $EMULATOR_ONLY && $USE_PROD; then
+  fail "--emulator-only and --prod are mutually exclusive"
+fi
+
 # ── Header ────────────────────────────────────────────────────────────────────
 printf "\n"
 printf "  ${MAGENTA}${BOLD}CozyTalk${RESET}  ${GRAY}·  dev runner${RESET}\n"
 printf "$HR\n\n"
 
 # ── Mode summary ──────────────────────────────────────────────────────────────
-if $USE_WEB; then
+if $EMULATOR_ONLY; then
+  PLATFORM="none (emulator-only)"
+elif $USE_WEB; then
   PLATFORM="Chrome"
 else
   PLATFORM="auto-detect"
@@ -79,7 +88,7 @@ $USE_PROD && FLUTTER_ARGS+=("--dart-define=USE_EMULATOR=false")
 
 # ── Emulator startup ──────────────────────────────────────────────────────────
 EMULATOR_PID=""
-EMULATOR_LOG=""
+LOG_FILE=""
 
 cleanup() {
   local code=$?
@@ -88,29 +97,24 @@ cleanup() {
     kill "$EMULATOR_PID" 2>/dev/null || true
     wait "$EMULATOR_PID" 2>/dev/null || true
   fi
-  [[ -n "$EMULATOR_LOG" && -f "$EMULATOR_LOG" ]] && rm -f "$EMULATOR_LOG"
+  if [[ -n "$LOG_FILE" ]]; then
+    printf "  ${GRAY}Session log saved → ${BOLD}${LOG_FILE}${RESET}\n"
+    printf "  ${GRAY}Run ${BOLD}./logs.sh${RESET}${GRAY} to view.${RESET}\n"
+  fi
   printf "  ${GRAY}Done.${RESET}\n\n"
   exit "$code"
 }
 
+# Returns 0 if all four emulator ports are already accepting connections.
+emulators_already_up() {
+  for port in 9099 8080 9000 5001 8085; do
+    (echo > /dev/tcp/localhost/$port) 2>/dev/null || return 1
+  done
+  return 0
+}
+
 if ! $USE_PROD; then
   trap cleanup EXIT INT TERM
-
-  # Kill any stale emulator processes left over from a previous run.
-  for port in 9099 8080 9000 5001 4000 4400 4500; do
-    pids=$(lsof -ti:$port 2>/dev/null) && kill $pids 2>/dev/null || true
-  done
-
-  EMULATOR_LOG="$(mktemp /tmp/cozytalk-emulator-XXXXXX.log)"
-
-  log "Starting Firebase emulators…"
-  info "Logs → ${EMULATOR_LOG}  ${DIM}(tail -f to follow)${RESET}"
-  printf "\n"
-
-  # Redirect all emulator output to the log file so it can't race with
-  # Flutter's interactive device-selection prompt later.
-  (cd functions && npm run serve) > "$EMULATOR_LOG" 2>&1 &
-  EMULATOR_PID=$!
 
   MAX_WAIT=90
 
@@ -124,16 +128,19 @@ if ! $USE_PROD; then
       if [[ $elapsed -ge $MAX_WAIT ]]; then
         printf "\n\n"
         printf "  ${RED}✗${RESET}  ${name} emulator didn't respond after ${MAX_WAIT}s.\n"
-        printf "  ${GRAY}  Last log lines:${RESET}\n\n"
-        tail -20 "$EMULATOR_LOG" | sed 's/^/    /'
+        if [[ -n "$LOG_FILE" ]]; then
+          printf "  ${GRAY}  Last log lines:${RESET}\n\n"
+          tail -20 "$LOG_FILE" | sed 's/^/    /'
+        fi
         printf "\n"
         exit 1
       fi
-      if ! kill -0 "$EMULATOR_PID" 2>/dev/null; then
+      # Only check for process death when this terminal owns the emulators.
+      if [[ -n "$EMULATOR_PID" ]] && ! kill -0 "$EMULATOR_PID" 2>/dev/null; then
         printf "\n\n"
         printf "  ${RED}✗${RESET}  Emulator process exited unexpectedly.\n"
         printf "  ${GRAY}  Last log lines:${RESET}\n\n"
-        tail -20 "$EMULATOR_LOG" | sed 's/^/    /'
+        tail -20 "$LOG_FILE" | sed 's/^/    /'
         printf "\n"
         exit 1
       fi
@@ -141,15 +148,79 @@ if ! $USE_PROD; then
     printf " ${GREEN}ready${RESET}\n"
   }
 
-  wait_for_port "auth"     9099
-  wait_for_port "database" 9000
-  ok "Emulator UI → http://127.0.0.1:4000"
-  printf "\n$HR\n"
+  if emulators_already_up; then
+    # ── Attach mode ────────────────────────────────────────────────────────
+    # Another terminal already owns the emulators — just connect to them.
+    # Do NOT kill ports or restart anything.
+    ok "Emulators already running — attaching"
+    info "Emulator UI → ${BOLD}http://127.0.0.1:4000${RESET}"
+    printf "\n$HR\n"
+  else
+    # ── Owner mode ─────────────────────────────────────────────────────────
+    # No emulators detected — this terminal will start and own them.
+
+    # Kill any stale emulator processes left over from a previous crashed run.
+    for port in 9099 8080 9000 5001 8085 4000 4400 4500; do
+      pids=$(lsof -ti:$port 2>/dev/null) && kill $pids 2>/dev/null || true
+    done
+
+    # Set up persistent log directory and timestamped session file.
+    mkdir -p "$ROOT_DIR/logs"
+    LOG_FILE="$ROOT_DIR/logs/emulator-$(date +%Y-%m-%d_%H-%M-%S).log"
+
+    # Rotate: keep last 10 emulator session logs.
+    ls -t "$ROOT_DIR/logs"/emulator-20*.log 2>/dev/null | tail -n +11 | xargs rm -f 2>/dev/null || true
+
+    # Build functions before starting emulators.
+    log "Building Cloud Functions…"
+    if ! (cd "$ROOT_DIR/functions" && npm run build) >> "$LOG_FILE" 2>&1; then
+      printf "\n  ${RED}✗${RESET}  Build failed. Last log:\n\n"
+      tail -20 "$LOG_FILE" | sed 's/^/    /'
+      printf "\n"
+      exit 1
+    fi
+    ok "Functions built"
+
+    log "Starting Firebase emulators…"
+    info "Session log → ${BOLD}${LOG_FILE}${RESET}"
+    info "Emulator UI → ${BOLD}http://127.0.0.1:4000${RESET}  (Logs tab = real-time function output)"
+    info "Tip         → ${BOLD}./logs.sh -f${RESET}  to follow logs in another terminal"
+    printf "\n"
+
+    # Run emulators from project root (firebase.json is here; debug logs land here too).
+    firebase emulators:start --only functions,auth,firestore,database,pubsub >> "$LOG_FILE" 2>&1 &
+    EMULATOR_PID=$!
+
+    # Keep a stable "latest" symlink for scripts and editors.
+    (cd "$ROOT_DIR/logs" && ln -sf "$(basename "$LOG_FILE")" emulator-latest.log)
+
+    wait_for_port "auth"      9099
+    wait_for_port "database"  9000
+    wait_for_port "firestore" 8080
+    wait_for_port "functions" 5001
+    wait_for_port "pubsub"    8085
+    ok "Emulator UI → http://127.0.0.1:4000"
+    printf "\n$HR\n"
+  fi
 fi
 
 # ── Flutter ───────────────────────────────────────────────────────────────────
-printf "\n"
-log "Starting Flutter${USE_WEB:+ on Chrome}…"
-printf "\n$HR\n\n"
+if $EMULATOR_ONLY; then
+  printf "\n"
+  ok "Emulators ready"
+  info "Example: cd functions && npm test"
+  printf "\n$HR\n\n"
+  printf "  ${GRAY}Press Ctrl+C to stop emulators.${RESET}\n\n"
+  if [[ -n "$EMULATOR_PID" ]]; then
+    wait "$EMULATOR_PID"
+  else
+    # Emulators were already running before this session; just sleep until Ctrl+C.
+    sleep infinity
+  fi
+else
+  printf "\n"
+  log "Starting Flutter${USE_WEB:+ on Chrome}…"
+  printf "\n$HR\n\n"
 
-(cd apps/mobile && flutter run "${FLUTTER_ARGS[@]}")
+  (cd apps/mobile && flutter run "${FLUTTER_ARGS[@]}")
+fi

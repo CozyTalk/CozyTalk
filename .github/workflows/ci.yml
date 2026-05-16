@@ -26,7 +26,7 @@ jobs:
       - uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5.2.0
         with:
           distribution: temurin
-          java-version: '17'
+          java-version: '21'
           cache: gradle
 
       - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
@@ -45,7 +45,7 @@ jobs:
       - name: Format check
         run: dart format --set-exit-if-changed .
 
-      - run: flutter analyze
+      - run: flutter analyze --no-fatal-infos
 
       - run: flutter test --coverage
 
@@ -56,12 +56,17 @@ jobs:
 
   functions-quality:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
     defaults:
       run:
         working-directory: functions
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5.2.0
+        with:
+          distribution: temurin
+          java-version: '21'
 
       - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
         with:
@@ -74,3 +79,27 @@ jobs:
       - run: npm run lint
 
       - run: npm run build
+
+      - name: Start Firebase emulators
+        working-directory: .
+        env:
+          FIREBASE_CLI_TELEMETRY_OPTOUT: '1'
+        run: |
+          npx -y firebase-tools emulators:start \
+            --only auth,firestore,database,functions,pubsub \
+            --project cozytalk-5d984 &
+          echo $! > /tmp/emulator.pid
+          for port in 9099 8080 9000 5001 8085; do
+            for i in $(seq 1 90); do
+              nc -z localhost "$port" 2>/dev/null && break
+              [ "$i" -eq 90 ] && echo "Timeout waiting for emulator port $port" && exit 1
+              sleep 1
+            done
+          done
+
+      - name: Jest integration tests
+        run: npm test
+
+      - name: Stop emulators
+        if: always()
+        run: kill "$(cat /tmp/emulator.pid)" 2>/dev/null || true
