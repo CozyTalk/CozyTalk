@@ -59,14 +59,14 @@ if (Get-Command java -ErrorAction SilentlyContinue) {
     if ($javaMatch.Success) {
         $javaMajor = [int]$javaMatch.Groups[1].Value
         if ($javaMajor -eq 1) { $javaMajor = [int]$javaMatch.Groups[2].Value }
-        if ($javaMajor -lt 17) {
-            warn "Java $javaMajor detected -- Java 17+ required for Android builds"
-            info "Install JDK 17+ from https://adoptium.net"
+        if ($javaMajor -lt 21) {
+            warn "Java $javaMajor detected -- Java 21+ required for Firebase emulators and Android builds"
+            info "Install JDK 21+ from https://adoptium.net"
         }
     }
 } else {
-    warn "java not found -- needed for Android builds"
-    info "Install JDK 17+ from https://adoptium.net"
+    warn "java not found -- needed for Android builds and Firebase emulators"
+    info "Install JDK 21+ from https://adoptium.net"
 }
 
 if (Get-Command firebase -ErrorAction SilentlyContinue) {

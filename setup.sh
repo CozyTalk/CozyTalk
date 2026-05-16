@@ -66,13 +66,13 @@ if command -v java &>/dev/null; then
   ok "java  ${DIM}${JAVA_VER_LINE}${RESET}"
   JAVA_MAJOR=$(printf '%s' "$JAVA_VER_LINE" | grep -oE '"[0-9]+' | tr -d '"' | head -1)
   [[ "$JAVA_MAJOR" -eq 1 ]] && JAVA_MAJOR=$(printf '%s' "$JAVA_VER_LINE" | grep -oE '"1\.[0-9]+' | cut -d. -f2)
-  if [[ "$JAVA_MAJOR" -lt 17 ]]; then
-    warn "Java $JAVA_MAJOR detected — Java 17+ required for Android builds"
-    info "Install JDK 17+ from https://adoptium.net"
+  if [[ "$JAVA_MAJOR" -lt 21 ]]; then
+    warn "Java $JAVA_MAJOR detected — Java 21+ required for Firebase emulators and Android builds"
+    info "Install JDK 21+ from https://adoptium.net"
   fi
 else
-  warn "java not found — needed for Android builds"
-  info "Install JDK 17+ from https://adoptium.net"
+  warn "java not found — needed for Android builds and Firebase emulators"
+  info "Install JDK 21+ from https://adoptium.net"
 fi
 
 if command -v firebase &>/dev/null; then
