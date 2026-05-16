@@ -1,11 +1,9 @@
 #!/bin/sh
-# PreToolUse hook: blocks gh pr create calls that don't include the PR template.
+# PreToolUse hook: blocks gh pr create commands that omit required template sections.
 # Reads tool input JSON from stdin; exits 2 to block, 0 to allow.
 
 input=$(cat)
 
-# Extract the bash command from the JSON tool input using python3.
-# python3 is available on all platforms (macOS ships it; Windows devs have it via Node/Flutter toolchains).
 cmd=$(python3 -c "
 import sys, json
 try:
@@ -18,7 +16,7 @@ $input
 EOF
 )
 
-# Only act on gh pr create commands.
+# Only act on gh pr create.
 case "$cmd" in
   *"gh pr create"*)
     ;;
@@ -27,30 +25,31 @@ case "$cmd" in
     ;;
 esac
 
-# Allow if the body clearly contains template sections or uses --body-file.
-case "$cmd" in
-  *"## Summary"*|*"--body-file"*)
-    exit 0
-    ;;
-esac
+# Required section headers from .github/pull_request_template.md.
+MISSING=""
+for section in \
+  "## Summary" \
+  "## Type of Change" \
+  "## Related Issues" \
+  "## Changes" \
+  "## Testing" \
+  "## Security & Privacy Checklist" \
+  "## Clean Architecture Checklist" \
+  "## Screenshots / Recordings" \
+  "## Notes for Reviewers" \
+; do
+  if ! printf '%s' "$cmd" | grep -qF "$section"; then
+    MISSING="$MISSING\n  $section"
+  fi
+done
 
-cat <<'MSG'
+if [ -n "$MISSING" ]; then
+  printf "\nBLOCKED: gh pr create is missing required template sections.\n"
+  printf "\nMissing:%b\n" "$MISSING"
+  printf "\nCozyTalk rule (CLAUDE.md): always use .github/pull_request_template.md.\n"
+  printf "Read the file first, fill every section (use N/A where not applicable),\n"
+  printf "and pass the body via heredoc to preserve formatting.\n\n"
+  exit 2
+fi
 
-BLOCKED — PR body must use .github/pull_request_template.md.
-
-Required steps:
-  1. Read the template:  cat .github/pull_request_template.md
-  2. Fill EVERY section (use "N/A" where not applicable — do not delete sections)
-  3. Pass via heredoc:
-
-     gh pr create --title "your title" --body "$(cat <<'EOF'
-     ## Summary
-     ...fill in...
-
-     ## Type of Change
-     ...etc...
-     EOF
-     )"
-
-MSG
-exit 2
+exit 0
