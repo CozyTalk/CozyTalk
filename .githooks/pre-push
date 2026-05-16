@@ -103,8 +103,7 @@ _emulators_up() {
   nc -z localhost 9099 2>/dev/null &&
     nc -z localhost 8080 2>/dev/null &&
     nc -z localhost 9000 2>/dev/null &&
-    nc -z localhost 5001 2>/dev/null &&
-    nc -z localhost 8085 2>/dev/null
+    nc -z localhost 5001 2>/dev/null
 }
 
 EMULATORS_STARTED=0
