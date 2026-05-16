@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 # Pre-push: mirrors the full CI pipeline locally so no push ever fails CI.
 # Runs on every push — slower is fine since it prevents wasted CI minutes.
 # Uses POSIX sh + relative paths — works on Linux, macOS, and Windows (Git Bash).
@@ -99,11 +99,15 @@ else
 fi
 
 # ── 8. functions: npm test (mirrors CI) ──────────────────────────────────────
+_port_open() {
+  (echo >/dev/tcp/localhost/"$1") 2>/dev/null
+}
+
 _emulators_up() {
-  nc -z localhost 9099 2>/dev/null &&
-    nc -z localhost 8080 2>/dev/null &&
-    nc -z localhost 9000 2>/dev/null &&
-    nc -z localhost 5001 2>/dev/null
+  _port_open 9099 &&
+    _port_open 8080 &&
+    _port_open 9000 &&
+    _port_open 5001
 }
 
 EMULATORS_STARTED=0
