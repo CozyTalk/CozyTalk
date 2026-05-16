@@ -1,13 +1,14 @@
 class Friend {
-  final String name;     // friend's original display name (set by them)
+  final String name; // friend's original display name (set by them)
   final String username; // their actual account username
-  String? note;          // nickname you set for this friend (null = not set)
+  String? note; // nickname you set for this friend (null = not set)
   final String lastMessage;
   final bool isOnline;
   int unreadCount;
   final bool isInRoom;
   final String avatar;
   final String interest;
+  bool isBlocked;
 
   Friend({
     required this.name,
@@ -19,6 +20,7 @@ class Friend {
     required this.isInRoom,
     this.avatar = '',
     this.interest = '',
+    this.isBlocked = false,
   });
 
   Friend copyWith({
@@ -31,21 +33,23 @@ class Friend {
     bool? isInRoom,
     String? avatar,
     String? interest,
-  }) =>
-      Friend(
-        name: name ?? this.name,
-        username: username ?? this.username,
-        note: note == _sentinel ? this.note : note as String?,
-        lastMessage: lastMessage ?? this.lastMessage,
-        isOnline: isOnline ?? this.isOnline,
-        unreadCount: unreadCount ?? this.unreadCount,
-        isInRoom: isInRoom ?? this.isInRoom,
-        avatar: avatar ?? this.avatar,
-        interest: interest ?? this.interest,
-      );
+    bool? isBlocked,
+  }) => Friend(
+    name: name ?? this.name,
+    username: username ?? this.username,
+    note: note == _sentinel ? this.note : note as String?,
+    lastMessage: lastMessage ?? this.lastMessage,
+    isOnline: isOnline ?? this.isOnline,
+    unreadCount: unreadCount ?? this.unreadCount,
+    isInRoom: isInRoom ?? this.isInRoom,
+    avatar: avatar ?? this.avatar,
+    interest: interest ?? this.interest,
+    isBlocked: isBlocked ?? this.isBlocked,
+  );
 
-  // ชื่อที่แสดงผล: ถ้าตั้ง note ไว้ใช้ note, ไม่งั้นใช้ username
-  String get displayName => (note != null && note!.isNotEmpty) ? note! : username;
+  // Display name: use note if set, otherwise fall back to username
+  String get displayName =>
+      (note != null && note!.isNotEmpty) ? note! : username;
 }
 
 const _sentinel = Object();

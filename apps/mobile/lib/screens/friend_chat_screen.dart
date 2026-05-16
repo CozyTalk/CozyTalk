@@ -41,7 +41,12 @@ class _FriendChatScreenState extends State<FriendChatScreen> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     if (!_initialized) {
-      _friend = ModalRoute.of(context)!.settings.arguments as Friend;
+      final args = ModalRoute.of(context)?.settings.arguments;
+      if (args is! Friend) {
+        Navigator.pop(context);
+        return;
+      }
+      _friend = args;
       _messages = List<ChatMessage>.from(
         _mockConversations[_friend.name] ??
             [
@@ -131,7 +136,7 @@ class _FriendChatScreenState extends State<FriendChatScreen> {
               ],
             ),
           ),
-          _buildInputBar(),
+          _friend.isBlocked ? _buildBlockedBar() : _buildInputBar(),
         ],
       ),
     );
@@ -180,8 +185,9 @@ class _FriendChatScreenState extends State<FriendChatScreen> {
                   onTap: () => showFriendProfileDialog(
                     context: context,
                     friend: _friend,
-                    onNoteSaved: (newNote) =>
-                        setState(() => _friend.note = newNote.isNotEmpty ? newNote : null),
+                    onNoteSaved: (newNote) => setState(
+                      () => _friend.note = newNote.isNotEmpty ? newNote : null,
+                    ),
                   ),
                   child: Container(
                     width: 46,
@@ -189,7 +195,10 @@ class _FriendChatScreenState extends State<FriendChatScreen> {
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: Colors.grey.shade300, width: 1.5),
+                      border: Border.all(
+                        color: Colors.grey.shade300,
+                        width: 1.5,
+                      ),
                       boxShadow: [
                         BoxShadow(
                           color: Colors.black.withValues(alpha: 0.06),
@@ -205,7 +214,11 @@ class _FriendChatScreenState extends State<FriendChatScreen> {
                         child: Center(
                           child: _friend.avatar.isNotEmpty
                               ? LayeredAvatar(boxSize: 34)
-                              : const Icon(Icons.person, color: Colors.grey, size: 28),
+                              : const Icon(
+                                  Icons.person,
+                                  color: Colors.grey,
+                                  size: 28,
+                                ),
                         ),
                       ),
                     ),
@@ -378,13 +391,39 @@ class _FriendChatScreenState extends State<FriendChatScreen> {
     );
   }
 
+  // ─── Blocked bar ───
+  Widget _buildBlockedBar() {
+    return Container(
+      decoration: const BoxDecoration(color: AppColors.brownDeep),
+      padding: EdgeInsets.fromLTRB(
+        16,
+        14,
+        16,
+        MediaQuery.of(context).padding.bottom + 14,
+      ),
+      child: Container(
+        height: 58,
+        decoration: BoxDecoration(
+          color: Colors.grey.shade300,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        alignment: Alignment.center,
+        child: Text(
+          'You can no longer send messages in this chat.',
+          style: TextStyle(
+            fontSize: 13,
+            color: Colors.grey.shade600,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ),
+    );
+  }
+
   // ─── Bottom input bar ───
   Widget _buildInputBar() {
     return Container(
-      decoration: const BoxDecoration(
-        color: AppColors.brownDeep,
-        borderRadius: BorderRadius.vertical(bottom: Radius.circular(35)),
-      ),
+      decoration: const BoxDecoration(color: AppColors.brownDeep),
       padding: EdgeInsets.fromLTRB(
         16,
         14,
@@ -421,7 +460,10 @@ class _FriendChatScreenState extends State<FriendChatScreen> {
                   border: InputBorder.none,
                   contentPadding: EdgeInsets.symmetric(vertical: 18),
                 ),
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                ),
                 textAlignVertical: TextAlignVertical.center,
                 textInputAction: TextInputAction.send,
                 onSubmitted: (_) => _sendMessage(),
@@ -451,7 +493,10 @@ class _FriendChatScreenState extends State<FriendChatScreen> {
                 'assets/images/icons/sent.svg',
                 width: 26,
                 height: 26,
-                colorFilter: const ColorFilter.mode(Color(0xFF695959), BlendMode.srcIn),
+                colorFilter: const ColorFilter.mode(
+                  Color(0xFF695959),
+                  BlendMode.srcIn,
+                ),
               ),
             ),
           ),

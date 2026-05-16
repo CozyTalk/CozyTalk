@@ -51,8 +51,9 @@ final _endSessionProvider = Provider<EndSession>(
   (ref) => EndSession(ref.watch(_chatRepositoryProvider)),
 );
 
-final chatNotifierProvider =
-    NotifierProvider<ChatNotifier, ChatState>(ChatNotifier.new);
+final chatNotifierProvider = NotifierProvider<ChatNotifier, ChatState>(
+  ChatNotifier.new,
+);
 
 const _sentinel = Object();
 
@@ -86,22 +87,20 @@ class ChatState {
     List<TypingUser>? typingUsers,
     bool? isSending,
     Object? error = _sentinel,
-  }) =>
-      ChatState(
-        status: status ?? this.status,
-        sessionId:
-            sessionId == _sentinel ? this.sessionId : sessionId as String?,
-        currentUserId: currentUserId == _sentinel
-            ? this.currentUserId
-            : currentUserId as String?,
-        currentUserDisplayName: currentUserDisplayName == _sentinel
-            ? this.currentUserDisplayName
-            : currentUserDisplayName as String?,
-        messages: messages ?? this.messages,
-        typingUsers: typingUsers ?? this.typingUsers,
-        isSending: isSending ?? this.isSending,
-        error: error == _sentinel ? this.error : error as String?,
-      );
+  }) => ChatState(
+    status: status ?? this.status,
+    sessionId: sessionId == _sentinel ? this.sessionId : sessionId as String?,
+    currentUserId: currentUserId == _sentinel
+        ? this.currentUserId
+        : currentUserId as String?,
+    currentUserDisplayName: currentUserDisplayName == _sentinel
+        ? this.currentUserDisplayName
+        : currentUserDisplayName as String?,
+    messages: messages ?? this.messages,
+    typingUsers: typingUsers ?? this.typingUsers,
+    isSending: isSending ?? this.isSending,
+    error: error == _sentinel ? this.error : error as String?,
+  );
 }
 
 class ChatNotifier extends Notifier<ChatState> {
@@ -154,12 +153,8 @@ class ChatNotifier extends Notifier<ChatState> {
           onError: (Object e) => state = state.copyWith(error: e.toString()),
         );
 
-    _typingSub = ref
-        .read(_watchTypingUsersProvider)(sessionId)
-        .listen((users) {
-      final others = users
-          .where((u) => u.uid != state.currentUserId)
-          .toList();
+    _typingSub = ref.read(_watchTypingUsersProvider)(sessionId).listen((users) {
+      final others = users.where((u) => u.uid != state.currentUserId).toList();
       state = state.copyWith(typingUsers: others);
     });
   }

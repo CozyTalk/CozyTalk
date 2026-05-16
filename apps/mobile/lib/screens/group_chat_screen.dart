@@ -1,18 +1,48 @@
+import 'dart:async';
+import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import '../theme/app_colors.dart';
 import '../dialogs/leave_room_dialog.dart';
 import '../dialogs/song_dialog.dart';
 import '../dialogs/user_profile_dialog.dart';
 import '../dialogs/members_list_dialog.dart';
+import '../shared/avatar_overlay.dart';
+import '../shared/layered_avatar.dart';
+import '../shared/press_bounce_btn.dart';
+import '../shared/user_profile.dart';
+import '../shared/friend_message_popup.dart';
+import '../theme/app_routes.dart';
+import '../models/friend.dart';
 
+// ── Card assets ────────────────────────────────────────────────────────────
+const _cardAssets = [
+  'assets/images/cards/card1.png',
+  'assets/images/cards/card2.png',
+  'assets/images/cards/card3.png',
+  'assets/images/cards/card4.png',
+  'assets/images/cards/card5.png',
+  'assets/images/cards/card6.png',
+];
+
+String _pickCard() => _cardAssets[Random().nextInt(_cardAssets.length)];
+
+String _nowTime() {
+  final t = TimeOfDay.fromDateTime(DateTime.now());
+  final h = t.hourOfPeriod == 0 ? 12 : t.hourOfPeriod;
+  final m = t.minute.toString().padLeft(2, '0');
+  return '$h:$m ${t.period.name}';
+}
+
+// ── Message model ──────────────────────────────────────────────────────────
 enum _MsgType { warning, system, me, other, card }
 
 class _GroupMsg {
   final _MsgType type;
-  final String text;
+  final String text; // for card = asset path
   final String? sender;
   final String? time;
-
   const _GroupMsg({
     required this.type,
     required this.text,
@@ -21,90 +51,191 @@ class _GroupMsg {
   });
 }
 
-class GroupChatScreen extends StatefulWidget {
+// ── Avatar layout presets (leftFrac, bottomPx, sizePx) per member count ────
+// leftFrac: fraction of total banner width (0.0–1.0); side buttons occupy ~0.20 on right
+typedef _AvatarPos = ({double x, double bottom, double size});
+
+const List<List<_AvatarPos>> _layouts = [
+  [], // 0 members — unused
+  [
+    // 1 member — center
+    (x: 0.36, bottom: 14, size: 88),
+  ],
+  [
+    // 2 members
+    (x: 0.10, bottom: 12, size: 80),
+    (x: 0.55, bottom: 12, size: 80),
+  ],
+  [
+    // 3 members — staggered (matches design)
+    (x: 0.04, bottom: 8, size: 75),
+    (x: 0.34, bottom: 32, size: 75),
+    (x: 0.60, bottom: 8, size: 75),
+  ],
+  [
+    // 4 members
+    (x: 0.02, bottom: 8, size: 65),
+    (x: 0.23, bottom: 28, size: 65),
+    (x: 0.44, bottom: 28, size: 65),
+    (x: 0.64, bottom: 8, size: 65),
+  ],
+  [
+    // 5 members
+    (x: 0.01, bottom: 8, size: 55),
+    (x: 0.17, bottom: 26, size: 55),
+    (x: 0.33, bottom: 8, size: 55),
+    (x: 0.50, bottom: 26, size: 55),
+    (x: 0.66, bottom: 8, size: 55),
+  ],
+];
+
+// ── Screen ─────────────────────────────────────────────────────────────────
+class GroupChatScreen extends ConsumerStatefulWidget {
   const GroupChatScreen({super.key});
 
   @override
-  State<GroupChatScreen> createState() => _GroupChatScreenState();
+  ConsumerState<GroupChatScreen> createState() => _GroupChatScreenState();
 }
 
-class _GroupChatScreenState extends State<GroupChatScreen> {
+class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
+    with TickerProviderStateMixin {
   bool isLocked = false;
   final TextEditingController _msgController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final FocusNode _focusNode = FocusNode();
+  bool _isOtherTyping = false;
+  Timer? _typingTimer;
+  Timer? _friendMsgTimer;
 
-  final List<String> topics = [
-    "What drink do you usually order?\nWhy do you like it?",
-    "Is there anything you haven't done\nyet but would like to try?",
-    "What is your favorite movie\nand why?",
-    "If you could travel anywhere,\nwhere would you go?",
-    "What's a hobby you'd love\nto pick up someday?",
-  ];
+  // ── Members panel animation ──
+  bool _panelOpen = false;
+  late final AnimationController _panelCtrl;
+  late final Animation<Offset> _panelSlide;
 
-  int _currentTopicIndex = 0;
+  // ── Song panel animation ──
+  bool _songPanelOpen = false;
+  late final AnimationController _songCtrl;
+  late final Animation<Offset> _songSlide;
 
-  void _sendTopicCard() {
-    setState(() {
-      messages.add(_GroupMsg(
-        type: _MsgType.card,
-        text: topics[_currentTopicIndex % topics.length],
-      ));
-    });
-    _scrollToBottom();
-  }
-
-  void _shuffleTopic() {
-    setState(() {
-      _currentTopicIndex = (_currentTopicIndex + 1) % topics.length;
-      messages.add(const _GroupMsg(
-          type: _MsgType.system, text: 'Someone shuffled the topic!'));
-      messages.add(_GroupMsg(
-          type: _MsgType.card, text: topics[_currentTopicIndex]));
-    });
-    _scrollToBottom();
-  }
+  // Group members — last entry = "Me" → gets avatarState overlays
+  final List<String> members = ['Somtum', 'Kaitom', 'Somjeed', 'Padthai', 'Me'];
 
   final List<_GroupMsg> messages = [
     const _GroupMsg(
       type: _MsgType.warning,
       text:
-          'Keep it friendly! Please be respectful and protect your personal info. Report any suspicious behavior to help keep our community safe.',
+          'Keep it friendly! Please be respectful and protect your personal info.\nReport any suspicious behavior to help keep our community safe.',
     ),
-    const _GroupMsg(type: _MsgType.system, text: 'Kaitom Hop in'),
     const _GroupMsg(
-        type: _MsgType.other,
-        sender: 'Kaitom',
-        text: 'Hellooooooooooooooo\noooooooooooooooo.',
-        time: '10:00 pm'),
+      type: _MsgType.system,
+      text: 'Kaitom Hop in',
+      time: '27 April 2026',
+    ),
     const _GroupMsg(
-        type: _MsgType.other,
-        sender: 'Somjeed',
-        text: 'Hello.',
-        time: '10:05 pm'),
+      type: _MsgType.other,
+      sender: 'Kaitom',
+      text: 'Hellooooooooooooooo\noooooooooooooooo.',
+      time: '10:00 pm',
+    ),
     const _GroupMsg(
-        type: _MsgType.me,
-        sender: 'Me',
-        text: 'Hello 🍪🙏🔥😣',
-        time: '10:10 pm'),
+      type: _MsgType.other,
+      sender: 'Somjeed',
+      text: 'Hello.',
+      time: '10:05 pm',
+    ),
+    const _GroupMsg(
+      type: _MsgType.me,
+      sender: 'Me',
+      text: 'Hello 🍪🙏🔥😣',
+      time: '10:10 pm',
+    ),
   ];
 
   @override
+  void initState() {
+    super.initState();
+    _panelCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 260),
+    );
+    _panelSlide = Tween<Offset>(
+      begin: const Offset(0, -1),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(parent: _panelCtrl, curve: Curves.easeOutCubic));
+
+    _songCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 260),
+    );
+    _songSlide = Tween<Offset>(
+      begin: const Offset(0, -1),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(parent: _songCtrl, curve: Curves.easeOutCubic));
+    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
+    _friendMsgTimer = Timer(const Duration(seconds: 3), () {
+      if (!mounted) return;
+      showFriendMessagePopup(
+        context,
+        friendName: 'Nong Prae',
+        message: 'Hey! Are you free tonight? 🍕',
+        onTap: () => _showLeaveForFriendChat(),
+      );
+    });
+  }
+
+  @override
   void dispose() {
+    _typingTimer?.cancel();
+    _friendMsgTimer?.cancel();
+    _panelCtrl.dispose();
+    _songCtrl.dispose();
     _msgController.dispose();
     _scrollController.dispose();
     _focusNode.dispose();
     super.dispose();
   }
 
+  void _openPanel() {
+    if (_songPanelOpen) _closeSongPanel();
+    setState(() => _panelOpen = true);
+    _panelCtrl.forward();
+  }
+
+  void _closePanel() {
+    _panelCtrl.reverse().then((_) {
+      if (mounted) setState(() => _panelOpen = false);
+    });
+  }
+
+  void _openSongPanel() {
+    if (_panelOpen) _closePanel();
+    setState(() => _songPanelOpen = true);
+    _songCtrl.forward();
+  }
+
+  void _closeSongPanel() {
+    _songCtrl.reverse().then((_) {
+      if (mounted) setState(() => _songPanelOpen = false);
+    });
+  }
+
   void _scrollToBottom() {
-    Future.delayed(const Duration(milliseconds: 100), () {
-      if (_scrollController.hasClients) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!_scrollController.hasClients) return;
         _scrollController.animateTo(
           _scrollController.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 300),
+          duration: const Duration(milliseconds: 250),
           curve: Curves.easeOut,
         );
+      });
+    });
+    // Correct position after images/layout settle — jumpTo avoids conflicting with animateTo
+    Future.delayed(const Duration(milliseconds: 350), () {
+      if (!mounted || !_scrollController.hasClients) return;
+      final max = _scrollController.position.maxScrollExtent;
+      if (_scrollController.offset < max - 5) {
+        _scrollController.jumpTo(max);
       }
     });
   }
@@ -112,446 +243,634 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
   void _sendMessage() {
     if (_msgController.text.trim().isEmpty) return;
     setState(() {
-      messages.add(_GroupMsg(
-        type: _MsgType.me,
-        sender: 'Me',
-        text: _msgController.text,
-        time: 'Now',
-      ));
+      messages.add(
+        _GroupMsg(
+          type: _MsgType.me,
+          sender: 'Me',
+          text: _msgController.text.trim(),
+          time: _nowTime(),
+        ),
+      );
+      _isOtherTyping = true;
     });
     _msgController.clear();
-    _scrollToBottom();
     _focusNode.requestFocus();
+    _scrollToBottom();
+    _typingTimer?.cancel();
+    _typingTimer = Timer(const Duration(seconds: 2), () {
+      if (mounted) setState(() => _isOtherTyping = false);
+    });
+  }
+
+  void _sendTopicCard() {
+    setState(() {
+      messages.add(_GroupMsg(type: _MsgType.card, text: _pickCard()));
+    });
+    _scrollToBottom();
+  }
+
+  void _shuffleTopic() {
+    setState(() {
+      messages.add(
+        const _GroupMsg(
+          type: _MsgType.system,
+          text: 'Someone shuffled the topic!',
+        ),
+      );
+      messages.add(_GroupMsg(type: _MsgType.card, text: _pickCard()));
+    });
+    _scrollToBottom();
+  }
+
+  void _showLeaveForFriendChat() {
+    final mockFriend = Friend(
+      name: 'Nong Prae',
+      username: 'kaitom',
+      lastMessage: 'Hey! Are you free tonight? 🍕',
+      isOnline: true,
+      isInRoom: false,
+      avatar: 'assets/images/UserAvatar.png',
+      interest: 'Cats',
+    );
+    showDialog(
+      context: context,
+      builder: (dialogCtx) => Dialog(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 32),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(24, 22, 24, 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Leave this room?',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                  color: Colors.black,
+                  decoration: TextDecoration.none,
+                ),
+              ),
+              const SizedBox(height: 10),
+              const Text(
+                'You will leave this room and won\'t\nbe able to come back.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 15,
+                  height: 1.3,
+                  color: Colors.black87,
+                  decoration: TextDecoration.none,
+                  fontWeight: FontWeight.w400,
+                ),
+              ),
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  Expanded(
+                    child: SizedBox(
+                      height: 42,
+                      child: ElevatedButton(
+                        onPressed: () => Navigator.pop(dialogCtx),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFD9D5D1),
+                          foregroundColor: Colors.black,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(18),
+                            side: const BorderSide(color: Color(0xFFC8C3BE)),
+                          ),
+                        ),
+                        child: const Text(
+                          'Stay',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: SizedBox(
+                      height: 42,
+                      child: ElevatedButton(
+                        onPressed: () {
+                          Navigator.pop(dialogCtx);
+                          Navigator.popUntil(context, (route) => route.isFirst);
+                          Navigator.pushNamed(context, AppRoutes.friends);
+                          Navigator.pushNamed(
+                            context,
+                            AppRoutes.friendChat,
+                            arguments: mockFriend,
+                          );
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFD86A3B),
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(18),
+                          ),
+                        ),
+                        child: const Text(
+                          'Leave',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final args =
         ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
-    final roomName = args?['roomName'] ?? 'Room Name';
-    final bgImage = args?['bgImage'] ?? 'assets/images/backgrounds/kao_tapu.png';
+    final roomName = args?['roomName'] as String? ?? 'Koh Tapu';
+    final roomId = args?['roomId'] as String? ?? 'ABP8C';
+    final bgImage =
+        args?['bgImage'] as String? ?? 'assets/images/backgrounds/kao_tapu.png';
+    final maxMembers = args?['maxMembers'] as int? ?? 5;
 
-    return Scaffold(
-      backgroundColor: AppColors.scaffoldBg,
-      body: Column(
-        children: [
-          Container(
-            width: double.infinity,
-            decoration: const BoxDecoration(
-              color: AppColors.brownDeep,
-              borderRadius: BorderRadius.vertical(
-                top: Radius.circular(35),
-              ),
-            ),
-            child: SafeArea(
-              bottom: false,
-              child: Container(
-                height: 90,
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
+    final avatarState = ref.watch(avatarProvider);
+    final userProfile = ref.watch(userProfileProvider);
+
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (bool didPop, Object? result) {
+        if (!didPop) {
+          showDialog(context: context, builder: (_) => const LeaveRoomDialog());
+        }
+      },
+      child: Scaffold(
+        backgroundColor: AppColors.scaffoldBg,
+        body: Column(
+          children: [
+            // ── Header always rendered last in layout = visually on top ──
+            _buildHeader(roomName, roomId),
+            // ── Content + slide-down panel clipped together ──
+            Expanded(
+              child: ClipRect(
+                child: Stack(
                   children: [
-                    GestureDetector(
-                      onTap: () => showDialog(
-                          context: context,
-                          builder: (_) => const LeaveRoomDialog()),
-                      child: Container(
-                        width: 48,
-                        height: 48,
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(16),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.08),
-                              blurRadius: 10,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                          border: Border.all(
-                              color: Colors.grey.shade300, width: 1.5),
-                        ),
-                        child: const Icon(Icons.chevron_left,
-                            color: Colors.black, size: 30),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            roomName,
-                            style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold),
-                          ),
-                          const Text('Room ID: ABP8C',
-                              style: TextStyle(
-                                  color: Colors.white70, fontSize: 12)),
-                        ],
-                      ),
-                    ),
-                    Row(
+                    // Main content
+                    Column(
                       children: [
-                        GestureDetector(
-                          onTap: () => setState(() => isLocked = !isLocked),
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 200),
-                            width: 65,
-                            height: 35,
-                            padding: const EdgeInsets.symmetric(horizontal: 4),
-                            decoration: BoxDecoration(
-                              color: isLocked
-                                  ? const Color(0xFFBA5F3A)
-                                  : const Color(0xFFD9D9D9),
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(color: Colors.black12),
-                            ),
-                            child: Stack(
-                              children: [
-                                AnimatedAlign(
-                                  duration: const Duration(milliseconds: 200),
-                                  alignment: isLocked
-                                      ? Alignment.centerRight
-                                      : Alignment.centerLeft,
+                        _buildBanner(
+                          bgImage,
+                          maxMembers,
+                          avatarState,
+                          userProfile,
+                        ),
+                        Expanded(
+                          child: Stack(
+                            children: [
+                              _buildMessageList(avatarState),
+                              Positioned(
+                                top: 0,
+                                left: 0,
+                                right: 0,
+                                child: IgnorePointer(
                                   child: Container(
-                                    width: 28,
-                                    height: 28,
-                                    decoration: const BoxDecoration(
-                                      color: Colors.white,
-                                      shape: BoxShape.circle,
-                                      boxShadow: [
-                                        BoxShadow(
-                                            color: Colors.black12,
-                                            blurRadius: 4)
-                                      ],
-                                    ),
-                                    child: Icon(
-                                      isLocked
-                                          ? Icons.lock_rounded
-                                          : Icons.lock_open_rounded,
-                                      size: 18,
-                                      color: isLocked
-                                          ? const Color(0xFFBA5F3A)
-                                          : Colors.grey,
+                                    height: 18,
+                                    decoration: BoxDecoration(
+                                      gradient: LinearGradient(
+                                        begin: Alignment.topCenter,
+                                        end: Alignment.bottomCenter,
+                                        colors: [
+                                          Colors.black.withValues(alpha: 0.13),
+                                          Colors.transparent,
+                                        ],
+                                      ),
                                     ),
                                   ),
                                 ),
-                              ],
-                            ),
+                              ),
+                            ],
                           ),
                         ),
-                        const SizedBox(width: 12),
-                        GestureDetector(
-                          onTap: () => showDialog(
-                              context: context,
-                              builder: (_) => const MembersListDialog()),
-                          child: Container(
-                            padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(12),
-                              boxShadow: const [
-                                BoxShadow(color: Colors.black12, blurRadius: 4)
-                              ],
-                            ),
-                            child: const Icon(Icons.groups_rounded,
-                                color: Colors.black, size: 28),
-                          ),
-                        ),
+                        _buildInputBar(),
                       ],
+                    ),
+                    // Barrier — tap outside to close whichever panel is open
+                    if (_panelOpen || _songPanelOpen)
+                      GestureDetector(
+                        onTap: _panelOpen ? _closePanel : _closeSongPanel,
+                        behavior: HitTestBehavior.opaque,
+                        child: AnimatedOpacity(
+                          opacity: 1.0,
+                          duration: const Duration(milliseconds: 260),
+                          child: Container(color: Colors.black26),
+                        ),
+                      ),
+                    // Slide-down members panel
+                    Positioned(
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      child: SlideTransition(
+                        position: _panelSlide,
+                        child: MembersPanelBody(
+                          members: members,
+                          onClose: _closePanel,
+                          avatarState: avatarState,
+                        ),
+                      ),
+                    ),
+                    // Slide-down song panel
+                    Positioned(
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      child: SlideTransition(
+                        position: _songSlide,
+                        child: SongPanelBody(onClose: _closeSongPanel),
+                      ),
                     ),
                   ],
                 ),
               ),
             ),
-          ),
-          SizedBox(
-            height: 250,
-            width: double.infinity,
-            child: Stack(
-              children: [
-                Positioned.fill(child: Image.asset(bgImage, fit: BoxFit.cover)),
-                Positioned(
-                  top: 15,
-                  left: 0,
-                  right: 0,
-                  child: Center(
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 20, vertical: 4),
-                      decoration: BoxDecoration(
-                          color: Colors.black45,
-                          borderRadius: BorderRadius.circular(20)),
-                      child: const Text('3 / 5',
-                          style: TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold)),
-                    ),
-                  ),
-                ),
-                _buildAvatar(bottom: 20, left: 30, username: 'Somtum'),
-                _buildAvatar(bottom: 40, left: 140, username: 'Kaitom'),
-                _buildAvatar(bottom: 10, right: 150, username: 'Somjeed'),
-                Positioned(
-                  bottom: 10,
-                  right: 10,
-                  child: Column(
-                    children: [
-                      _sidebarBtn(
-                          Icons.music_note,
-                          'Song',
-                          () => showDialog(
-                              context: context,
-                              builder: (_) => const SongDialog())),
-                      const SizedBox(height: 10),
-                      _sidebarBtn(Icons.style, 'Topic', _sendTopicCard),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Expanded(
-            child: ListView.builder(
-              controller: _scrollController,
-              padding: const EdgeInsets.all(16),
-              itemCount: messages.length,
-              itemBuilder: (context, index) {
-                final msg = messages[index];
-                if (msg.type == _MsgType.warning) return _buildWarning(msg.text);
-                if (msg.type == _MsgType.system) return _buildSystem(msg.text);
-                if (msg.type == _MsgType.card) return _buildCard(msg.text);
-                return _buildChatBubble(msg);
-              },
-            ),
-          ),
-          Container(
-            padding: const EdgeInsets.all(16).copyWith(bottom: 30),
-            color: const Color(0xFF6B5E5B),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _msgController,
-                    focusNode: _focusNode,
-                    decoration: InputDecoration(
-                      hintText: 'Type here...',
-                      filled: true,
-                      fillColor: Colors.white,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(20),
-                        borderSide: BorderSide.none,
-                      ),
-                      contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 14),
-                    ),
-                    onSubmitted: (_) => _sendMessage(),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                GestureDetector(
-                  onTap: _sendMessage,
-                  child: Container(
-                    width: 55,
-                    height: 55,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFEAC163),
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: const Icon(Icons.send_rounded,
-                        color: Color(0xFF6B5E5B), size: 28),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildAvatar(
-      {double? bottom, double? left, double? right, required String username}) {
-    return Positioned(
-      bottom: bottom,
-      left: left,
-      right: right,
-      child: GestureDetector(
-        onTap: () => showDialog(
-            context: context,
-            builder: (_) => UserProfileDialog(username: username)),
-        child: Image.asset('assets/images/UserAvatar.png', width: 75),
-      ),
-    );
-  }
-
-  Widget _sidebarBtn(IconData icon, String label, VoidCallback onTap) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 4)],
-        ),
-        child: Column(
-          children: [
-            Icon(icon, size: 22, color: Colors.black),
-            Text(label,
-                style:
-                    const TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildChatBubble(_GroupMsg msg) {
-    final isMe = msg.type == _MsgType.me;
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        mainAxisAlignment:
-            isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          if (!isMe)
-            GestureDetector(
-              onTap: () => showDialog(
-                  context: context,
-                  builder: (_) =>
-                      UserProfileDialog(username: msg.sender ?? '')),
-              child: const CircleAvatar(
-                radius: 20,
-                backgroundColor: Colors.white,
-                backgroundImage: AssetImage('assets/images/UserAvatar.png'),
-              ),
-            ),
-          const SizedBox(width: 8),
-          Column(
-            crossAxisAlignment:
-                isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-            children: [
-              if (!isMe)
-                Text(msg.sender ?? '',
-                    style: const TextStyle(
-                        fontSize: 12, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 4),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  if (isMe)
-                    Text(msg.time ?? '',
-                        style:
-                            const TextStyle(fontSize: 10, color: Colors.grey)),
-                  if (isMe) const SizedBox(width: 8),
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    constraints: BoxConstraints(
-                        maxWidth: MediaQuery.of(context).size.width * 0.6),
-                    decoration: BoxDecoration(
-                      color: isMe
-                          ? const Color(0xFFF1CEE4)
-                          : const Color(0xFFDCEBCE),
-                      borderRadius: BorderRadius.circular(18),
-                      border: isMe ? null : Border.all(color: Colors.black12),
-                    ),
-                    child:
-                        Text(msg.text, style: const TextStyle(fontSize: 15)),
+  // ── Header ────────────────────────────────────────────────────────────────
+  Widget _buildHeader(String roomName, String roomId) {
+    return Container(
+      width: double.infinity,
+      decoration: const BoxDecoration(
+        color: AppColors.brownDeep,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(35)),
+      ),
+      child: SafeArea(
+        bottom: false,
+        child: SizedBox(
+          height: 90,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                // Back button
+                _headerBtn(
+                  onTap: () => showDialog(
+                    context: context,
+                    builder: (_) => const LeaveRoomDialog(),
                   ),
-                  if (!isMe) const SizedBox(width: 8),
-                  if (!isMe)
-                    Text(msg.time ?? '',
-                        style:
-                            const TextStyle(fontSize: 10, color: Colors.grey)),
-                ],
-              ),
-            ],
-          ),
-          if (isMe) const SizedBox(width: 8),
-          if (isMe)
-            const CircleAvatar(
-              radius: 20,
-              backgroundColor: Colors.white,
-              backgroundImage: AssetImage('assets/images/UserAvatar.png'),
+                  child: SvgPicture.asset(
+                    'assets/images/icons/Back.svg',
+                    width: 24,
+                    height: 24,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                // Room name + ID
+                Expanded(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        roomName,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        'Room ID:   $roomId',
+                        style: const TextStyle(
+                          color: Colors.white70,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                // Lock toggle
+                GestureDetector(
+                  onTap: () => setState(() => isLocked = !isLocked),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    width: 60,
+                    height: 32,
+                    padding: const EdgeInsets.symmetric(horizontal: 3),
+                    decoration: BoxDecoration(
+                      color: isLocked
+                          ? const Color(0xFFBA5F3A)
+                          : const Color(0xFFD9D9D9),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: Colors.black12),
+                    ),
+                    child: Stack(
+                      children: [
+                        AnimatedAlign(
+                          duration: const Duration(milliseconds: 200),
+                          alignment: isLocked
+                              ? Alignment.centerRight
+                              : Alignment.centerLeft,
+                          child: Container(
+                            width: 26,
+                            height: 26,
+                            decoration: const BoxDecoration(
+                              color: Colors.white,
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(color: Colors.black12, blurRadius: 4),
+                              ],
+                            ),
+                            child: Icon(
+                              isLocked
+                                  ? Icons.lock_rounded
+                                  : Icons.lock_open_rounded,
+                              size: 16,
+                              color: isLocked
+                                  ? const Color(0xFFBA5F3A)
+                                  : Colors.grey,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                // Member list button
+                _headerBtn(
+                  onTap: _panelOpen ? _closePanel : _openPanel,
+                  child: SvgPicture.asset(
+                    'assets/images/icons/memberlist.svg',
+                    width: 26,
+                    height: 26,
+                  ),
+                ),
+              ],
             ),
-        ],
+          ),
+        ),
       ),
     );
   }
 
-  Widget _buildCard(String text) {
-    return Column(
-      children: [
-        Container(
-          margin: const EdgeInsets.symmetric(vertical: 10),
-          width: 180,
-          height: 260,
-          decoration: BoxDecoration(
-            color: const Color(0xFFF2E9DD),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: const Color(0xFF5A443A), width: 4),
-          ),
-          child: Column(
+  Widget _headerBtn({required Widget child, required VoidCallback onTap}) {
+    return PressBounceBtn(
+      onTap: onTap,
+      scale: 0.90,
+      child: Container(
+        width: 48,
+        height: 48,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.08),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+          border: Border.all(color: Colors.grey.shade300, width: 1.5),
+        ),
+        child: child,
+      ),
+    );
+  }
+
+  // ── Banner with dynamic avatars ────────────────────────────────────────────
+  Widget _buildBanner(
+    String bgImage,
+    int maxMembers,
+    AvatarState avatarState,
+    UserProfileState userProfile,
+  ) {
+    final count = members.length.clamp(1, 5);
+    final preset = _layouts[count];
+
+    final bannerHeight = count >= 5 ? 270.0 : 250.0;
+    return SizedBox(
+      height: bannerHeight,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final w = constraints.maxWidth;
+          return Stack(
             children: [
-              const Spacer(),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                child: Text(
-                  text,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF5A443A),
-                    height: 1.4,
+              // Background image
+              Positioned.fill(
+                child: Image.asset(
+                  bgImage,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) =>
+                      Container(color: Colors.grey.shade300),
+                ),
+              ),
+              // Member count badge
+              Positioned(
+                top: 14,
+                left: 0,
+                right: 0,
+                child: Center(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.88),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      '${members.length} / $maxMembers',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                      ),
+                    ),
                   ),
                 ),
               ),
-              const Spacer(),
-              const Text(
-                'COZY',
-                style: TextStyle(
-                  fontWeight: FontWeight.w900,
-                  color: Color(0xFF5A443A),
-                  letterSpacing: 2,
-                  fontSize: 10,
+              // Avatars + thought bubbles — positioned by layout preset
+              ...List.generate(count, (i) {
+                final pos = preset[i];
+                final username = members[i];
+                final isMe = username == 'Me';
+                final displayName = isMe ? userProfile.username : username;
+                final thought = isMe
+                    ? (userProfile.thought.isNotEmpty
+                          ? userProfile.thought
+                          : 'Care to share?')
+                    : 'Hello!';
+                final rawScale = pos.size / 90;
+                final scale = rawScale.clamp(0.78, 1.0);
+                final bubbleW = 80 * scale;
+                final bubbleH = 90 * scale;
+                return Positioned(
+                  left: w * pos.x,
+                  bottom: pos.bottom,
+                  child: SizedBox(
+                    width: pos.size,
+                    height: pos.size + bubbleH * 0.65,
+                    child: Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        Positioned(
+                          bottom: 0,
+                          left: 0,
+                          right: 0,
+                          child: GestureDetector(
+                            onTap: () => showDialog(
+                              context: context,
+                              builder: (_) => UserProfileDialog(
+                                username: displayName,
+                                isMe: isMe,
+                              ),
+                            ),
+                            child: LayeredAvatar(
+                              boxSize: pos.size,
+                              moodOverlay: isMe ? avatarState.mood : null,
+                              accessoryOverlay: isMe
+                                  ? avatarState.accessory
+                                  : null,
+                            ),
+                          ),
+                        ),
+                        Positioned(
+                          bottom: pos.size * 0.75,
+                          left: 0,
+                          child: Container(
+                            width: bubbleW,
+                            height: bubbleH,
+                            decoration: const BoxDecoration(
+                              image: DecorationImage(
+                                image: AssetImage(
+                                  'assets/images/ThinkBubble.png',
+                                ),
+                                fit: BoxFit.contain,
+                              ),
+                            ),
+                            padding: EdgeInsets.only(
+                              bottom: 10 * scale,
+                              left: 10 * scale,
+                              right: 8 * scale,
+                            ),
+                            alignment: Alignment.center,
+                            child: Text(
+                              thought,
+                              style: TextStyle(
+                                fontSize: (9 * scale).clamp(7.0, 11.0),
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black87,
+                              ),
+                              textAlign: TextAlign.center,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }),
+              // Song / Topic buttons
+              Positioned(
+                bottom: 10,
+                right: 10,
+                child: Column(
+                  children: [
+                    _sideBtn(
+                      'Song',
+                      'assets/images/icons/song.svg',
+                      _openSongPanel,
+                    ),
+                    const SizedBox(height: 10),
+                    _sideBtn(
+                      'Topic',
+                      'assets/images/icons/card.svg',
+                      _sendTopicCard,
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 16),
             ],
-          ),
-        ),
-        GestureDetector(
-          onTap: _shuffleTopic,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-            decoration: BoxDecoration(
-              color: const Color(0xFFEAC163),
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 4)],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _sideBtn(String label, String svgPath, VoidCallback onTap) {
+    return PressBounceBtn(
+      onTap: onTap,
+      child: Container(
+        width: 60,
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.1),
+              blurRadius: 4,
             ),
-            child: const Text(
-              'shuffle',
-              style: TextStyle(
-                  fontWeight: FontWeight.bold, color: Color(0xFF6B5E5B)),
-            ),
-          ),
+          ],
         ),
-      ],
+        child: Column(
+          children: [
+            SvgPicture.asset(svgPath, width: 26, height: 26),
+            const SizedBox(height: 2),
+            Text(
+              label,
+              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ── Message list ──────────────────────────────────────────────────────────
+  Widget _buildMessageList(AvatarState avatarState) {
+    final itemCount = messages.length + (_isOtherTyping ? 1 : 0);
+    return ListView.builder(
+      controller: _scrollController,
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+      itemCount: itemCount,
+      itemBuilder: (context, i) {
+        if (i == messages.length && _isOtherTyping) {
+          return const _GroupTypingIndicator();
+        }
+        final msg = messages[i];
+        return switch (msg.type) {
+          _MsgType.warning => _buildWarning(msg.text),
+          _MsgType.system => _buildSystem(msg),
+          _MsgType.card => _buildCard(msg.text),
+          _ => _buildChatBubble(msg, avatarState),
+        };
+      },
     );
   }
 
   Widget _buildWarning(String text) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 20),
-      padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
         color: const Color(0xFFF3D4BA),
         borderRadius: BorderRadius.circular(16),
@@ -561,23 +880,407 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
         text,
         textAlign: TextAlign.center,
         style: const TextStyle(
-            color: Color(0xFF836151),
-            fontSize: 13,
-            fontWeight: FontWeight.w500),
+          color: Color(0xFF836151),
+          fontSize: 13,
+          fontWeight: FontWeight.w500,
+        ),
       ),
     );
   }
 
-  Widget _buildSystem(String text) {
+  Widget _buildSystem(_GroupMsg msg) {
+    return Column(
+      children: [
+        if (msg.time != null) ...[
+          const SizedBox(height: 8),
+          Text(
+            msg.time!,
+            style: const TextStyle(fontSize: 12, color: Colors.black45),
+          ),
+          const SizedBox(height: 6),
+        ],
+        Container(
+          margin: const EdgeInsets.symmetric(vertical: 4),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            border: Border.all(color: Colors.grey.shade300),
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Text(
+            msg.text,
+            style: const TextStyle(fontSize: 12, color: Colors.black54),
+          ),
+        ),
+        const SizedBox(height: 8),
+      ],
+    );
+  }
+
+  Widget _buildChatBubble(_GroupMsg msg, AvatarState avatarState) {
+    final isMe = msg.type == _MsgType.me;
+    final maxW = MediaQuery.of(context).size.width * 0.60;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        mainAxisAlignment: isMe
+            ? MainAxisAlignment.end
+            : MainAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          // Avatar (others only)
+          if (!isMe) ...[
+            GestureDetector(
+              onTap: () => showDialog(
+                context: context,
+                builder: (_) => UserProfileDialog(username: msg.sender ?? ''),
+              ),
+              child: LayeredAvatar(boxSize: 40),
+            ),
+            const SizedBox(width: 8),
+          ],
+          // Bubble + timestamp
+          Column(
+            crossAxisAlignment: isMe
+                ? CrossAxisAlignment.end
+                : CrossAxisAlignment.start,
+            children: [
+              if (!isMe)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 4),
+                  child: Text(
+                    msg.sender ?? '',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  if (isMe) ...[
+                    Text(
+                      msg.time ?? '',
+                      style: const TextStyle(
+                        fontSize: 10,
+                        color: Colors.black45,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                  ],
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 12,
+                    ),
+                    constraints: BoxConstraints(maxWidth: maxW),
+                    clipBehavior: Clip.hardEdge,
+                    decoration: BoxDecoration(
+                      color: isMe
+                          ? const Color(0xFFF1CEE4)
+                          : const Color(0xFFDCEBCE),
+                      borderRadius: BorderRadius.circular(18),
+                      border: isMe ? null : Border.all(color: Colors.black12),
+                    ),
+                    child: Text(
+                      msg.text,
+                      style: const TextStyle(fontSize: 15, height: 1.6),
+                    ),
+                  ),
+                  if (!isMe) ...[
+                    const SizedBox(width: 6),
+                    Text(
+                      msg.time ?? '',
+                      style: const TextStyle(
+                        fontSize: 10,
+                        color: Colors.black45,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ],
+          ),
+          // My avatar (right side)
+          if (isMe) ...[
+            const SizedBox(width: 8),
+            LayeredAvatar(
+              boxSize: 40,
+              moodOverlay: avatarState.mood,
+              accessoryOverlay: avatarState.accessory,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCard(String assetPath) {
+    return _TopicCard(assetPath: assetPath, onShuffle: _shuffleTopic);
+  }
+
+  // ── Input bar ─────────────────────────────────────────────────────────────
+  Widget _buildInputBar() {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
+      color: const Color(0xFF6B5E5B),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Expanded(
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(24),
+              child: TextField(
+                controller: _msgController,
+                focusNode: _focusNode,
+                minLines: 1,
+                maxLines: 5,
+                keyboardType: TextInputType.multiline,
+                textInputAction: TextInputAction.newline,
+                style: const TextStyle(fontSize: 15),
+                strutStyle: const StrutStyle(
+                  fontSize: 15,
+                  height: 1.6,
+                  forceStrutHeight: true,
+                ),
+                decoration: InputDecoration(
+                  hintText: 'Type here ...',
+                  hintStyle: const TextStyle(color: Colors.black38),
+                  filled: true,
+                  fillColor: Colors.white,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(24),
+                    borderSide: BorderSide.none,
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 18,
+                    vertical: 16,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          GestureDetector(
+            onTap: _sendMessage,
+            child: Container(
+              width: 50,
+              height: 50,
+              decoration: BoxDecoration(
+                color: const Color(0xFFEAC163),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              alignment: Alignment.center,
+              child: SvgPicture.asset(
+                'assets/images/icons/sent.svg',
+                width: 24,
+                height: 24,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Topic card with shuffle animation ────────────────────────────────────
+class _TopicCard extends StatefulWidget {
+  final String assetPath;
+  final VoidCallback onShuffle;
+  const _TopicCard({required this.assetPath, required this.onShuffle});
+
+  @override
+  State<_TopicCard> createState() => _TopicCardState();
+}
+
+class _TopicCardState extends State<_TopicCard>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+  late final Animation<double> _scale;
+  late final Animation<double> _rotate;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 380),
+    );
+    _scale = TweenSequence([
+      TweenSequenceItem(tween: Tween(begin: 1.0, end: 0.90), weight: 35),
+      TweenSequenceItem(tween: Tween(begin: 0.90, end: 1.06), weight: 40),
+      TweenSequenceItem(tween: Tween(begin: 1.06, end: 1.00), weight: 25),
+    ]).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeOut));
+    _rotate = TweenSequence([
+      TweenSequenceItem(tween: Tween(begin: 0.0, end: -0.04), weight: 30),
+      TweenSequenceItem(tween: Tween(begin: -0.04, end: 0.04), weight: 40),
+      TweenSequenceItem(tween: Tween(begin: 0.04, end: 0.0), weight: 30),
+    ]).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut));
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  void _handleShuffle() {
+    _ctrl.forward(from: 0);
+    widget.onShuffle();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Center(
-      child: Container(
-        margin: const EdgeInsets.symmetric(vertical: 8),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-        decoration: BoxDecoration(
-            border: Border.all(color: Colors.black26),
-            borderRadius: BorderRadius.circular(20)),
-        child: Text(text,
-            style: const TextStyle(fontSize: 12, color: Colors.black54)),
+      child: Column(
+        children: [
+          const SizedBox(height: 8),
+          AnimatedBuilder(
+            animation: _ctrl,
+            builder: (_, child) => Transform.rotate(
+              angle: _rotate.value,
+              child: Transform.scale(scale: _scale.value, child: child),
+            ),
+            child: Image.asset(
+              widget.assetPath,
+              width: 180,
+              errorBuilder: (_, __, ___) => Container(
+                width: 180,
+                height: 260,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF2E9DD),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: const Color(0xFF5A443A), width: 4),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          PressBounceBtn(
+            onTap: _handleShuffle,
+            scale: 0.92,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 10),
+              decoration: BoxDecoration(
+                color: const Color(0xFFEAC163),
+                borderRadius: BorderRadius.circular(24),
+                boxShadow: const [
+                  BoxShadow(color: Colors.black12, blurRadius: 4),
+                ],
+              ),
+              child: const Text(
+                'shuffle',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 15,
+                  color: Color(0xFF6B5E5B),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Group typing indicator ────────────────────────────────────────────────
+class _GroupTypingIndicator extends StatefulWidget {
+  const _GroupTypingIndicator();
+
+  @override
+  State<_GroupTypingIndicator> createState() => _GroupTypingIndicatorState();
+}
+
+class _GroupTypingIndicatorState extends State<_GroupTypingIndicator>
+    with TickerProviderStateMixin {
+  late final List<AnimationController> _controllers;
+  late final List<Animation<double>> _anims;
+
+  @override
+  void initState() {
+    super.initState();
+    _controllers = List.generate(
+      3,
+      (i) => AnimationController(
+        vsync: this,
+        duration: const Duration(milliseconds: 380),
+      ),
+    );
+    _anims = _controllers
+        .map(
+          (c) => Tween<double>(
+            begin: 0,
+            end: -7,
+          ).animate(CurvedAnimation(parent: c, curve: Curves.easeInOut)),
+        )
+        .toList();
+    _startLoop();
+  }
+
+  Future<void> _startLoop() async {
+    while (mounted) {
+      for (int i = 0; i < 3; i++) {
+        if (!mounted) return;
+        await _controllers[i].forward();
+        if (!mounted) return;
+        await _controllers[i].reverse();
+      }
+      await Future.delayed(const Duration(milliseconds: 200));
+    }
+  }
+
+  @override
+  void dispose() {
+    for (final c in _controllers) {
+      c.dispose();
+    }
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          LayeredAvatar(boxSize: 40),
+          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+            decoration: BoxDecoration(
+              color: const Color(0xFFDCEBCE),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: List.generate(
+                3,
+                (i) => AnimatedBuilder(
+                  animation: _anims[i],
+                  builder: (_, __) => Transform.translate(
+                    offset: Offset(0, _anims[i].value),
+                    child: Container(
+                      width: 7,
+                      height: 7,
+                      margin: const EdgeInsets.symmetric(horizontal: 3),
+                      decoration: const BoxDecoration(
+                        color: Color(0xFF6B5E5B),
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

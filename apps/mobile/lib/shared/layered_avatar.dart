@@ -12,7 +12,7 @@ class LayeredAvatar extends StatelessWidget {
   final AvatarOverlay? accessoryOverlay;
 
   // Overlay coordinates in AvatarOverlay are calibrated for a 90px avatar.
-  static const double _refAvatarTop  = 118;
+  static const double _refAvatarTop = 118;
   static const double _refAvatarSize = 90.0;
 
   const LayeredAvatar({
@@ -25,8 +25,9 @@ class LayeredAvatar extends StatelessWidget {
   double get _scale => boxSize / _refAvatarSize;
 
   // Convert HomeScreen card coordinate → local box coordinate, scaled to boxSize
-  double _top(AvatarOverlay o)  => (o.top - _refAvatarTop) * _scale;
-  double _left(AvatarOverlay o) => boxSize / 2 + o.cx * _scale - (o.w * _scale) / 2;
+  double _top(AvatarOverlay o) => (o.top - _refAvatarTop) * _scale;
+  double _left(AvatarOverlay o) =>
+      boxSize / 2 + o.cx * _scale - (o.w * _scale) / 2;
 
   @override
   Widget build(BuildContext context) {
@@ -56,11 +57,11 @@ class LayeredAvatar extends StatelessWidget {
           // Accessory layer (hats go under mood; glasses go above mood)
           if (accessoryOverlay != null && !accessoryOverlay!.aboveMood)
             Positioned(
-              top:  _top(accessoryOverlay!),
+              top: _top(accessoryOverlay!),
               left: _left(accessoryOverlay!),
               child: Image.asset(
                 accessoryOverlay!.path,
-                width:  accessoryOverlay!.w * _scale,
+                width: accessoryOverlay!.w * _scale,
                 height: accessoryOverlay!.h * _scale,
                 fit: BoxFit.contain,
               ),
@@ -69,11 +70,11 @@ class LayeredAvatar extends StatelessWidget {
           // Mood layer
           if (moodOverlay != null)
             Positioned(
-              top:  _top(moodOverlay!),
+              top: _top(moodOverlay!),
               left: _left(moodOverlay!),
               child: Image.asset(
                 moodOverlay!.path,
-                width:  moodOverlay!.w * _scale,
+                width: moodOverlay!.w * _scale,
                 height: moodOverlay!.h * _scale,
                 fit: BoxFit.contain,
               ),
@@ -82,11 +83,11 @@ class LayeredAvatar extends StatelessWidget {
           // Glasses render above mood
           if (accessoryOverlay != null && accessoryOverlay!.aboveMood)
             Positioned(
-              top:  _top(accessoryOverlay!),
+              top: _top(accessoryOverlay!),
               left: _left(accessoryOverlay!),
               child: Image.asset(
                 accessoryOverlay!.path,
-                width:  accessoryOverlay!.w * _scale,
+                width: accessoryOverlay!.w * _scale,
                 height: accessoryOverlay!.h * _scale,
                 fit: BoxFit.contain,
               ),

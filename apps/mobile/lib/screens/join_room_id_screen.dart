@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_routes.dart';
 
@@ -10,8 +11,10 @@ class JoinRoomIdScreen extends StatefulWidget {
 }
 
 class _JoinRoomIdScreenState extends State<JoinRoomIdScreen> {
-  final List<TextEditingController> _controllers =
-      List.generate(5, (_) => TextEditingController());
+  final List<TextEditingController> _controllers = List.generate(
+    5,
+    (_) => TextEditingController(),
+  );
   final List<FocusNode> _focusNodes = List.generate(5, (_) => FocusNode());
 
   @override
@@ -29,10 +32,16 @@ class _JoinRoomIdScreenState extends State<JoinRoomIdScreen> {
     String roomCode = _controllers.map((c) => c.text).join();
 
     if (roomCode.length == 5) {
-      Navigator.pushNamed(context, AppRoutes.groupChatScreen, arguments: {
-        'roomName': 'Private Room $roomCode',
-        'bgImage': 'assets/images/backgrounds/kao_tapu.png',
-      });
+      Navigator.pushNamed(
+        context,
+        AppRoutes.findingRoom,
+        arguments: {
+          'roomName': 'Room $roomCode',
+          'bgImage': 'assets/images/backgrounds/kao_tapu.png',
+          'roomType': 'group',
+          'isGroup': true,
+        },
+      );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please enter a valid 5-digit Room ID')),
@@ -50,9 +59,7 @@ class _JoinRoomIdScreenState extends State<JoinRoomIdScreen> {
             width: double.infinity,
             decoration: const BoxDecoration(
               color: AppColors.brownDeep,
-              borderRadius: BorderRadius.vertical(
-                top: Radius.circular(35),
-              ),
+              borderRadius: BorderRadius.vertical(top: Radius.circular(35)),
             ),
             child: SafeArea(
               bottom: false,
@@ -65,12 +72,12 @@ class _JoinRoomIdScreenState extends State<JoinRoomIdScreen> {
                     GestureDetector(
                       onTap: () => Navigator.pop(context),
                       child: Container(
-                        width: 48,
-                        height: 48,
+                        width: 52,
+                        height: 52,
                         alignment: Alignment.center,
                         decoration: BoxDecoration(
                           color: Colors.white,
-                          borderRadius: BorderRadius.circular(16),
+                          borderRadius: BorderRadius.circular(14),
                           boxShadow: [
                             BoxShadow(
                               color: Colors.black.withValues(alpha: 0.08),
@@ -79,10 +86,15 @@ class _JoinRoomIdScreenState extends State<JoinRoomIdScreen> {
                             ),
                           ],
                           border: Border.all(
-                              color: Colors.grey.shade300, width: 1.5),
+                            color: Colors.grey.shade300,
+                            width: 1.5,
+                          ),
                         ),
-                        child: const Icon(Icons.chevron_left,
-                            color: Colors.black, size: 30),
+                        child: SvgPicture.asset(
+                          'assets/images/icons/Back.svg',
+                          width: 26,
+                          height: 26,
+                        ),
                       ),
                     ),
                     const Spacer(),
@@ -90,9 +102,10 @@ class _JoinRoomIdScreenState extends State<JoinRoomIdScreen> {
                       'Join a Room',
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 22,
-                          fontWeight: FontWeight.w800),
+                        color: Colors.white,
+                        fontSize: 22,
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
                     const Spacer(),
                     const SizedBox(width: 48),
@@ -106,14 +119,16 @@ class _JoinRoomIdScreenState extends State<JoinRoomIdScreen> {
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisAlignment: MainAxisAlignment.start,
                 children: [
+                  const SizedBox(height: 60),
                   const Text(
                     'Enter room ID',
                     style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.w900,
-                        color: Colors.black),
+                      fontSize: 24,
+                      fontWeight: FontWeight.w900,
+                      color: Colors.black,
+                    ),
                   ),
                   const SizedBox(height: 8),
                   const Text(
@@ -134,7 +149,9 @@ class _JoinRoomIdScreenState extends State<JoinRoomIdScreen> {
                           autofocus: index == 0,
                           textAlign: TextAlign.center,
                           style: const TextStyle(
-                              fontSize: 24, fontWeight: FontWeight.bold),
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                          ),
                           keyboardType: TextInputType.text,
                           maxLength: 1,
                           decoration: InputDecoration(
@@ -143,18 +160,28 @@ class _JoinRoomIdScreenState extends State<JoinRoomIdScreen> {
                             fillColor: Colors.white,
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(16),
-                              borderSide:
-                                  const BorderSide(color: Colors.black12),
+                              borderSide: const BorderSide(
+                                color: Colors.black12,
+                              ),
                             ),
                             enabledBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(16),
-                              borderSide:
-                                  const BorderSide(color: Colors.black12),
+                              borderSide: const BorderSide(
+                                color: Colors.black12,
+                              ),
                             ),
                             focusedBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(16),
                               borderSide: const BorderSide(
-                                  color: Color(0xFF85BA72), width: 2),
+                                color: Color(0xFF85BA72),
+                                width: 2,
+                              ),
+                            ),
+                            disabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(16),
+                              borderSide: const BorderSide(
+                                color: Colors.black12,
+                              ),
                             ),
                           ),
                           onChanged: (value) {
@@ -183,14 +210,16 @@ class _JoinRoomIdScreenState extends State<JoinRoomIdScreen> {
                           backgroundColor: const Color(0xFFE2EAD3),
                           elevation: 2,
                           shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(20)),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
                         ),
                         child: const Text(
                           'Join Room',
                           style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.black),
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black,
+                          ),
                         ),
                       ),
                     ),

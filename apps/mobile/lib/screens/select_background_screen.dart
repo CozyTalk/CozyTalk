@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_routes.dart';
 
@@ -18,22 +19,22 @@ class _SelectBackgroundScreenState extends State<SelectBackgroundScreen> {
     {
       'id': 'kao_tapu',
       'title': 'Kao Tapu',
-      'image': 'assets/images/backgrounds/kao_tapu.png'
+      'image': 'assets/images/backgrounds/kao_tapu.png',
     },
     {
       'id': 'red_lotus_lake',
       'title': 'Red Lotus Lake',
-      'image': 'assets/images/backgrounds/red_lotus_lake.png'
+      'image': 'assets/images/backgrounds/red_lotus_lake.png',
     },
     {
       'id': 'sea_of_cloud',
       'title': 'The Sea of Cloud',
-      'image': 'assets/images/backgrounds/sea_of_cloud.png'
+      'image': 'assets/images/backgrounds/sea_of_cloud.png',
     },
     {
       'id': 'lumphini_park',
       'title': 'Lumphini Park',
-      'image': 'assets/images/backgrounds/lumphini_park.png'
+      'image': 'assets/images/backgrounds/lumphini_park.png',
     },
   ];
 
@@ -50,9 +51,7 @@ class _SelectBackgroundScreenState extends State<SelectBackgroundScreen> {
             width: double.infinity,
             decoration: const BoxDecoration(
               color: AppColors.brownDeep,
-              borderRadius: BorderRadius.vertical(
-                top: Radius.circular(35),
-              ),
+              borderRadius: BorderRadius.vertical(top: Radius.circular(35)),
             ),
             child: SafeArea(
               bottom: false,
@@ -65,12 +64,12 @@ class _SelectBackgroundScreenState extends State<SelectBackgroundScreen> {
                     GestureDetector(
                       onTap: () => Navigator.pop(context),
                       child: Container(
-                        width: 48,
-                        height: 48,
+                        width: 52,
+                        height: 52,
                         alignment: Alignment.center,
                         decoration: BoxDecoration(
                           color: Colors.white,
-                          borderRadius: BorderRadius.circular(16),
+                          borderRadius: BorderRadius.circular(14),
                           boxShadow: [
                             BoxShadow(
                               color: Colors.black.withValues(alpha: 0.08),
@@ -79,20 +78,26 @@ class _SelectBackgroundScreenState extends State<SelectBackgroundScreen> {
                             ),
                           ],
                           border: Border.all(
-                              color: Colors.grey.shade300, width: 1.5),
+                            color: Colors.grey.shade300,
+                            width: 1.5,
+                          ),
                         ),
-                        child: const Icon(Icons.chevron_left,
-                            color: Colors.black, size: 30),
+                        child: SvgPicture.asset(
+                          'assets/images/icons/Back.svg',
+                          width: 26,
+                          height: 26,
+                        ),
                       ),
                     ),
                     const Spacer(),
                     const Text(
-                      'Select background',
+                      'Select room type',
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 22,
-                          fontWeight: FontWeight.w800),
+                        color: Colors.white,
+                        fontSize: 22,
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
                     const Spacer(),
                     const SizedBox(width: 48),
@@ -118,21 +123,26 @@ class _SelectBackgroundScreenState extends State<SelectBackgroundScreen> {
 
                 return GestureDetector(
                   onTap: () => setState(() => selectedLocation = loc['id']),
-                  child: Container(
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    curve: Curves.easeOut,
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(
-                        width: isSelected ? 3 : 0,
+                        width: isSelected ? 4.5 : 1,
                         color: isSelected
-                            ? const Color(0xFF85BA72)
-                            : Colors.transparent,
+                            ? const Color(0xFFF0BFD6)
+                            : Colors.grey.shade300,
                       ),
                       boxShadow: [
                         BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.1),
-                            blurRadius: 10,
-                            offset: const Offset(0, 5)),
+                          color: Colors.black.withValues(
+                            alpha: isSelected ? 0.15 : 0.08,
+                          ),
+                          blurRadius: isSelected ? 14 : 8,
+                          offset: const Offset(0, 4),
+                        ),
                       ],
                     ),
                     child: Column(
@@ -141,15 +151,16 @@ class _SelectBackgroundScreenState extends State<SelectBackgroundScreen> {
                         Expanded(
                           flex: 3,
                           child: ClipRRect(
-                            borderRadius: const BorderRadius.vertical(
-                                top: Radius.circular(20)),
+                            borderRadius: BorderRadius.vertical(
+                              top: Radius.circular(isSelected ? 17 : 19),
+                            ),
                             child: Image.asset(
                               loc['image']!,
                               fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) =>
-                                  Container(
-                                      color: Colors.grey.shade300,
-                                      child: const Icon(Icons.image)),
+                              errorBuilder: (_, __, ___) => Container(
+                                color: Colors.grey.shade300,
+                                child: const Icon(Icons.image),
+                              ),
                             ),
                           ),
                         ),
@@ -160,9 +171,10 @@ class _SelectBackgroundScreenState extends State<SelectBackgroundScreen> {
                               loc['title']!,
                               textAlign: TextAlign.center,
                               style: const TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w800,
-                                  color: Colors.black),
+                                fontSize: 14,
+                                fontWeight: FontWeight.w800,
+                                color: Colors.black,
+                              ),
                             ),
                           ),
                         ),
@@ -178,61 +190,42 @@ class _SelectBackgroundScreenState extends State<SelectBackgroundScreen> {
             top: false,
             child: Padding(
               padding: const EdgeInsets.only(bottom: 24, left: 24, right: 24),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Spacer(),
-                  ElevatedButton(
-                    onPressed: selectedLocation != null
-                        ? () {
-                            final selectedLocData = locations.firstWhere(
-                                (loc) => loc['id'] == selectedLocation);
-
-                            if (roomType == 'group' || roomType == 'create') {
-                              Navigator.pushNamed(
-                                context,
-                                AppRoutes.groupChatScreen,
-                                arguments: {
-                                  'roomName': selectedLocData['title'],
-                                  'bgImage': selectedLocData['image'],
-                                },
-                              );
-                            } else {
-                              Navigator.pushNamed(
-                                context,
-                                AppRoutes.chatScreen,
-                                arguments: {
-                                  'roomName': selectedLocData['title'],
-                                  'bgImage': selectedLocData['image'],
-                                  'roomType': roomType,
-                                },
-                              );
-                            }
-                          }
-                        : null,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFD9EACF),
-                      foregroundColor: Colors.black,
-                      elevation: 4,
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 40, vertical: 16),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(20)),
+              child: SizedBox(
+                width: double.infinity,
+                height: 55,
+                child: ElevatedButton(
+                  onPressed: selectedLocation != null
+                      ? () {
+                          final selectedLocData = locations.firstWhere(
+                            (loc) => loc['id'] == selectedLocation,
+                          );
+                          Navigator.pushNamed(
+                            context,
+                            AppRoutes.findingRoom,
+                            arguments: {
+                              'roomName': selectedLocData['title'],
+                              'bgImage': selectedLocData['image'],
+                              'roomType': roomType,
+                              'isGroup':
+                                  roomType == 'group' || roomType == 'create',
+                            },
+                          );
+                        }
+                      : null,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFD9EACF),
+                    foregroundColor: Colors.black,
+                    disabledBackgroundColor: const Color(0xFFE8E8E8),
+                    elevation: 3,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
                     ),
-                    child: const Text("Let's go!",
-                        style: TextStyle(
-                            fontSize: 18, fontWeight: FontWeight.bold)),
                   ),
-                  const Spacer(),
-                  Container(
-                    width: 45,
-                    height: 45,
-                    decoration: const BoxDecoration(
-                        color: Color(0xFF6B5E5B), shape: BoxShape.circle),
-                    child: const Icon(Icons.keyboard_arrow_down,
-                        color: Colors.white, size: 30),
+                  child: const Text(
+                    "Let's go!",
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
-                ],
+                ),
               ),
             ),
           ),

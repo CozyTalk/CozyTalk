@@ -15,11 +15,20 @@ void showConfirmBlockDialog({
     builder: (_) => _ConfirmDialog(
       title: 'Block "$username"',
       body: TextSpan(
-        style: const TextStyle(fontSize: 14, color: Colors.black87, height: 1.5),
+        style: const TextStyle(
+          fontSize: 14,
+          color: Colors.black87,
+          height: 1.5,
+        ),
         children: [
           const TextSpan(text: 'Are you sure you want to block\n'),
-          TextSpan(text: '"$username"', style: const TextStyle(fontWeight: FontWeight.bold)),
-          const TextSpan(text: '?\nThey will no longer be able to contact you.'),
+          TextSpan(
+            text: '"$username"',
+            style: const TextStyle(fontWeight: FontWeight.bold),
+          ),
+          const TextSpan(
+            text: '?\nThey will no longer be able to contact you.',
+          ),
         ],
       ),
       confirmLabel: 'Block',
@@ -44,10 +53,17 @@ void showConfirmUnblockDialog({
     builder: (_) => _ConfirmDialog(
       title: 'Unblock "$username"',
       body: TextSpan(
-        style: const TextStyle(fontSize: 14, color: Colors.black87, height: 1.5),
+        style: const TextStyle(
+          fontSize: 14,
+          color: Colors.black87,
+          height: 1.5,
+        ),
         children: [
           const TextSpan(text: 'Are you sure you want to unblock\n'),
-          TextSpan(text: '"$username"', style: const TextStyle(fontWeight: FontWeight.bold)),
+          TextSpan(
+            text: '"$username"',
+            style: const TextStyle(fontWeight: FontWeight.bold),
+          ),
           const TextSpan(text: '?'),
         ],
       ),
@@ -105,10 +121,7 @@ class _ConfirmDialog extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 12),
-            RichText(
-              textAlign: TextAlign.center,
-              text: body,
-            ),
+            RichText(textAlign: TextAlign.center, text: body),
             const SizedBox(height: 24),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -118,7 +131,10 @@ class _ConfirmDialog extends StatelessWidget {
                   bgColor: Colors.grey.shade200,
                   borderColor: const Color(0xFFB7B4B4),
                   textColor: Colors.black87,
-                  padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 28,
+                    vertical: 12,
+                  ),
                   constraints: null,
                   onTap: () => Navigator.pop(context),
                 ),
@@ -128,7 +144,10 @@ class _ConfirmDialog extends StatelessWidget {
                   bgColor: confirmBgColor,
                   borderColor: confirmBorderColor,
                   textColor: confirmTextColor,
-                  padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 28,
+                    vertical: 12,
+                  ),
                   constraints: null,
                   onTap: () {
                     Navigator.pop(context);
@@ -143,4 +162,3 @@ class _ConfirmDialog extends StatelessWidget {
     );
   }
 }
-

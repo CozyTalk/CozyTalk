@@ -11,7 +11,8 @@ void showRemoveConfirmDialog({
   showDialog(
     context: context,
     barrierColor: Colors.black.withValues(alpha: 0.35),
-    builder: (_) => _RemoveConfirmDialog(friendName: friend.name, onConfirm: onConfirm),
+    builder: (_) =>
+        _RemoveConfirmDialog(friendName: friend.name, onConfirm: onConfirm),
   );
 }
 
@@ -19,7 +20,10 @@ class _RemoveConfirmDialog extends StatelessWidget {
   final String friendName;
   final VoidCallback onConfirm;
 
-  const _RemoveConfirmDialog({required this.friendName, required this.onConfirm});
+  const _RemoveConfirmDialog({
+    required this.friendName,
+    required this.onConfirm,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -48,7 +52,11 @@ class _RemoveConfirmDialog extends StatelessWidget {
             RichText(
               textAlign: TextAlign.center,
               text: TextSpan(
-                style: const TextStyle(fontSize: 14, color: Colors.black87, height: 1.5),
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: Colors.black87,
+                  height: 1.5,
+                ),
                 children: [
                   const TextSpan(text: 'Are you sure you want to remove\n'),
                   TextSpan(
@@ -68,7 +76,10 @@ class _RemoveConfirmDialog extends StatelessWidget {
                   bgColor: Colors.grey.shade200,
                   borderColor: const Color(0xFFB7B4B4),
                   textColor: Colors.black87,
-                  padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 28,
+                    vertical: 12,
+                  ),
                   constraints: null,
                   onTap: () => Navigator.pop(context),
                 ),
@@ -78,7 +89,10 @@ class _RemoveConfirmDialog extends StatelessWidget {
                   bgColor: AppColors.redOrange,
                   borderColor: const Color(0xFFA33615),
                   textColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 28,
+                    vertical: 12,
+                  ),
                   constraints: null,
                   onTap: () {
                     Navigator.pop(context);
@@ -93,4 +107,3 @@ class _RemoveConfirmDialog extends StatelessWidget {
     );
   }
 }
-

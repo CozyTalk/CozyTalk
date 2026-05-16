@@ -16,7 +16,6 @@ class HomeScreen extends ConsumerStatefulWidget {
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   bool _hasNotification = true;
-  String _moodText = '';
   Future<void> _navigateMood() async {
     final result = await Navigator.pushNamed(context, AppRoutes.mood);
     if (result is String && mounted) {
@@ -27,7 +26,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Future<void> _navigateDressUp() async {
     final result = await Navigator.pushNamed(context, AppRoutes.dressUp);
     if (result is String && mounted) {
-      ref.read(avatarProvider.notifier).setAccessory(AvatarOverlays.accessory[result]);
+      ref
+          .read(avatarProvider.notifier)
+          .setAccessory(AvatarOverlays.accessory[result]);
     }
   }
 
@@ -35,10 +36,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   void _editMood() async {
     final result = await showThoughtBubbleDialog(
       context: context,
-      initialText: _moodText,
+      initialText: ref.read(userProfileProvider).thought,
     );
     if (result != null && mounted) {
-      setState(() => _moodText = result);
+      ref.read(userProfileProvider.notifier).setThought(result);
     }
   }
 
@@ -77,13 +78,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     const SizedBox(height: 8),
 
                     _AvatarCard(
-                      moodText: _moodText,
+                      moodText: ref.watch(userProfileProvider).thought,
                       onMoodTap: _editMood,
                       moodOverlay: ref.watch(avatarProvider).mood,
                       accessoryOverlay: ref.watch(avatarProvider).accessory,
                     ),
                     const SizedBox(height: 22),
-                    
+
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       children: [
@@ -114,10 +115,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     const SizedBox(height: 22),
                     // Let's chat
                     Center(
-                        child: _LetsChatButton(
-                      onTap: () => Navigator.pushNamed(
-                          context, AppRoutes.chooseRoomType),
-                    )),
+                      child: _LetsChatButton(
+                        onTap: () => Navigator.pushNamed(
+                          context,
+                          AppRoutes.chooseRoomType,
+                        ),
+                      ),
+                    ),
                     const SizedBox(height: 28),
                   ],
                 ),
@@ -147,9 +151,7 @@ class _TopBar extends StatelessWidget {
     return Container(
       decoration: const BoxDecoration(
         color: Color(0xFF695959),
-        borderRadius: BorderRadius.vertical(
-          top: Radius.circular(35),
-        ),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(35)),
       ),
       child: SafeArea(
         bottom: false,
@@ -176,7 +178,7 @@ class _TopBar extends StatelessWidget {
                 },
               ),
               const Spacer(),
-              
+
               Stack(
                 clipBehavior: Clip.none,
                 children: [
@@ -188,17 +190,17 @@ class _TopBar extends StatelessWidget {
                       alignment: Alignment.center,
                       decoration: BoxDecoration(
                         color: Colors.white,
-                        borderRadius: BorderRadius.circular(16), 
+                        borderRadius: BorderRadius.circular(16),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withValues(alpha:0.08),
+                            color: Colors.black.withValues(alpha: 0.08),
                             blurRadius: 10,
                             offset: const Offset(0, 4),
-                          )
+                          ),
                         ],
                         border: Border.all(
-                          color: Colors.grey.shade300, 
-                          width: 1.5, 
+                          color: Colors.grey.shade300,
+                          width: 1.5,
                         ),
                       ),
                       child: SvgPicture.asset(
@@ -213,23 +215,23 @@ class _TopBar extends StatelessWidget {
                       top: -4,
                       right: -4,
                       child: Container(
-                        width: 16, 
+                        width: 16,
                         height: 16,
                         decoration: BoxDecoration(
                           color: const Color(0xFFCF5733),
                           shape: BoxShape.circle,
                           border: Border.all(
                             color: const Color(0xFFA33615),
-                            width: 2.0, 
+                            width: 2.0,
                           ),
                         ),
                       ),
                     ),
                 ],
               ),
-              
-              const SizedBox(width: 14), 
-              
+
+              const SizedBox(width: 14),
+
               GestureDetector(
                 onTap: onUserTap,
                 child: Container(
@@ -241,15 +243,12 @@ class _TopBar extends StatelessWidget {
                     borderRadius: BorderRadius.circular(16),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withValues(alpha:0.08),
+                        color: Colors.black.withValues(alpha: 0.08),
                         blurRadius: 10,
                         offset: const Offset(0, 4),
-                      )
+                      ),
                     ],
-                    border: Border.all(
-                      color: Colors.grey.shade300, 
-                      width: 1.5, 
-                    ),
+                    border: Border.all(color: Colors.grey.shade300, width: 1.5),
                   ),
                   child: SvgPicture.asset(
                     'assets/images/icons/User.svg',
@@ -297,7 +296,7 @@ class _AvatarCardState extends State<_AvatarCard> {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha:0.12),
+            color: Colors.black.withValues(alpha: 0.12),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -307,10 +306,14 @@ class _AvatarCardState extends State<_AvatarCard> {
         borderRadius: BorderRadius.circular(20),
         child: LayoutBuilder(
           builder: (context, constraints) {
-            double safeX =
-                _bubblePosition.dx.clamp(0.0, constraints.maxWidth - 90.0);
-            double safeY =
-                _bubblePosition.dy.clamp(0.0, constraints.maxHeight - 100.0);
+            double safeX = _bubblePosition.dx.clamp(
+              0.0,
+              constraints.maxWidth - 90.0,
+            );
+            double safeY = _bubblePosition.dy.clamp(
+              0.0,
+              constraints.maxHeight - 100.0,
+            );
 
             // Avatar is 90px tall, positioned at bottom 62.
             // avatarTop = cardHeight(270) - 62 - 90 = 118
@@ -327,7 +330,8 @@ class _AvatarCardState extends State<_AvatarCard> {
                       'assets/images/backgrounds/HomeBg.png',
                       fit: BoxFit.cover,
                       alignment: Alignment.center,
-                      errorBuilder: (_, __, ___) => Container(color: AppColors.tanGreen),
+                      errorBuilder: (_, __, ___) =>
+                          Container(color: AppColors.tanGreen),
                     ),
                   ),
                 ),
@@ -348,19 +352,27 @@ class _AvatarCardState extends State<_AvatarCard> {
                         color: AppColors.white.withValues(alpha: 0.85),
                         borderRadius: BorderRadius.circular(50),
                       ),
-                      child: const Icon(Icons.person, size: 50, color: AppColors.brownDeep),
+                      child: const Icon(
+                        Icons.person,
+                        size: 50,
+                        color: AppColors.brownDeep,
+                      ),
                     ),
                   ),
                 ),
 
                 // Accessory layer — hats go under mood
-                if (widget.accessoryOverlay != null && !widget.accessoryOverlay!.aboveMood)
+                if (widget.accessoryOverlay != null &&
+                    !widget.accessoryOverlay!.aboveMood)
                   Positioned(
-                    top:  widget.accessoryOverlay!.top,
-                    left: centerX + widget.accessoryOverlay!.cx - widget.accessoryOverlay!.w / 2,
+                    top: widget.accessoryOverlay!.top,
+                    left:
+                        centerX +
+                        widget.accessoryOverlay!.cx -
+                        widget.accessoryOverlay!.w / 2,
                     child: Image.asset(
                       widget.accessoryOverlay!.path,
-                      width:  widget.accessoryOverlay!.w,
+                      width: widget.accessoryOverlay!.w,
                       height: widget.accessoryOverlay!.h,
                       fit: BoxFit.contain,
                     ),
@@ -369,24 +381,31 @@ class _AvatarCardState extends State<_AvatarCard> {
                 // Mood layer
                 if (widget.moodOverlay != null)
                   Positioned(
-                    top:  widget.moodOverlay!.top,
-                    left: centerX + widget.moodOverlay!.cx - widget.moodOverlay!.w / 2,
+                    top: widget.moodOverlay!.top,
+                    left:
+                        centerX +
+                        widget.moodOverlay!.cx -
+                        widget.moodOverlay!.w / 2,
                     child: Image.asset(
                       widget.moodOverlay!.path,
-                      width:  widget.moodOverlay!.w,
+                      width: widget.moodOverlay!.w,
                       height: widget.moodOverlay!.h,
                       fit: BoxFit.contain,
                     ),
                   ),
 
                 // Accessory layer — above mood (glasses)
-                if (widget.accessoryOverlay != null && widget.accessoryOverlay!.aboveMood)
+                if (widget.accessoryOverlay != null &&
+                    widget.accessoryOverlay!.aboveMood)
                   Positioned(
-                    top:  widget.accessoryOverlay!.top,
-                    left: centerX + widget.accessoryOverlay!.cx - widget.accessoryOverlay!.w / 2,
+                    top: widget.accessoryOverlay!.top,
+                    left:
+                        centerX +
+                        widget.accessoryOverlay!.cx -
+                        widget.accessoryOverlay!.w / 2,
                     child: Image.asset(
                       widget.accessoryOverlay!.path,
-                      width:  widget.accessoryOverlay!.w,
+                      width: widget.accessoryOverlay!.w,
                       height: widget.accessoryOverlay!.h,
                       fit: BoxFit.contain,
                     ),
@@ -491,15 +510,12 @@ class _QuickAction extends StatelessWidget {
               borderRadius: BorderRadius.circular(22),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha:0.08),
+                  color: Colors.black.withValues(alpha: 0.08),
                   blurRadius: 10,
                   offset: const Offset(0, 4),
-                )
+                ),
               ],
-              border: Border.all(
-                color: Colors.grey.shade300, 
-                width: 1.5, 
-              ),
+              border: Border.all(color: Colors.grey.shade300, width: 1.5),
             ),
             child: SvgPicture.asset(
               imagePath,
@@ -538,15 +554,12 @@ class _LetsChatButton extends StatelessWidget {
           borderRadius: BorderRadius.circular(25),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha:0.1),
+              color: Colors.black.withValues(alpha: 0.1),
               blurRadius: 12,
               offset: const Offset(0, 4),
-            )
+            ),
           ],
-          border: Border.all(
-            color: Colors.grey.shade300,
-            width: 1.5,
-          ),
+          border: Border.all(color: Colors.grey.shade300, width: 1.5),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -572,4 +585,3 @@ class _LetsChatButton extends StatelessWidget {
     );
   }
 }
-

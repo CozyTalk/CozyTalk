@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../theme/app_routes.dart';
+import '../screens/home_screen.dart';
 
 class LeaveRoomDialog extends StatelessWidget {
   const LeaveRoomDialog({super.key});
@@ -10,9 +10,7 @@ class LeaveRoomDialog extends StatelessWidget {
       backgroundColor: Colors.white,
       elevation: 0,
       insetPadding: const EdgeInsets.symmetric(horizontal: 32),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(24),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(24, 22, 24, 20),
         child: Column(
@@ -74,10 +72,12 @@ class LeaveRoomDialog extends StatelessWidget {
                     height: 42,
                     child: ElevatedButton(
                       onPressed: () {
-                        Navigator.pushNamedAndRemoveUntil(
+                        Navigator.pushAndRemoveUntil(
                           context,
-                          AppRoutes.home,
-                          (route) => false,
+                          MaterialPageRoute<void>(
+                            builder: (_) => const HomeScreen(),
+                          ),
+                          (_) => false,
                         );
                       },
                       style: ElevatedButton.styleFrom(

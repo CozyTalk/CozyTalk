@@ -15,7 +15,8 @@ import '../../domain/usecases/sign_out.dart';
 import '../../domain/usecases/sign_up.dart';
 
 final _authDatasourceProvider = Provider<AuthDatasource>(
-  (ref) => AuthDatasourceImpl(FirebaseAuth.instance, FirebaseFirestore.instance),
+  (ref) =>
+      AuthDatasourceImpl(FirebaseAuth.instance, FirebaseFirestore.instance),
 );
 
 final _authRepositoryProvider = Provider<AuthRepository>(
@@ -55,21 +56,17 @@ class AuthState {
   final AuthUser? user;
   final String? error;
 
-  const AuthState({
-    this.status = AuthStatus.idle,
-    this.user,
-    this.error,
-  });
+  const AuthState({this.status = AuthStatus.idle, this.user, this.error});
 
   AuthState copyWith({
     AuthStatus? status,
     Object? user = _sentinel,
     Object? error = _sentinel,
   }) => AuthState(
-        status: status ?? this.status,
-        user: user == _sentinel ? this.user : user as AuthUser?,
-        error: error == _sentinel ? this.error : error as String?,
-      );
+    status: status ?? this.status,
+    user: user == _sentinel ? this.user : user as AuthUser?,
+    error: error == _sentinel ? this.error : error as String?,
+  );
 }
 
 class AuthNotifier extends Notifier<AuthState> {
@@ -81,7 +78,9 @@ class AuthNotifier extends Notifier<AuthState> {
     _sub = ref.read(_authRepositoryProvider).watchAuthState().listen((user) {
       if (state.status == AuthStatus.loading) return;
       state = state.copyWith(
-        status: user != null ? AuthStatus.authenticated : AuthStatus.unauthenticated,
+        status: user != null
+            ? AuthStatus.authenticated
+            : AuthStatus.unauthenticated,
         user: user,
         error: null,
       );
@@ -97,7 +96,10 @@ class AuthNotifier extends Notifier<AuthState> {
       final user = await ref.read(_signInAnonymouslyProvider)();
       state = state.copyWith(status: AuthStatus.authenticated, user: user);
     } catch (e) {
-      state = state.copyWith(status: AuthStatus.unauthenticated, error: e.toString().replaceFirst('Exception: ', ''));
+      state = state.copyWith(
+        status: AuthStatus.unauthenticated,
+        error: e.toString().replaceFirst('Exception: ', ''),
+      );
     }
   }
 
@@ -108,7 +110,10 @@ class AuthNotifier extends Notifier<AuthState> {
       final user = await ref.read(_signInWithGoogleProvider)();
       state = state.copyWith(status: AuthStatus.authenticated, user: user);
     } catch (e) {
-      state = state.copyWith(status: AuthStatus.unauthenticated, error: e.toString().replaceFirst('Exception: ', ''));
+      state = state.copyWith(
+        status: AuthStatus.unauthenticated,
+        error: e.toString().replaceFirst('Exception: ', ''),
+      );
     }
   }
 
@@ -116,10 +121,16 @@ class AuthNotifier extends Notifier<AuthState> {
     if (state.status == AuthStatus.loading) return;
     state = state.copyWith(status: AuthStatus.loading, error: null);
     try {
-      final user = await ref.read(_signUpProvider)(email: email, password: password);
+      final user = await ref.read(_signUpProvider)(
+        email: email,
+        password: password,
+      );
       state = state.copyWith(status: AuthStatus.authenticated, user: user);
     } catch (e) {
-      state = state.copyWith(status: AuthStatus.unauthenticated, error: e.toString().replaceFirst('Exception: ', ''));
+      state = state.copyWith(
+        status: AuthStatus.unauthenticated,
+        error: e.toString().replaceFirst('Exception: ', ''),
+      );
     }
   }
 
@@ -127,15 +138,25 @@ class AuthNotifier extends Notifier<AuthState> {
     if (state.status == AuthStatus.loading) return;
     state = state.copyWith(status: AuthStatus.loading, error: null);
     try {
-      final user = await ref.read(_signInProvider)(email: email, password: password);
+      final user = await ref.read(_signInProvider)(
+        email: email,
+        password: password,
+      );
       state = state.copyWith(status: AuthStatus.authenticated, user: user);
     } catch (e) {
-      state = state.copyWith(status: AuthStatus.unauthenticated, error: e.toString().replaceFirst('Exception: ', ''));
+      state = state.copyWith(
+        status: AuthStatus.unauthenticated,
+        error: e.toString().replaceFirst('Exception: ', ''),
+      );
     }
   }
 
   Future<void> signOut() async {
     await ref.read(_signOutProvider)();
-    state = state.copyWith(status: AuthStatus.unauthenticated, user: null, error: null);
+    state = state.copyWith(
+      status: AuthStatus.unauthenticated,
+      user: null,
+      error: null,
+    );
   }
 }

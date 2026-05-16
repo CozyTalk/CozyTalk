@@ -12,9 +12,9 @@ class HelloDatasourceImpl implements HelloDatasource {
 
   @override
   Future<HelloMessageModel> callHello(String message) async {
-    final result = await _functions
-        .httpsCallable('helloWorld')
-        .call({'message': message});
+    final result = await _functions.httpsCallable('helloWorld').call({
+      'message': message,
+    });
     final data = result.data;
     if (data is! Map) {
       throw Exception('Unexpected response format from helloWorld');
