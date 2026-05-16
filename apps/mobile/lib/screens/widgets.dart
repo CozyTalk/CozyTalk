@@ -94,7 +94,7 @@ class UserAvatarWidget extends StatelessWidget {
     return Image.asset(
       'assets/images/UserAvatar.png',
       height: size,
-      errorBuilder: (_, __, ___) =>
+      errorBuilder: (_, _, _) =>
           Icon(Icons.person, size: size, color: AppColors.brownDeep),
     );
   }

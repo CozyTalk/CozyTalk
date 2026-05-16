@@ -62,6 +62,7 @@ class ChatState {
   final String? sessionId;
   final String? currentUserId;
   final String? currentUserDisplayName;
+  final String? currentUserPhotoUrl;
   final List<ChatMessage> messages;
   final List<TypingUser> typingUsers;
   final bool isSending;
@@ -72,6 +73,7 @@ class ChatState {
     this.sessionId,
     this.currentUserId,
     this.currentUserDisplayName,
+    this.currentUserPhotoUrl,
     this.messages = const [],
     this.typingUsers = const [],
     this.isSending = false,
@@ -83,6 +85,7 @@ class ChatState {
     Object? sessionId = _sentinel,
     Object? currentUserId = _sentinel,
     Object? currentUserDisplayName = _sentinel,
+    Object? currentUserPhotoUrl = _sentinel,
     List<ChatMessage>? messages,
     List<TypingUser>? typingUsers,
     bool? isSending,
@@ -96,6 +99,12 @@ class ChatState {
     currentUserDisplayName: currentUserDisplayName == _sentinel
         ? this.currentUserDisplayName
         : currentUserDisplayName as String?,
+<<<<<<< HEAD
+=======
+    currentUserPhotoUrl: currentUserPhotoUrl == _sentinel
+        ? this.currentUserPhotoUrl
+        : currentUserPhotoUrl as String?,
+>>>>>>> 589b1f4846d9a8aa03eeae3ddffddeb67f29d43a
     messages: messages ?? this.messages,
     typingUsers: typingUsers ?? this.typingUsers,
     isSending: isSending ?? this.isSending,
@@ -114,6 +123,7 @@ class ChatNotifier extends Notifier<ChatState> {
     required String sessionId,
     required String currentUserId,
     String? currentUserDisplayName,
+    String? currentUserPhotoUrl,
   }) {
     _cancelSubscriptions();
     state = ChatState(
@@ -121,13 +131,10 @@ class ChatNotifier extends Notifier<ChatState> {
       sessionId: sessionId,
       currentUserId: currentUserId,
       currentUserDisplayName: currentUserDisplayName,
+      currentUserPhotoUrl: currentUserPhotoUrl,
     );
 
-    if (sessionId.startsWith('proto-')) {
-      _joinProtoThenSubscribe(sessionId, currentUserId);
-    } else {
-      _startSubscriptions(sessionId);
-    }
+    _joinProtoThenSubscribe(sessionId, currentUserId);
   }
 
   Future<void> _joinProtoThenSubscribe(String sessionId, String uid) async {
@@ -150,7 +157,19 @@ class ChatNotifier extends Notifier<ChatState> {
         .read(_watchMessagesProvider)(sessionId)
         .listen(
           (messages) => state = state.copyWith(messages: messages),
-          onError: (Object e) => state = state.copyWith(error: e.toString()),
+          onError: (Object e) {
+            final msg = e.toString();
+            if (msg.contains('permission-denied') ||
+                msg.contains('PERMISSION_DENIED')) {
+              state = state.copyWith(
+                status: SessionStatus.disconnected,
+                error: 'Room is no longer available.',
+              );
+              _cancelSubscriptions();
+            } else {
+              state = state.copyWith(error: msg);
+            }
+          },
         );
 
     _typingSub = ref.read(_watchTypingUsersProvider)(sessionId).listen((users) {
@@ -181,10 +200,9 @@ class ChatNotifier extends Notifier<ChatState> {
         isTyping: isTyping,
         currentUid: uid,
         displayName: state.currentUserDisplayName ?? 'Anonymous',
+        photoUrl: state.currentUserPhotoUrl,
       );
-    } catch (_) {
-      // Typing errors are non-fatal.
-    }
+    } catch (_) {}
   }
 
   Future<void> endSession() async {

@@ -70,7 +70,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
             child: ListView.separated(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
               itemCount: _friends.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 16),
+              separatorBuilder: (_, _) => const SizedBox(height: 16),
               itemBuilder: (context, index) =>
                   _buildFriendCard(_friends[index], index),
             ),

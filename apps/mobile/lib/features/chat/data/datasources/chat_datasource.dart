@@ -19,6 +19,7 @@ abstract class ChatDatasource {
     required bool isTyping,
     required String currentUid,
     required String displayName,
+    String? photoUrl,
   });
   Future<void> endSession({required String sessionId});
 
@@ -42,6 +43,17 @@ class ChatDatasourceImpl implements ChatDatasource {
       final bytes = await _protoKeyBytes(sessionId);
       return bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
     }
+
+    // Check rooms collection first (new matchmaking system).
+    final roomDoc = await _firestore.collection('rooms').doc(sessionId).get();
+    if (roomDoc.exists) {
+      final data = Map<String, dynamic>.from(roomDoc.data()!);
+      final key = data['encryptionKey'] as String?;
+      if (key == null) throw Exception('Encryption key not set for room.');
+      return key;
+    }
+
+    // Fallback: legacy active_sessions (proto and old 1v1 sessions).
     final doc = await _firestore
         .collection('active_sessions')
         .doc(sessionId)
@@ -93,6 +105,7 @@ class ChatDatasourceImpl implements ChatDatasource {
             return TypingUser(
               uid: e.key as String,
               displayName: v['displayName'] as String? ?? 'Anonymous',
+              photoUrl: v['photoUrl'] as String?,
             );
           })
           .toList();
@@ -153,21 +166,19 @@ class ChatDatasourceImpl implements ChatDatasource {
     required bool isTyping,
     required String currentUid,
     required String displayName,
+    String? photoUrl,
   }) async {
-    if (sessionId.startsWith('proto-')) {
-      final ref = _db.ref('typing/$sessionId/$currentUid');
-      if (isTyping) {
-        await ref.set({'isTyping': true, 'displayName': displayName});
-      } else {
-        await ref.remove();
-      }
-      return;
+    if (currentUid.isEmpty) return;
+    final ref = _db.ref('typing/$sessionId/$currentUid');
+    if (isTyping) {
+      await ref.set({
+        'isTyping': true,
+        'displayName': displayName,
+        'photoUrl': ?photoUrl,
+      });
+    } else {
+      await ref.remove();
     }
-
-    await _functions.httpsCallable('setTyping').call({
-      'sessionId': sessionId,
-      'isTyping': isTyping,
-    });
   }
 
   @override
@@ -231,7 +242,7 @@ class ChatDatasourceImpl implements ChatDatasource {
     return hash.bytes;
   }
 
-  // UID-derived seed ensures the same user gets the same name in an empty room; steps forward on collision.
+  // UID-derived seed so the same user gets the same name in an empty room; steps forward on collision.
   static String _anonymousName(String uid, Set<String> taken) {
     const adjectives = [
       'Brave',

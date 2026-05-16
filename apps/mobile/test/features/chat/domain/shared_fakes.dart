@@ -12,6 +12,7 @@ class FakeChatRepository implements ChatRepository {
   bool? lastIsTyping;
   String? lastUid;
   String? lastDisplayName;
+  String? lastPhotoUrl;
   Exception? error;
 
   Stream<List<ChatMessage>> messagesStream = const Stream.empty();
@@ -30,7 +31,10 @@ class FakeChatRepository implements ChatRepository {
   }
 
   @override
-  Future<void> sendMessage({required String sessionId, required String text}) async {
+  Future<void> sendMessage({
+    required String sessionId,
+    required String text,
+  }) async {
     sendMessageCount++;
     lastSessionId = sessionId;
     lastText = text;
@@ -43,12 +47,14 @@ class FakeChatRepository implements ChatRepository {
     required bool isTyping,
     required String currentUid,
     required String displayName,
+    String? photoUrl,
   }) async {
     setTypingCount++;
     lastSessionId = sessionId;
     lastIsTyping = isTyping;
     lastUid = currentUid;
     lastDisplayName = displayName;
+    lastPhotoUrl = photoUrl;
   }
 
   @override

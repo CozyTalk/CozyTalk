@@ -20,7 +20,10 @@ void main() {
     test('copyWith sets user', () {
       const state = AuthState();
       const user = AuthUser(uid: 'u1', email: 'a@b.com');
-      final updated = state.copyWith(status: AuthStatus.authenticated, user: user);
+      final updated = state.copyWith(
+        status: AuthStatus.authenticated,
+        user: user,
+      );
       expect(updated.user?.uid, 'u1');
     });
 

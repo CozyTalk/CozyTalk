@@ -22,7 +22,10 @@ class _FakeAuthDatasource implements AuthDatasource {
       watchStateFactory != null ? watchStateFactory!() : const Stream.empty();
 
   @override
-  Future<AuthUserModel> signIn({required String email, required String password}) async {
+  Future<AuthUserModel> signIn({
+    required String email,
+    required String password,
+  }) async {
     signInCount++;
     lastEmail = email;
     lastPassword = password;
@@ -31,7 +34,10 @@ class _FakeAuthDatasource implements AuthDatasource {
   }
 
   @override
-  Future<AuthUserModel> signUp({required String email, required String password}) async {
+  Future<AuthUserModel> signUp({
+    required String email,
+    required String password,
+  }) async {
     signUpCount++;
     lastEmail = email;
     lastPassword = password;
@@ -60,7 +66,11 @@ class _FakeAuthDatasource implements AuthDatasource {
   }
 }
 
-const _model = AuthUserModel(uid: 'uid-1', email: 'a@b.com', displayName: 'Alice');
+const _model = AuthUserModel(
+  uid: 'uid-1',
+  email: 'a@b.com',
+  displayName: 'Alice',
+);
 
 void main() {
   late _FakeAuthDatasource datasource;
@@ -151,8 +161,9 @@ void main() {
 
     group('watchAuthState', () {
       test('maps AuthUserModel to AuthUser', () async {
-        datasource.watchStateFactory =
-            () => Stream.value(const AuthUserModel(uid: 'stream-uid', email: 'x@y.com'));
+        datasource.watchStateFactory = () => Stream.value(
+          const AuthUserModel(uid: 'stream-uid', email: 'x@y.com'),
+        );
         final repo = AuthRepositoryImpl(datasource);
         final user = await repo.watchAuthState().first;
         expect(user?.uid, 'stream-uid');

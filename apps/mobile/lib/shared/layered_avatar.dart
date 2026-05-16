@@ -43,7 +43,7 @@ class LayeredAvatar extends StatelessWidget {
             width: boxSize,
             height: boxSize,
             fit: BoxFit.contain,
-            errorBuilder: (_, __, ___) => Container(
+            errorBuilder: (_, _, _) => Container(
               width: boxSize,
               height: boxSize,
               decoration: BoxDecoration(

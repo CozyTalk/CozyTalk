@@ -6,33 +6,68 @@ function fail($msg) { Write-Host "  [x]  $msg" -ForegroundColor Red; exit 1 }
 function step($msg) { Write-Host ""; Write-Host "  >>  $msg" -ForegroundColor Cyan }
 function info($msg) { Write-Host "       $msg" -ForegroundColor DarkGray }
 function warn($msg) { Write-Host "  [!]  $msg" -ForegroundColor Yellow }
-function hr()       { Write-Host "  $('─' * 57)" -ForegroundColor DarkGray }
+function hr()       { Write-Host ("  " + ("-" * 57)) -ForegroundColor DarkGray }
 
 $ROOT_DIR = Split-Path -Parent $MyInvocation.MyCommand.Definition
 Set-Location $ROOT_DIR
 
 Write-Host ""
-Write-Host "  CozyTalk  ·  project setup" -ForegroundColor Magenta
+Write-Host "  CozyTalk  -  project setup" -ForegroundColor Magenta
 hr
 Write-Host ""
 
-# ── Prerequisites ──────────────────────────────────────────────────────────────
+# -- Prerequisites -------------------------------------------------------------
 step "Checking prerequisites"
 
 function Require-Cmd($cmd, $label, $hint = "") {
     if (Get-Command $cmd -ErrorAction SilentlyContinue) {
-        $ver = & $cmd --version 2>&1 | Select-Object -First 1
+        $ver = (& $cmd --version 2>&1)[0].ToString()
         ok "$label  $ver"
     } elseif ($hint) {
-        fail "$label not found — $hint"
+        fail "$label not found -- $hint"
     } else {
         fail "$label not found"
     }
 }
 
 Require-Cmd flutter "flutter" "https://docs.flutter.dev/get-started/install"
-Require-Cmd node    "node"    "Install Node.js 20+ from https://nodejs.org"
-Require-Cmd npm     "npm"
+$dartVerLine = (& dart --version 2>&1)[0].ToString()
+$dartMatch = [regex]::Match($dartVerLine, '(\d+)\.(\d+)\.\d+')
+if ($dartMatch.Success) {
+    $dartMajor = [int]$dartMatch.Groups[1].Value
+    $dartMinor = [int]$dartMatch.Groups[2].Value
+    if ($dartMajor -lt 3 -or ($dartMajor -eq 3 -and $dartMinor -lt 9)) {
+        fail "Dart $($dartMatch.Value) is too old -- sdk: ^3.9.0 required (run: flutter upgrade)"
+    }
+}
+
+Require-Cmd node "node" "Install Node.js 24+ from https://nodejs.org"
+$nodeVer = & node --version 2>&1
+$nodeMajor = [int]($nodeVer -replace 'v(\d+).*', '$1')
+if ($nodeMajor -lt 24) {
+    warn "Node $nodeMajor detected -- project targets Node 24 (package.json engines)"
+    info "Upgrade: https://nodejs.org"
+}
+
+Require-Cmd npm "npm"
+
+if (Get-Command java -ErrorAction SilentlyContinue) {
+    # java -version writes to stderr; index [0] + ToString() works on PS 5.1 and PS 7.
+    $javaVerLine = (& java -version 2>&1)[0].ToString()
+    ok "java  $javaVerLine"
+    $javaMatch = [regex]::Match($javaVerLine, '"(\d+)(?:\.(\d+))?')
+    if ($javaMatch.Success) {
+        $javaMajor = [int]$javaMatch.Groups[1].Value
+        if ($javaMajor -eq 1) { $javaMajor = [int]$javaMatch.Groups[2].Value }
+        if ($javaMajor -lt 21) {
+            warn "Java $javaMajor detected -- Java 21+ required for Firebase emulators and Android builds"
+            info "Install JDK 21+ from https://adoptium.net"
+        }
+    }
+} else {
+    warn "java not found -- needed for Android builds and Firebase emulators"
+    info "Install JDK 21+ from https://adoptium.net"
+}
 
 if (Get-Command firebase -ErrorAction SilentlyContinue) {
     $fbVer = & firebase --version 2>&1 | Select-Object -First 1
@@ -43,7 +78,7 @@ if (Get-Command firebase -ErrorAction SilentlyContinue) {
     info "(or the emulator will fall back to npx, which is slower)"
 }
 
-# ── Flutter dependencies ───────────────────────────────────────────────────────
+# -- Flutter dependencies ------------------------------------------------------
 step "Flutter dependencies"
 info "flutter pub get  ->  apps/mobile"
 $mobileDir = Join-Path (Join-Path $ROOT_DIR 'apps') 'mobile'
@@ -54,17 +89,17 @@ Pop-Location
 if ($code -ne 0) { fail "flutter pub get failed" }
 ok "Flutter packages ready"
 
-# ── Code generation ────────────────────────────────────────────────────────────
+# -- Code generation -----------------------------------------------------------
 step "Code generation (Freezed + Riverpod)"
 info "build_runner build  ->  apps/mobile"
 Push-Location $mobileDir
-& dart run build_runner build --delete-conflicting-outputs
+& dart run build_runner build
 $code = $LASTEXITCODE
 Pop-Location
 if ($code -ne 0) { fail "build_runner failed" }
 ok "Generated code up to date"
 
-# ── Cloud Functions ────────────────────────────────────────────────────────────
+# -- Cloud Functions -----------------------------------------------------------
 step "Cloud Functions dependencies"
 info "npm install  ->  functions/"
 $functionsDir = Join-Path $ROOT_DIR 'functions'
@@ -75,7 +110,27 @@ Pop-Location
 if ($code -ne 0) { fail "npm install failed" }
 ok "Node packages ready"
 
-# ── Done ──────────────────────────────────────────────────────────────────────
+# -- .env ----------------------------------------------------------------------
+step ".env"
+$envFile = Join-Path $mobileDir '.env'
+$envExample = Join-Path $mobileDir '.env.example'
+if (-not (Test-Path $envFile)) {
+    Copy-Item $envExample $envFile
+    ok ".env created from .env.example  (USE_EMULATOR=true)"
+} else {
+    ok "apps/mobile/.env already exists"
+}
+
+# -- Git hooks -----------------------------------------------------------------
+step "Git hooks"
+if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
+    fail "git not found -- install Git from https://git-scm.com"
+}
+& git config core.hooksPath .githooks
+ok "pre-commit hook active (dart format + prettier auto-fix; dart analyze + eslint gate)"
+ok "pre-push hook active   (flutter test + functions lint + tsc)"
+
+# -- Done ----------------------------------------------------------------------
 Write-Host ""
 hr
 Write-Host ""

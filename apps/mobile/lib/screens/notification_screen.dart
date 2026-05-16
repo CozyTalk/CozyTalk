@@ -10,7 +10,7 @@ class _NotifItem {
   final String time;
   final bool isFriendRequest;
   final String? roomName;
-  bool accepted;
+  bool accepted = false;
   bool declined;
 
   _NotifItem({
@@ -21,7 +21,6 @@ class _NotifItem {
     required this.time,
     this.isFriendRequest = false,
     this.roomName,
-    this.accepted = false,
     this.declined = false,
   });
 }
@@ -74,7 +73,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
             child: ListView.separated(
               padding: const EdgeInsets.all(20),
               itemCount: _items.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 16),
+              separatorBuilder: (_, _) => const SizedBox(height: 16),
               itemBuilder: (_, i) => _buildCard(_items[i], i),
             ),
           ),

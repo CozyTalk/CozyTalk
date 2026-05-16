@@ -27,6 +27,32 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (_useMainUI) {
+      return MaterialApp(
+        title: 'CozyTalk',
+        debugShowCheckedModeBanner: false,
+        theme: AppTheme.theme,
+        initialRoute: AppRoutes.home,
+        routes: {
+          AppRoutes.home: (_) => const HomeScreen(),
+          AppRoutes.notification: (_) => const NotificationScreen(),
+          AppRoutes.profile: (_) => const ProfileScreen(),
+          AppRoutes.blocked: (_) => const BlockedScreen(),
+          AppRoutes.dressUp: (_) => const DressUpScreen(),
+          AppRoutes.mood: (_) => const MoodScreen(),
+          AppRoutes.friends: (_) => const FriendsScreen(),
+          AppRoutes.friendChat: (_) => const FriendChatScreen(),
+          AppRoutes.chooseRoomType: (_) => const ChooseRoomTypeScreen(),
+          AppRoutes.selectBackground: (ctx) {
+            final args = ModalRoute.of(ctx)?.settings.arguments as String?;
+            return SelectBackgroundScreen(roomType: args);
+          },
+          AppRoutes.joinRoomId: (_) => const JoinRoomIdScreen(),
+          AppRoutes.chatScreen: (_) => const ChatScreen(),
+          AppRoutes.groupChatScreen: (_) => const GroupChatScreen(),
+        },
+      );
+    }
     return MaterialApp(
       title: 'CozyTalk',
       debugShowCheckedModeBanner: false,
@@ -51,5 +77,21 @@ class MyApp extends StatelessWidget {
         AppRoutes.findingRoom: (_) => const FindingRoomScreen(),
       },
     );
+  }
+}
+
+class _AuthRouter extends ConsumerWidget {
+  const _AuthRouter();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final status = ref.watch(authNotifierProvider.select((s) => s.status));
+    return switch (status) {
+      AuthStatus.authenticated => const HelloScreen(),
+      AuthStatus.idle => const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      ),
+      _ => const LoginScreen(),
+    };
   }
 }

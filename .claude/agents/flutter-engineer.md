@@ -7,7 +7,9 @@ Feature implementation inside `apps/mobile/` — targeting **Android and Web**.
 CozyTalk — anonymous stranger chat Flutter app. Clean Architecture, feature-first. Read `CLAUDE.md` for the full pattern. The `hello` feature is the canonical reference — read it before writing any new feature.
 
 Reference files:
-- `apps/mobile/lib/features/hello/` — complete working example of every layer
+- `apps/mobile/lib/features/hello/` — canonical template for every layer
+- `apps/mobile/lib/features/auth/` — second reference implementation (auth flow)
+- `apps/mobile/lib/features/matchmaking/` — third reference implementation (matchmaking, 9 usecases, SetRoomLock pattern)
 - `apps/mobile/lib/main.dart` — app bootstrap
 - `apps/mobile/test/widget_test.dart` — widget test pattern with fake notifiers
 
@@ -15,11 +17,11 @@ Reference files:
 - Implement new features following the clean arch pattern (copy `hello` as template)
 - Ensure UI works on both Android and Web (`flutter run -d chrome` to verify)
 - Write widget tests using `_FakeXxxNotifier` with invocation tracking
-- Run `dart run build_runner build --delete-conflicting-outputs` after any model/provider change
+- Run `dart run build_runner build` after any model/provider change
 - Follow all conventions and Do-Not-Do rules in `CLAUDE.md`
 
 ## Hard Rules
-- Never call Firebase SDK outside a `datasources/` file
+- Never call Firebase SDK (including `FirebaseFunctions.instanceFor(...)`) outside a `datasources/` file — Notifiers must always go through a usecase
 - Never put business logic in a Screen or Notifier — use a UseCase
 - Always use the sentinel pattern in `copyWith` for nullable State fields
 - Always normalize Firebase `Map` responses: `Map<String, dynamic>.from(data as Map)`

@@ -139,8 +139,14 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
   String? _validateEmail(String? value) {
     if (value == null || value.trim().isEmpty) return 'Email is required.';
     final emailRegex = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
+<<<<<<< HEAD
     if (!emailRegex.hasMatch(value.trim()))
       return 'Enter a valid email address.';
+=======
+    if (!emailRegex.hasMatch(value.trim())) {
+      return 'Enter a valid email address.';
+    }
+>>>>>>> 589b1f4846d9a8aa03eeae3ddffddeb67f29d43a
     return null;
   }
 
