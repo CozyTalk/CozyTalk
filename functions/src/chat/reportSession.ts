@@ -55,43 +55,74 @@ export const reportSession = onCall(
 
     const db = admin.firestore();
 
-    // Find the encryption key — session may be active or already ended.
+    // Find the encryption key — check new rooms collection first, then
+    // legacy active_sessions, then archived session_keys.
     let encryptionKey: string | null = null;
 
-    const activeSnap = await db
-      .collection("active_sessions")
-      .doc(sessionId)
-      .get();
-    if (activeSnap.exists) {
-      const data = activeSnap.data();
-      if (!data) {
-        throw new HttpsError("internal", "Session data missing.");
-      }
+    const roomSnap = await db.collection("rooms").doc(sessionId).get();
+    if (roomSnap.exists) {
+      const data = roomSnap.data()!;
       if (!(data.users as string[]).includes(reporterId)) {
         throw new HttpsError("permission-denied", "Not a session participant.");
       }
       encryptionKey = (data.encryptionKey as string | undefined) ?? null;
+      // Archive and flag the key immediately so moderators can decrypt messages
+      // even after the room expires or is cleaned up.
+      if (encryptionKey) {
+        await db
+          .collection("session_keys")
+          .doc(sessionId)
+          .set(
+            {
+              sessionId,
+              encryptionKey,
+              users: data.users,
+              createdAt: data.createdAt ?? null,
+              expiresAt: null,
+              flagged: true,
+            },
+            {merge: true},
+          );
+      }
     } else {
-      const keySnap = await db.collection("session_keys").doc(sessionId).get();
-      if (!keySnap.exists) {
-        throw new HttpsError(
-          "not-found",
-          "Session not found or retention window has expired.",
-        );
+      const activeSnap = await db
+        .collection("active_sessions")
+        .doc(sessionId)
+        .get();
+      if (activeSnap.exists) {
+        const data = activeSnap.data()!;
+        if (!(data.users as string[]).includes(reporterId)) {
+          throw new HttpsError(
+            "permission-denied",
+            "Not a session participant.",
+          );
+        }
+        encryptionKey = (data.encryptionKey as string | undefined) ?? null;
+      } else {
+        const keySnap = await db
+          .collection("session_keys")
+          .doc(sessionId)
+          .get();
+        if (!keySnap.exists) {
+          throw new HttpsError(
+            "not-found",
+            "Session not found or retention window has expired.",
+          );
+        }
+        const keyData = keySnap.data()!;
+        if (!(keyData.users as string[]).includes(reporterId)) {
+          throw new HttpsError(
+            "permission-denied",
+            "Not a session participant.",
+          );
+        }
+        encryptionKey = (keyData.encryptionKey as string | undefined) ?? null;
+        // Preserve the key indefinitely for the investigation.
+        await db.collection("session_keys").doc(sessionId).update({
+          expiresAt: null,
+          flagged: true,
+        });
       }
-      const keyData = keySnap.data();
-      if (!keyData) {
-        throw new HttpsError("internal", "Session key data missing.");
-      }
-      if (!(keyData.users as string[]).includes(reporterId)) {
-        throw new HttpsError("permission-denied", "Not a session participant.");
-      }
-      encryptionKey = (keyData.encryptionKey as string | undefined) ?? null;
-      // Preserve the key indefinitely for the investigation.
-      await db.collection("session_keys").doc(sessionId).update({
-        expiresAt: null,
-        flagged: true,
-      });
     }
 
     // Mark all messages as flagged and remove their TTL — they must persist

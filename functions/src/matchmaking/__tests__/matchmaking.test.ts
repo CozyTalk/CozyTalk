@@ -4,6 +4,7 @@ import {
   callFn,
   resetEmulatorData,
   rtdbGet,
+  waitUntilRtdbValue,
   adminFirestoreDoc,
   waitUntilAdminDocMatches,
   tryLeaveRoom,
@@ -14,6 +15,11 @@ import {
 
 beforeEach(async () => {
   await signOut();
+  await resetEmulatorData();
+}, 15_000);
+
+afterEach(async () => {
+  signOut();
   await resetEmulatorData();
 }, 15_000);
 
@@ -32,6 +38,7 @@ describe("priority", () => {
 
     const docA = await adminFirestoreDoc(`rooms/${roomA}`);
     expect(docA!["memberCount"]).toBe(2);
+    await tryLeaveRoom(res["roomId"] as string);
   });
 
   test("1-member room chosen when competing with 3-member and 4-member rooms", async () => {
@@ -51,6 +58,7 @@ describe("priority", () => {
     ]);
     expect(docs[0]!["memberCount"]).toBe(4);
     expect(docs[1]!["memberCount"]).toBe(3);
+    await tryLeaveRoom(res["roomId"] as string);
   });
 
   test("1-member room wins from mixed field (1/5, 2/5, 3/5, 4/5)", async () => {
@@ -73,16 +81,17 @@ describe("priority", () => {
     expect(docs[0]!["memberCount"]).toBe(4);
     expect(docs[1]!["memberCount"]).toBe(2);
     expect(docs[2]!["memberCount"]).toBe(3);
+    await tryLeaveRoom(res["roomId"] as string);
   });
 
-  test("priority distribution: 12 consecutive joiners spread randomly across 3 one-member rooms", async () => {
+  test("priority distribution: 15 consecutive joiners spread randomly across 3 one-member rooms", async () => {
     const roomX = await buildRoom(1);
     const roomY = await buildRoom(1);
     const roomZ = await buildRoom(1);
     const knownRooms = new Set([roomX, roomY, roomZ]);
     const counts: Record<string, number> = {[roomX]: 0, [roomY]: 0, [roomZ]: 0};
 
-    for (let i = 0; i < 12; i++) {
+    for (let i = 0; i < 15; i++) {
       signOut();
       await signInAnon();
       const res = await callFn("joinGroupRoom");
@@ -95,8 +104,8 @@ describe("priority", () => {
 
     const distinct = Object.values(counts).filter((c) => c > 0).length;
     expect(distinct).toBeGreaterThanOrEqual(2);
-    // Sanity bound: P(max ≥ 11) ≈ 0.014% with uniform 3-room dist (< 9 was ~1.1%).
-    expect(Math.max(...Object.values(counts))).toBeLessThan(11);
+    // Sanity bound: P(max ≥ 14 out of 15) ≈ 0.00065% with uniform 3-room dist.
+    expect(Math.max(...Object.values(counts))).toBeLessThan(14);
   });
 
   test("after first 1-member room fills, next joiner picks the remaining 1-member room", async () => {
@@ -121,6 +130,7 @@ describe("priority", () => {
     ]);
     expect(docs[0]!["memberCount"]).toBe(2);
     expect(docs[1]!["memberCount"]).toBe(2);
+    await tryLeaveRoom(resV["roomId"] as string);
   });
 
   test("priority load test: 20 joiners across 5 one-member rooms", async () => {
@@ -177,6 +187,7 @@ describe("priority", () => {
 
     const roomDoc = await adminFirestoreDoc(`rooms/${roomX}`);
     expect(roomDoc!["memberCount"]).toBeLessThanOrEqual(5);
+    await tryLeaveRoom(joinedB);
   });
 });
 
@@ -203,7 +214,8 @@ describe("secondary randomness", () => {
 
     const distinct = Object.values(counts).filter((c) => c > 0).length;
     expect(distinct).toBeGreaterThanOrEqual(2);
-    expect(Math.max(...Object.values(counts))).toBeLessThan(12);
+    // Sanity bound: P(max ≥ 14 out of 15) ≈ 0.00065% with uniform 3-room dist.
+    expect(Math.max(...Object.values(counts))).toBeLessThan(14);
   });
 
   test("repeated join-leave by same user does not always hit same room", async () => {
@@ -232,7 +244,7 @@ describe("secondary randomness", () => {
     const knownRooms = new Set([roomA, roomB, roomC]);
     const counts: Record<string, number> = {[roomA]: 0, [roomB]: 0, [roomC]: 0};
 
-    for (let i = 0; i < 9; i++) {
+    for (let i = 0; i < 12; i++) {
       signOut();
       await signInAnon();
       const res = await callFn("joinGroupRoom");
@@ -259,6 +271,7 @@ describe("secondary randomness", () => {
     const res = await callFn("joinGroupRoom");
     expect(res["isNewRoom"]).toBe(true);
     expect(res["roomId"]).not.toBe(roomA);
+    await tryLeaveRoom(res["roomId"] as string);
   });
 });
 
@@ -284,6 +297,7 @@ describe("padding", () => {
 
     const stillPadding = await adminFirestoreDoc(`rooms/${originalRoomId}`);
     expect(stillPadding!["status"]).toBe("padding");
+    await tryLeaveRoom(newRes["roomId"] as string);
   });
 
   test("joinRoomById on padding room throws failed-precondition", async () => {
@@ -355,6 +369,7 @@ describe("padding", () => {
     const v1Doc = await adminFirestoreDoc(`rooms/${v1RoomId}`);
     expect(v1Doc!["mode"]).toBe("1v1");
     expect(v1Doc!["status"]).toBe("padding");
+    await tryLeaveRoom(groupRes["roomId"] as string);
   });
 });
 
@@ -422,6 +437,7 @@ describe("RTDB and edge cases", () => {
         /resource-exhausted|failed-precondition/,
       );
     }
+    await tryLeaveRoom(newRes["roomId"] as string);
   });
 
   test("locked room excluded from joinGroupRoom; unlocked room still joinable", async () => {
@@ -488,18 +504,20 @@ describe("1v1 pool and match", () => {
     const roomId = poolDoc!["roomId"] as string;
     expect(roomId).toHaveLength(5);
 
-    const [roomDoc, rtdbA, rtdbB] = await Promise.all([
-      adminFirestoreDoc(`rooms/${roomId}`),
-      rtdbGet(`rooms/${roomId}/members/${uidA}`),
-      rtdbGet(`rooms/${roomId}/members/${uidB}`),
-    ]);
-
+    const roomDoc = await adminFirestoreDoc(`rooms/${roomId}`);
     expect(roomDoc!["mode"]).toBe("1v1");
     expect(roomDoc!["status"]).toBe("active");
     expect(roomDoc!["memberCount"]).toBe(2);
     expect(roomDoc!["users"] as string[]).toEqual(
       expect.arrayContaining([uidA, uidB]),
     );
+
+    // match1v1Users writes Firestore (status=matched) before RTDB members —
+    // poll until both entries are visible rather than reading immediately.
+    const [rtdbA, rtdbB] = await Promise.all([
+      waitUntilRtdbValue(`rooms/${roomId}/members/${uidA}`, (s) => s.exists),
+      waitUntilRtdbValue(`rooms/${roomId}/members/${uidB}`, (s) => s.exists),
+    ]);
     expect(rtdbA.value).toBe(true);
     expect(rtdbB.value).toBe(true);
 
@@ -755,9 +773,10 @@ describe("flows", () => {
     expect(roomDoc!["mode"]).toBe("1v1");
     expect(roomDoc!["memberCount"]).toBe(2);
 
+    // match1v1Users writes Firestore before RTDB — poll until both entries appear.
     const [snapA, snapB] = await Promise.all([
-      rtdbGet(`rooms/${roomId}/members/${uidA}`),
-      rtdbGet(`rooms/${roomId}/members/${uidB}`),
+      waitUntilRtdbValue(`rooms/${roomId}/members/${uidA}`, (s) => s.exists),
+      waitUntilRtdbValue(`rooms/${roomId}/members/${uidB}`, (s) => s.exists),
     ]);
     expect(snapA.value).toBe(true);
     expect(snapB.value).toBe(true);
@@ -940,7 +959,7 @@ describe("flows", () => {
     const knownRooms = new Set([roomP, roomQ, roomR]);
     const visited = new Set<string>();
 
-    for (let i = 0; i < 10; i++) {
+    for (let i = 0; i < 12; i++) {
       signOut();
       await signInAnon();
       const res = await callFn("joinGroupRoom");
@@ -953,7 +972,7 @@ describe("flows", () => {
     expect(visited.size).toBeGreaterThanOrEqual(2);
   });
 
-  test("rapid 10 join-leave cycles without error", async () => {
+  test("rapid 12 join-leave cycles without error", async () => {
     await buildRoom(3);
     await buildRoom(3);
     await buildRoom(3);
@@ -961,7 +980,7 @@ describe("flows", () => {
     const visited = new Set<string>();
     let errors = 0;
 
-    for (let i = 0; i < 10; i++) {
+    for (let i = 0; i < 12; i++) {
       signOut();
       await signInAnon();
       try {

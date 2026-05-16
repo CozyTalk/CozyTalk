@@ -13,12 +13,14 @@ import {
   signInAnon,
   signOut,
   callFn,
+  callScheduledFn,
   resetEmulatorData,
   adminFirestoreDoc,
   adminFirestoreSet,
+  adminFirestoreUpdate,
   adminFirestoreList,
   buildRoom,
-  sleep,
+  tryLeaveRoom,
 } from "../../matchmaking/__tests__/helpers";
 
 const RETENTION_DAYS = 3;
@@ -28,6 +30,11 @@ const RETENTION_MS = RETENTION_DAYS * 24 * 60 * 60 * 1000;
 
 beforeEach(async () => {
   await signOut();
+  await resetEmulatorData();
+}, 15_000);
+
+afterEach(async () => {
+  signOut();
   await resetEmulatorData();
 }, 15_000);
 
@@ -71,6 +78,7 @@ describe("sendMessage", () => {
     );
     expect(msg).not.toBeNull();
     assertExpiresAt(msg!["expiresAt"], RETENTION_MS);
+    await tryLeaveRoom(roomId);
   });
 
   test("message has all required encrypted fields and flagged=false", async () => {
@@ -92,6 +100,7 @@ describe("sendMessage", () => {
     expect((msg!["encryptedText"] as string).length).toBeGreaterThan(0);
     expect((msg!["iv"] as string).length).toBeGreaterThan(0);
     expect((msg!["authTag"] as string).length).toBeGreaterThan(0);
+    await tryLeaveRoom(roomId);
   });
 
   test("multiple messages each get independent IVs (no IV reuse)", async () => {
@@ -110,6 +119,7 @@ describe("sendMessage", () => {
 
     expect(m1!["iv"]).not.toBe(m2!["iv"]);
     expect(m1!["encryptedText"]).not.toBe(m2!["encryptedText"]);
+    await tryLeaveRoom(roomId);
   });
 
   test("non-participant cannot send a message", async () => {
@@ -120,6 +130,7 @@ describe("sendMessage", () => {
     await expect(
       callFn("sendMessage", {sessionId: roomId, text: "intruder"}),
     ).rejects.toThrow("permission-denied");
+    await tryLeaveRoom(roomId);
   });
 
   test("empty text is rejected", async () => {
@@ -127,6 +138,7 @@ describe("sendMessage", () => {
     await expect(
       callFn("sendMessage", {sessionId: roomId, text: "   "}),
     ).rejects.toThrow("invalid-argument");
+    await tryLeaveRoom(roomId);
   });
 
   test("text over 2000 chars is rejected", async () => {
@@ -134,25 +146,39 @@ describe("sendMessage", () => {
     await expect(
       callFn("sendMessage", {sessionId: roomId, text: "x".repeat(2001)}),
     ).rejects.toThrow("invalid-argument");
+    await tryLeaveRoom(roomId);
   });
 });
 
 // ── Privacy-by-Design: messages destroyed on room exit ────────────────────────
 
 describe("Privacy by Design — message destruction", () => {
-  test("leaveRoom deletes all chat_rooms messages for the room", async () => {
-    const roomId = await makeTwoPersonRoom();
+  test("messages survive leaveRoom and are wiped by expireRooms after padding", async () => {
+    // Use a single-user room so leaving takes memberCount to 0 → status=padding.
+    await signInAnon();
+    const roomId = (await callFn("joinGroupRoom"))["roomId"] as string;
+
     await callFn("sendMessage", {sessionId: roomId, text: "msg a"});
     await callFn("sendMessage", {sessionId: roomId, text: "msg b"});
 
-    let messages = await adminFirestoreList(
-      `chat_rooms/${roomId}/messages`,
-    );
+    let messages = await adminFirestoreList(`chat_rooms/${roomId}/messages`);
     expect(messages.length).toBe(2);
 
     await callFn("leaveRoom", {roomId});
-    // leaveRoom is async — give the CF a moment to clean up
-    await sleep(500);
+
+    // leaveRoom must NOT destroy messages — that responsibility belongs to
+    // expireRooms, which runs after the padding period ends.
+    messages = await adminFirestoreList(`chat_rooms/${roomId}/messages`);
+    expect(messages.length).toBe(2);
+
+    // Room is in padding with memberCount=0. Backdate paddingUntil so
+    // expireRooms picks it up on this run rather than waiting 5 minutes.
+    await adminFirestoreUpdate(`rooms/${roomId}`, {
+      paddingUntil: new Date(Date.now() - 1000),
+    });
+
+    signOut();
+    await callScheduledFn("expireRooms");
 
     messages = await adminFirestoreList(`chat_rooms/${roomId}/messages`);
     expect(messages.length).toBe(0);
@@ -288,5 +314,6 @@ describe("reportSession", () => {
     }
     // If no key doc exists the room key was never archived — that's also valid
     // (messages were never sent, or room was created before key archiving was added)
+    await tryLeaveRoom(roomId);
   });
 });

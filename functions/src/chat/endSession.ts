@@ -2,6 +2,7 @@ import {onCall, HttpsError} from "firebase-functions/v2/https";
 import * as admin from "firebase-admin";
 import {Timestamp} from "firebase-admin/firestore";
 import * as logger from "firebase-functions/logger";
+import {deleteSubcollection} from "../matchmaking/_utils";
 
 const RETENTION_MS = 3 * 24 * 60 * 60 * 1000;
 
@@ -69,37 +70,12 @@ export const endSession = onCall(
 
     // Privacy by Design: destroy all chat messages now that the session key has
     // been archived and access has been revoked.
-    await _deleteMessages(db, sessionId);
+    await deleteSubcollection(
+      db,
+      db.collection("chat_rooms").doc(sessionId).collection("messages"),
+    );
 
     logger.info("Session ended", {sessionId, initiatedBy: uid});
     return {success: true};
   },
 );
-
-/**
- * Recursively deletes all messages in a chat room in batches.
- * @param {admin.firestore.Firestore} db - Firestore instance.
- * @param {string} sessionId - The room whose messages to delete.
- * @param {number} batchSize - Documents to delete per batch.
- * @return {Promise<void>}
- */
-async function _deleteMessages(
-  db: admin.firestore.Firestore,
-  sessionId: string,
-  batchSize = 100,
-): Promise<void> {
-  const snap = await db
-    .collection("chat_rooms")
-    .doc(sessionId)
-    .collection("messages")
-    .limit(batchSize)
-    .get();
-
-  if (snap.empty) return;
-
-  const batch = db.batch();
-  snap.docs.forEach((d) => batch.delete(d.ref));
-  await batch.commit();
-
-  if (snap.size >= batchSize) await _deleteMessages(db, sessionId, batchSize);
-}

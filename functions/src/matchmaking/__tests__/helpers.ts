@@ -64,14 +64,42 @@ export const rtdbGet = async (
   path: string,
 ): Promise<{value: unknown; exists: boolean}> => {
   const params = new URLSearchParams({"ns": "cozytalk-5d984-default-rtdb"});
+  const headers: Record<string, string> = {};
   if (currentIdToken) {
-    params.set("auth", currentIdToken);
+    // Use Authorization header — the emulator is more reliable with this than
+    // the ?auth= query param for token verification against the Auth emulator.
+    headers["Authorization"] = `Bearer ${currentIdToken}`;
   }
-  const res = await fetch(
-    `http://127.0.0.1:9000/${path}.json?${params}`,
-  );
+  const res = await fetch(`http://127.0.0.1:9000/${path}.json?${params}`, {
+    headers,
+  });
+  if (!res.ok) {
+    throw new Error(`RTDB read failed (HTTP ${res.status}): ${await res.text()}`);
+  }
   const data: unknown = await res.json();
   return {value: data, exists: data !== null};
+};
+
+/**
+ * Polls an RTDB path until the predicate returns true or the timeout expires.
+ * Use this when an async CF event (e.g. a Firestore trigger) writes RTDB data
+ * after its Firestore update — the Firestore poll may return before RTDB is
+ * written.
+ */
+export const waitUntilRtdbValue = async (
+  path: string,
+  predicate: (snap: {value: unknown; exists: boolean}) => boolean,
+  options: {timeout?: number; interval?: number} = {},
+): Promise<{value: unknown; exists: boolean}> => {
+  const timeout = options.timeout ?? 10_000;
+  const interval = options.interval ?? 200;
+  const deadline = Date.now() + timeout;
+  while (Date.now() < deadline) {
+    const snap = await rtdbGet(path);
+    if (predicate(snap)) return snap;
+    await sleep(interval);
+  }
+  return rtdbGet(path);
 };
 
 const decodeFirestoreValue = (v: unknown): unknown => {
@@ -124,7 +152,7 @@ export const waitUntilAdminDocMatches = async (
   options: {timeout?: number; interval?: number} = {},
 ): Promise<Record<string, unknown> | null> => {
   const timeout = options.timeout ?? 20000;
-  const interval = options.interval ?? 500;
+  const interval = options.interval ?? 200;
   const deadline = Date.now() + timeout;
   while (Date.now() < deadline) {
     const doc = await adminFirestoreDoc(path);
@@ -156,6 +184,7 @@ function _toFirestoreValue(val: unknown): Record<string, unknown> {
       ? {integerValue: String(val)}
       : {doubleValue: val};
   }
+  if (val instanceof Date) return {timestampValue: val.toISOString()};
   if (typeof val === "string") return {stringValue: val};
   if (Array.isArray(val)) {
     return {arrayValue: {values: val.map(_toFirestoreValue)}};
@@ -169,6 +198,57 @@ function _toFirestoreValue(val: unknown): Record<string, unknown> {
   }
   return {stringValue: String(val)};
 }
+
+/**
+ * Partially updates a Firestore document using a field mask so existing fields
+ * are preserved. Accepts Date values, which are encoded as Firestore timestamps.
+ * Bypasses security rules (Bearer owner).
+ */
+export const adminFirestoreUpdate = async (
+  path: string,
+  data: Record<string, unknown>,
+): Promise<void> => {
+  const fields: Record<string, unknown> = {};
+  const fieldPaths: string[] = [];
+  for (const [k, v] of Object.entries(data)) {
+    fields[k] = _toFirestoreValue(v);
+    fieldPaths.push(k);
+  }
+  const mask = fieldPaths
+    .map((f) => `updateMask.fieldPaths=${encodeURIComponent(f)}`)
+    .join("&");
+  const res = await fetch(
+    `http://127.0.0.1:8080/v1/projects/cozytalk-5d984/databases/(default)/documents/${path}?${mask}`,
+    {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer owner",
+      },
+      body: JSON.stringify({fields}),
+    },
+  );
+  if (!res.ok) {
+    throw new Error(
+      `adminFirestoreUpdate failed (${res.status}): ${await res.text()}`,
+    );
+  }
+};
+
+/**
+ * Triggers a scheduled Cloud Function via the local emulator HTTP endpoint.
+ * Does not parse the response body — scheduled functions return a plain 200.
+ * Note: the Firebase emulator appends "-0" to v2 onSchedule function names.
+ */
+export const callScheduledFn = async (name: string): Promise<void> => {
+  const res = await fetch(
+    `http://127.0.0.1:5001/cozytalk-5d984/us-central1/${name}-0`,
+    {method: "POST"},
+  );
+  if (!res.ok) {
+    throw new Error(`${name} failed (HTTP ${res.status}): ${await res.text()}`);
+  }
+};
 
 /**
  * Creates or overwrites a Firestore document via the emulator admin REST API.
