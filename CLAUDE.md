@@ -198,7 +198,7 @@ Emulator ports: Auth `9099`, Functions `5001`, Firestore `8080`, RTDB `9000`. Se
 
 | Collection | Purpose |
 |---|---|
-| `users/{uid}` | User profile. Fields: `uid`, `email`, `role` (`user`\|`admin`), `createdAt`, `lastSeen`, `displayName?`, `photoUrl?`. |
+| `users/{uid}` | User profile. Fields: `uid`, `email`, `role` (`user`\|`admin`), `createdAt`, `lastSeen`, `displayName?`, `photoUrl?`, `hatKey?`, `moodKey?`. |
 | `waiting_pool/{uid}` | Matchmaking queue. Fields: `createdAt`, `status`, `updatedAt`, `mode`, `roomId?`. |
 | `rooms/{roomId}` | All active/padding/expired rooms (1v1 + group). 5-char alphanumeric ID. Write-locked to Cloud Functions only except `isLocked` on custom rooms. |
 | `active_sessions/{sessionId}` | **Legacy proto-sessions only.** New rooms use `rooms/{roomId}`. |

@@ -140,6 +140,7 @@ if ! _emulators_up; then
     FAIL=1
   else
     printf "ok\n"
+    sleep 10  # ports open before functions finish loading; give them time
   fi
 fi
 
