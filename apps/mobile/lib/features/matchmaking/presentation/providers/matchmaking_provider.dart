@@ -315,8 +315,8 @@ class MatchmakingNotifier extends Notifier<MatchmakingState> {
               );
               return;
             }
-            // 1v1 partner left (backend sets room to padding and re-queues us).
-            // Re-subscribe to the match stream so we get matched with the next available user (e.g. Host C).
+            // 1v1 partner left — backend sets room to padding (30-second window)
+            // and re-queues us. Re-subscribe to the match stream for a new partner.
             if (state.status == MatchmakingStatus.matched &&
                 room.mode == RoomMode.oneToOne &&
                 room.status == RoomStatus.padding) {
@@ -326,10 +326,13 @@ class MatchmakingNotifier extends Notifier<MatchmakingState> {
             state = state.copyWith(currentRoom: room);
           },
           onError: (Object e) {
+            // If we're no longer matched (user left voluntarily), this is a
+            // late permission-denied from the stream's async cancel — ignore it.
+            if (state.status != MatchmakingStatus.matched) return;
             _lastKnownRoomId = state.roomId;
             _cancelSubscriptions();
-            final isPermissionDenied = (e is FirebaseException &&
-                    e.code == 'permission-denied') ||
+            final isPermissionDenied =
+                (e is FirebaseException && e.code == 'permission-denied') ||
                 e.toString().contains('permission-denied');
             state = state.copyWith(
               status: MatchmakingStatus.error,
