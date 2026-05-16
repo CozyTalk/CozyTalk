@@ -86,10 +86,10 @@ jobs:
           FIREBASE_CLI_TELEMETRY_OPTOUT: '1'
         run: |
           npx -y firebase-tools emulators:start \
-            --only auth,firestore,database,functions \
+            --only auth,firestore,database,functions,pubsub \
             --project cozytalk-5d984 &
           echo $! > /tmp/emulator.pid
-          for port in 9099 8080 9000 5001; do
+          for port in 9099 8080 9000 5001 8085; do
             for i in $(seq 1 90); do
               nc -z localhost "$port" 2>/dev/null && break
               [ "$i" -eq 90 ] && echo "Timeout waiting for emulator port $port" && exit 1

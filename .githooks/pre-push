@@ -103,7 +103,8 @@ _emulators_up() {
   nc -z localhost 9099 2>/dev/null &&
     nc -z localhost 8080 2>/dev/null &&
     nc -z localhost 9000 2>/dev/null &&
-    nc -z localhost 5001 2>/dev/null
+    nc -z localhost 5001 2>/dev/null &&
+    nc -z localhost 8085 2>/dev/null
 }
 
 EMULATORS_STARTED=0
@@ -113,7 +114,7 @@ if ! _emulators_up; then
   printf "  Starting emulators...    "
   EMULATOR_LOG=$(mktemp)
   FIREBASE_CLI_TELEMETRY_OPTOUT=1 npx firebase-tools emulators:start \
-    --only auth,firestore,database,functions \
+    --only auth,firestore,database,functions,pubsub \
     --project cozytalk-5d984 \
     > "$EMULATOR_LOG" 2>&1 &
   EMULATOR_PID=$!
