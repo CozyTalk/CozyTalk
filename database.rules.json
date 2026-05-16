@@ -5,9 +5,9 @@
         ".read": "auth != null && root.child('rooms').child($room_id).child('members').child(auth.uid).exists()",
         ".write": false,
         "members": {
-          ".read": "auth != null",
+          ".read": "auth != null && root.child('rooms').child($room_id).child('members').child(auth.uid).exists()",
           "$uid": {
-            ".write": "auth != null && auth.uid == $uid",
+            ".write": false,
             ".validate": "newData.isBoolean()"
           }
         }

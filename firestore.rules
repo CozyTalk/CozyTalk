@@ -92,10 +92,7 @@ service cloud.firestore {
     // ── active_sessions ──────────────────────────────────────────────────────
     // Legacy proto-session support — new sessions use rooms/{roomId}.
     match /active_sessions/{sessionId} {
-      allow read: if isSignedIn() && (
-        sessionId.matches('proto-.*') ||
-        request.auth.uid in resource.data.users
-      );
+      allow read: if isSignedIn() && request.auth.uid in resource.data.users;
       allow write: if false;
     }
 
@@ -125,13 +122,10 @@ service cloud.firestore {
     // ── chat_rooms/messages ───────────────────────────────────────────────────
     // Participant check spans both rooms (new) and active_sessions (legacy).
     match /chat_rooms/{sessionId}/messages/{messageId} {
-      allow read: if isSignedIn() && (
-        sessionId.matches('proto-.*') ||
-        isChatRoomParticipant(sessionId)
-      );
+      allow read: if isSignedIn() && isChatRoomParticipant(sessionId);
 
       allow create: if isSignedIn()
-        && (sessionId.matches('proto-.*') || isChatRoomParticipant(sessionId))
+        && isChatRoomParticipant(sessionId)
         && request.resource.data.keys().hasAll([
             'senderId', 'displayName', 'encryptedText',
             'iv', 'authTag', 'timestamp', 'expiresAt', 'flagged'
