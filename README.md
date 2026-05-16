@@ -10,6 +10,7 @@ Anonymous 1-on-1 stranger chat — Flutter (Android + Web) + Firebase.
 |---|---|---|
 | Flutter SDK | 3.41+ | [flutter.dev](https://docs.flutter.dev/get-started/install) |
 | Node.js | 24+ | [nodejs.org](https://nodejs.org) |
+| Java 17 | 17+ | Required by the Firebase emulators |
 | firebase-tools | latest | `npm i -g firebase-tools` |
 
 You also need to be invited to the `cozytalk-5d984` Firebase project before running against production.
@@ -40,99 +41,175 @@ firebase login
 
 **3. Start developing**
 
-Linux / macOS:
 ```bash
-./dev.sh              # emulators + Flutter on Android
-./dev.sh --web        # emulators + Flutter on Chrome
-./dev.sh --prod       # Flutter → live Firebase (Android)
-./dev.sh --prod --web # Flutter → live Firebase (Chrome)
+./dev.sh                 # emulators + Flutter on Android
+./dev.sh --web           # emulators + Flutter on Chrome
+./dev.sh --prod          # Flutter → live Firebase (Android)
+./dev.sh --prod --web    # Flutter → live Firebase (Chrome)
+./dev.sh --emulator-only # emulators only, no Flutter (for running tests)
 ```
 
-Windows (PowerShell):
-```powershell
-.\dev.ps1              # emulators + Flutter on Android
-.\dev.ps1 --web        # emulators + Flutter on Chrome
-.\dev.ps1 --prod       # Flutter → live Firebase (Android)
-.\dev.ps1 --prod --web # Flutter → live Firebase (Chrome)
-```
+Windows: replace `./dev.sh` with `.\dev.ps1`.
 
-The dev script starts the Firebase emulators in the background, waits until they're ready, then launches Flutter. `Ctrl+C` shuts everything down cleanly.
+The script starts all four Firebase emulators in the background, waits until every port is ready, then launches Flutter. `Ctrl+C` shuts everything down cleanly. A second terminal that detects the emulators are already running attaches without restarting them.
 
 ---
 
-## Emulator UI
+## Scripts reference
 
-When running with emulators, the Firebase Emulator UI is available at:
+### `./dev.sh` — local development runner
 
-```
-http://127.0.0.1:4000
-```
-
-| Service | Port |
+| Flag | What it does |
 |---|---|
-| Emulator UI | 4000 |
-| Auth | 9099 |
-| Firestore | 8080 |
-| Realtime Database | 9000 |
-| Functions | 5001 |
+| *(none)* | Emulators + Flutter, auto-detect connected device |
+| `--web` | Emulators + Flutter on Chrome |
+| `--prod` | Flutter pointed at live Firebase (no emulators) |
+| `--emulator-only` | Start emulators only — no Flutter. Use this when running integration or Jest tests in a second terminal. |
+
+### `./setup.sh` — first-time dependency install
+
+Runs `flutter pub get`, `dart run build_runner build`, and `npm install` in one step. Re-run after pulling a branch that adds new packages.
+
+### `cd functions && npm test` — Cloud Functions integration tests
+
+Runs the full Jest suite against the local emulators. Requires emulators to be up first (`./dev.sh --emulator-only` in another terminal).
+
+```bash
+# Terminal 1 — start emulators
+./dev.sh --emulator-only
+
+# Terminal 2 — run tests
+cd functions && npm test
+```
+
+The suite covers matchmaking (group rooms, 1v1 pool, priority selection, padding lifecycle, concurrent joins) and chat (message encryption, TTL fields, privacy-by-design cleanup, session key archiving).
+
+### `cd apps/mobile && flutter test` — Flutter unit + widget tests
+
+Runs all 87 unit and widget tests for the Flutter app (domain, data, and presentation layers). No emulators needed — all Firebase calls are faked.
+
+### `cd apps/mobile && flutter test integration_test/...` — Flutter integration tests
+
+Runs Flutter-side integration tests against the emulators. Requires emulators running.
+
+```bash
+./dev.sh --emulator-only &
+cd apps/mobile && flutter test integration_test/matchmaking_advanced_test.dart
+```
+
+### `./tools/check-prod-config.sh` — post-deploy production verification
+
+Run this after every `firebase deploy` to verify the live project is correctly wired. Checks:
+
+- Firestore TTL policies are **ACTIVE** on `chat_rooms/*/messages` and `session_keys` (3-day retention)
+- All 16 Cloud Functions are deployed in the correct regions
+- `expireRooms` scheduled function exists
+- Prints a manual checklist for things that can't be automated (Cloud Scheduler enabled, `onDisconnect` behaviour, auth providers)
+
+```bash
+./tools/check-prod-config.sh
+# or with a different project:
+./tools/check-prod-config.sh --project my-project-id
+```
+
+Auth is automatic: the script picks up your `gcloud auth login` session, or falls back to your `firebase login` token. Run `gcloud auth login` or `firebase login` if neither has been done.
+
+### `cd functions && npm run deploy` — deploy Cloud Functions to production
+
+Runs lint + build first (via predeploy hooks in `firebase.json`). Deploy everything:
+
+```bash
+firebase deploy          # deploy functions + rules + indexes
+firebase deploy --only functions   # functions only
+firebase deploy --only firestore   # rules + indexes only
+```
+
+### `dart run build_runner build` — regenerate Freezed/Riverpod code
+
+Run from `apps/mobile/` after editing any `@freezed` class or `@riverpod` provider:
+
+```bash
+cd apps/mobile && dart run build_runner build --delete-conflicting-outputs
+```
 
 ---
 
-## Switching between the home screen and backend testing
+## Emulator ports
 
-There are currently two entry points wired up in `apps/mobile/lib/main.dart`:
+When running with emulators:
 
-- **`_useMainUI = false`** — the chatroom/auth flow. Exercises real Firebase auth, Firestore, Realtime Database, and Cloud Functions. This is what you want when testing backend features.
-- **`_useMainUI = true`** — the full UI home screen with all navigation. The design and routes are complete but not yet wired to Firebase. Use this when working on UI.
+| Service | Port | UI |
+|---|---|---|
+| Emulator UI | 4000 | http://127.0.0.1:4000 |
+| Auth | 9099 | — |
+| Firestore | 8080 | — |
+| Realtime Database | 9000 | — |
+| Functions | 5001 | — |
 
-To switch, open `apps/mobile/lib/main.dart` and change line 30:
+---
+
+## Switching between main UI and backend test screen
+
+Open `apps/mobile/lib/main.dart` and change the compile-time constant on line 30:
 
 ```dart
-// chatroom + auth backend testing (default)
-const _useMainUI = false;
-
-// full UI home screen
-const _useMainUI = true;
+const _useMainUI = false;  // backend test screen (HelloScreen → matchmaking buttons)
+const _useMainUI = true;   // full app UI
 ```
 
-Hot reload won't pick this up since it's a compile-time constant — you need a full restart (`R` in the terminal, or stop and re-run `./dev.sh` / `.\dev.ps1`).
+Hot reload won't pick this up — do a full restart (`R` in terminal or re-run `./dev.sh`).
 
 ---
 
 ## Manual commands
 
-If you prefer to run things yourself:
-
 ```bash
-# ── Flutter app ─────────────────────────────────────────────────────────────
+# ── Flutter ──────────────────────────────────────────────────────────────────
 cd apps/mobile
-
 flutter pub get
-dart run build_runner build                                # after editing @freezed / @riverpod
-flutter run                                                # Android
-flutter run -d chrome                                      # Web
-flutter run --dart-define=USE_EMULATOR=false               # against production
-flutter test
+dart run build_runner build          # regenerate @freezed / @riverpod code
+flutter run                          # Android
+flutter run -d chrome                # Web
+flutter run --dart-define=USE_EMULATOR=false   # against production
+flutter test                         # unit + widget tests
+flutter analyze                      # static analysis
 
-# ── Cloud Functions ──────────────────────────────────────────────────────────
+# ── Cloud Functions ───────────────────────────────────────────────────────────
 cd functions
-
 npm install
-npm run build    # compile TypeScript
-npm run serve    # start local emulators (ports 5001 + 9099)
-npm run lint
-npm run deploy   # deploy to Firebase (runs lint + build first)
+npm run build         # compile TypeScript
+npm run lint          # ESLint
+npm test              # Jest integration tests (needs emulators)
+npm run deploy        # deploy to Firebase (lint + build run first)
 ```
+
+---
+
+## CI / quality gates
+
+Every push runs two GitHub Actions jobs:
+
+| Job | What it checks |
+|---|---|
+| `flutter-quality` | build_runner up to date, dart format, flutter analyze, flutter test --coverage |
+| `functions-quality` | ESLint, TypeScript build, Jest integration tests (starts emulators automatically) |
+
+The pre-push git hook runs the same checks locally before any push reaches GitHub.
 
 ---
 
 ## Project layout
 
 ```
-apps/mobile/   Flutter app (Android + Web)
-functions/     Firebase Cloud Functions (TypeScript)
-packages/      Shared packages (reserved)
-tools/         CLI tools (reserved)
+apps/mobile/        Flutter app (Android + Web)
+functions/          Firebase Cloud Functions (TypeScript)
+  src/matchmaking/  Matchmaking CFs + Jest tests
+  src/chat/         Chat CFs + Jest tests
+  src/dev/          One-time setup helpers (remove after use)
+tools/              Utility scripts
+  check-prod-config.sh  Post-deploy production verification
+packages/           Shared packages (reserved)
 ```
 
 See [`CLAUDE.md`](./CLAUDE.md) for architecture details, code conventions, and the full feature guide.
+See [`PROJECT_CONTEXT.md`](./PROJECT_CONTEXT.md) for database schema, security rules, and Firebase configuration.

@@ -12,15 +12,17 @@ CozyTalk — anonymous stranger chat app targeting Android and Web. Firebase-bac
 
 ### Firestore rules — deployed ✓
 - `users/{uid}`: user-owned read; create enforces `uid==userId` and `role=='user'`; update blocks `role`/`uid` mutation ✓
-- `waiting_pool/{uid}`: user-owned; create enforces `status=='waiting'` and `createdAt==request.time`; update restricted to `updatedAt` only (status written by Cloud Functions) ✓
-- `active_sessions/{sessionId}`: client read-only, write=false (Functions only) ✓
+- `waiting_pool/{uid}`: user-owned; create enforces `status=='waiting'`, `createdAt==request.time`, and required fields; update restricted to `updatedAt` only (status written by Cloud Functions) ✓
+- `rooms/{roomId}`: participants read active/padding rooms; any signed-in user reads expired tombstones (contains only status/expiredAt/users:[]); `isLocked` update restricted to custom-room members; create/delete CF-only ✓
+- `active_sessions/{sessionId}`: **legacy proto-sessions only**; client read-only, write=false ✓
 - `reports/{reportId}`: create restricted to allowed fields, `reporterId==auth.uid`, `status=='pending'`, `createdAt==request.time`; admin-only read/update/delete ✓
+- `isChatRoomParticipant()`: checks both `rooms/{id}` (new) and `active_sessions/{id}` (legacy) — backward compatible ✓
 - `isAdmin()` has `exists()` guard — safe for anonymous users ✓
 
 ### Realtime DB rules — deployed ✓
-- `sessions/{roomId}`: read scoped to session participants via `users/{uid}` node; write=false ✓
-- `messages/{roomId}`: read scoped to session participants; room-level write=false ✓
-- `messages/{roomId}/{messageId}`: append-only (`!data.exists()`), participant-scoped write; `.validate` enforces `senderId==auth.uid`, non-empty text, numeric timestamp ✓
+- `rooms/{roomId}/members/{uid}`: CF-written membership anchor; client read gated by own membership; write=false for clients ✓
+- `sessions/{roomId}`: legacy proto-session compat; read scoped to session participants; write=false ✓
+- `typing/{roomId}/{uid}` / `presence/{roomId}/{uid}`: user-scoped write; validates field types ✓
 
 ### Auth — current state
 - Anonymous auth: on. Users get a UID but no persistent identity. Reinstall = new UID.
@@ -44,9 +46,11 @@ CozyTalk — anonymous stranger chat app targeting Android and Web. Firebase-bac
 
 ### Firebase Rules
 - [ ] `isAdmin()` has `exists()` guard ✓ (deployed)
-- [ ] RTDB rules scoped to session participants ✓ (deployed)
-- [ ] `waiting_pool` update restricted to `updatedAt` only (status=matched set by Cloud Functions) ✓ (deployed)
-- [ ] `active_sessions` write is `false` for clients ✓ (deployed)
+- [ ] RTDB membership path is `rooms/{roomId}/members/{uid}`, not legacy `sessions/`
+- [ ] `rooms` collection: CF-only create/delete; `isLocked` update restricted to custom-room members only
+- [ ] `rooms` tombstones contain only `{status:'expired', expiredAt, users:[]}` — no sensitive data
+- [ ] `waiting_pool` update restricted to `updatedAt` only (status/roomId set by Cloud Functions) ✓ (deployed)
+- [ ] `active_sessions` write is `false` for clients ✓ (deployed, kept for proto-session compat)
 - [ ] `reports` create validates required fields and `reporterId==auth.uid` ✓ (deployed)
 
 ### Secrets & Storage

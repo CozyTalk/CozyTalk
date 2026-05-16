@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- Allow cleartext HTTP to the Android emulator host so that Firebase
+         emulators (Auth, Firestore, RTDB, Functions) work in debug/test builds.
+         10.0.2.2 is the host machine as seen from the Android emulator. -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">10.0.2.2</domain>
+    </domain-config>
+</network-security-config>
