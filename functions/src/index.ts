@@ -3,7 +3,10 @@ import {onCall, HttpsError} from "firebase-functions/v2/https";
 import * as logger from "firebase-functions/logger";
 import * as admin from "firebase-admin";
 
-admin.initializeApp();
+admin.initializeApp({
+  databaseURL:
+    "https://cozytalk-5d984-default-rtdb.asia-southeast1.firebasedatabase.app",
+});
 
 setGlobalOptions({maxInstances: 10});
 
@@ -25,7 +28,6 @@ export {cancel1v1Pool} from "./matchmaking/cancel1v1Pool";
 export {match1v1Users} from "./matchmaking/match1v1Users";
 export {expireRooms} from "./matchmaking/expireRooms";
 export {setRoomLock} from "./matchmaking/setRoomLock";
-
 
 export const helloWorld = onCall({invoker: "public", cors: true}, (request) => {
   if (!request.auth) {

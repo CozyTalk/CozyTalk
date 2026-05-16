@@ -63,18 +63,14 @@ export const resetEmulatorData = async (): Promise<void> => {
 export const rtdbGet = async (
   path: string,
 ): Promise<{value: unknown; exists: boolean}> => {
-  const params = new URLSearchParams({"ns": "cozytalk-5d984-default-rtdb"});
-  const headers: Record<string, string> = {};
-  if (currentIdToken) {
-    // Use Authorization header — the emulator is more reliable with this than
-    // the ?auth= query param for token verification against the Auth emulator.
-    headers["Authorization"] = `Bearer ${currentIdToken}`;
-  }
+  const params = new URLSearchParams({ns: "cozytalk-5d984-default-rtdb"});
   const res = await fetch(`http://127.0.0.1:9000/${path}.json?${params}`, {
-    headers,
+    headers: {Authorization: "Bearer owner"},
   });
   if (!res.ok) {
-    throw new Error(`RTDB read failed (HTTP ${res.status}): ${await res.text()}`);
+    throw new Error(
+      `RTDB read failed (HTTP ${res.status}): ${await res.text()}`,
+    );
   }
   const data: unknown = await res.json();
   return {value: data, exists: data !== null};
