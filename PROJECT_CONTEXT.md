@@ -151,7 +151,7 @@ See `firestore.rules` for the canonical source. Key helper functions and per-col
 
 | Collection | read | create | update | delete |
 |---|---|---|---|---|
-| `users/{userId}` | owner only | owner; `role=='user'`, `uid==userId` | owner; `role`+`uid` immutable | — |
+| `users/{userId}` | owner only | owner; `role=='user'`, `uid==userId`, known-field allowlist | owner; `role`, `uid`, `createdAt` immutable; only `hatKey`, `moodKey`, `displayName`, `photoUrl`, `lastSeen`, `email`; `hatKey`/`moodKey` must be strings | — |
 | `waiting_pool/{userId}` | owner | owner; `createdAt==request.time`, `status=='waiting'`, required keys present | owner; only `updatedAt` field, must equal `request.time` | owner |
 | `rooms/{roomId}` | member or expired tombstone (any signed-in) | false (CF only) | member on custom room; only `isLocked` field | false |
 | `active_sessions/{sessionId}` | member or `proto-*` prefix (any signed-in) | false | false | false |
@@ -220,15 +220,17 @@ Rollback: set to `false` in Remote Config console; clients pick it up within 12 
 ### `users/{uid}` (Firestore)
 | Field | Type | Notes |
 |---|---|---|
-| `uid` | string | matches auth UID |
+| `uid` | string | matches auth UID; immutable |
 | `displayName` | string? | null for anonymous |
 | `photoUrl` | string? | null for anonymous |
 | `email` | string? | null for anonymous |
-| `role` | string | `'user'` \| `'admin'` |
-| `createdAt` | timestamp | |
-| `lastSeen` | timestamp | |
+| `role` | string | `'user'` \| `'admin'`; immutable after creation |
+| `createdAt` | timestamp | immutable after creation |
+| `lastSeen` | timestamp | updated on profile refresh |
+| `hatKey` | string? | avatar hat decoration key; absent = no hat |
+| `moodKey` | string? | avatar mood decoration key; absent = no mood |
 
-Anonymous users get a minimal doc on first sign-in (`uid`, `role: 'user'`, `createdAt`, `lastSeen`) to prevent `isAdmin()` from throwing.
+Anonymous users get a minimal doc on first sign-in (`uid`, `role: 'user'`, `createdAt`, `lastSeen`) to prevent `isAdmin()` from throwing. The avatar datasource will also create this minimal doc (plus the decoration field) if it doesn't exist yet.
 
 ### `waiting_pool/{uid}` (Firestore)
 | Field | Type | Notes |

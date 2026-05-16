@@ -39,14 +39,23 @@ service cloud.firestore {
     match /users/{userId} {
       allow read: if isOwner(userId);
 
-      // role and uid are immutable after creation — only Cloud Functions set role
+      // role and uid are set at creation and immutable forever
       allow create: if isOwner(userId)
         && request.resource.data.uid == userId
-        && request.resource.data.role == 'user';
+        && request.resource.data.role == 'user'
+        && request.resource.data.keys().hasOnly([
+            'uid', 'email', 'role', 'createdAt', 'lastSeen',
+            'displayName', 'photoUrl', 'hatKey', 'moodKey'
+           ]);
 
+      // role, uid, createdAt are immutable; only known mutable profile fields may change
       allow update: if isOwner(userId)
-        && !request.resource.data.diff(resource.data)
-            .affectedKeys().hasAny(['role', 'uid']);
+        && request.resource.data.diff(resource.data)
+            .affectedKeys().hasOnly([
+                'hatKey', 'moodKey', 'displayName', 'photoUrl', 'lastSeen', 'email'
+            ])
+        && (!('hatKey' in request.resource.data) || request.resource.data.hatKey is string)
+        && (!('moodKey' in request.resource.data) || request.resource.data.moodKey is string);
     }
 
     // ── waiting_pool ─────────────────────────────────────────────────────────
