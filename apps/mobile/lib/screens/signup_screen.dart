@@ -388,6 +388,7 @@ class _SignupScreenState extends State<SignupScreen> {
     );
   }
 
+  // ignore: unused_element
   String? _validateEmail(String? value) {
     if (value == null || value.trim().isEmpty) return 'Email is required.';
     final emailRegex = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');

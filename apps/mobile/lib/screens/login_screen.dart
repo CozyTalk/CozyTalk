@@ -318,6 +318,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     ),
   );
 
+  // ignore: unused_element
   void _submit() {
     if (!(_formKey.currentState?.validate() ?? false)) return;
     _goToHome();
@@ -338,6 +339,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     );
   }
 
+  // ignore: unused_element
   String? _validateEmail(String? value) {
     if (value == null || value.trim().isEmpty) return 'Email is required.';
     final emailRegex = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');

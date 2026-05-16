@@ -18,6 +18,9 @@ import 'screens/chat_screen.dart';
 import 'screens/group_chat_screen.dart';
 import 'screens/finding_room_screen.dart';
 
+// TOGGLE: flip to true for legacy UI home (design preview), false for login flow
+const _useMainUI = false;
+
 void main() {
   runApp(const ProviderScope(child: MyApp()));
 }
