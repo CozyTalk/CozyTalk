@@ -388,8 +388,10 @@ describe("RTDB and edge cases", () => {
     const uidB = await signInAnon();
     await callFn("joinGroupRoom");
 
-    const snapA = await rtdbGet(`rooms/${roomId}/members/${uidA}`);
-    const snapB = await rtdbGet(`rooms/${roomId}/members/${uidB}`);
+    const [snapA, snapB] = await Promise.all([
+      waitUntilRtdbValue(`rooms/${roomId}/members/${uidA}`, (s) => s.exists),
+      waitUntilRtdbValue(`rooms/${roomId}/members/${uidB}`, (s) => s.exists),
+    ]);
     expect(snapA.value).toBe(true);
     expect(snapB.value).toBe(true);
 
@@ -518,8 +520,12 @@ describe("1v1 pool and match", () => {
     // match1v1Users writes Firestore (status=matched) before RTDB members —
     // poll until both entries are visible rather than reading immediately.
     const [rtdbA, rtdbB] = await Promise.all([
-      waitUntilRtdbValue(`rooms/${roomId}/members/${uidA}`, (s) => s.exists),
-      waitUntilRtdbValue(`rooms/${roomId}/members/${uidB}`, (s) => s.exists),
+      waitUntilRtdbValue(`rooms/${roomId}/members/${uidA}`, (s) => s.exists, {
+        timeout: 20_000,
+      }),
+      waitUntilRtdbValue(`rooms/${roomId}/members/${uidB}`, (s) => s.exists, {
+        timeout: 20_000,
+      }),
     ]);
     expect(rtdbA.value).toBe(true);
     expect(rtdbB.value).toBe(true);
@@ -778,8 +784,12 @@ describe("flows", () => {
 
     // match1v1Users writes Firestore before RTDB — poll until both entries appear.
     const [snapA, snapB] = await Promise.all([
-      waitUntilRtdbValue(`rooms/${roomId}/members/${uidA}`, (s) => s.exists),
-      waitUntilRtdbValue(`rooms/${roomId}/members/${uidB}`, (s) => s.exists),
+      waitUntilRtdbValue(`rooms/${roomId}/members/${uidA}`, (s) => s.exists, {
+        timeout: 20_000,
+      }),
+      waitUntilRtdbValue(`rooms/${roomId}/members/${uidB}`, (s) => s.exists, {
+        timeout: 20_000,
+      }),
     ]);
     expect(snapA.value).toBe(true);
     expect(snapB.value).toBe(true);

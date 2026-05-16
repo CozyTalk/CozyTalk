@@ -130,20 +130,34 @@ export const match1v1Users = onDocumentCreated(
       }
 
       // Write RTDB membership for both so they can stream presence/typing.
-      try {
-        await Promise.all([
-          rtdb.ref(`rooms/${roomId}/members/${triggerUid}`).set(true),
-          rtdb.ref(`rooms/${roomId}/members/${candidate.id}`).set(true),
-        ]);
-      } catch (rtdbErr) {
-        // Non-fatal: Firestore state is clean. Flutter clients call
-        // registerRoomPresence() on match which sets up their own RTDB entries.
-        logger.error("RTDB membership write failed after match", {
-          roomId,
-          triggerUid,
-          candidateId: candidate.id,
-          rtdbErr,
-        });
+      // Retry up to 3 times — the first RTDB connection in a cold emulator
+      // or a transient network blip can cause the write to fail.
+      {
+        let lastRtdbErr: unknown;
+        let wrote = false;
+        for (let attempt = 0; attempt < 3; attempt++) {
+          try {
+            await Promise.all([
+              rtdb.ref(`rooms/${roomId}/members/${triggerUid}`).set(true),
+              rtdb.ref(`rooms/${roomId}/members/${candidate.id}`).set(true),
+            ]);
+            wrote = true;
+            break;
+          } catch (err) {
+            lastRtdbErr = err;
+            await new Promise((r) => setTimeout(r, 200 * Math.pow(2, attempt)));
+          }
+        }
+        if (!wrote) {
+          // Non-fatal: Firestore state is clean. Flutter clients call
+          // registerRoomPresence() on match which sets up their own RTDB entries.
+          logger.error("RTDB membership write failed after match", {
+            roomId,
+            triggerUid,
+            candidateId: candidate.id,
+            rtdbErr: lastRtdbErr,
+          });
+        }
       }
 
       logger.info("1v1 users matched", {
