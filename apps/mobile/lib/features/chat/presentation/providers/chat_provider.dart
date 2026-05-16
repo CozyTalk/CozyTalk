@@ -131,11 +131,7 @@ class ChatNotifier extends Notifier<ChatState> {
       currentUserPhotoUrl: currentUserPhotoUrl,
     );
 
-    if (sessionId.startsWith('proto-')) {
-      _joinProtoThenSubscribe(sessionId, currentUserId);
-    } else {
-      _startSubscriptions(sessionId);
-    }
+    _joinProtoThenSubscribe(sessionId, currentUserId);
   }
 
   Future<void> _joinProtoThenSubscribe(String sessionId, String uid) async {
@@ -158,7 +154,19 @@ class ChatNotifier extends Notifier<ChatState> {
         .read(_watchMessagesProvider)(sessionId)
         .listen(
           (messages) => state = state.copyWith(messages: messages),
-          onError: (Object e) => state = state.copyWith(error: e.toString()),
+          onError: (Object e) {
+            final msg = e.toString();
+            if (msg.contains('permission-denied') ||
+                msg.contains('PERMISSION_DENIED')) {
+              state = state.copyWith(
+                status: SessionStatus.disconnected,
+                error: 'Room is no longer available.',
+              );
+              _cancelSubscriptions();
+            } else {
+              state = state.copyWith(error: msg);
+            }
+          },
         );
 
     _typingSub = ref.read(_watchTypingUsersProvider)(sessionId).listen((users) {

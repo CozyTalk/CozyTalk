@@ -62,6 +62,29 @@ class _LoadingFakeNotifier extends FooNotifier {
 ### Session state tests
 Test all four states of the session state machine: `idle`, `searching`, `chatting`, `disconnected`. Each state should have a fake that pre-sets that state so you can verify the correct UI is shown.
 
+### Matchmaking state tests
+The matchmaking notifier has six states: `idle`, `searching`, `waiting1v1`, `matched`, `creating`, `error`. Test UI rendering for all six by constructing a `_FakeMatchmakingNotifier` with the target initial state. Also test all `copyWith` sentinel patterns (roomId, currentRoom, error must clear with explicit null).
+
+### Matchmaking fake repository pattern
+```dart
+class FakeMatchmakingRepository implements MatchmakingRepository {
+  int joinGroupRoomCalls = 0;
+  String? lastSetRoomLockId;
+  bool? lastSetRoomLockValue;
+  Exception? error;
+  // ... configurable return values per method
+
+  @override
+  Future<({String roomId, bool isNewRoom})> joinGroupRoom() async {
+    joinGroupRoomCalls++;
+    if (error != null) throw error!;
+    return (roomId: 'Ab3Kz', isNewRoom: false);
+  }
+  // ...
+}
+```
+See `test/features/matchmaking/domain/shared_fakes.dart` for the full canonical implementation.
+
 ### Concurrency / race condition tests
 When testing the matchmaking flow, verify that:
 - Two clients entering `waiting_pool` simultaneously are paired exactly once
@@ -75,10 +98,40 @@ When testing the matchmaking flow, verify that:
 - Use `overrideWith(() => fake)` when you need a reference to the fake instance post-test
 - Every Screen must have at minimum: render test, empty-input guard test, positive submit test
 
+## Cloud Functions Integration Testing (Jest)
+
+Jest tests live at `functions/src/matchmaking/__tests__/matchmaking.test.ts` — 43 tests, 7 describe groups.
+
+**Run workflow:**
+```bash
+# Terminal 1
+./dev.sh --emulator-only   # starts all 4 emulators, waits for them to be ready
+
+# Terminal 2
+cd functions && npm test                                 # all 43 tests
+npm test -- --verbose                                   # per-test output
+npm test -- --testNamePattern "priority"                # single describe group
+```
+
+**Helper pattern** (`functions/src/matchmaking/__tests__/helpers.ts`):
+- `signInAnon()` — creates anonymous Firebase Auth user, stores idToken
+- `signOut()` — clears token (next callFn will be unauthenticated)
+- `callFn(name, data)` — POST to emulator callable, throws on error with normalized code (`failed-precondition: ...`)
+- `adminFirestoreDoc(path)` — reads Firestore doc via REST API with `Bearer owner` (bypasses rules)
+- `rtdbGet(path)` — reads RTDB REST endpoint
+- `resetEmulatorData()` — deletes all Firestore + RTDB data (called in `beforeEach`)
+- `buildRoom(targetSize)` — creates a room and fills it to targetSize using multiple anon users
+
+**Key differences from Flutter integration tests:**
+- Both test process and Firebase run on the same host → no Android emulator clock skew → timing bounds are tight (≤35s for 1v1 padding vs ≤60s in Dart tests)
+- Jest runs in ~30s total vs ~2 minutes for Flutter integration (no APK build, no Gradle)
+- Output is rich (colored, per-test pass/fail) unlike Flutter's `--reporter` format
+
 ## Responsibilities
 - Write widget tests for every new Screen
 - Write unit tests for domain-layer UseCases (no Flutter, no Firebase needed — pure Dart)
 - Ensure integration tests run on both Android (`flutter test integration_test/`) and Web (`flutter drive --driver=test_driver/integration_test.dart --target=integration_test/app_test.dart -d chrome`)
+- Write Jest CF tests for every new Cloud Function scenario (mirror the Dart integration test pattern)
 - Accessibility sweep: use `tester.ensureSemantics()` + check contrast in design review
 - Flag missing tests and quality gate violations in PRs
 

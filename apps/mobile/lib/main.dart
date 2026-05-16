@@ -11,7 +11,6 @@ import 'firebase_options.dart';
 import 'features/auth/presentation/providers/auth_provider.dart';
 import 'features/auth/presentation/screens/login_screen.dart';
 import 'features/hello/presentation/screens/hello_screen.dart';
-import 'features/chat/presentation/screens/chat_screen.dart' as feature_chat;
 // main UI imports
 import 'theme/app_theme.dart';
 import 'theme/app_routes.dart';
