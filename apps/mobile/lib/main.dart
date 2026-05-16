@@ -79,19 +79,3 @@ class MyApp extends StatelessWidget {
     );
   }
 }
-
-class _AuthRouter extends ConsumerWidget {
-  const _AuthRouter();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final status = ref.watch(authNotifierProvider.select((s) => s.status));
-    return switch (status) {
-      AuthStatus.authenticated => const HelloScreen(),
-      AuthStatus.idle => const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      ),
-      _ => const LoginScreen(),
-    };
-  }
-}

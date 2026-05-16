@@ -99,12 +99,9 @@ class ChatState {
     currentUserDisplayName: currentUserDisplayName == _sentinel
         ? this.currentUserDisplayName
         : currentUserDisplayName as String?,
-<<<<<<< HEAD
-=======
     currentUserPhotoUrl: currentUserPhotoUrl == _sentinel
         ? this.currentUserPhotoUrl
         : currentUserPhotoUrl as String?,
->>>>>>> 589b1f4846d9a8aa03eeae3ddffddeb67f29d43a
     messages: messages ?? this.messages,
     typingUsers: typingUsers ?? this.typingUsers,
     isSending: isSending ?? this.isSending,
