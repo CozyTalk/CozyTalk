@@ -6,11 +6,14 @@ import {
   rtdbGet,
   waitUntilRtdbValue,
   adminFirestoreDoc,
+  adminFirestoreUpdate,
+  adminFirestoreSet,
   waitUntilAdminDocMatches,
   tryLeaveRoom,
   tryCancelPool,
   buildRoom,
   sleep,
+  callScheduledFn,
 } from "./helpers";
 
 beforeEach(async () => {
@@ -1205,5 +1208,139 @@ describe("flows", () => {
     for (const id of uniqueRooms) {
       await tryLeaveRoom(id);
     }
+  });
+});
+
+// ── Regression: bugs found in session 2026-05-16 ──────────────────────────
+//
+// 1. expireRooms was never running in the emulator (no pubsub) — rooms
+//    accumulated in padding indefinitely. Fixed by adding pubsub to dev.sh.
+//
+// 2. cleanupMember sometimes fails to fire (CF crash / region mismatch).
+//    If it does not decrement memberCount to 0, expireRooms skipped the room
+//    because memberCount > 0. Fixed by checking RTDB before skipping in
+//    _expirePaddingRooms.
+//
+// 3. "Room access lost" error on voluntary leave — a late permission-denied
+//    stream event arrived after the Flutter client already transitioned to
+//    idle, overwriting the clean state with an error. Fixed by checking
+//    state.status before acting in the onError handler (Flutter-side fix,
+//    not tested here).
+
+describe("regression: expireRooms cleans up stuck padding rooms", () => {
+  /**
+   * Simulates cleanupMember failing to fire after leaveRoom — the room stays
+   * in padding with memberCount=1 (the state that was permanently stuck before
+   * the fix because expireRooms skipped it). expireRooms must still expire it
+   * when paddingUntil has elapsed and RTDB has no real members.
+   */
+  test("expireRooms expires a padding room with stale memberCount when RTDB is empty", async () => {
+    signOut();
+    await signInAnon();
+    const res = await callFn("joinGroupRoom");
+    const roomId = res["roomId"] as string;
+
+    // Leave normally — room goes to padding with memberCount=0.
+    await callFn("leaveRoom", {roomId});
+    const afterLeave = await adminFirestoreDoc(`rooms/${roomId}`);
+    expect(afterLeave!["status"]).toBe("padding");
+    expect(afterLeave!["memberCount"]).toBe(0);
+
+    // Corrupt the doc: simulate cleanupMember missing a decrement.
+    // memberCount=1 with paddingUntil already expired — RTDB has no members.
+    await adminFirestoreUpdate(`rooms/${roomId}`, {
+      memberCount: 1,
+      paddingUntil: new Date(Date.now() - 5000),
+    });
+
+    const rtdbSnap = await rtdbGet(`rooms/${roomId}/members`);
+    expect(rtdbSnap.exists).toBe(false);
+
+    // expireRooms must expire it despite memberCount=1 (no RTDB members).
+    await callScheduledFn("expireRooms");
+    await sleep(500);
+
+    const afterExpiry = await adminFirestoreDoc(`rooms/${roomId}`);
+    expect(afterExpiry!["status"]).toBe("expired");
+  });
+
+  /**
+   * expireRooms must NOT expire a padding room that genuinely has live RTDB
+   * members (someone rejoined during the padding window).
+   */
+  test("expireRooms skips padding rooms that still have RTDB members", async () => {
+    signOut();
+    const uidA = await signInAnon();
+    const res = await callFn("joinGroupRoom");
+    const roomId = res["roomId"] as string;
+
+    signOut();
+    await signInAnon();
+    await callFn("joinGroupRoom");
+
+    // Write a live RTDB member entry to simulate an active connection.
+    await fetch(
+      `http://127.0.0.1:9000/rooms/${roomId}/members/${uidA}.json?ns=cozytalk-5d984-default-rtdb&auth=owner`,
+      {method: "PUT", body: "true"},
+    );
+
+    // Corrupt to padding with expired paddingUntil — but RTDB member is present.
+    await adminFirestoreUpdate(`rooms/${roomId}`, {
+      status: "padding",
+      memberCount: 1,
+      paddingUntil: new Date(Date.now() - 5000),
+    });
+
+    await callScheduledFn("expireRooms");
+    await sleep(500);
+
+    // Must NOT be expired — real RTDB member exists.
+    const afterDoc = await adminFirestoreDoc(`rooms/${roomId}`);
+    expect(afterDoc!["status"]).toBe("padding");
+
+    // Cleanup: remove RTDB entry and tombstone the room.
+    await fetch(
+      `http://127.0.0.1:9000/rooms/${roomId}/members/${uidA}.json?ns=cozytalk-5d984-default-rtdb&auth=owner`,
+      {method: "DELETE"},
+    );
+    await adminFirestoreUpdate(`rooms/${roomId}`, {status: "expired"});
+  });
+
+  /**
+   * 1v1 leaveRoom: the room enters 30-second padding with memberCount=1.
+   * expireRooms must not prematurely expire it while paddingUntil is still
+   * in the future (even though memberCount=1 and RTDB members are already gone).
+   */
+  test("expireRooms does not expire a 1v1 padding room while paddingUntil is in the future", async () => {
+    signOut();
+    const uidA = await signInAnon();
+    await callFn("join1v1Pool");
+    signOut();
+    const uidB = await signInAnon();
+    await callFn("join1v1Pool");
+
+    const poolDoc = await waitUntilAdminDocMatches(
+      `waiting_pool/${uidB}`,
+      (d) => d?.["status"] === "matched",
+    );
+    const roomId = poolDoc!["roomId"] as string;
+    await callFn("leaveRoom", {roomId});
+
+    const paddingDoc = await adminFirestoreDoc(`rooms/${roomId}`);
+    expect(paddingDoc!["status"]).toBe("padding");
+    const paddingUntilMs = new Date(
+      paddingDoc!["paddingUntil"] as string,
+    ).getTime();
+    expect(paddingUntilMs).toBeGreaterThan(Date.now());
+
+    // Run expireRooms — paddingUntil is still in the future, room must survive.
+    await callScheduledFn("expireRooms");
+    await sleep(500);
+
+    const afterDoc = await adminFirestoreDoc(`rooms/${roomId}`);
+    expect(afterDoc!["status"]).toBe("padding");
+
+    expect(uidA).not.toBe("");
+    await tryCancelPool();
   });
 });

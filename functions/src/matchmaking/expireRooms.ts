@@ -76,9 +76,17 @@ async function _expireOneRoom(
     if (!snap.exists) return;
 
     const d = snap.data()!;
-    // A concurrent joinGroupRoom/joinRoomById incremented memberCount —
-    // abort so we don't delete an occupied room.
-    if (d.status !== "padding" || (d.memberCount as number) > 0) return;
+    if (d.status !== "padding") return;
+
+    // If cleanupMember never fired (CF crash / emulator region mismatch), the
+    // room can be stuck in padding with memberCount > 0 and no RTDB members.
+    // Verify against RTDB before aborting — only skip if members are genuinely
+    // still connected (someone rejoined during the padding window).
+    if ((d.memberCount as number) > 0) {
+      const rtdbSnap = await rtdb.ref(`rooms/${roomId}/members`).get();
+      if (rtdbSnap.exists()) return; // real members present — skip
+      // No RTDB members: cleanupMember was lost. Fall through and expire.
+    }
 
     // Write the tombstone inside the transaction so the room atomically
     // transitions from padding → expired with no intermediate state.

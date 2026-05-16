@@ -32,17 +32,17 @@ export const cleanupMember = onValueDeleted(
 
       if (newCount === 0) {
         update.status = "padding";
-        // Preserve a shorter paddingUntil already set by leaveRoom (e.g. the
-        // 30-second 1v1 window). Only write paddingUntil on a fresh transition
-        // from active → padding; don't overwrite a tighter deadline.
+        // Only set paddingUntil on a fresh transition — don't overwrite a
+        // shorter window already set by leaveRoom (e.g. the 30-second 1v1 signal).
         if (data.status !== "padding") {
           update.paddingUntil = Timestamp.fromMillis(
             Date.now() + PADDING_MINUTES * 60 * 1000,
           );
         }
       } else if (data.mode === "1v1" && newCount === 1) {
-        // Partner disconnected from a 1v1 room — signal the remaining user by
-        // setting padding so their app detects the state change and re-queues.
+        // Partner disconnected from a 1v1 room — put it in a short padding
+        // window so the remaining user's app detects the state change and
+        // re-queues for a new match.
         update.status = "padding";
         update.paddingUntil = Timestamp.fromMillis(Date.now() + 30 * 1000);
         requeueUid = (data.users as string[]).find((u) => u !== uid) ?? null;

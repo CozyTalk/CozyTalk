@@ -76,7 +76,7 @@ function Test-Port([int]$Port) {
 }
 
 function Test-EmulatorsUp {
-    foreach ($port in @(9099, 8080, 9000, 5001)) {
+    foreach ($port in @(9099, 8080, 9000, 5001, 8085)) {
         if (-not (Test-Port $port)) { return $false }
     }
     return $true
@@ -139,7 +139,7 @@ try {
             hr
         } else {
             # No emulators detected -- this terminal will start and own them.
-            foreach ($port in @(9099, 8080, 9000, 5001, 4000, 4400, 4500)) {
+            foreach ($port in @(9099, 8080, 9000, 5001, 8085, 4000, 4400, 4500)) {
                 Stop-ProcessOnPort $port
             }
 
@@ -174,7 +174,7 @@ try {
 
             # cmd.exe runs synchronously (no & / start), so it stays alive until
             # firebase exits -- HasExited on $EmulatorProcess stays meaningful.
-            $emulatorCmd = "firebase emulators:start --only functions,auth,firestore,database >> `"$LogFile`" 2>&1"
+            $emulatorCmd = "firebase emulators:start --only functions,auth,firestore,database,pubsub >> `"$LogFile`" 2>&1"
             $EmulatorProcess = Start-Process -FilePath 'cmd.exe' `
                 -ArgumentList '/c', $emulatorCmd `
                 -WorkingDirectory $ROOT_DIR `
@@ -214,6 +214,7 @@ try {
             Wait-ForPort "database"  9000
             Wait-ForPort "firestore" 8080
             Wait-ForPort "functions" 5001
+            Wait-ForPort "pubsub"    8085
             ok "Emulator UI -> http://127.0.0.1:4000"
             Write-Host ""
             hr

@@ -107,7 +107,7 @@ cleanup() {
 
 # Returns 0 if all four emulator ports are already accepting connections.
 emulators_already_up() {
-  for port in 9099 8080 9000 5001; do
+  for port in 9099 8080 9000 5001 8085; do
     (echo > /dev/tcp/localhost/$port) 2>/dev/null || return 1
   done
   return 0
@@ -160,7 +160,7 @@ if ! $USE_PROD; then
     # No emulators detected — this terminal will start and own them.
 
     # Kill any stale emulator processes left over from a previous crashed run.
-    for port in 9099 8080 9000 5001 4000 4400 4500; do
+    for port in 9099 8080 9000 5001 8085 4000 4400 4500; do
       pids=$(lsof -ti:$port 2>/dev/null) && kill $pids 2>/dev/null || true
     done
 
@@ -188,7 +188,7 @@ if ! $USE_PROD; then
     printf "\n"
 
     # Run emulators from project root (firebase.json is here; debug logs land here too).
-    firebase emulators:start --only functions,auth,firestore,database >> "$LOG_FILE" 2>&1 &
+    firebase emulators:start --only functions,auth,firestore,database,pubsub >> "$LOG_FILE" 2>&1 &
     EMULATOR_PID=$!
 
     # Keep a stable "latest" symlink for scripts and editors.
@@ -198,6 +198,7 @@ if ! $USE_PROD; then
     wait_for_port "database"  9000
     wait_for_port "firestore" 8080
     wait_for_port "functions" 5001
+    wait_for_port "pubsub"    8085
     ok "Emulator UI → http://127.0.0.1:4000"
     printf "\n$HR\n"
   fi

@@ -60,8 +60,8 @@ export const leaveRoom = onCall(
           Date.now() + PADDING_MINUTES * 60 * 1000,
         );
       } else if (d.mode === "1v1" && newCount === 1) {
-        // One player left a 1v1 room — put it in padding so the remaining
-        // player's app detects the change and re-queues for a new match.
+        // One player left a 1v1 room — put it in a short padding window so
+        // the remaining player's app detects the state change and re-queues.
         update.status = "padding";
         update.paddingUntil = Timestamp.fromMillis(Date.now() + 30 * 1000);
         requeueUid = (d.users as string[]).find((u) => u !== uid) ?? null;
