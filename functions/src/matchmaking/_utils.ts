@@ -40,6 +40,8 @@ export interface RoomData {
   createdAt: FieldValue;
   paddingUntil: null;
   encryptionKey: string;
+  roomInterestVector?: number[] | null;
+  memberInterests?: Record<string, number[]> | null;
 }
 
 /**

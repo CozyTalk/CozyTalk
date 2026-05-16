@@ -12,6 +12,7 @@ Anonymous 1-on-1 stranger chat — Flutter (Android + Web) + Firebase.
 | Node.js | 24+ | [nodejs.org](https://nodejs.org) |
 | Java 17 | 17+ | Required by the Firebase emulators |
 | firebase-tools | latest | `npm i -g firebase-tools` |
+| gcloud CLI | any | [cloud.google.com/sdk](https://cloud.google.com/sdk/docs/install) — optional; needed for interest matching locally |
 
 You also need to be invited to the `cozytalk-5d984` Firebase project before running against production.
 
@@ -38,6 +39,14 @@ Installs Flutter packages, runs code generation (Freezed + Riverpod), and instal
 ```bash
 firebase login
 ```
+
+**2b. Enable local interest matching** *(optional, one time)*
+
+```bash
+gcloud auth application-default login
+```
+
+Without this, interest matching degrades gracefully to random matching — all other features work normally. `dev.sh` / `dev.ps1` will show a warning if this step is skipped.
 
 **3. Start developing**
 

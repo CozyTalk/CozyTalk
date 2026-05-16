@@ -3,6 +3,7 @@ import * as admin from "firebase-admin";
 import {FieldValue, Timestamp} from "firebase-admin/firestore";
 import * as logger from "firebase-functions/logger";
 import {PADDING_MINUTES} from "./_utils";
+import {meanVector} from "./embeddingService";
 
 export const cleanupMember = onValueDeleted(
   {
@@ -46,6 +47,25 @@ export const cleanupMember = onValueDeleted(
         update.status = "padding";
         update.paddingUntil = Timestamp.fromMillis(Date.now() + 30 * 1000);
         requeueUid = (data.users as string[]).find((u) => u !== uid) ?? null;
+      }
+
+      // Remove this member's interest vector and recompute the room aggregate.
+      if (data.mode === "group") {
+        const existing =
+          (data.memberInterests as Record<string, number[]> | null) ?? {};
+        const remaining = Object.fromEntries(
+          Object.entries(existing).filter(([k]) => k !== uid),
+        ) as Record<string, number[]>;
+
+        // Always update memberInterests if any interests exist (even if uid wasn't in it).
+        // This ensures stale interests are cleared when a member leaves.
+        if (Object.keys(remaining).length > 0) {
+          update.memberInterests = remaining;
+          update.roomInterestVector = meanVector(Object.values(remaining));
+        } else {
+          update.memberInterests = null;
+          update.roomInterestVector = null;
+        }
       }
 
       tx.update(roomRef, update);

@@ -81,6 +81,19 @@ if $USE_PROD; then
   printf "\n"
 fi
 
+# ── Vertex AI credentials check ───────────────────────────────────────────────
+if ! $USE_PROD; then
+  ADC_FILE="${HOME}/.config/gcloud/application_default_credentials.json"
+  if ! command -v gcloud &>/dev/null || [[ ! -f "$ADC_FILE" ]]; then
+    warn "Vertex AI ADC not found — interest matching degrades to random matching."
+    info "Run once: ${BOLD}gcloud auth application-default login${RESET}"
+    printf "\n"
+  else
+    ok "Vertex AI ADC ready — interest matching enabled"
+    printf "\n"
+  fi
+fi
+
 # ── Build Flutter args ────────────────────────────────────────────────────────
 FLUTTER_ARGS=()
 $USE_WEB  && FLUTTER_ARGS+=("-d" "chrome")
@@ -96,6 +109,11 @@ cleanup() {
     printf "\n\n  ${GRAY}Stopping emulators…${RESET}\n"
     kill "$EMULATOR_PID" 2>/dev/null || true
     wait "$EMULATOR_PID" 2>/dev/null || true
+  elif $EMULATOR_ONLY; then
+    printf "\n\n  ${GRAY}Stopping emulators…${RESET}\n"
+    for port in 9099 8080 9000 5001 8085 4000 4400 4500; do
+      pids=$(lsof -ti:$port 2>/dev/null) && kill $pids 2>/dev/null || true
+    done
   fi
   if [[ -n "$LOG_FILE" ]]; then
     printf "  ${GRAY}Session log saved → ${BOLD}${LOG_FILE}${RESET}\n"
