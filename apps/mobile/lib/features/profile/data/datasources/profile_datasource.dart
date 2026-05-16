@@ -20,41 +20,30 @@ class ProfileDatasourceImpl implements ProfileDatasource {
     if (!doc.exists) {
       return ProfileUserModel(uid: uid);
     }
-    return ProfileUserModel.fromJson(
-      Map<String, dynamic>.from(doc.data()!),
-    );
+    return ProfileUserModel.fromJson(Map<String, dynamic>.from(doc.data()!));
   }
 
   @override
   Future<void> updateDisplayName(String uid, String displayName) =>
-      _firestore.collection('users').doc(uid).set(
-        {
-          'uid': uid,
-          'displayName': displayName,
-          'lastSeen': FieldValue.serverTimestamp(),
-        },
-        SetOptions(merge: true),
-      );
+      _firestore.collection('users').doc(uid).set({
+        'uid': uid,
+        'displayName': displayName,
+        'lastSeen': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
 
   @override
   Future<void> updateInterest(String uid, String interest) =>
-      _firestore.collection('users').doc(uid).set(
-        {
-          'uid': uid,
-          'interest': interest,
-          'lastSeen': FieldValue.serverTimestamp(),
-        },
-        SetOptions(merge: true),
-      );
+      _firestore.collection('users').doc(uid).set({
+        'uid': uid,
+        'interest': interest,
+        'lastSeen': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
 
   @override
   Future<void> updateThoughts(String uid, String thoughts) =>
-      _firestore.collection('users').doc(uid).set(
-        {
-          'uid': uid,
-          'thoughts': thoughts,
-          'lastSeen': FieldValue.serverTimestamp(),
-        },
-        SetOptions(merge: true),
-      );
+      _firestore.collection('users').doc(uid).set({
+        'uid': uid,
+        'thoughts': thoughts,
+        'lastSeen': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
 }

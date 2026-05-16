@@ -21,10 +21,7 @@ void main() {
 
     test('propagates repository exceptions', () {
       repo.error = Exception('permission denied');
-      expect(
-        () => usecase('u1', 'music'),
-        throwsA(isA<Exception>()),
-      );
+      expect(() => usecase('u1', 'music'), throwsA(isA<Exception>()));
     });
   });
 }
