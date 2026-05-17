@@ -1,10 +1,61 @@
 import {onCall, HttpsError} from "firebase-functions/v2/https";
 import * as admin from "firebase-admin";
 import {FieldValue} from "firebase-admin/firestore";
+import {getStorage} from "firebase-admin/storage";
+import {createDecipheriv, createHash} from "crypto";
 import * as logger from "firebase-functions/logger";
 
 const MAX_REASON_LENGTH = 500;
-const MAX_DESC_LENGTH = 2000;
+const MAX_CONTEXT_LENGTH = 2000;
+const MAX_IMAGES = 5;
+const VALID_REPORT_TYPES = [
+  "spam",
+  "harassment",
+  "inappropriate_content",
+  "other",
+] as const;
+type ReportType = (typeof VALID_REPORT_TYPES)[number];
+
+/**
+ * Decrypts an AES-256-GCM ciphertext using base64-encoded components.
+ * @param encryptedText base64-encoded ciphertext
+ * @param iv base64-encoded 12-byte IV
+ * @param authTag base64-encoded 16-byte auth tag
+ * @param key hex-encoded 32-byte AES-256 key
+ * @return decrypted UTF-8 plaintext, or null if decryption fails
+ */
+function _decryptMessage(
+  encryptedText: string,
+  iv: string,
+  authTag: string,
+  key: string,
+): string | null {
+  try {
+    const decipher = createDecipheriv(
+      "aes-256-gcm",
+      Buffer.from(key, "hex"),
+      Buffer.from(iv, "base64"),
+    );
+    decipher.setAuthTag(Buffer.from(authTag, "base64"));
+    const decrypted = Buffer.concat([
+      decipher.update(Buffer.from(encryptedText, "base64")),
+      decipher.final(),
+    ]);
+    return decrypted.toString("utf8");
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Derives a proto-session AES-256 key from the sessionId via SHA-256,
+ * matching the derivation in ChatDatasourceImpl.fetchSessionKey().
+ * @param sessionId the proto-session document ID
+ * @return hex-encoded 32-byte derived key
+ */
+function _deriveProtoKey(sessionId: string): string {
+  return createHash("sha256").update(sessionId).digest("hex");
+}
 
 export const reportSession = onCall(
   {invoker: "public", cors: true},
@@ -13,7 +64,14 @@ export const reportSession = onCall(
       throw new HttpsError("unauthenticated", "Must be signed in.");
     }
 
-    const {sessionId, reportedUserId, reason, description} = request.data;
+    const {
+      sessionId,
+      reportedUserId,
+      reportType,
+      reason,
+      contextText,
+      contextImageUrls,
+    } = request.data;
 
     if (!sessionId || typeof sessionId !== "string") {
       throw new HttpsError("invalid-argument", "sessionId is required.");
@@ -24,6 +82,12 @@ export const reportSession = onCall(
     if (!reportedUserId || typeof reportedUserId !== "string") {
       throw new HttpsError("invalid-argument", "reportedUserId is required.");
     }
+    if (!reportType || !VALID_REPORT_TYPES.includes(reportType as ReportType)) {
+      throw new HttpsError(
+        "invalid-argument",
+        `reportType must be one of: ${VALID_REPORT_TYPES.join(", ")}.`,
+      );
+    }
     if (!reason || typeof reason !== "string" || reason.trim() === "") {
       throw new HttpsError("invalid-argument", "reason is required.");
     }
@@ -33,18 +97,40 @@ export const reportSession = onCall(
         `Reason cannot exceed ${MAX_REASON_LENGTH} characters.`,
       );
     }
-    if (description !== undefined && description !== null) {
-      if (typeof description !== "string") {
+    if (contextText !== undefined && contextText !== null) {
+      if (typeof contextText !== "string") {
         throw new HttpsError(
           "invalid-argument",
-          "description must be a string.",
+          "contextText must be a string.",
         );
       }
-      if (description.length > MAX_DESC_LENGTH) {
+      if (contextText.length > MAX_CONTEXT_LENGTH) {
         throw new HttpsError(
           "invalid-argument",
-          `Description cannot exceed ${MAX_DESC_LENGTH} characters.`,
+          `Context text cannot exceed ${MAX_CONTEXT_LENGTH} characters.`,
         );
+      }
+    }
+    if (contextImageUrls !== undefined && contextImageUrls !== null) {
+      if (!Array.isArray(contextImageUrls)) {
+        throw new HttpsError(
+          "invalid-argument",
+          "contextImageUrls must be an array.",
+        );
+      }
+      if (contextImageUrls.length > MAX_IMAGES) {
+        throw new HttpsError(
+          "invalid-argument",
+          `Cannot attach more than ${MAX_IMAGES} images.`,
+        );
+      }
+      for (const url of contextImageUrls) {
+        if (typeof url !== "string") {
+          throw new HttpsError(
+            "invalid-argument",
+            "Each image URL must be a string.",
+          );
+        }
       }
     }
 
@@ -54,9 +140,6 @@ export const reportSession = onCall(
     }
 
     const db = admin.firestore();
-
-    // Find the encryption key — check new rooms collection first, then
-    // legacy active_sessions, then archived session_keys.
     let encryptionKey: string | null = null;
 
     const roomSnap = await db.collection("rooms").doc(sessionId).get();
@@ -66,8 +149,6 @@ export const reportSession = onCall(
         throw new HttpsError("permission-denied", "Not a session participant.");
       }
       encryptionKey = (data.encryptionKey as string | undefined) ?? null;
-      // Archive and flag the key immediately so moderators can decrypt messages
-      // even after the room expires or is cleaned up.
       if (encryptionKey) {
         await db
           .collection("session_keys")
@@ -98,6 +179,10 @@ export const reportSession = onCall(
           );
         }
         encryptionKey = (data.encryptionKey as string | undefined) ?? null;
+        // Proto-sessions store no key in Firestore; derive it from the session ID.
+        if (!encryptionKey) {
+          encryptionKey = _deriveProtoKey(sessionId);
+        }
       } else {
         const keySnap = await db
           .collection("session_keys")
@@ -117,7 +202,6 @@ export const reportSession = onCall(
           );
         }
         encryptionKey = (keyData.encryptionKey as string | undefined) ?? null;
-        // Preserve the key indefinitely for the investigation.
         await db.collection("session_keys").doc(sessionId).update({
           expiresAt: null,
           flagged: true,
@@ -125,30 +209,93 @@ export const reportSession = onCall(
       }
     }
 
-    // Mark all messages as flagged and remove their TTL — they must persist
-    // for the moderation investigation.
+    // Fetch all messages, decrypt them, and flag each for indefinite retention.
     const msgsSnap = await db
       .collection("chat_rooms")
       .doc(sessionId)
       .collection("messages")
       .get();
 
+    type ChatEntry = {
+      id: string;
+      senderId: string;
+      displayName: string;
+      text: string | null;
+      timestamp: string | null;
+    };
+    const chatEntries: ChatEntry[] = [];
+
     if (!msgsSnap.empty) {
       const batch = db.batch();
-      msgsSnap.docs.forEach((doc) => {
+      for (const doc of msgsSnap.docs) {
         batch.update(doc.ref, {flagged: true, expiresAt: null});
-      });
+        const d = doc.data();
+        const text =
+          encryptionKey && d.encryptedText && d.iv && d.authTag
+            ? _decryptMessage(
+                d.encryptedText as string,
+                d.iv as string,
+                d.authTag as string,
+                encryptionKey,
+              )
+            : null;
+        chatEntries.push({
+          id: doc.id,
+          senderId: d.senderId as string,
+          displayName: d.displayName as string,
+          text,
+          timestamp: d.timestamp?.toDate?.()?.toISOString() ?? null,
+        });
+      }
+      chatEntries.sort((a, b) =>
+        (a.timestamp ?? "").localeCompare(b.timestamp ?? ""),
+      );
       await batch.commit();
     }
 
     const reportRef = db.collection("reports").doc();
+    const reportId = reportRef.id;
+
+    // Save decrypted chat log to Cloud Storage for moderator access.
+    // Failures are non-fatal — the report is still created.
+    let chatLogStoragePath: string | null = null;
+    try {
+      const storagePath = `reports/${reportId}/chat_log.json`;
+      await getStorage()
+        .bucket()
+        .file(storagePath)
+        .save(
+          JSON.stringify(
+            {
+              reportId,
+              sessionId,
+              exportedAt: new Date().toISOString(),
+              encryptionKey,
+              messages: chatEntries,
+            },
+            null,
+            2,
+          ),
+          {contentType: "application/json"},
+        );
+      chatLogStoragePath = storagePath;
+    } catch (e) {
+      logger.warn("Failed to save chat log to Cloud Storage", {
+        error: String(e),
+        sessionId,
+      });
+    }
+
     await reportRef.set({
       reporterId,
       reportedUserId,
       sessionId,
+      reportType,
       encryptionKey,
       reason: reason.trim(),
-      description: typeof description === "string" ? description.trim() : null,
+      contextText: typeof contextText === "string" ? contextText.trim() : null,
+      contextImageUrls: Array.isArray(contextImageUrls) ? contextImageUrls : [],
+      chatLogStoragePath,
       createdAt: FieldValue.serverTimestamp(),
       status: "pending",
     });
@@ -157,8 +304,8 @@ export const reportSession = onCall(
       sessionId,
       reporterId,
       reportedUserId,
-      reportId: reportRef.id,
+      reportId,
     });
-    return {reportId: reportRef.id};
+    return {reportId};
   },
 );
