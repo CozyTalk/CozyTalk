@@ -5,6 +5,7 @@ import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../data/datasources/matchmaking_datasource.dart';
 import '../../data/repositories/matchmaking_repository_impl.dart';
@@ -89,6 +90,7 @@ class MatchmakingState {
   final bool isNewRoom;
   final Room? currentRoom;
   final String? error;
+  final String interestText;
 
   const MatchmakingState({
     this.status = MatchmakingStatus.idle,
@@ -96,6 +98,7 @@ class MatchmakingState {
     this.isNewRoom = false,
     this.currentRoom,
     this.error,
+    this.interestText = '',
   });
 
   MatchmakingState copyWith({
@@ -104,6 +107,7 @@ class MatchmakingState {
     bool? isNewRoom,
     Object? currentRoom = _sentinel,
     Object? error = _sentinel,
+    String? interestText,
   }) => MatchmakingState(
     status: status ?? this.status,
     roomId: roomId == _sentinel ? this.roomId : roomId as String?,
@@ -112,6 +116,7 @@ class MatchmakingState {
         ? this.currentRoom
         : currentRoom as Room?,
     error: error == _sentinel ? this.error : error as String?,
+    interestText: interestText ?? this.interestText,
   );
 }
 
@@ -126,8 +131,28 @@ class MatchmakingNotifier extends Notifier<MatchmakingState> {
   // from the CF propagates. Cleared once a genuinely new match is processed.
   String? _lastKnownRoomId;
 
+  static const _kInterestTextKey = 'matchmaking_interest_text';
+
   @override
-  MatchmakingState build() => const MatchmakingState();
+  MatchmakingState build() {
+    ref.onDispose(_cancelSubscriptions);
+    return const MatchmakingState();
+  }
+
+  void setInterestText(String text) {
+    state = state.copyWith(interestText: text);
+    SharedPreferences.getInstance()
+        .then((prefs) => prefs.setString(_kInterestTextKey, text))
+        .catchError((_) => false);
+  }
+
+  Future<void> loadSavedInterestText() async {
+    final prefs = await SharedPreferences.getInstance();
+    final saved = prefs.getString(_kInterestTextKey);
+    if (saved != null && saved.isNotEmpty) {
+      state = state.copyWith(interestText: saved);
+    }
+  }
 
   Future<void> joinGroupRoom() async {
     if (state.status == MatchmakingStatus.searching) return;
@@ -137,7 +162,12 @@ class MatchmakingNotifier extends Notifier<MatchmakingState> {
       roomId: null,
     );
     try {
-      final result = await ref.read(_joinGroupRoomProvider)();
+      final interest = state.interestText.isNotEmpty
+          ? state.interestText
+          : null;
+      final result = await ref.read(_joinGroupRoomProvider)(
+        interestText: interest,
+      );
       state = state.copyWith(
         status: MatchmakingStatus.matched,
         roomId: result.roomId,
@@ -223,13 +253,13 @@ class MatchmakingNotifier extends Notifier<MatchmakingState> {
       final msg = _message(e);
       // Room already gone — treat as a successful leave.
       if (msg.contains('not found') || msg.contains('not-found')) {
-        state = const MatchmakingState();
+        state = _idleState();
         return;
       }
       state = state.copyWith(error: msg);
       return;
     }
-    state = const MatchmakingState();
+    state = _idleState();
   }
 
   Future<void> join1v1Pool() async {
@@ -245,7 +275,10 @@ class MatchmakingNotifier extends Notifier<MatchmakingState> {
       roomId: null,
     );
     try {
-      await ref.read(_join1v1PoolProvider)();
+      final interest = state.interestText.isNotEmpty
+          ? state.interestText
+          : null;
+      await ref.read(_join1v1PoolProvider).call(interestText: interest);
       final uid = ref.read(_matchmakingDatasourceProvider).getCurrentUserId();
       if (uid == null) throw Exception('Not signed in.');
       // Pass _lastKnownRoomId so the stream skips any stale 'matched' entry
@@ -273,7 +306,7 @@ class MatchmakingNotifier extends Notifier<MatchmakingState> {
           .read(_leaveRoomProvider)(state.roomId!)
           .catchError((_) async {});
     }
-    state = const MatchmakingState();
+    state = _idleState();
   }
 
   Future<void> setRoomLock({required bool isLocked}) async {
@@ -286,6 +319,10 @@ class MatchmakingNotifier extends Notifier<MatchmakingState> {
     }
   }
 
+  // Returns an idle state that preserves interestText across room transitions.
+  MatchmakingState _idleState() =>
+      MatchmakingState(interestText: state.interestText);
+
   void _subscribeToRoom(String roomId) {
     _roomSub?.cancel();
     _roomSub = ref
@@ -297,7 +334,7 @@ class MatchmakingNotifier extends Notifier<MatchmakingState> {
               if (state.status == MatchmakingStatus.matched) {
                 _lastKnownRoomId = state.roomId;
                 _cancelSubscriptions();
-                state = const MatchmakingState();
+                state = _idleState();
               } else {
                 state = state.copyWith(currentRoom: null);
               }
@@ -350,7 +387,7 @@ class MatchmakingNotifier extends Notifier<MatchmakingState> {
     _cancelSubscriptions();
     final uid = ref.read(_matchmakingDatasourceProvider).getCurrentUserId();
     if (uid == null) {
-      state = const MatchmakingState();
+      state = _idleState();
       return;
     }
     // Capture the old room ID before clearing state so _subscribeToMatch can
@@ -397,7 +434,7 @@ class MatchmakingNotifier extends Notifier<MatchmakingState> {
       },
       onError: (Object e) => state = state.copyWith(
         status: MatchmakingStatus.error,
-        error: e.toString(),
+        error: _message(e),
       ),
     );
   }

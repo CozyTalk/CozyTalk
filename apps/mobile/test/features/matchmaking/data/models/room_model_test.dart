@@ -45,6 +45,20 @@ void main() {
 
       expect(() => RoomModel.fromJson(json), returnsNormally);
     });
+
+    test('parses roomInterestVector when present', () {
+      final json = _baseJson()..['roomInterestVector'] = [0.1, 0.2, 0.3];
+
+      final model = RoomModel.fromJson(json);
+
+      expect(model.roomInterestVector, [0.1, 0.2, 0.3]);
+    });
+
+    test('roomInterestVector defaults to null when absent', () {
+      final model = RoomModel.fromJson(_baseJson());
+
+      expect(model.roomInterestVector, isNull);
+    });
   });
 
   group('RoomModel.toEntity', () {
@@ -123,6 +137,18 @@ void main() {
         'users': ['a', 'b', 'c'],
       }).toEntity();
       expect(entity.users, ['a', 'b', 'c']);
+    });
+
+    test('maps roomInterestVector to entity when present', () {
+      final entity = modelFrom({
+        'roomInterestVector': [0.5, 0.6],
+      }).toEntity();
+      expect(entity.roomInterestVector, [0.5, 0.6]);
+    });
+
+    test('roomInterestVector null stays null in entity', () {
+      final entity = modelFrom({}).toEntity();
+      expect(entity.roomInterestVector, isNull);
     });
   });
 }

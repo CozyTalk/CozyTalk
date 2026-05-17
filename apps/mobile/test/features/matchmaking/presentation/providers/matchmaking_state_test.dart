@@ -25,6 +25,7 @@ void main() {
       expect(s.isNewRoom, false);
       expect(s.currentRoom, isNull);
       expect(s.error, isNull);
+      expect(s.interestText, '');
     });
 
     group('copyWith', () {
@@ -107,6 +108,27 @@ void main() {
         expect(updated.isNewRoom, true);
       });
 
+      test('sets interestText', () {
+        const s = MatchmakingState();
+        final updated = s.copyWith(interestText: 'football');
+
+        expect(updated.interestText, 'football');
+      });
+
+      test('preserves interestText when not specified', () {
+        const s = MatchmakingState(interestText: 'cooking');
+        final updated = s.copyWith(status: MatchmakingStatus.searching);
+
+        expect(updated.interestText, 'cooking');
+      });
+
+      test('clears interestText by setting empty string', () {
+        const s = MatchmakingState(interestText: 'football');
+        final cleared = s.copyWith(interestText: '');
+
+        expect(cleared.interestText, '');
+      });
+
       test('preserves all fields when called with no args', () {
         final room = _activeRoom();
         final s = MatchmakingState(
@@ -115,6 +137,7 @@ void main() {
           isNewRoom: true,
           currentRoom: room,
           error: 'err',
+          interestText: 'music',
         );
 
         final unchanged = s.copyWith();
@@ -124,6 +147,7 @@ void main() {
         expect(unchanged.isNewRoom, true);
         expect(unchanged.currentRoom, room);
         expect(unchanged.error, 'err');
+        expect(unchanged.interestText, 'music');
       });
     });
   });

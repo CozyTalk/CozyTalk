@@ -27,7 +27,9 @@ class _FakeMatchmakingDatasource implements MatchmakingDatasource {
   bool? lastSetRoomLockValue;
 
   @override
-  Future<({String roomId, bool isNewRoom})> joinGroupRoom() async {
+  Future<({String roomId, bool isNewRoom})> joinGroupRoom({
+    String? interestText,
+  }) async {
     if (error != null) throw error!;
     return joinGroupRoomResult;
   }
@@ -54,7 +56,7 @@ class _FakeMatchmakingDatasource implements MatchmakingDatasource {
   }
 
   @override
-  Future<void> join1v1Pool() async {
+  Future<void> join1v1Pool({String? interestText}) async {
     join1v1PoolCalls++;
     if (error != null) throw error!;
   }
