@@ -3,6 +3,7 @@ import * as admin from "firebase-admin";
 import {FieldValue, Timestamp} from "firebase-admin/firestore";
 import * as logger from "firebase-functions/logger";
 import {PADDING_MINUTES} from "./_utils";
+import {meanVector} from "./embeddingService";
 
 export const leaveRoom = onCall(
   {invoker: "public", cors: true},
@@ -41,6 +42,7 @@ export const leaveRoom = onCall(
 
     let newCount = 0;
     let requeueUid: string | null = null;
+    let requeueInterestVector: number[] | null = null;
     await db.runTransaction(async (tx) => {
       const snap = await tx.get(roomRef);
       if (!snap.exists) return;
@@ -65,6 +67,30 @@ export const leaveRoom = onCall(
         update.status = "padding";
         update.paddingUntil = Timestamp.fromMillis(Date.now() + 30 * 1000);
         requeueUid = (d.users as string[]).find((u) => u !== uid) ?? null;
+        // Capture the remaining user's interest vector so it's restored on re-queue.
+        if (requeueUid) {
+          const mi = d.memberInterests as Record<string, number[]> | null;
+          requeueInterestVector = mi?.[requeueUid] ?? null;
+        }
+      }
+
+      // Remove this member's interest vector and recompute the room aggregate.
+      if (d.mode === "group") {
+        const existing =
+          (d.memberInterests as Record<string, number[]> | null) ?? {};
+        const remaining = Object.fromEntries(
+          Object.entries(existing).filter(([k]) => k !== uid),
+        ) as Record<string, number[]>;
+
+        // Always update memberInterests if any interests exist (even if uid wasn't in it).
+        // This ensures stale interests are cleared when a member leaves.
+        if (Object.keys(remaining).length > 0) {
+          update.memberInterests = remaining;
+          update.roomInterestVector = meanVector(Object.values(remaining));
+        } else {
+          update.memberInterests = null;
+          update.roomInterestVector = null;
+        }
       }
 
       tx.update(roomRef, update);
@@ -87,6 +113,8 @@ export const leaveRoom = onCall(
         status: "waiting",
         mode: "1v1",
         roomId: null,
+        interestText: null,
+        interestVector: requeueInterestVector,
       });
       // Remove the remaining user's RTDB membership so cleanupMember fires,
       // decrements memberCount to 0, and lets expireRooms clean up the old room.

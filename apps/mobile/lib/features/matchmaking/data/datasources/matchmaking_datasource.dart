@@ -7,13 +7,15 @@ import '../../domain/entities/room.dart';
 import '../models/room_model.dart';
 
 abstract class MatchmakingDatasource {
-  Future<({String roomId, bool isNewRoom})> joinGroupRoom();
+  Future<({String roomId, bool isNewRoom})> joinGroupRoom({
+    String? interestText,
+  });
   Future<String> createCustomRoom();
   Future<({String roomId, RoomMode mode, RoomType roomType})> joinRoomById(
     String roomId,
   );
   Future<void> leaveRoom(String roomId);
-  Future<void> join1v1Pool();
+  Future<void> join1v1Pool({String? interestText});
   Future<bool> cancel1v1Pool();
   Future<void> setRoomLock({required String roomId, required bool isLocked});
   Stream<RoomModel?> watchRoom(String roomId);
@@ -41,8 +43,13 @@ class MatchmakingDatasourceImpl implements MatchmakingDatasource {
   );
 
   @override
-  Future<({String roomId, bool isNewRoom})> joinGroupRoom() async {
-    final result = await _functions.httpsCallable('joinGroupRoom').call({});
+  Future<({String roomId, bool isNewRoom})> joinGroupRoom({
+    String? interestText,
+  }) async {
+    final result = await _functions.httpsCallable('joinGroupRoom').call({
+      if (interestText != null && interestText.isNotEmpty)
+        'interestText': interestText,
+    });
     final data = Map<String, dynamic>.from(result.data as Map);
     final roomId = data['roomId'] as String;
     await _registerDisconnect(roomId);
@@ -83,8 +90,11 @@ class MatchmakingDatasourceImpl implements MatchmakingDatasource {
   }
 
   @override
-  Future<void> join1v1Pool() async {
-    await _functions.httpsCallable('join1v1Pool').call({});
+  Future<void> join1v1Pool({String? interestText}) async {
+    await _functions.httpsCallable('join1v1Pool').call({
+      if (interestText != null && interestText.isNotEmpty)
+        'interestText': interestText,
+    });
     // Write RTDB pool presence so onDisconnect auto-removes the waiting_pool entry
     // when the browser closes without pressing Cancel.
     final uid = _auth.currentUser?.uid;
@@ -156,9 +166,14 @@ class MatchmakingDatasourceImpl implements MatchmakingDatasource {
   Future<void> _registerDisconnect(String roomId) async {
     final uid = _auth.currentUser?.uid;
     if (uid == null) return;
-    final membersRef = _rtdb.ref('rooms/$roomId/members/$uid');
-    await membersRef.onDisconnect().remove();
-    await _rtdb.ref('typing/$roomId/$uid').onDisconnect().remove();
-    await _rtdb.ref('presence/$roomId/$uid').onDisconnect().remove();
+    // rooms/{roomId}/members/{uid} is CF-managed (write: false for clients);
+    // cleanupMember handles removal on disconnect. Only register paths the
+    // client is allowed to write: typing and presence.
+    try {
+      await _rtdb.ref('typing/$roomId/$uid').onDisconnect().remove();
+      await _rtdb.ref('presence/$roomId/$uid').onDisconnect().remove();
+    } catch (_) {
+      // Non-fatal — server-side cleanupMember handles stale entries.
+    }
   }
 }

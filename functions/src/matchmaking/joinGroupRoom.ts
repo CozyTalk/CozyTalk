@@ -3,9 +3,15 @@ import * as admin from "firebase-admin";
 import {FieldValue} from "firebase-admin/firestore";
 import * as logger from "firebase-functions/logger";
 import {createRoomWithRetry, generateKey} from "./_utils";
+import {
+  embedText,
+  cosineSimilarity,
+  meanVector,
+  INTEREST_SIMILARITY_THRESHOLD,
+} from "./embeddingService";
 
 export const joinGroupRoom = onCall(
-  {invoker: "public", cors: true},
+  {invoker: "public", cors: true, memory: "512MiB"},
   async (request) => {
     if (!request.auth) {
       throw new HttpsError("unauthenticated", "Must be signed in.");
@@ -14,6 +20,11 @@ export const joinGroupRoom = onCall(
     const uid = request.auth.uid;
     const db = admin.firestore();
     const rtdb = admin.database();
+
+    const data = request.data as {interestText?: unknown};
+    const rawInterest =
+      typeof data?.interestText === "string" ? data.interestText.trim() : null;
+    const userVector = rawInterest ? await embedText(rawInterest) : null;
 
     // Remove any stale waiting_pool entry to keep the pool clean.
     await db
@@ -24,26 +35,19 @@ export const joinGroupRoom = onCall(
 
     /**
      * Shuffles candidates and attempts to join each one atomically.
+     * Updates roomInterestVector and memberInterests in the join transaction
+     * when the user has an interest vector.
      * Returns the joined roomId on success, or null if all candidates fail.
      * @param {FirebaseFirestore.QueryDocumentSnapshot[]} docs - Candidate room docs.
+     * @param {number[] | null} [vector] - Joining user's interest vector, if any.
      * @return {Promise<string | null>} The joined roomId, or null.
      */
     async function _tryJoinCandidates(
       docs: FirebaseFirestore.QueryDocumentSnapshot[],
+      vector: number[] | null,
     ): Promise<string | null> {
       const shuffled = [...docs].sort(() => Math.random() - 0.5);
       for (const doc of shuffled) {
-        // Ground-truth check: RTDB is the source of live membership.
-        // If RTDB has no members for this room, Firestore count has drifted —
-        // it's a ghost room. Skip it rather than routing a real user there.
-        const rtdbMembersSnap = await rtdb.ref(`rooms/${doc.id}/members`).get();
-        if (!rtdbMembersSnap.exists()) {
-          logger.debug("Skipping ghost room (no RTDB members)", {
-            roomId: doc.id,
-          });
-          continue;
-        }
-
         const roomRef = db.collection("rooms").doc(doc.id);
         let joined = false;
 
@@ -52,81 +56,120 @@ export const joinGroupRoom = onCall(
             const roomSnap = await tx.get(roomRef);
             if (!roomSnap.exists) return;
 
-            const data = roomSnap.data()!;
+            const d = roomSnap.data()!;
             if (
-              data.status === "expired" ||
-              data.status === "padding" ||
-              data.isLocked ||
-              data.memberCount >= data.maxUsers ||
-              (data.users as string[]).includes(uid)
+              d.status === "expired" ||
+              d.status === "padding" ||
+              d.isLocked ||
+              d.memberCount >= d.maxUsers ||
+              (d.users as string[]).includes(uid)
             ) {
               return;
             }
 
-            tx.update(roomRef, {
+            const update: Record<string, unknown> = {
               users: FieldValue.arrayUnion(uid),
               memberCount: FieldValue.increment(1),
               status: "active",
               paddingUntil: null,
-            });
+            };
+
+            // Add user's interest to room aggregate when they have a vector.
+            if (vector) {
+              const existing =
+                (d.memberInterests as Record<string, number[]> | null) ?? {};
+              const updated = {...existing, [uid]: vector};
+              update.memberInterests = updated;
+              update.roomInterestVector = meanVector(Object.values(updated));
+            }
+
+            tx.update(roomRef, update);
             joined = true;
           });
         } catch (err) {
           logger.warn(
             "Transaction failed joining room, trying next candidate",
-            {
-              roomId: doc.id,
-              err,
-            },
+            {roomId: doc.id, err},
           );
           continue;
         }
 
         if (joined) {
           await rtdb.ref(`rooms/${doc.id}/members/${uid}`).set(true);
-          logger.info("User joined existing group room", {uid, roomId: doc.id});
+          logger.info("User joined existing group room", {
+            uid,
+            roomId: doc.id,
+            hadInterest: !!vector,
+          });
           return doc.id;
         }
       }
       return null;
     }
 
-    // Phase 1 — Priority: join a room with exactly 1 member so that lone users
-    // find a partner as quickly as possible. Multiple candidates are shuffled for
-    // random selection among equal-priority rooms.
-    const prioritySnap = await db
-      .collection("rooms")
-      .where("mode", "==", "group")
-      .where("status", "==", "active")
-      .where("isLocked", "==", false)
-      .where("memberCount", "==", 1)
-      .limit(10)
-      .get();
+    // Fetch Phase 1 (lone-user) and Phase 2 (2-4 member) candidates in parallel.
+    // When the user has interest, we also use these results for Phase 0.
+    const [prioritySnap, otherSnap] = await Promise.all([
+      db
+        .collection("rooms")
+        .where("mode", "==", "group")
+        .where("status", "==", "active")
+        .where("isLocked", "==", false)
+        .where("memberCount", "==", 1)
+        .limit(10)
+        .get(),
+      db
+        .collection("rooms")
+        .where("mode", "==", "group")
+        .where("status", "==", "active")
+        .where("isLocked", "==", false)
+        .where("memberCount", ">", 1)
+        .where("memberCount", "<", 5)
+        .limit(10)
+        .get(),
+    ]);
 
-    const priorityRoomId = await _tryJoinCandidates(prioritySnap.docs);
+    // Phase 0 — Interest matching: if the user typed an interest, find rooms
+    // whose aggregate interest vector is similar enough to theirs. Interest-matched
+    // rooms take priority over lone-user rooms (the existing Phase 1).
+    if (userVector) {
+      const allCandidates = [...prioritySnap.docs, ...otherSnap.docs];
+      const matchingRooms = allCandidates.filter((d) => {
+        const rv = d.data().roomInterestVector;
+        return (
+          Array.isArray(rv) &&
+          cosineSimilarity(userVector, rv as number[]) >=
+            INTEREST_SIMILARITY_THRESHOLD
+        );
+      });
+
+      if (matchingRooms.length > 0) {
+        const matched = await _tryJoinCandidates(matchingRooms, userVector);
+        if (matched) {
+          return {roomId: matched, isNewRoom: false};
+        }
+      }
+    }
+
+    // Phase 1 — Priority: join a room with exactly 1 member so that lone users
+    // find a partner as quickly as possible.
+    const priorityRoomId = await _tryJoinCandidates(
+      prioritySnap.docs,
+      userVector,
+    );
     if (priorityRoomId) {
       return {roomId: priorityRoomId, isNewRoom: false};
     }
 
     // Phase 2 — Random: no lone-user rooms found; join any available room with
-    // 2–4 members, chosen at random so users don't predictably rejoin the same room.
-    const otherSnap = await db
-      .collection("rooms")
-      .where("mode", "==", "group")
-      .where("status", "==", "active")
-      .where("isLocked", "==", false)
-      .where("memberCount", ">", 1)
-      .where("memberCount", "<", 5)
-      .limit(10)
-      .get();
-
-    const otherRoomId = await _tryJoinCandidates(otherSnap.docs);
+    // 2–4 members, chosen at random.
+    const otherRoomId = await _tryJoinCandidates(otherSnap.docs, userVector);
     if (otherRoomId) {
       return {roomId: otherRoomId, isNewRoom: false};
     }
 
-    // No available room found — create one and become the first member.
-    const roomId = await createRoomWithRetry(db, {
+    // Phase 3 — No available room found: create one and become the first member.
+    const newRoomData: Parameters<typeof createRoomWithRetry>[1] = {
       roomType: "public",
       mode: "group",
       status: "active",
@@ -137,10 +180,22 @@ export const joinGroupRoom = onCall(
       createdAt: FieldValue.serverTimestamp(),
       paddingUntil: null,
       encryptionKey: generateKey(),
-    });
+      ...(userVector
+        ? {
+            memberInterests: {[uid]: userVector},
+            roomInterestVector: userVector,
+          }
+        : {}),
+    };
+
+    const roomId = await createRoomWithRetry(db, newRoomData);
 
     await rtdb.ref(`rooms/${roomId}/members/${uid}`).set(true);
-    logger.info("Created new group room", {uid, roomId});
+    logger.info("Created new group room", {
+      uid,
+      roomId,
+      hadInterest: !!userVector,
+    });
 
     // Race-condition mitigation: if another user created a 1-member room at the
     // same time (both saw an empty DB), merge into theirs and discard ours.
@@ -175,10 +230,20 @@ export const joinGroupRoom = onCall(
           ) {
             return;
           }
-          tx.update(targetRef, {
+
+          const mergeUpdate: Record<string, unknown> = {
             users: FieldValue.arrayUnion(uid),
             memberCount: FieldValue.increment(1),
-          });
+          };
+          if (userVector) {
+            const existing =
+              (td.memberInterests as Record<string, number[]> | null) ?? {};
+            const updated = {...existing, [uid]: userVector};
+            mergeUpdate.memberInterests = updated;
+            mergeUpdate.roomInterestVector = meanVector(Object.values(updated));
+          }
+
+          tx.update(targetRef, mergeUpdate);
           tx.delete(myRoomRef);
           merged = true;
         });

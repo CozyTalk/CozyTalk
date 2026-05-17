@@ -3,6 +3,11 @@ import * as admin from "firebase-admin";
 import {FieldValue} from "firebase-admin/firestore";
 import * as logger from "firebase-functions/logger";
 import {createRoomWithRetry, generateKey} from "./_utils";
+import {
+  cosineSimilarity,
+  INTEREST_SIMILARITY_THRESHOLD,
+  meanVector,
+} from "./embeddingService";
 
 export const match1v1Users = onDocumentCreated(
   {document: "waiting_pool/{uid}", region: "asia-southeast1", minInstances: 1},
@@ -15,19 +20,45 @@ export const match1v1Users = onDocumentCreated(
     const db = admin.firestore();
     const rtdb = admin.database();
 
-    // Find waiting partners (oldest first for fairness).
+    const toVector = (v: unknown): number[] | null =>
+      Array.isArray(v) ? (v as number[]) : null;
+
+    const triggerVector = toVector(data.interestVector);
+
+    // Expanded to 20 candidates to give interest-matching a wider field.
     const candidatesSnap = await db
       .collection("waiting_pool")
       .where("mode", "==", "1v1")
       .where("status", "==", "waiting")
       .orderBy("createdAt", "asc")
-      .limit(6)
+      .limit(20)
       .get();
 
-    const candidates = candidatesSnap.docs.filter((d) => d.id !== triggerUid);
+    let candidates = candidatesSnap.docs.filter((d) => d.id !== triggerUid);
     if (candidates.length === 0) {
       logger.debug("No 1v1 partner found yet", {triggerUid});
       return;
+    }
+
+    // Sort: interest-compatible candidates first (shuffled for fairness among
+    // equal-quality matches), then remaining in original FIFO order.
+    if (triggerVector) {
+      const interestCandidates: typeof candidates = [];
+      const remainingCandidates: typeof candidates = [];
+      for (const c of candidates) {
+        const cv = c.data().interestVector;
+        if (
+          Array.isArray(cv) &&
+          cosineSimilarity(triggerVector, cv as number[]) >=
+            INTEREST_SIMILARITY_THRESHOLD
+        ) {
+          interestCandidates.push(c);
+        } else {
+          remainingCandidates.push(c);
+        }
+      }
+      interestCandidates.sort(() => Math.random() - 0.5);
+      candidates = [...interestCandidates, ...remainingCandidates];
     }
 
     for (const candidate of candidates) {
@@ -56,6 +87,16 @@ export const match1v1Users = onDocumentCreated(
 
       if (!claimSucceeded) continue;
 
+      // Build room interest fields if both users provided interest vectors.
+      const candidateVector = toVector(candidate.data().interestVector);
+      const memberInterests: Record<string, number[]> | null =
+        triggerVector && candidateVector
+          ? {[triggerUid]: triggerVector, [candidate.id]: candidateVector}
+          : null;
+      const roomInterestVector = memberInterests
+        ? meanVector(Object.values(memberInterests))
+        : null;
+
       let roomId: string;
       try {
         // Phase 2: create the room (outside any transaction — uses atomic create()).
@@ -70,6 +111,7 @@ export const match1v1Users = onDocumentCreated(
           createdAt: FieldValue.serverTimestamp(),
           paddingUntil: null,
           encryptionKey: generateKey(),
+          ...(memberInterests ? {memberInterests, roomInterestVector} : {}),
         });
       } catch (e) {
         // Room creation failed — undo the claim so the candidate can be rematched.
@@ -164,6 +206,7 @@ export const match1v1Users = onDocumentCreated(
         triggerUid,
         candidateId: candidate.id,
         roomId,
+        interestMatched: !!(triggerVector && candidateVector),
       });
       return;
     }

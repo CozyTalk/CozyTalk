@@ -25,6 +25,23 @@ class _MatchmakingTestScreenState extends ConsumerState<MatchmakingTestScreen> {
     (_) => TextEditingController(),
   );
   final List<FocusNode> _idFocusNodes = List.generate(5, (_) => FocusNode());
+  final TextEditingController _interestController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      await ref
+          .read(matchmakingNotifierProvider.notifier)
+          .loadSavedInterestText();
+      if (mounted) {
+        _interestController.text = ref
+            .read(matchmakingNotifierProvider)
+            .interestText;
+      }
+    });
+  }
 
   @override
   void dispose() {
@@ -34,6 +51,7 @@ class _MatchmakingTestScreenState extends ConsumerState<MatchmakingTestScreen> {
     for (final f in _idFocusNodes) {
       f.dispose();
     }
+    _interestController.dispose();
     super.dispose();
   }
 
@@ -77,6 +95,18 @@ class _MatchmakingTestScreenState extends ConsumerState<MatchmakingTestScreen> {
             children: [
               _StatusCard(state: state),
               const SizedBox(height: 20),
+              TextField(
+                key: const Key('interest_text_field'),
+                controller: _interestController,
+                enabled: !isBusy && !isMatched,
+                decoration: const InputDecoration(
+                  labelText: 'Interest (optional)',
+                  hintText: 'e.g. football, cooking, music…',
+                  border: OutlineInputBorder(),
+                ),
+                onChanged: notifier.setInterestText,
+              ),
+              const SizedBox(height: 12),
               _ActionButtons(
                 isBusy: isBusy,
                 isMatched: isMatched,
@@ -334,6 +364,7 @@ class _JoinByIdRow extends StatelessWidget {
             child: Padding(
               padding: EdgeInsets.only(right: i < 4 ? 6 : 12),
               child: TextField(
+                key: Key('room_id_field_$i'),
                 controller: controllers[i],
                 focusNode: focusNodes[i],
                 autofocus: false,

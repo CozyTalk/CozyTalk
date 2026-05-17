@@ -677,8 +677,6 @@ describe("1v1 leave and requeue", () => {
     // (no Android emulator clock skew).
     expect(diffSeconds).toBeLessThan(35);
     expect(diffSeconds).toBeGreaterThan(0);
-
-    expect(uidA).not.toBe("");
   });
 
   test("leaveRoom (1v1): remaining user gets fresh waiting_pool entry (delete+set fix)", async () => {
@@ -753,8 +751,6 @@ describe("1v1 leave and requeue", () => {
     ]);
     expect(typing.exists).toBe(false);
     expect(presence.exists).toBe(false);
-
-    expect(uidA).not.toBe("");
   });
 });
 
@@ -1350,7 +1346,491 @@ describe("regression: expireRooms cleans up stuck padding rooms", () => {
     const afterDoc = await adminFirestoreDoc(`rooms/${roomId}`);
     expect(afterDoc!["status"]).toBe("padding");
 
-    expect(uidA).not.toBe("");
     await tryCancelPool();
   });
+});
+
+// ── Interest vector test helpers ──────────────────────────────────────────────
+
+/** 256-dim unit vector along dimension d. */
+const unitVec = (d: number): number[] =>
+  Array.from({length: 256}, (_, i) => (i === d ? 1 : 0));
+
+// ── 1v1 interest matching: room interest vectors ──────────────────────────────
+
+describe("1v1 interest matching: room interest vectors", () => {
+  test("room has memberInterests and roomInterestVector when both users have vectors", async () => {
+    signOut();
+    const uidA = await signInAnon();
+
+    // Write pool doc directly so we control the interestVector without Vertex AI.
+    await adminFirestoreSet(`waiting_pool/${uidA}`, {
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      status: "waiting",
+      mode: "1v1",
+      roomId: null,
+      interestText: "football",
+      interestVector: unitVec(0),
+    });
+
+    signOut();
+    const uidB = await signInAnon();
+
+    // Writing uidB's doc triggers match1v1Users with uidB as the trigger user.
+    await adminFirestoreSet(`waiting_pool/${uidB}`, {
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      status: "waiting",
+      mode: "1v1",
+      roomId: null,
+      interestText: "soccer",
+      interestVector: unitVec(0),
+    });
+
+    const poolDocB = await waitUntilAdminDocMatches(
+      `waiting_pool/${uidB}`,
+      (d) => d?.["status"] === "matched",
+      {timeout: 15_000},
+    );
+    expect(poolDocB?.["status"]).toBe("matched");
+    const roomId = poolDocB!["roomId"] as string;
+
+    const room = await adminFirestoreDoc(`rooms/${roomId}`);
+    expect(room).not.toBeNull();
+
+    const interests = room!["memberInterests"] as Record<string, unknown>;
+    expect(interests).not.toBeNull();
+    expect(Object.keys(interests)).toContain(uidA);
+    expect(Object.keys(interests)).toContain(uidB);
+
+    const rv = room!["roomInterestVector"] as number[];
+    expect(Array.isArray(rv)).toBe(true);
+    expect(rv.length).toBe(256);
+
+    await adminFirestoreUpdate(`rooms/${roomId}`, {status: "expired"});
+  });
+
+  test("room has null memberInterests when neither user has a vector", async () => {
+    signOut();
+    const uidA = await signInAnon();
+    await callFn("join1v1Pool");
+
+    signOut();
+    const uidB = await signInAnon();
+    await callFn("join1v1Pool");
+
+    const poolDocB = await waitUntilAdminDocMatches(
+      `waiting_pool/${uidB}`,
+      (d) => d?.["status"] === "matched",
+      {timeout: 15_000},
+    );
+    const roomId = poolDocB!["roomId"] as string;
+
+    const room = await adminFirestoreDoc(`rooms/${roomId}`);
+    expect(room!["memberInterests"] ?? null).toBeNull();
+    expect(room!["roomInterestVector"] ?? null).toBeNull();
+
+    await callFn("leaveRoom", {roomId});
+  });
+});
+
+// ── Group room: interest vector maintained on join / leave ────────────────────
+
+describe("group room: roomInterestVector maintained on leave", () => {
+  test("roomInterestVector is recomputed when a member with interest leaves", async () => {
+    // User A creates a group room.
+    signOut();
+    const uidA = await signInAnon();
+    const resA = await callFn("joinGroupRoom");
+    const roomId = resA["roomId"] as string;
+
+    // User B joins the same room.
+    signOut();
+    const uidB = await signInAnon();
+    await callFn("joinRoomById", {roomId});
+
+    // Simulate both having submitted interests: write directly to Firestore.
+    await adminFirestoreUpdate(`rooms/${roomId}`, {
+      memberInterests: {[uidA]: unitVec(0), [uidB]: unitVec(1)},
+      roomInterestVector: [0.5, 0.5, ...new Array(254).fill(0)],
+    });
+
+    // uidB leaves explicitly — leaveRoom recomputes interest vector synchronously.
+    await callFn("leaveRoom", {roomId});
+
+    const updated = await adminFirestoreDoc(`rooms/${roomId}`);
+    const interests = updated!["memberInterests"] as Record<string, unknown>;
+    expect(Object.keys(interests)).not.toContain(uidB);
+    expect(Object.keys(interests)).toContain(uidA);
+
+    // roomInterestVector should now equal uidA's vector (unitVec(0))
+    const rv = updated!["roomInterestVector"] as number[];
+    expect(Array.isArray(rv)).toBe(true);
+    expect(rv[0]).toBe(1);
+    expect(rv[1]).toBe(0);
+  });
+
+  test("roomInterestVector is null when last member with interest leaves", async () => {
+    // Single user joins and creates a group room.
+    signOut();
+    const uidA = await signInAnon();
+    const res = await callFn("joinGroupRoom");
+    const roomId = res["roomId"] as string;
+
+    // Simulate the user having an interest vector.
+    await adminFirestoreUpdate(`rooms/${roomId}`, {
+      memberInterests: {[uidA]: unitVec(0)},
+      roomInterestVector: unitVec(0),
+    });
+
+    // uidA leaves explicitly — last member, leaveRoom sets padding and nulls interests.
+    await callFn("leaveRoom", {roomId});
+
+    const updated = await adminFirestoreDoc(`rooms/${roomId}`);
+    expect(updated!["status"]).toBe("padding");
+    expect(updated!["roomInterestVector"] ?? null).toBeNull();
+    expect(updated!["memberInterests"] ?? null).toBeNull();
+  });
+});
+
+// ── 1v1 interest matching: candidate preference ───────────────────────────────
+
+describe("1v1 interest matching: prefers similar-interest candidate", () => {
+  test("similar-interest candidate is matched over earlier FIFO candidate", async () => {
+    // Stage uidC first (earliest createdAt, no interest vector).
+    // Writing with status "matching" means onDocumentCreated fires but the
+    // CF returns immediately (status != "waiting"), so no real match runs.
+    // adminFirestoreUpdate to "waiting" afterwards doesn't re-trigger the CF.
+    signOut();
+    const uidC = await signInAnon();
+    await adminFirestoreSet(`waiting_pool/${uidC}`, {
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      status: "matching",
+      mode: "1v1",
+      roomId: null,
+    });
+
+    // Stage uidB with interest vector matching uidA's (same unit dimension).
+    signOut();
+    const uidB = await signInAnon();
+    await adminFirestoreSet(`waiting_pool/${uidB}`, {
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      status: "matching",
+      mode: "1v1",
+      roomId: null,
+      interestText: "soccer",
+      interestVector: unitVec(0),
+    });
+
+    // Both staged — flip to "waiting" without firing a new trigger.
+    await adminFirestoreUpdate(`waiting_pool/${uidC}`, {status: "waiting"});
+    await adminFirestoreUpdate(`waiting_pool/${uidB}`, {status: "waiting"});
+
+    // uidA arrives last with a matching interest vector.
+    // Trigger fires: interest sort puts uidB first despite uidC being FIFO-oldest.
+    signOut();
+    const uidA = await signInAnon();
+    await adminFirestoreSet(`waiting_pool/${uidA}`, {
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      status: "waiting",
+      mode: "1v1",
+      roomId: null,
+      interestText: "football",
+      interestVector: unitVec(0), // cosine(unitVec(0), unitVec(0)) = 1.0 ≥ 0.65
+    });
+
+    const poolDocA = await waitUntilAdminDocMatches(
+      `waiting_pool/${uidA}`,
+      (d) => d?.["status"] === "matched",
+      {timeout: 15_000},
+    );
+    expect(poolDocA?.["status"]).toBe("matched");
+    const roomId = poolDocA!["roomId"] as string;
+
+    const room = await adminFirestoreDoc(`rooms/${roomId}`);
+    expect(room).not.toBeNull();
+    // uidB (similar interest) was preferred over uidC (FIFO-first, no interest).
+    expect(room!["users"] as string[]).toContain(uidB);
+    expect(room!["users"] as string[]).not.toContain(uidC);
+
+    await adminFirestoreUpdate(`rooms/${roomId}`, {status: "expired"});
+  }, 30_000);
+
+  test("falls back to FIFO when trigger user has no interest vector", async () => {
+    // Stage uidC (oldest, has interest), uidB (newer, has interest) — both should
+    // be ignored for sorting since trigger user has no vector.
+    signOut();
+    const uidC = await signInAnon();
+    await adminFirestoreSet(`waiting_pool/${uidC}`, {
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      status: "matching",
+      mode: "1v1",
+      roomId: null,
+      interestText: "football",
+      interestVector: unitVec(0),
+    });
+
+    signOut();
+    const uidB = await signInAnon();
+    await adminFirestoreSet(`waiting_pool/${uidB}`, {
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      status: "matching",
+      mode: "1v1",
+      roomId: null,
+      interestText: "soccer",
+      interestVector: unitVec(1),
+    });
+
+    await adminFirestoreUpdate(`waiting_pool/${uidC}`, {status: "waiting"});
+    await adminFirestoreUpdate(`waiting_pool/${uidB}`, {status: "waiting"});
+
+    // uidA has no interest vector — pure FIFO applies, uidC (oldest) wins.
+    signOut();
+    const uidA = await signInAnon();
+    await adminFirestoreSet(`waiting_pool/${uidA}`, {
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      status: "waiting",
+      mode: "1v1",
+      roomId: null,
+    });
+
+    const poolDocA = await waitUntilAdminDocMatches(
+      `waiting_pool/${uidA}`,
+      (d) => d?.["status"] === "matched",
+      {timeout: 15_000},
+    );
+    const roomId = poolDocA!["roomId"] as string;
+
+    const room = await adminFirestoreDoc(`rooms/${roomId}`);
+    expect(room).not.toBeNull();
+    // FIFO order: uidC (oldest) is picked first when no interest sorting applies.
+    expect(room!["users"] as string[]).toContain(uidC);
+    expect(room!["users"] as string[]).not.toContain(uidB);
+
+    await adminFirestoreUpdate(`rooms/${roomId}`, {status: "expired"});
+  }, 30_000);
+});
+
+// ── join1v1Pool: interest text stored and embedded ────────────────────────────
+
+describe("join1v1Pool: interest text and embedding", () => {
+  test("stores interestText and interestVector when interestText is provided", async () => {
+    const uid = await signInAnon();
+    await callFn("join1v1Pool", {interestText: "I love football"});
+
+    const doc = await adminFirestoreDoc(`waiting_pool/${uid}`);
+    expect(doc!["interestText"]).toBe("I love football");
+
+    // interestVector is a 256-dim array when Vertex AI (ADC) is available, null otherwise.
+    const vec = doc!["interestVector"];
+    if (vec !== null) {
+      expect(Array.isArray(vec)).toBe(true);
+      expect((vec as number[]).length).toBe(256);
+    } else {
+      expect(vec).toBeNull();
+    }
+
+    await tryCancelPool();
+  });
+
+  test("interestText and interestVector are null when no interest is provided", async () => {
+    const uid = await signInAnon();
+    await callFn("join1v1Pool");
+
+    const doc = await adminFirestoreDoc(`waiting_pool/${uid}`);
+    expect(doc!["interestText"]).toBeNull();
+    expect(doc!["interestVector"] ?? null).toBeNull();
+
+    await tryCancelPool();
+  });
+
+  test("matched room has interest fields when both users provided interest text", async () => {
+    const uidA = await signInAnon();
+    await callFn("join1v1Pool", {interestText: "football"});
+    signOut();
+    const uidB = await signInAnon();
+    await callFn("join1v1Pool", {interestText: "soccer"});
+
+    const poolDocB = await waitUntilAdminDocMatches(
+      `waiting_pool/${uidB}`,
+      (d) => d?.["status"] === "matched",
+      {timeout: 15_000},
+    );
+    const roomId = poolDocB!["roomId"] as string;
+
+    const poolDocA = await adminFirestoreDoc(`waiting_pool/${uidA}`);
+    const room = await adminFirestoreDoc(`rooms/${roomId}`);
+
+    if (poolDocA?.["interestVector"] !== null) {
+      // Both users were embedded — room must carry interest fields.
+      const interests = room!["memberInterests"] as Record<string, unknown>;
+      expect(Object.keys(interests)).toContain(uidA);
+      expect(Object.keys(interests)).toContain(uidB);
+      const rv = room!["roomInterestVector"] as number[];
+      expect(Array.isArray(rv)).toBe(true);
+      expect(rv.length).toBe(256);
+    } else {
+      // Vertex AI unavailable — room must not have partial interest state.
+      expect(room!["memberInterests"] ?? null).toBeNull();
+      expect(room!["roomInterestVector"] ?? null).toBeNull();
+    }
+
+    await adminFirestoreUpdate(`rooms/${roomId}`, {status: "expired"});
+  }, 30_000);
+});
+
+// ── joinGroupRoom: interest text seeded into room ─────────────────────────────
+
+describe("joinGroupRoom: interest text seeded into room", () => {
+  test("new room gets roomInterestVector and memberInterests when user has interest", async () => {
+    const uid = await signInAnon();
+    const res = await callFn("joinGroupRoom", {
+      interestText: "I love football",
+    });
+    const roomId = res["roomId"] as string;
+
+    const room = await adminFirestoreDoc(`rooms/${roomId}`);
+    const vec = room!["roomInterestVector"];
+
+    if (Array.isArray(vec)) {
+      expect(Array.isArray(vec)).toBe(true);
+      expect((vec as number[]).length).toBe(256);
+      const interests = room!["memberInterests"] as Record<string, unknown>;
+      expect(Object.keys(interests)).toContain(uid);
+    } else {
+      // Vertex AI unavailable — both fields must be null (no partial state).
+      expect(room!["memberInterests"] ?? null).toBeNull();
+      expect(room!["roomInterestVector"] ?? null).toBeNull();
+    }
+
+    await tryLeaveRoom(roomId);
+  });
+
+  test("second user joining with interest updates memberInterests and recomputes roomInterestVector", async () => {
+    signOut();
+    const uidA = await signInAnon();
+    const resA = await callFn("joinGroupRoom", {interestText: "football"});
+    const roomId = resA["roomId"] as string;
+
+    signOut();
+    const uidB = await signInAnon();
+    const resB = await callFn("joinGroupRoom", {interestText: "soccer"});
+
+    // If uidB landed in the same room (Phase 0 match or Phase 1 FIFO), check interest fields.
+    if (resB["roomId"] === roomId) {
+      const room = await adminFirestoreDoc(`rooms/${roomId}`);
+      const vec = room!["roomInterestVector"];
+      if (Array.isArray(vec)) {
+        expect(Array.isArray(vec)).toBe(true);
+        expect((vec as number[]).length).toBe(256);
+        const interests = room!["memberInterests"] as Record<string, unknown>;
+        expect(Object.keys(interests)).toContain(uidA);
+        expect(Object.keys(interests)).toContain(uidB);
+      } else {
+        // Vertex AI unavailable — both fields must be null (no partial state).
+        expect(room!["memberInterests"] ?? null).toBeNull();
+        expect(room!["roomInterestVector"] ?? null).toBeNull();
+      }
+    }
+
+    await tryLeaveRoom(roomId);
+    if (resB["roomId"] !== roomId) {
+      await tryLeaveRoom(resB["roomId"] as string);
+    }
+  }, 20_000);
+});
+
+// ── Group interest matching: Phase 0 routing ──────────────────────────────────
+
+describe("group interest matching: Phase 0 routing", () => {
+  test("interest-compatible room is chosen over older FIFO-first room when Vertex AI is available", async () => {
+    // Room B: plain lone-user room, created FIRST (would win Phase 1 FIFO).
+    // Lock it so the football user is forced to create their own room.
+    signOut();
+    await signInAnon();
+    const resB = await callFn("joinGroupRoom");
+    const roomB = resB["roomId"] as string;
+    await adminFirestoreUpdate(`rooms/${roomB}`, {isLocked: true});
+
+    // Room A: created SECOND with "football" interest.
+    // Room B is locked so joinGroupRoom skips it and creates a new room.
+    signOut();
+    await signInAnon();
+    const resA = await callFn("joinGroupRoom", {
+      interestText: "I love football",
+    });
+    const roomA = resA["roomId"] as string;
+
+    expect(roomA).not.toBe(roomB);
+
+    // Unlock room B — it is now the FIFO-older lone-user room again.
+    await adminFirestoreUpdate(`rooms/${roomB}`, {isLocked: false});
+
+    const roomADoc = await adminFirestoreDoc(`rooms/${roomA}`);
+    if (!Array.isArray(roomADoc?.["roomInterestVector"])) {
+      // ADC credentials not set up — Phase 0 cannot activate. Skip routing assertion.
+      await Promise.all([tryLeaveRoom(roomA), tryLeaveRoom(roomB)]);
+      return;
+    }
+
+    // User C with "soccer" interest: Phase 0 should prefer room A (football-compatible)
+    // over room B (FIFO-first but no matching interest vector).
+    signOut();
+    await signInAnon();
+    const resC = await callFn("joinGroupRoom", {
+      interestText: "I enjoy watching soccer",
+    });
+
+    expect(resC["roomId"]).toBe(roomA);
+
+    await tryLeaveRoom(roomB);
+    await tryLeaveRoom(resC["roomId"] as string);
+  }, 30_000);
+
+  test("user without interest skips Phase 0 and uses Phase 1 FIFO", async () => {
+    // Room A: lone-user room with interest (only available room).
+    signOut();
+    await signInAnon();
+    const resA = await callFn("joinGroupRoom", {interestText: "football"});
+    const roomId = resA["roomId"] as string;
+
+    // User B has no interest — Phase 0 is skipped entirely, Phase 1 picks the only room.
+    signOut();
+    await signInAnon();
+    const resB = await callFn("joinGroupRoom");
+
+    expect(resB["roomId"]).toBe(roomId);
+    await tryLeaveRoom(roomId);
+  }, 15_000);
+
+  test("new room created with seeded roomInterestVector when no rooms are available", async () => {
+    const uid = await signInAnon();
+    const res = await callFn("joinGroupRoom", {interestText: "I love music"});
+    const roomId = res["roomId"] as string;
+
+    const room = await adminFirestoreDoc(`rooms/${roomId}`);
+    expect(room!["memberCount"]).toBe(1);
+    expect(room!["users"] as string[]).toContain(uid);
+
+    const vec = room!["roomInterestVector"];
+    if (Array.isArray(vec)) {
+      expect(Array.isArray(vec)).toBe(true);
+      expect((vec as number[]).length).toBe(256);
+      const interests = room!["memberInterests"] as Record<string, unknown>;
+      expect(Object.keys(interests)).toContain(uid);
+    } else {
+      // Vertex AI unavailable — both fields must be null (no partial state).
+      expect(room!["memberInterests"] ?? null).toBeNull();
+      expect(room!["roomInterestVector"] ?? null).toBeNull();
+    }
+
+    await tryLeaveRoom(roomId);
+  }, 15_000);
 });

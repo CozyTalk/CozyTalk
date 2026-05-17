@@ -15,6 +15,7 @@ class Room {
   final bool isLocked;
   final DateTime createdAt;
   final DateTime? paddingUntil;
+  final List<double>? roomInterestVector;
 
   const Room({
     required this.roomId,
@@ -27,5 +28,6 @@ class Room {
     required this.isLocked,
     required this.createdAt,
     this.paddingUntil,
+    this.roomInterestVector,
   });
 }
