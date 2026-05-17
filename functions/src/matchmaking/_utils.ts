@@ -11,14 +11,14 @@ const ROOM_ID_LENGTH = 5;
 const MAX_CREATE_ATTEMPTS = 5;
 
 /**
- * Generates a random 5-character alphanumeric room ID.
+ * Generates a cryptographically random 5-character alphanumeric room ID.
  * @return {string} Random 5-char string from [A-Za-z0-9].
  */
 export function generateRoomId(): string {
-  return Array.from(
-    {length: ROOM_ID_LENGTH},
-    () => ROOM_ID_CHARS[Math.floor(Math.random() * ROOM_ID_CHARS.length)],
-  ).join("");
+  const bytes = crypto.randomBytes(ROOM_ID_LENGTH);
+  return Array.from(bytes, (b) => ROOM_ID_CHARS[b % ROOM_ID_CHARS.length]).join(
+    "",
+  );
 }
 
 /**

@@ -26,7 +26,7 @@ CozyTalk — anonymous stranger chat app targeting Android and Web. Firebase-bac
 
 ### Auth — current state
 - Anonymous auth: on. Users get a UID but no persistent identity. Reinstall = new UID.
-- Google + Email/Password: on, not yet wired in Flutter.
+- Google + Email/Password: on, fully implemented in `features/auth/` (all use cases, datasource, screen).
 - Biometric/Passkey: planned (Android Keystore + WebAuthn). When implementing, credentials go in platform keystore only — never SharedPreferences, Drift, Hive, or app storage.
 
 ### Secret / config management

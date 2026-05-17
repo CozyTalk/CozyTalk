@@ -45,17 +45,20 @@ service cloud.firestore {
         && request.resource.data.role == 'user'
         && request.resource.data.keys().hasOnly([
             'uid', 'email', 'role', 'createdAt', 'lastSeen',
-            'displayName', 'photoUrl', 'hatKey', 'moodKey'
+            'displayName', 'photoUrl', 'hatKey', 'moodKey', 'interest'
            ]);
 
       // role, uid, createdAt are immutable; only known mutable profile fields may change
       allow update: if isOwner(userId)
         && request.resource.data.diff(resource.data)
             .affectedKeys().hasOnly([
-                'hatKey', 'moodKey', 'displayName', 'photoUrl', 'lastSeen', 'email'
+                'hatKey', 'moodKey', 'displayName', 'photoUrl', 'lastSeen', 'email',
+                'interest', 'thoughts'
             ])
         && (!('hatKey' in request.resource.data) || request.resource.data.hatKey is string)
-        && (!('moodKey' in request.resource.data) || request.resource.data.moodKey is string);
+        && (!('moodKey' in request.resource.data) || request.resource.data.moodKey is string)
+        && (!('interest' in request.resource.data) || request.resource.data.interest is string)
+        && (!('thoughts' in request.resource.data) || request.resource.data.thoughts is string);
     }
 
     // ── waiting_pool ─────────────────────────────────────────────────────────
@@ -106,15 +109,17 @@ service cloud.firestore {
     }
 
     // ── reports ──────────────────────────────────────────────────────────────
+    // chatLog and encryptionKey are written by the reportSession CF via admin SDK.
+    // Client creates must not include chatLog to prevent fabricated evidence.
     match /reports/{reportId} {
       allow create: if isSignedIn()
         && request.resource.data.keys().hasOnly([
             'reporterId', 'reportedUserId', 'sessionId', 'reason',
-            'description', 'chatLog', 'createdAt', 'status'
+            'description', 'createdAt', 'status'
            ])
         && request.resource.data.keys().hasAll([
             'reporterId', 'reportedUserId', 'sessionId', 'reason',
-            'chatLog', 'createdAt', 'status'
+            'createdAt', 'status'
            ])
         && request.resource.data.reporterId == request.auth.uid
         && request.resource.data.status == 'pending'

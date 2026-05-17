@@ -1,439 +1,317 @@
 # CozyTalk — Claude Code Project Guide
 
-## Pull Requests
-
-Always use the template at [`.github/pull_request_template.md`](.github/pull_request_template.md) when creating PRs in this repo. Read the file first, then fill every section — do not skip or delete sections, use `N/A` where not applicable. Pass the body via heredoc to `gh pr create` to preserve formatting.
-
----
-
-## What is this project?
-
-CozyTalk is a **cross-platform stranger chat app** (anonymous 1-on-1 matching, like Omegle) targeting **Android and Web**. Users join a waiting pool, a Cloud Function matches two of them, and they chat via Firebase Realtime Database. The core purpose is to provide a low-pressure, authentic interaction space to combat social media performance fatigue.
-
-**Stack:** Flutter (Android + Web) + Riverpod + Firebase (Auth, Firestore, RTDB, Functions, Crashlytics) + TypeScript Cloud Functions.
+> Read fully before every session. Single source of truth for rules, conventions, and standards.
+> Deep reference: [`PROJECT_CONTEXT.md`](PROJECT_CONTEXT.md) (schema, rules) · [`MATCHMAKING_CONTEXT_AWARE.md`](MATCHMAKING_CONTEXT_AWARE.md) (interest matching) · [`docs/INDEX.md`](docs/INDEX.md) (codebase map — features, screens, CFs, schema)
 
 ---
 
-## Core Principle: Privacy by Design
+## 1. Pull Requests
 
-**Chat history is ephemeral.** When a user leaves a room or presses Skip:
-- The RTDB `messages/{roomId}` data is **immediately destroyed** by a Cloud Function.
-- The `active_sessions` Firestore doc is deleted.
-
-**The only exception:** if a report is filed, the Cloud Function retains the chat log for moderation review before destroying it.
-
-This is a hard product requirement — never suggest persisting chat messages outside the report flow.
+Always use [`.github/pull_request_template.md`](.github/pull_request_template.md). Read it first, fill every section (`N/A` where not applicable), pass the body via heredoc to `gh pr create`.
 
 ---
 
-## Monorepo Layout
+## 2. Project
 
-```
-apps/mobile/      ← Flutter app (Android + Web)
-functions/        ← Firebase Cloud Functions (TypeScript)
-packages/         ← shared packages (reserved, empty)
-tools/            ← CLI tools (reserved, empty)
-```
+Anonymous stranger chat — 1v1 and group rooms (up to 5 users) — Flutter (Android + Web) + Firebase.
 
----
+**Privacy by Design (non-negotiable):** On session end, `chat_rooms/{id}/messages` is destroyed, RTDB presence/typing wiped, `rooms/{id}` tombstoned (`status: expired`). Only `reportSession` CF preserves messages for moderation — it sets `flagged: true` and clears `expiresAt` TTL on the existing `chat_rooms` messages (does not copy to `reports/`; the report doc stores `encryptionKey`). Never suggest persisting messages outside this flow.
 
-## Essential Commands
+| Concern | Choice |
+|---|---|
+| Framework | Flutter 3.41+ · Dart 3.x |
+| State | Riverpod 3.x + `Notifier` pattern |
+| Backend | Firebase Auth, Firestore, RTDB, Cloud Functions v2 (TypeScript) |
+| Models | Freezed + json_serializable |
+| Navigation | `MaterialApp.routes` + `AppRoutes` constants (`theme/app_routes.dart`) |
+| Observability | Structured CF logging (`firebase-functions/logger`) |
 
-### Flutter app
-```bash
-cd apps/mobile
-
-flutter pub get                    # install deps
-dart run build_runner build        # regenerate Freezed + Riverpod code
-flutter run                        # run on Android
-flutter run -d chrome              # run on Web
-flutter test                       # run tests
-flutter build apk                  # build Android
-flutter build web                  # build Web
-```
-
-### Cloud Functions
-```bash
-cd functions
-
-npm install          # install deps
-npm run build        # compile TypeScript
-npm run lint         # lint
-npm run serve        # start local emulator (port 5001)
-npm run deploy       # deploy to Firebase (lint + build run first via predeploy hooks)
-npm test             # run Jest integration tests (requires emulators running — use --emulator-only first)
-npm test -- --verbose                          # per-test output
-npm test -- --testNamePattern "priority"       # single describe group
-```
-
-Jest tests: `functions/src/matchmaking/__tests__/matchmaking.test.ts` — 43 tests across 7 describe groups covering all matchmaking scenarios.
-
-### Dev scripts
-Run `./setup.sh` (Linux/macOS) or `.\setup.ps1` (Windows) to install all dependencies and run code generation in one step.
-
-Run `./dev.sh` (Linux/macOS) or `.\dev.ps1` (Windows) to start emulators and Flutter together. Both accept `--web`, `--prod`, and `--emulator-only` flags.
-
-Run `./dev.sh --emulator-only` (Linux/macOS) or `.\dev.ps1 --emulator-only` (Windows) to start Firebase emulators only — no Flutter — for running integration tests in a separate terminal.
-
-### Fresh clone setup
-Edit [`apps/mobile/.env.example`](apps/mobile/.env.example) — set `USE_EMULATOR=true` to point at the local emulator.
+Firebase project: `cozytalk-5d984` · RTDB region: `asia-southeast1` · Functions: `us-central1` (default; `match1v1Users`, `cleanupMember`, `cleanupPoolMember` use `asia-southeast1`)
 
 ---
 
-## Architecture: Clean Architecture (feature-first)
+## 3. Architecture
 
-Every feature lives under `apps/mobile/lib/features/<feature>/` with three mandatory layers:
+**Clean Architecture, feature-first.** Three strict layers:
 
 ```
 features/<feature>/
-├── domain/             ← PURE DART. No Flutter, no Firebase, no packages.
-│   ├── entities/       ← plain data types (no JSON, no serialization)
-│   ├── repositories/   ← abstract interfaces (contracts only)
-│   └── usecases/       ← one class per operation, depends on repo interface
-├── data/               ← Firebase / HTTP / serialization
-│   ├── models/         ← @freezed DTOs with fromJson + toEntity()
-│   ├── datasources/    ← ONLY place that touches Firebase SDK directly
-│   └── repositories/   ← implements domain interface, converts DTO→Entity
-└── presentation/       ← UI
-    ├── providers/       ← Riverpod DI wiring + Notifier + State class
-    └── screens/         ← ConsumerStatefulWidget pages
+├── domain/           ← PURE DART. Zero Flutter/Firebase imports.
+│   ├── entities/     ← plain data types, no JSON
+│   ├── repositories/ ← abstract interfaces only
+│   └── usecases/     ← one class per operation
+├── data/             ← Firebase/HTTP only
+│   ├── models/       ← @freezed DTOs + toEntity()
+│   ├── datasources/  ← ONLY place Firebase SDK is called
+│   └── repositories/ ← implements domain interface
+└── presentation/
+    ├── providers/    ← Riverpod DI + Notifier + State
+    └── screens/      ← ConsumerStatefulWidget pages
 ```
 
-**Import rule:** domain imports nothing else. Data imports domain. Presentation imports domain. Nothing imports presentation.
+**Import rule:** domain imports nothing. Data imports domain. Presentation imports domain. Nothing imports presentation.
 
-### Adding a new feature
-
-1. Copy the [`features/hello/`](apps/mobile/lib/features/hello/) folder as a template.
-2. Rename every class/file: `Hello` → `YourFeature`.
-3. Run `dart run build_runner build`.
-4. Never put Firebase SDK calls outside `datasources/`.
-5. Never put business logic inside a `Screen` or `Notifier` — that belongs in a UseCase.
+**New feature:** copy `features/hello/` → rename → `dart run build_runner build`. Never put Firebase calls outside `datasources/` or business logic inside a Screen/Notifier.
 
 ---
 
-## App Screens & Session States
+## 4. Monorepo & Commands
 
-**Screens (in flow order):**
-1. **Login / Auth** — entry point; email+password, Google Sign-In, or anonymous (Continue as Guest)
-2. **Sign Up** — email+password registration; navigated to from Login
-3. **Waiting / Searching** — user in `waiting_pool`, spinner, cancel option
-4. **Chat Room** — message bubbles, typing indicator, Moods/Drinks SVG icebreakers, prominent **Skip / Next Person** button
-5. **Disconnected** — shown when partner leaves or connection drops
-
-**Session state machine:**
 ```
-Idle → Searching → Matched/Chatting → Disconnected
-                                    ↘ (Skip) → Searching
+apps/mobile/   ← Flutter app (Android + Web)
+functions/     ← Cloud Functions (TypeScript)
+tools/         ← check-prod-config.sh (run after every firebase deploy)
 ```
 
-The Notifier for the chat feature must model all four states explicitly — never infer state from nullable fields.
+```bash
+# Flutter (from apps/mobile/)
+flutter pub get && dart run build_runner build --delete-conflicting-outputs
+flutter test && flutter analyze
+
+# Functions (from functions/)
+npm install && npm run build && npm test   # npm test requires emulators first
+./dev.sh --emulator-only                  # start emulators only
+
+# Dev
+./dev.sh [--web|--prod|--emulator-only]   # Linux/macOS
+.\dev.ps1 [...]                           # Windows
+```
+
+Jest: 93 unit (matchmaking 60, embeddingService 21, chat 12). The 7 Vertex AI integration tests run separately via `jest.integration.config.js` — excluded from `npm test`.
+Flutter: 347 unit + widget tests.
 
 ---
 
-## State Management Pattern (Riverpod)
+## 5. Features
 
-Every feature's `presentation/providers/<feature>_provider.dart` does two things. See [`features/hello/presentation/providers/hello_provider.dart`](apps/mobile/lib/features/hello/presentation/providers/hello_provider.dart) as the canonical example.
+| Feature | Provider | Key state enum / fields | Status |
+|---|---|---|---|
+| `hello` | `helloNotifierProvider` | — | Complete · ref impl #1 |
+| `auth` | `authNotifierProvider` | `AuthStatus`: idle\|loading\|authenticated\|unauthenticated | Complete · ref impl #2 |
+| `matchmaking` | `matchmakingNotifierProvider` | 6 states: idle\|searching\|waiting1v1\|matched\|creating\|error | Complete · ref impl #3 |
+| `chat` | `chatNotifierProvider` | `SessionStatus`: idle\|searching\|chatting\|disconnected | Complete |
+| `profile` | `profileNotifierProvider` | `successField`: 'username'\|'interest'\|'thoughts' | Complete |
+| `avatar` | `avatarDecorationNotifierProvider` | `AvatarDecorationStatus`: idle\|loading\|saving\|error | Complete |
+| `home` | — | Thin nav hub, no domain/data | Complete |
 
-**1. DI wiring** — builds the dependency chain bottom-up:
+**State pattern (all features):** Nullable fields in `FooState.copyWith` use `_sentinel` so callers can explicitly pass `null` to clear them. Never use `??` for clearable fields.
+
+**DI wiring** (in `providers/<feature>_provider.dart` — see `features/hello/` as canonical example):
 ```dart
 final _datasourceProvider = Provider((ref) => FooDatasourceImpl(FirebaseFirestore.instance));
 final _repositoryProvider  = Provider((ref) => FooRepositoryImpl(ref.watch(_datasourceProvider)));
 final _usecaseProvider     = Provider((ref) => CallFoo(ref.watch(_repositoryProvider)));
 ```
 
-**2. State + actions:**
-```dart
-class FooState {
-  final SomeEntity? result;
-  final bool isLoading;
-  final String? error;
-  // copyWith MUST use sentinel pattern for nullable fields — see HelloState
-}
+In screens: `ref.watch(fooNotifierProvider)` for state · `ref.read(fooNotifierProvider.notifier)` for actions.
 
-class FooNotifier extends Notifier<FooState> {
-  @override FooState build() => const FooState();
-  Future<void> doSomething() async { ... }
+---
+
+## 6. Key Feature Notes
+
+**Auth:** `AuthNotifier.build()` subscribes to `watchAuthState()`. Stream skips updates while `status == loading`. Google: web uses `signInWithPopup`, native uses `GoogleSignIn.instance.authenticate()`. Firestore user doc written on account creation / first sign-in (`signUp`, `signInAnonymously` new user, `signInWithGoogle` new user) — not re-written on returning `signIn`. Use `set(merge: true)` for profile updates. `_anonymousName(uid)`: UID-seeded djb2 → adjective+animal (225 combos) in `auth_datasource.dart`. Also duplicated in `chat_datasource.dart` — extract if a third caller appears.
+
+**Matchmaking (11 exported CFs):** `cancel1v1Pool` returns `{success: false, reason: "matching_in_progress"}` when status is already `"matching"` — Flutter must handle this. `match1v1Users` deployed to `asia-southeast1` (co-located with RTDB — intentional). Interest matching: Vertex AI `text-multilingual-embedding-002`, 256 dims, cosine threshold 0.65. `onProtoPresenceDeleted.ts` is a disabled stub (`export {};`) — re-enable after proto-session cleanup is fully wired.
+
+**Chat:** `ChatDatasourceImpl` splits on `sessionId.startsWith('proto-')`: proto uses SHA256-derived key + direct Firestore writes; 1v1 calls `sendMessage`/`endSession` CFs. `ChatNotifier.enterSession()` is the entry point. RTDB: `typing/{id}/{uid}`, `presence/{id}/{uid}`. `onDisconnect().remove()` is set only on `presence` in proto sessions; for real sessions the `endSession` CF handles RTDB cleanup server-side. No `setTyping` CF exists — the file was never created; clients write typing state directly to RTDB.
+
+**Profile:** The CA dev screen (`features/profile/`) validates: username ≤ 20, interest ≤ 200, thoughts ≤ 50. The production screen (`screens/profile_edit_screen.dart`) caps interest at 100 and has no thoughts field. Pre-fills controllers on mount and each successful save via `ref.listen`.
+
+**Avatar:** `FieldValue.delete()` for null fields. Syncs to shared `avatarProvider` via `_syncToSharedProvider()`.
+
+---
+
+## 7. Firestore & RTDB
+
+| Collection | Key fields |
+|---|---|
+| `users/{uid}` | uid, email (absent for anonymous), role (user\|admin), createdAt, lastSeen, displayName?, photoUrl?, hatKey?, moodKey?, interest?, thoughts? |
+| `waiting_pool/{uid}` | status, mode, createdAt, updatedAt, interestText?, interestVector? (256-dim), roomId? |
+| `rooms/{roomId}` | 5-char ID; mode (1v1\|group), roomType (public\|custom), status (active\|padding\|expired), users[], maxUsers, memberCount, isLocked, encryptionKey, createdAt, paddingUntil? |
+| `active_sessions/{id}` | Legacy proto-sessions only — new code uses `rooms/` |
+| `chat_rooms/{id}/messages/{id}` | senderId, displayName, encryptedText, iv, authTag (AES-256-GCM), timestamp, expiresAt TTL (3 days), flagged? |
+| `session_keys/{id}` | sessionId, encryptionKey, users[], createdAt, expiresAt TTL (cleared when flagged by `reportSession`), flagged? |
+| `reports/{id}` | Authenticated users may create; read/update/delete admin-only. `encryptionKey` is CF-written (not in client `hasOnly` list) |
+
+RTDB paths: `rooms/{id}/members/{uid}`, `typing/{id}/{uid}`, `presence/{id}/{uid}`, `nameQueue/{id}`, `pool_presence/{uid}`. Full schema + security rules: [`PROJECT_CONTEXT.md`](PROJECT_CONTEXT.md).
+
+---
+
+## 8. Environment & App Mode
+
+`USE_EMULATOR` — compile-time constant (default `true`). Pass `--dart-define=USE_EMULATOR=false` for production. Emulators: Auth 9099, Functions 5001, Firestore 8080, RTDB 9000.
+
+**`_useMainUI` toggle (main.dart line 35):**
+- `false` (default) → chatroom/backend testing: `_AuthRouter` → `LoginScreen` (features/auth) → `HelloScreen`. Registers `findingRoom` route.
+- `true` → legacy UI / design preview: `HomeScreen` (screens/) + `AppRoutes` named routes. Note: `findingRoom` route is absent from this branch.
+
+`_AuthRouter` routes: `authenticated → HelloScreen` · `idle → spinner` · others → `LoginScreen`.
+
+---
+
+## 9. Integration Rules
+
+Integration = wiring `screens/` (production frontend) to `features/` (CA backend). When `_useMainUI = true`, the app uses `HomeScreen` + named routes (design preview). When `false` (default), it uses `_AuthRouter` → `HelloScreen` for backend testing.
+
+**Hard rules:**
+- Convert screen: `StatefulWidget` → `ConsumerStatefulWidget`, add `ref.watch/read` calls for real data
+- **Zero visual changes during integration** — padding, colors, widget tree, fonts are frozen. Design changes go in a separate PR.
+- **Never remove or modify `_useMainUI`** — keeps dev/test path alive for the whole team
+- No Firebase SDK calls in screens — only through providers
+- No business logic in screens — UseCase/Notifier only
+- Auth state: `ref.watch(authNotifierProvider).user`, never `FirebaseAuth.instance.currentUser`
+- Data between screens: notifier state machine, not Navigator arguments
+- One screen per PR; all existing `flutter test` must pass after integration
+
+**Progression** (dependency order): auth → finding room → choose room type / join by ID → chat → group chat → profile edit → dress up → deferred (notifications, friends, blocked, admin)
+
+**Pattern:**
+```dart
+// Convert the screen class; widget tree and design stay identical
+class FindingRoomScreen extends ConsumerStatefulWidget { ... }
+class _FindingRoomScreenState extends ConsumerState<FindingRoomScreen> {
+  @override Widget build(BuildContext context) {
+    final state = ref.watch(matchmakingNotifierProvider);
+    // same widget tree — replace hardcoded values + wire onPressed callbacks
+  }
 }
 ```
 
-**In screens:** `ref.watch(fooNotifierProvider)` for state, `ref.read(fooNotifierProvider.notifier)` for actions.
-
 ---
 
-## Models: Freezed + JSON Serializable
-
-All data-layer models use `@freezed`. Never hand-roll `toJson`/`fromJson`. See [`features/hello/data/models/`](apps/mobile/lib/features/hello/data/models/) for a working example.
-
-```dart
-@freezed
-abstract class FooModel with _$FooModel {
-  const factory FooModel({ required String id }) = _FooModel;
-  factory FooModel.fromJson(Map<String, dynamic> json) => _$FooModelFromJson(json);
-}
-
-extension FooModelX on FooModel {
-  FooEntity toEntity() => FooEntity(id: id);
-}
-```
-
-After editing any `@freezed` class or `@riverpod` provider, always run build_runner.
-
----
-
-## Firebase Project
-
-| Service | Detail |
-|---|---|
-| Project ID | `cozytalk-5d984` |
-| Functions region | `us-central1` |
-| Realtime DB URL | `https://cozytalk-5d984-default-rtdb.asia-southeast1.firebasedatabase.app` |
-| Auth providers | Anonymous, Google, Email/Password (no passwordless) — all wired in Flutter |
-| Observability | Firebase Crashlytics + structured Cloud Function logging |
-
-Emulator ports: Auth `9099`, Functions `5001`, Firestore `8080`, RTDB `9000`. Set `USE_EMULATOR=true` in `.env.example` to enable all four.
-
----
-
-## Firestore Collections
-
-| Collection | Purpose |
-|---|---|
-| `users/{uid}` | User profile. Fields: `uid`, `email`, `role` (`user`\|`admin`), `createdAt`, `lastSeen`, `displayName?`, `photoUrl?`, `hatKey?`, `moodKey?`, `interest?`, `thoughts?`. Created on first sign-in (all auth methods including anonymous) by `AuthDatasourceImpl` using `_anonymousName()` for initial `displayName`. |
-| `waiting_pool/{uid}` | Matchmaking queue. Fields: `createdAt`, `status`, `updatedAt`, `mode`, `roomId?`, `interestText?`, `interestVector?` (256-dim Vertex AI embedding). |
-| `rooms/{roomId}` | All active/padding/expired rooms (1v1 + group). 5-char alphanumeric ID. Write-locked to Cloud Functions only except `isLocked` on custom rooms. |
-| `active_sessions/{sessionId}` | **Legacy proto-sessions only.** New rooms use `rooms/{roomId}`. |
-| `reports/{reportId}` | Moderation reports. Admin-only read. Chat log retained here if reported. |
-| `chat_rooms/{sessionId}/messages/{messageId}` | AES-256-GCM encrypted messages written by `sendMessage` CF. Fields: `senderId`, `displayName`, `encryptedText`, `iv`, `authTag`, `timestamp`, `expiresAt`, `flagged`. TTL policy on `expiresAt` (3-day retention). |
-| `session_keys/{sessionId}` | Archived room encryption keys, written by `endSession` CF. Fields: `sessionId`, `encryptionKey`, `users`, `createdAt`, `expiresAt`, `flagged`. TTL policy on `expiresAt`. |
-
-Realtime DB: `rooms/{roomId}/members/{uid}` — CF-written membership anchor; `typing/{roomId}/{uid}`, `presence/{roomId}/{uid}`, `nameQueue/{roomId}`, `pool_presence/{uid}` for real-time state. See `PROJECT_CONTEXT.md` for full RTDB path table.
-
-See [`PROJECT_CONTEXT.md`](PROJECT_CONTEXT.md) for full schema and security rules.
-
----
-
-## Matchmaking Feature (`features/matchmaking/`)
-
-The `matchmaking` feature is fully implemented as the **third reference implementation** (alongside `hello` and `auth`). See [`features/matchmaking/`](apps/mobile/lib/features/matchmaking/) and [`functions/src/matchmaking/`](functions/src/matchmaking/).
-
-**Matchmaking Cloud Functions (12 in `functions/src/matchmaking/`):**
-`joinGroupRoom`, `createCustomRoom`, `joinRoomById`, `leaveRoom`, `join1v1Pool`, `cancel1v1Pool`, `setRoomLock`, `expireRooms` (cron `*/2 * * * *`), `match1v1Users` (Firestore trigger), `cleanupMember` (RTDB trigger, asia-southeast1), `cleanupPoolMember` (RTDB trigger, asia-southeast1), and `_utils` (shared helpers, not exported).
-
-**Chat Cloud Functions (in `functions/src/chat/`):**
-`sendMessage` (AES-256-GCM encrypt + write to `chat_rooms/`), `endSession` (archive encryption key, destroy RTDB data), `reportSession` (retain chat log for moderation), `setTyping` (source present, not yet deployed).
-
-**Flutter feature:** full Clean Architecture at `features/matchmaking/`. Backend test entry point: `HelloScreen` → "Test Matchmaking" button (`_useMainUI = false`).
-
-**Key design decisions:**
-- `rooms/{roomId}` is the unified collection for all new rooms; 5-char alphanumeric ID is atomically claimed via `create()` with retry
-- Slot reservation uses Firestore transactions; expiry uses a scheduled function that re-checks `memberCount == 0` before deleting
-- `isLocked` lives in Firestore (queryable for matchmaking); participants update it directly via security rules (custom rooms only)
-
-**Context-aware interest matching** (`embeddingService.ts`): `join1v1Pool` and `joinGroupRoom` accept optional `interestText`. If provided, it's embedded via Vertex AI (`text-multilingual-embedding-002`, 256 dims) and stored as `interestVector`. `match1v1Users` uses cosine similarity (threshold `0.65`) to prefer interest-compatible pairs. `embedText()` returns `null` on failure — matching degrades gracefully to FIFO. Full reference doc at [`MATCHMAKING_CONTEXT_AWARE.md`](MATCHMAKING_CONTEXT_AWARE.md).
-
----
-
-## Code Conventions
-
-- **No comments explaining what code does.** Only comment non-obvious WHY (workarounds, constraints, invariants).
-- **Freezed `copyWith` sentinel pattern** — nullable fields must use `_sentinel` so callers can explicitly pass `null` to clear them. Never use `??` for clearable fields.
-- **`Map` from Firebase** — always normalize via `Map<String, dynamic>.from(data as Map)` before `fromJson`. Never check `data is! Map<String, dynamic>` directly.
-- **Loading guards** — check `isLoading` at the top of every submit handler before proceeding.
-- **Test fakes** — `_FakeXxxNotifier` must track invocations (`callCount`) so tests assert behavior, not just rendered UI.
-- **No unbounded ListViews** — all lists must use `ListView.builder` or `SliverList` with item count. No `children: [...]` for dynamic lists.
-- **SVG assets (Moods/Drinks icebreakers)** — must be cached and compressed. Use `flutter_svg` with asset precaching.
-
----
-
-## Code Style
-
-All rules below are enforced by CI. Do not write code that needs a `// ignore:` suppression to pass.
-
-**Dart** — style owned by `dart format`, rules by `flutter_lints`:
-- Always use `{}` on `if`/`for`/`while` bodies (`curly_braces_in_flow_control_structures`)
-- Single quotes for strings; trailing commas on multi-line arg lists
-- No `print()` — use structured logging (`avoid_print` is active)
-
-**TypeScript** — style owned by Prettier ([`functions/.prettierrc`](functions/.prettierrc)), logic by ESLint:
-- Double quotes, 2-space indent, trailing commas everywhere, semicolons required, no bracket spacing (`{foo: bar}`)
-- Every `function` declaration (including `_`-prefixed helpers) needs a JSDoc block with `@param` + `@return`; `const` arrow functions are exempt
-- No implicit `any`; explicit types required
-
----
-
-## The Do-Not-Do List
-
-| ❌ Do NOT | Reason |
-|---|---|
-| Import Flutter or Firebase into the domain layer | Breaks Clean Architecture — domain must be pure Dart |
-| Write matchmaking logic on the client | Race conditions — must be a Cloud Function |
-| Persist chat messages | Privacy by Design — destroy immediately on session end |
-| Hand-roll `toJson`/`fromJson` | Use Freezed + json_serializable |
-| Store API keys or secrets in SharedPreferences, Drift, Hive, or bundled assets | Extractable from APK/IPA |
-| Edit generated files (`*.g.dart`, `*.freezed.dart`) | Always run `build_runner` instead |
-| Use unbounded `ListView` with `children: [...]` for dynamic data | Performance violation |
-
----
-
-## Quality Gates (Definition of Done)
-
-| Gate | Requirement |
-|---|---|
-| **Correctness** | >80% unit test coverage for domain layer; widget tests for all screens; integration tests passing on Android and Web |
-| **Security** | Zero High/Critical vulnerabilities; dependency scan clean; no secrets in code |
-| **Accessibility** | All screens pass WCAG 2.2 AA (semantic labels, contrast ratio, dynamic type support) |
-| **Performance** | No unbounded ListViews; Moods/Drinks SVGs cached and compressed; no jank on message list scroll |
-
----
-
-## Multi-Agent Workflow
-
-This codebase is developed by specialized agents orchestrated by a lead:
-
-| Agent | File | Responsibility |
-|---|---|---|
-| Architect | [`.claude/agents/architect.md`](.claude/agents/architect.md) | System design, schema, cross-cutting decisions |
-| Flutter Engineer | [`.claude/agents/flutter-engineer.md`](.claude/agents/flutter-engineer.md) | Feature implementation, UI, tests |
-| QA Engineer | [`.claude/agents/qa-engineer.md`](.claude/agents/qa-engineer.md) | Test strategy, quality gates |
-| Security Reviewer | [`.claude/agents/security-reviewer.md`](.claude/agents/security-reviewer.md) | Auth, rules, secrets, compliance |
-
-**Rules:**
-- For any complex task, output a step-by-step plan for approval before writing code.
-- The agent that writes code must NOT be the agent that reviews it.
-- Structured handoffs: specify `@agent` + what they should do + what inputs they receive.
-
----
-
-## Testing
-
-**Three test suites:**
+## 10. Testing
 
 | Suite | Command | Requires |
 |---|---|---|
 | Flutter unit + widget | `cd apps/mobile && flutter test` | Nothing |
-| Cloud Functions (Jest) | `cd functions && npm test` | Emulators (`./dev.sh --emulator-only`) |
-| Flutter integration | `cd apps/mobile && flutter test integration_test/matchmaking_advanced_test.dart` | Emulators + Android device |
+| CF Jest | `cd functions && npm test` | Emulators |
+| Flutter integration | `flutter test integration_test/matchmaking_advanced_test.dart` | Emulators + device |
 
-Test files mirror source structure under `test/features/<feature>/domain/`, `data/`, `presentation/`. See [`test/features/hello/`](apps/mobile/test/features/hello/) and [`test/features/auth/`](apps/mobile/test/features/auth/) for reference.
+Test files mirror source under `test/features/<feature>/`. Reference: `test/features/hello/` and `test/features/auth/`.
 
-**When adding a feature, write all of these:**
+**Per-layer requirements:** entities (construction, null defaults) · usecases (args forwarded, return, exception) · models (fromJson all/null/unknown fields, toEntity) · repositories (call counts, stream via `Stream.value`) · providers (`copyWith` preserves/sets/clears nullables) · screens (renders, validation, submit calls notifier, loading/error states).
 
-| Layer | What to test |
-|---|---|
-| `domain/entities/` | Construction, optional fields default to null |
-| `domain/usecases/` | Args forwarded correctly, result returned, exception propagates |
-| `data/models/` | `fromJson` with all fields, with nulls, with extra unknown keys; `toEntity()` maps correctly |
-| `data/repositories/` | Call counts, arg forwarding, model→entity conversion, exception propagation; stream repos use `Stream.value(...)` |
-| `presentation/providers/` | `State.copyWith` preserves fields, sets nullables, **clears nullables with explicit `null`** (sentinel guard) |
-| `presentation/screens/` | Renders key widgets, validation errors, valid submit calls notifier, error/loading states |
-
-**Fake patterns:**
-
+**Screen fake pattern:**
 ```dart
-// Use case test — inline and file-private when the interface is only used in one file
-class _FakeMyRepository implements MyRepository {
-  String? lastArg; MyEntity? returnValue; Exception? error;
-  @override Future<MyEntity> doThing(String arg) async {
-    lastArg = arg; if (error != null) throw error!; return returnValue!;
-  }
-  @override Future<void> other() => throw UnimplementedError();
-}
-
-// When the same interface is tested across 3+ files, extract to shared_fakes.dart
-// in the same domain/ directory (public name, no underscore).
-// See: test/features/auth/domain/shared_fakes.dart (FakeAuthRepository)
-//      test/features/chat/domain/shared_fakes.dart  (FakeChatRepository)
-
-// Screen widget test — extend Notifier, override build() to avoid Firebase
 class _FakeMyNotifier extends MyNotifier {
   final MyState _initial; int callCount = 0;
   _FakeMyNotifier({MyState initial = const MyState()}) : _initial = initial;
-  @override MyState build() => _initial;  // never call super.build()
+  @override MyState build() => _initial;   // never call super.build()
   @override Future<void> doThing() async => callCount++;
 }
-// Wrap: ProviderScope(overrides: [myProvider.overrideWith(() => fake)], child: ...)
+// ProviderScope(overrides: [myProvider.overrideWith(() => fake)], child: ...)
 ```
 
+**Hard rules:** No Firebase SDK in tests · no mockito · `_FakeXxxNotifier` must override `build()` · domain tests: no flutter/Firebase imports · fresh fake per `setUp` · enum tests: one `containsAll` + length check.
+
+---
+
+## 11. Code Conventions & Style
+
+- **No comments explaining what code does.** Comment only non-obvious WHY.
+- **`Map` from Firebase:** `Map<String, dynamic>.from(data as Map)` before `fromJson` — never cast directly.
+- **Loading guard:** check `isLoading` at the top of every submit handler.
+- **Models:** `@freezed` always. Never hand-roll `toJson`/`fromJson`.
+- **Lists:** `ListView.builder` or `SliverList`. Never `children: [...]` for dynamic data.
+
+**Dart** (enforced by CI): `{}` on all control flow bodies · single quotes · trailing commas · no `print()`.
+
+**TypeScript** (Prettier + ESLint): double quotes · 2-space indent · trailing commas · semicolons · no bracket spacing. Every `function` declaration needs JSDoc (`@param` + `@return`); `const` arrows exempt.
+
+---
+
+## 12. Agent Workflow
+
+| Agent | Scope | Notes |
+|---|---|---|
+| Architect | System design, schema, cross-cutting decisions | Plan mode for anything cross-module |
+| Flutter Engineer | Dart code — features, UI, tests | Implements; never self-reviews |
+| QA Engineer | Test strategy, quality gates, coverage | Reviews independently after impl |
+| Security Reviewer | Auth, rules, secrets, compliance | **Read-only — no Edit tool** |
+
+**Plan mode:** required for any task crossing more than one feature module or ~1 hour of work. The agent that writes code must not be the agent that reviews it.
+
+**Task prompt template:**
+```
+Goal:        <one sentence>
+Out of scope: <what NOT to change>
+Constraints: <CA boundaries, style, security>
+Inputs:      <file paths>
+Deliverable: <patch | report | diff>
+Done when:   <specific acceptance criteria>
+```
+
+**Handoff template:**
+```
+FROM: @<agent>   TO: @<agent>
+TASK: <what to do>
+INTERFACE: <relevant paths>
+NOTES: <constraints — flag issues, never patch around them>
+DONE WHEN: <criteria>
+```
+
+---
+
+## 13. Quality Gates
+
+| Gate | Requirement |
+|---|---|
+| **Correctness** | >80% domain unit test coverage; widget tests on all screens; integration tests passing |
+| **Security** | Zero High/Critical findings; dep scan clean; no secrets in code |
+| **Accessibility** | WCAG 2.2 AA: semantic labels, contrast ≥ 4.5:1, dynamic type |
+| **Performance** | No unbounded ListViews; SVGs cached/compressed; no jank on message list |
+
+---
+
+## 14. Do Not Do
+
+| ❌ | Reason |
+|---|---|
+| Firebase/Flutter imports in domain | Breaks CA |
+| Matchmaking logic on client | Race conditions — must be CF |
+| Persist chat messages | Privacy by Design |
+| Hand-roll `toJson`/`fromJson` | Use Freezed |
+| Secrets in SharedPreferences / Hive / assets | APK-extractable |
+| Edit `*.g.dart` / `*.freezed.dart` | Run `build_runner` |
+| `ListView(children: [...])` for dynamic data | Performance |
+| Remove or modify `_useMainUI` | Breaks dev/test workflow for whole team |
+| Visual changes (padding, color, layout) during integration | Separate design PR |
+| Firebase SDK directly in a Screen | Through providers only |
+| Auth state from `FirebaseAuth.instance.currentUser` in screen | Use `authNotifierProvider` |
+| Business logic in Screen or Notifier | UseCase only |
+| New packages during integration PR | Architect approval required |
+| Edit lock files manually | Run package manager to regenerate |
+| `git push --force` to main | Hard block |
+| `print()` in production code | Use structured logging |
+
+---
+
+## 15. AI Authorship
+
+Write all output — code, comments, commits, PRs, docs — as a human developer. No AI signatures, "generated with" footers, co-author tags, or attribution lines anywhere. Commit messages: concise, imperative, focused on what changed and why.
+
+---
+
+## 16. Doc Maintenance (non-negotiable)
+
+Every code change that affects a documented behaviour **must** be accompanied by a doc update in the same PR. Docs that drift from code are worse than no docs.
+
+**What to update and when:**
+
+| You changed… | Update… |
+|---|---|
+| A Cloud Function (inputs, outputs, process, trigger) | `docs/backend/cloud-functions.md` |
+| A Firestore collection, field, or security rule | `docs/database/schema.md` + `PROJECT_CONTEXT.md` schema table |
+| A Firestore index | `docs/database/schema.md` indexes section + `PROJECT_CONTEXT.md` |
+| A feature provider, state, or use case | `docs/features/<feature>.md` |
+| A production screen's integration status | `docs/frontend/screens.md` |
+| The navigation system or app mode (`_useMainUI`) | `CLAUDE.md` §8, `docs/frontend/screens.md` |
+| The matchmaking CF logic or tests | `MATCHMAKING_CONTEXT_AWARE.md` |
+| Any package added or removed | `PROJECT_CONTEXT.md` tech stack table + `CLAUDE.md` §2 |
+| Test counts (Jest or Flutter) | `PROJECT_CONTEXT.md` test coverage table + `CLAUDE.md` §4 |
+
 **Hard rules:**
-- No Firebase SDK in any test file
-- No mockito — hand-written fakes only
-- `_FakeXxxNotifier` must override `build()` — default `build()` touches Firebase and throws
-- Domain tests: no `flutter` or Firebase imports
-- Fresh fake in each `setUp` — never share mutable fakes across tests
-- Enum tests: one `containsAll` + length assertion, not one test per value
-
----
-
-## Auth Feature (`features/auth/`)
-
-The `auth` feature is the **second reference implementation** (alongside `hello`). See [`features/auth/`](apps/mobile/lib/features/auth/).
-
-**Use cases:** `SignUp`, `SignIn`, `SignOut`, `SignInAnonymously`, `SignInWithGoogle`
-
-**`AuthStatus` enum:** `idle | loading | authenticated | unauthenticated` — never infer auth state from nullable fields.
-
-**`AuthState` fields:** `status`, `user` (`AuthUser?`), `error` (`String?`) — both nullable fields use the sentinel pattern.
-
-**`AuthNotifier.build()`** subscribes to `authRepository.watchAuthState()` (wraps `FirebaseAuth.authStateChanges()`). The stream listener skips state updates while `status == loading` to avoid races with in-flight sign-in actions.
-
-**Platform split in `AuthDatasourceImpl.signInWithGoogle()`:** web uses `signInWithPopup(GoogleAuthProvider())`, native uses `GoogleSignIn.instance.authenticate()` + `GoogleAuthProvider.credential(idToken:)`. Checked via `kIsWeb`.
-
-**Firestore user doc creation:** written by the datasource on all first-time sign-ins — `signUp`, `signInAnonymously`, and Google (`additionalUserInfo.isNewUser == true`). The doc always includes `displayName` (generated via `_anonymousName(uid, {})` — a UID-seeded djb2 hash → adjective+animal), `interest: ''`, `hatKey: null`, `moodKey: null`. Google users use their Google display name if non-empty, otherwise the generated name. Use `set(merge: true)` when writing profile updates so legacy accounts without a doc are handled.
-
-**`_AuthRouter`** (in [`main.dart`](apps/mobile/lib/main.dart)) watches `authNotifierProvider` and routes: `authenticated` → `HelloScreen`, `idle` → loading spinner, anything else → `LoginScreen`.
-
----
-
-## Profile Feature (`features/profile/`)
-
-The `profile` feature is a Clean Architecture feature for reading and updating user profile fields in `users/{uid}`. See [`features/profile/`](apps/mobile/lib/features/profile/).
-
-**Use cases:** `GetProfile`, `UpdateDisplayName`, `UpdateInterest`, `UpdateThoughts`
-
-**`ProfileUser` entity fields:** `uid` (required), `displayName?`, `interest?`, `thoughts?`
-
-**`ProfileState` fields:** `profile` (`ProfileUser?`), `isLoading`, `error` (`String?`), `successField` (`String?` — `'username'|'interest'|'thoughts'`) — all nullable fields use the sentinel pattern.
-
-**`ProfileDatasourceImpl`** reads from `users/{uid}` and writes individual fields via `set(merge: true)` so updates work on legacy accounts that predate the profile doc.
-
-**`ProfileScreen`** pre-fills controllers from cached state on mount and on each successful save via `ref.listen`. Save buttons validate length constraints client-side (username ≤ 20, interest ≤ 200, thoughts ≤ 50) before calling the notifier.
-
-**Access:** `HelloScreen` → "Edit profile" button (dev/test mode via `_AuthRouter`). In production UI, wire via `AppRoutes.profile` route.
-
-**`_anonymousName` function** (in `auth_datasource.dart`, top-level, not exported): UID-seeded djb2 hash → `adjective animal` pair from 15×15 word lists = 225 possible names. Duplicated from `chat_datasource.dart` — extract to a shared utility if a third caller appears.
-
----
-
-## Environment Config
-
-[`main.dart`](apps/mobile/lib/main.dart) reads `USE_EMULATOR` via `bool.fromEnvironment` (compile-time constant, default `true`). Set it in [`.env.example`](apps/mobile/.env.example) or pass `--dart-define=USE_EMULATOR=false` for production builds. Never put real secrets here. Use `--dart-define-from-file` for secrets.
-
-**Dual-mode app toggle (`_useMainUI`):**
-- `false` (default) → Firebase-backed auth flow: `_AuthRouter` → `LoginScreen` (features/auth) → `HelloScreen` (dev staging area)
-- `true` → legacy design-preview UI: `HomeScreen` (screens/) with full navigation routes
-
-The legacy UI screens under `apps/mobile/lib/screens/` are design-preview implementations — home, finding room, choose room type, select background, friends, profile edit, admin console, etc. They are not yet wired to the Clean Architecture features layer. When integrating, route legacy screens to the features/ providers rather than reimplementing logic.
-
----
-
-## AI Behavior Rules (Claude Code)
-
-These rules apply to **all contributors** using Claude Code in this repo.
-
-### Authorship
-
-Write all output — code, comments, commit messages, PR descriptions, docs — as a human developer would. No AI signatures, no "generated with" footers, no co-author tags, no attribution lines of any kind. This applies everywhere: source files, git commits, pull requests, markdown files, config files, changelogs.
-
-Commit messages must read like a developer wrote them: concise, past-tense or imperative, focused on what changed and why. No boilerplate, no meta-commentary about the AI tool that produced them.
-
-### Lock Files
-
-Never manually edit lock files (`pubspec.lock`, `package-lock.json`, `yarn.lock`, etc.).
-
-If a lock file needs updating:
-1. Edit the manifest (`pubspec.yaml`, `package.json`, etc.)
-2. Run the package manager to regenerate it:
-   - Dart/Flutter: `flutter pub get`
-   - Node: `npm install`
-
-The lock file is always a derived artifact of the manifest. Editing it directly creates drift that CI will reject.
+- Docs must describe what the code **actually does right now** — not what was planned, not what it used to do.
+- Never document a file, field, or behaviour that does not exist in the current codebase.
+- If you are unsure what a doc should say, read the source file first — the code is the ground truth.
+- Doc updates are part of the task, not optional cleanup after. A PR that changes code without updating docs is incomplete.
