@@ -57,6 +57,7 @@ class _FakeMatchmakingNotifier extends MatchmakingNotifier {
   void setInterestText(String text) {
     setInterestTextCalls++;
     lastInterestText = text;
+    state = state.copyWith(interestText: text);
   }
 
   @override

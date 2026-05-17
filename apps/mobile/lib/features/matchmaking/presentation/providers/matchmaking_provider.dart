@@ -131,19 +131,24 @@ class MatchmakingNotifier extends Notifier<MatchmakingState> {
   // from the CF propagates. Cleared once a genuinely new match is processed.
   String? _lastKnownRoomId;
 
+  static const _kInterestTextKey = 'matchmaking_interest_text';
+
   @override
-  MatchmakingState build() => const MatchmakingState();
+  MatchmakingState build() {
+    ref.onDispose(_cancelSubscriptions);
+    return const MatchmakingState();
+  }
 
   void setInterestText(String text) {
     state = state.copyWith(interestText: text);
-    SharedPreferences.getInstance().then(
-      (prefs) => prefs.setString('interest_text', text),
-    );
+    SharedPreferences.getInstance()
+        .then((prefs) => prefs.setString(_kInterestTextKey, text))
+        .catchError((_) => false);
   }
 
   Future<void> loadSavedInterestText() async {
     final prefs = await SharedPreferences.getInstance();
-    final saved = prefs.getString('interest_text');
+    final saved = prefs.getString(_kInterestTextKey);
     if (saved != null && saved.isNotEmpty) {
       state = state.copyWith(interestText: saved);
     }
@@ -248,13 +253,13 @@ class MatchmakingNotifier extends Notifier<MatchmakingState> {
       final msg = _message(e);
       // Room already gone — treat as a successful leave.
       if (msg.contains('not found') || msg.contains('not-found')) {
-        state = const MatchmakingState();
+        state = _idleState();
         return;
       }
       state = state.copyWith(error: msg);
       return;
     }
-    state = const MatchmakingState();
+    state = _idleState();
   }
 
   Future<void> join1v1Pool() async {
@@ -301,7 +306,7 @@ class MatchmakingNotifier extends Notifier<MatchmakingState> {
           .read(_leaveRoomProvider)(state.roomId!)
           .catchError((_) async {});
     }
-    state = const MatchmakingState();
+    state = _idleState();
   }
 
   Future<void> setRoomLock({required bool isLocked}) async {
@@ -313,6 +318,10 @@ class MatchmakingNotifier extends Notifier<MatchmakingState> {
       state = state.copyWith(error: _message(e));
     }
   }
+
+  // Returns an idle state that preserves interestText across room transitions.
+  MatchmakingState _idleState() =>
+      MatchmakingState(interestText: state.interestText);
 
   void _subscribeToRoom(String roomId) {
     _roomSub?.cancel();

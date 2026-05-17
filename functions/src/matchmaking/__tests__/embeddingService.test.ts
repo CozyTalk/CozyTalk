@@ -147,7 +147,6 @@ describe("embedText — mocked Vertex AI client", () => {
     } else {
       process.env.GCLOUD_PROJECT = savedProject;
     }
-    jest.resetModules();
   });
 
   type EmbedFn = (text: string) => Promise<number[] | null>;

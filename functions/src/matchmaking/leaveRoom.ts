@@ -42,6 +42,7 @@ export const leaveRoom = onCall(
 
     let newCount = 0;
     let requeueUid: string | null = null;
+    let requeueInterestVector: number[] | null = null;
     await db.runTransaction(async (tx) => {
       const snap = await tx.get(roomRef);
       if (!snap.exists) return;
@@ -66,6 +67,11 @@ export const leaveRoom = onCall(
         update.status = "padding";
         update.paddingUntil = Timestamp.fromMillis(Date.now() + 30 * 1000);
         requeueUid = (d.users as string[]).find((u) => u !== uid) ?? null;
+        // Capture the remaining user's interest vector so it's restored on re-queue.
+        if (requeueUid) {
+          const mi = d.memberInterests as Record<string, number[]> | null;
+          requeueInterestVector = mi?.[requeueUid] ?? null;
+        }
       }
 
       // Remove this member's interest vector and recompute the room aggregate.
@@ -107,6 +113,8 @@ export const leaveRoom = onCall(
         status: "waiting",
         mode: "1v1",
         roomId: null,
+        interestText: null,
+        interestVector: requeueInterestVector,
       });
       // Remove the remaining user's RTDB membership so cleanupMember fires,
       // decrements memberCount to 0, and lets expireRooms clean up the old room.

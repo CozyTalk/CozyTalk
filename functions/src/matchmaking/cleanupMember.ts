@@ -17,6 +17,7 @@ export const cleanupMember = onValueDeleted(
     const roomRef = db.collection("rooms").doc(roomId);
 
     let requeueUid: string | null = null;
+    let requeueInterestVector: number[] | null = null;
 
     await db.runTransaction(async (tx) => {
       const snap = await tx.get(roomRef);
@@ -47,6 +48,11 @@ export const cleanupMember = onValueDeleted(
         update.status = "padding";
         update.paddingUntil = Timestamp.fromMillis(Date.now() + 30 * 1000);
         requeueUid = (data.users as string[]).find((u) => u !== uid) ?? null;
+        // Capture the remaining user's interest vector so it's restored on re-queue.
+        if (requeueUid) {
+          const mi = data.memberInterests as Record<string, number[]> | null;
+          requeueInterestVector = mi?.[requeueUid] ?? null;
+        }
       }
 
       // Remove this member's interest vector and recompute the room aggregate.
@@ -84,6 +90,8 @@ export const cleanupMember = onValueDeleted(
         status: "waiting",
         mode: "1v1",
         roomId: null,
+        interestText: null,
+        interestVector: requeueInterestVector,
       });
       // Remove the remaining user's RTDB membership so a second cleanupMember
       // invocation decrements memberCount to 0, letting expireRooms clean up.

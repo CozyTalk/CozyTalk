@@ -44,7 +44,7 @@ export const joinGroupRoom = onCall(
      */
     async function _tryJoinCandidates(
       docs: FirebaseFirestore.QueryDocumentSnapshot[],
-      vector?: number[] | null,
+      vector: number[] | null,
     ): Promise<string | null> {
       const shuffled = [...docs].sort(() => Math.random() - 0.5);
       for (const doc of shuffled) {

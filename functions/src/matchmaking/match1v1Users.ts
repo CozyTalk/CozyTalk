@@ -20,9 +20,10 @@ export const match1v1Users = onDocumentCreated(
     const db = admin.firestore();
     const rtdb = admin.database();
 
-    const triggerVector = Array.isArray(data.interestVector)
-      ? (data.interestVector as number[])
-      : null;
+    const toVector = (v: unknown): number[] | null =>
+      Array.isArray(v) ? (v as number[]) : null;
+
+    const triggerVector = toVector(data.interestVector);
 
     // Expanded to 20 candidates to give interest-matching a wider field.
     const candidatesSnap = await db
@@ -87,9 +88,7 @@ export const match1v1Users = onDocumentCreated(
       if (!claimSucceeded) continue;
 
       // Build room interest fields if both users provided interest vectors.
-      const candidateVector = Array.isArray(candidate.data().interestVector)
-        ? (candidate.data().interestVector as number[])
-        : null;
+      const candidateVector = toVector(candidate.data().interestVector);
       const memberInterests: Record<string, number[]> | null =
         triggerVector && candidateVector
           ? {[triggerUid]: triggerVector, [candidate.id]: candidateVector}
