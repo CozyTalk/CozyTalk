@@ -334,7 +334,7 @@ class MatchmakingNotifier extends Notifier<MatchmakingState> {
               if (state.status == MatchmakingStatus.matched) {
                 _lastKnownRoomId = state.roomId;
                 _cancelSubscriptions();
-                state = const MatchmakingState();
+                state = _idleState();
               } else {
                 state = state.copyWith(currentRoom: null);
               }
@@ -387,7 +387,7 @@ class MatchmakingNotifier extends Notifier<MatchmakingState> {
     _cancelSubscriptions();
     final uid = ref.read(_matchmakingDatasourceProvider).getCurrentUserId();
     if (uid == null) {
-      state = const MatchmakingState();
+      state = _idleState();
       return;
     }
     // Capture the old room ID before clearing state so _subscribeToMatch can
