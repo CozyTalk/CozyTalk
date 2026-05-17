@@ -16,6 +16,9 @@ printf "\n  CozyTalk pre-push\n\n"
 # ── 1. build_runner — generated files must be up to date (mirrors CI) ─────────
 printf "  build_runner build...    "
 (cd "$REPO/apps/mobile" && dart run build_runner build --delete-conflicting-outputs > /dev/null 2>&1)
+# dart run may resolve pub dependencies and update pubspec.lock; restore it so
+# the lock-drift check below sees the committed state, not a Flutter SDK artifact.
+git checkout HEAD -- apps/mobile/pubspec.lock 2>/dev/null || true
 
 CHANGED_GEN=$(git diff --name-only -- '*.g.dart' '*.freezed.dart' 2>/dev/null || true)
 if [ -n "$CHANGED_GEN" ]; then
