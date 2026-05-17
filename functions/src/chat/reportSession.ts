@@ -145,8 +145,15 @@ export const reportSession = onCall(
     const roomSnap = await db.collection("rooms").doc(sessionId).get();
     if (roomSnap.exists) {
       const data = roomSnap.data()!;
-      if (!(data.users as string[]).includes(reporterId)) {
+      const users = data.users as string[];
+      if (!users.includes(reporterId)) {
         throw new HttpsError("permission-denied", "Not a session participant.");
+      }
+      if (!users.includes(reportedUserId)) {
+        throw new HttpsError(
+          "invalid-argument",
+          "Reported user is not a participant in this session.",
+        );
       }
       encryptionKey = (data.encryptionKey as string | undefined) ?? null;
       if (encryptionKey) {
@@ -172,10 +179,17 @@ export const reportSession = onCall(
         .get();
       if (activeSnap.exists) {
         const data = activeSnap.data()!;
-        if (!(data.users as string[]).includes(reporterId)) {
+        const users = data.users as string[];
+        if (!users.includes(reporterId)) {
           throw new HttpsError(
             "permission-denied",
             "Not a session participant.",
+          );
+        }
+        if (!users.includes(reportedUserId)) {
+          throw new HttpsError(
+            "invalid-argument",
+            "Reported user is not a participant in this session.",
           );
         }
         encryptionKey = (data.encryptionKey as string | undefined) ?? null;
@@ -195,10 +209,17 @@ export const reportSession = onCall(
           );
         }
         const keyData = keySnap.data()!;
-        if (!(keyData.users as string[]).includes(reporterId)) {
+        const users = keyData.users as string[];
+        if (!users.includes(reporterId)) {
           throw new HttpsError(
             "permission-denied",
             "Not a session participant.",
+          );
+        }
+        if (!users.includes(reportedUserId)) {
+          throw new HttpsError(
+            "invalid-argument",
+            "Reported user is not a participant in this session.",
           );
         }
         encryptionKey = (keyData.encryptionKey as string | undefined) ?? null;
@@ -270,7 +291,6 @@ export const reportSession = onCall(
               reportId,
               sessionId,
               exportedAt: new Date().toISOString(),
-              encryptionKey,
               messages: chatEntries,
             },
             null,
@@ -291,7 +311,6 @@ export const reportSession = onCall(
       reportedUserId,
       sessionId,
       reportType,
-      encryptionKey,
       reason: reason.trim(),
       contextText: typeof contextText === "string" ? contextText.trim() : null,
       contextImageUrls: Array.isArray(contextImageUrls) ? contextImageUrls : [],
