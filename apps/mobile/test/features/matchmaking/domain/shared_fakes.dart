@@ -38,9 +38,15 @@ class FakeMatchmakingRepository implements MatchmakingRepository {
 
   // ── Implementations ─────────────────────────────────────────────────────────
 
+  String? lastJoinGroupRoomInterest;
+  String? lastJoin1v1PoolInterest;
+
   @override
-  Future<({String roomId, bool isNewRoom})> joinGroupRoom() async {
+  Future<({String roomId, bool isNewRoom})> joinGroupRoom({
+    String? interestText,
+  }) async {
     joinGroupRoomCalls++;
+    lastJoinGroupRoomInterest = interestText;
     if (error != null) throw error!;
     return joinGroupRoomResult;
   }
@@ -68,8 +74,9 @@ class FakeMatchmakingRepository implements MatchmakingRepository {
   }
 
   @override
-  Future<void> join1v1Pool() async {
+  Future<void> join1v1Pool({String? interestText}) async {
     join1v1PoolCalls++;
+    lastJoin1v1PoolInterest = interestText;
     if (error != null) throw error!;
   }
 

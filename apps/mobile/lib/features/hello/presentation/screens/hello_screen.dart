@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../features/auth/presentation/providers/auth_provider.dart';
 import '../../../../features/avatar/presentation/screens/avatar_picker_screen.dart';
-import '../../../../features/chat/presentation/screens/chat_screen.dart';
 import '../../../../features/matchmaking/presentation/screens/matchmaking_test_screen.dart';
 import '../../../../features/profile/presentation/screens/profile_screen.dart';
 import '../providers/hello_provider.dart';
@@ -46,26 +44,6 @@ class _HelloScreenState extends ConsumerState<HelloScreen> {
             ElevatedButton(
               onPressed: state.isLoading ? null : _submit,
               child: const Text('Send to server'),
-            ),
-            const SizedBox(height: 16),
-            OutlinedButton.icon(
-              onPressed: () {
-                final user = ref.read(authNotifierProvider).user;
-                if (user == null) return;
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => ChatScreen(
-                      sessionId: 'proto-session-001',
-                      currentUserId: user.uid,
-                      currentUserDisplayName:
-                          user.displayName ?? user.email ?? 'You',
-                    ),
-                  ),
-                );
-              },
-              icon: const Icon(Icons.chat_bubble_outline),
-              label: const Text('Open prototype chat'),
             ),
             const SizedBox(height: 16),
             OutlinedButton.icon(

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_routes.dart';
 
@@ -33,10 +34,12 @@ class _JoinRoomIdScreenState extends State<JoinRoomIdScreen> {
     if (roomCode.length == 5) {
       Navigator.pushNamed(
         context,
-        AppRoutes.groupChatScreen,
+        AppRoutes.findingRoom,
         arguments: {
-          'roomName': 'Private Room $roomCode',
+          'roomName': 'Room $roomCode',
           'bgImage': 'assets/images/backgrounds/kao_tapu.png',
+          'roomType': 'group',
+          'isGroup': true,
         },
       );
     } else {
@@ -69,12 +72,12 @@ class _JoinRoomIdScreenState extends State<JoinRoomIdScreen> {
                     GestureDetector(
                       onTap: () => Navigator.pop(context),
                       child: Container(
-                        width: 48,
-                        height: 48,
+                        width: 52,
+                        height: 52,
                         alignment: Alignment.center,
                         decoration: BoxDecoration(
                           color: Colors.white,
-                          borderRadius: BorderRadius.circular(16),
+                          borderRadius: BorderRadius.circular(14),
                           boxShadow: [
                             BoxShadow(
                               color: Colors.black.withValues(alpha: 0.08),
@@ -87,10 +90,10 @@ class _JoinRoomIdScreenState extends State<JoinRoomIdScreen> {
                             width: 1.5,
                           ),
                         ),
-                        child: const Icon(
-                          Icons.chevron_left,
-                          color: Colors.black,
-                          size: 30,
+                        child: SvgPicture.asset(
+                          'assets/images/icons/Back.svg',
+                          width: 26,
+                          height: 26,
                         ),
                       ),
                     ),
@@ -116,8 +119,9 @@ class _JoinRoomIdScreenState extends State<JoinRoomIdScreen> {
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisAlignment: MainAxisAlignment.start,
                 children: [
+                  const SizedBox(height: 60),
                   const Text(
                     'Enter room ID',
                     style: TextStyle(
@@ -171,6 +175,12 @@ class _JoinRoomIdScreenState extends State<JoinRoomIdScreen> {
                               borderSide: const BorderSide(
                                 color: Color(0xFF85BA72),
                                 width: 2,
+                              ),
+                            ),
+                            disabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(16),
+                              borderSide: const BorderSide(
+                                color: Colors.black12,
                               ),
                             ),
                           ),

@@ -23,6 +23,19 @@ void main() {
       expect(repo.joinGroupRoomCalls, 1);
     });
 
+    test('forwards interestText to repository', () async {
+      await useCase.call(interestText: 'cooking');
+
+      expect(repo.joinGroupRoomCalls, 1);
+      expect(repo.lastJoinGroupRoomInterest, 'cooking');
+    });
+
+    test('passes null interestText when not provided', () async {
+      await useCase.call();
+
+      expect(repo.lastJoinGroupRoomInterest, isNull);
+    });
+
     test('propagates repository exception', () async {
       repo.error = Exception('network error');
 

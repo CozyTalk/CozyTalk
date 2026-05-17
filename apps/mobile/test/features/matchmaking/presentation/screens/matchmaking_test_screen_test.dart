@@ -16,8 +16,11 @@ class _FakeMatchmakingNotifier extends MatchmakingNotifier {
   int createCustomRoomCalls = 0;
   int cancelSearchCalls = 0;
   int leaveRoomCalls = 0;
+  int setInterestTextCalls = 0;
+  int loadSavedInterestTextCalls = 0;
   String? lastJoinByIdArg;
   bool? lastSetRoomLockValue;
+  String? lastInterestText;
 
   _FakeMatchmakingNotifier({MatchmakingState? initial})
     : _initial = initial ?? const MatchmakingState();
@@ -48,6 +51,18 @@ class _FakeMatchmakingNotifier extends MatchmakingNotifier {
   @override
   Future<void> setRoomLock({required bool isLocked}) async {
     lastSetRoomLockValue = isLocked;
+  }
+
+  @override
+  void setInterestText(String text) {
+    setInterestTextCalls++;
+    lastInterestText = text;
+    state = state.copyWith(interestText: text);
+  }
+
+  @override
+  Future<void> loadSavedInterestText() async {
+    loadSavedInterestTextCalls++;
   }
 }
 
@@ -272,16 +287,74 @@ void main() {
       expect(fake.cancelSearchCalls, 1);
     });
 
+    testWidgets('interest text field is rendered in idle state', (
+      tester,
+    ) async {
+      final fake = _FakeMatchmakingNotifier();
+      await tester.pumpWidget(_pump(fake: fake));
+
+      expect(find.byKey(const Key('interest_text_field')), findsOneWidget);
+    });
+
+    testWidgets('typing into interest field calls setInterestText', (
+      tester,
+    ) async {
+      final fake = _FakeMatchmakingNotifier();
+      await tester.pumpWidget(_pump(fake: fake));
+
+      await tester.enterText(
+        find.byKey(const Key('interest_text_field')),
+        'football',
+      );
+      await tester.pump();
+
+      expect(fake.setInterestTextCalls, greaterThan(0));
+      expect(fake.lastInterestText, 'football');
+    });
+
+    testWidgets('Find 1v1 works when interest field is empty', (tester) async {
+      final fake = _FakeMatchmakingNotifier();
+      await tester.pumpWidget(_pump(fake: fake));
+
+      await tester.tap(find.text('Find 1v1'));
+      await tester.pump();
+
+      expect(fake.join1v1PoolCalls, 1);
+    });
+
+    testWidgets('Find Group Room works when interest field is empty', (
+      tester,
+    ) async {
+      final fake = _FakeMatchmakingNotifier();
+      await tester.pumpWidget(_pump(fake: fake));
+
+      await tester.tap(find.text('Find Group Room'));
+      await tester.pump();
+
+      expect(fake.joinGroupRoomCalls, 1);
+    });
+
+    testWidgets('pre-populated interestText shows in field', (tester) async {
+      final fake = _FakeMatchmakingNotifier(
+        initial: const MatchmakingState(interestText: 'music'),
+      );
+      await tester.pumpWidget(_pump(fake: fake));
+      await tester.pumpAndSettle();
+
+      final field = tester.widget<TextField>(
+        find.byKey(const Key('interest_text_field')),
+      );
+      expect(field.controller?.text ?? '', 'music');
+    });
+
     testWidgets('entering 5 chars and tapping Join by ID calls joinRoomById', (
       tester,
     ) async {
       final fake = _FakeMatchmakingNotifier();
       await tester.pumpWidget(_pump(fake: fake));
 
-      final fields = find.byType(TextField).evaluate().toList();
-      // The first 5 TextFields are the room ID boxes
-      for (var i = 0; i < 5 && i < fields.length; i++) {
-        await tester.enterText(find.byWidget(fields[i].widget), 'ABCDE'[i]);
+      for (var i = 0; i < 5; i++) {
+        await tester.enterText(find.byKey(Key('room_id_field_$i')), 'ABCDE'[i]);
         await tester.pump();
       }
 
@@ -302,6 +375,7 @@ void main() {
       );
       await tester.pumpWidget(_pump(fake: fake));
 
+      await tester.ensureVisible(find.text('Leave Room'));
       await tester.tap(find.text('Leave Room'));
       await tester.pump();
 
@@ -318,6 +392,7 @@ void main() {
       );
       await tester.pumpWidget(_pump(fake: fake));
 
+      await tester.ensureVisible(find.byType(Switch));
       await tester.tap(find.byType(Switch));
       await tester.pump();
 

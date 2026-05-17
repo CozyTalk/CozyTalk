@@ -1,13 +1,34 @@
+class RoomInfo {
+  final String name;
+  final String thumbnail;
+  final int current;
+  final int max;
+  final bool isLocked;
+
+  const RoomInfo({
+    required this.name,
+    required this.thumbnail,
+    required this.current,
+    required this.max,
+    this.isLocked = false,
+  });
+
+  bool get isFull => current >= max;
+  bool get isOneOnOne => max == 2;
+  bool get canJoin => !isFull && !isLocked && !isOneOnOne;
+}
+
 class Friend {
-  final String name; // friend's original display name (set by them)
-  final String username; // their actual account username
-  String? note; // nickname you set for this friend (null = not set)
+  final String name;
+  final String username;
+  String? note;
   final String lastMessage;
   final bool isOnline;
   int unreadCount;
-  final bool isInRoom;
+  final RoomInfo? room;
   final String avatar;
   final String interest;
+  bool isBlocked;
 
   Friend({
     required this.name,
@@ -16,9 +37,10 @@ class Friend {
     required this.lastMessage,
     required this.isOnline,
     this.unreadCount = 0,
-    required this.isInRoom,
+    this.room,
     this.avatar = '',
     this.interest = '',
+    this.isBlocked = false,
   });
 
   Friend copyWith({
@@ -28,9 +50,10 @@ class Friend {
     String? lastMessage,
     bool? isOnline,
     int? unreadCount,
-    bool? isInRoom,
+    Object? room = _sentinel,
     String? avatar,
     String? interest,
+    bool? isBlocked,
   }) => Friend(
     name: name ?? this.name,
     username: username ?? this.username,
@@ -38,12 +61,15 @@ class Friend {
     lastMessage: lastMessage ?? this.lastMessage,
     isOnline: isOnline ?? this.isOnline,
     unreadCount: unreadCount ?? this.unreadCount,
-    isInRoom: isInRoom ?? this.isInRoom,
+    room: room == _sentinel ? this.room : room as RoomInfo?,
     avatar: avatar ?? this.avatar,
     interest: interest ?? this.interest,
+    isBlocked: isBlocked ?? this.isBlocked,
   );
 
-  // ชื่อที่แสดงผล: ถ้าตั้ง note ไว้ใช้ note, ไม่งั้นใช้ username
+  bool get isInRoom => room != null;
+
+  // Display name: use note if set, otherwise fall back to username
   String get displayName =>
       (note != null && note!.isNotEmpty) ? note! : username;
 }

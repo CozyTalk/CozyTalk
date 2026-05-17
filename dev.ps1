@@ -61,6 +61,19 @@ if ($USE_PROD) {
     Write-Host ""
 }
 
+# -- Vertex AI credentials check -----------------------------------------------
+if (-not $USE_PROD) {
+    $adcFile = Join-Path $env:APPDATA 'gcloud\application_default_credentials.json'
+    if (-not (Get-Command gcloud -ErrorAction SilentlyContinue) -or -not (Test-Path $adcFile)) {
+        warn "Vertex AI ADC not found -- interest matching degrades to random matching."
+        info "Run once: gcloud auth application-default login"
+        Write-Host ""
+    } else {
+        ok "Vertex AI ADC ready -- interest matching enabled"
+        Write-Host ""
+    }
+}
+
 # -- Helpers -------------------------------------------------------------------
 function Stop-ProcessOnPort([int]$Port) {
     Get-NetTCPConnection -LocalPort $Port -ErrorAction SilentlyContinue |
@@ -95,6 +108,12 @@ function Stop-Emulators {
         # /T kills the whole process tree (cmd.exe + firebase child).
         & taskkill /F /T /PID $EmulatorProcess.Id 2>$null
         try { $EmulatorProcess.WaitForExit(5000) | Out-Null } catch {}
+    } elseif ($EMULATOR_ONLY) {
+        Write-Host ""
+        Write-Host "  Stopping emulators..." -ForegroundColor DarkGray
+        foreach ($port in @(9099, 8080, 9000, 5001, 8085, 4000, 4400, 4500)) {
+            Stop-ProcessOnPort $port
+        }
     }
     if ($null -ne $LogFile) {
         Write-Host "  Session log saved -> $LogFile" -ForegroundColor DarkGray
