@@ -288,7 +288,6 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
       username: 'kaitom',
       lastMessage: 'Hey! Are you free tonight? 🍕',
       isOnline: true,
-      isInRoom: false,
       avatar: 'assets/images/UserAvatar.png',
       interest: 'Cats',
     );
@@ -676,7 +675,7 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
                 child: Image.asset(
                   bgImage,
                   fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) =>
+                  errorBuilder: (_, _, _) =>
                       Container(color: Colors.grey.shade300),
                 ),
               ),
@@ -1147,7 +1146,7 @@ class _TopicCardState extends State<_TopicCard>
             child: Image.asset(
               widget.assetPath,
               width: 180,
-              errorBuilder: (_, __, ___) => Container(
+              errorBuilder: (_, _, _) => Container(
                 width: 180,
                 height: 260,
                 decoration: BoxDecoration(
@@ -1264,7 +1263,7 @@ class _GroupTypingIndicatorState extends State<_GroupTypingIndicator>
                 3,
                 (i) => AnimatedBuilder(
                   animation: _anims[i],
-                  builder: (_, __) => Transform.translate(
+                  builder: (_, _) => Transform.translate(
                     offset: Offset(0, _anims[i].value),
                     child: Container(
                       width: 7,

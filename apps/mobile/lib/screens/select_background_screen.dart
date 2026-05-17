@@ -157,7 +157,7 @@ class _SelectBackgroundScreenState extends State<SelectBackgroundScreen> {
                             child: Image.asset(
                               loc['image']!,
                               fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => Container(
+                              errorBuilder: (_, _, _) => Container(
                                 color: Colors.grey.shade300,
                                 child: const Icon(Icons.image),
                               ),

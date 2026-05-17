@@ -193,7 +193,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
       username: 'kaitom',
       lastMessage: 'Hey! Are you free tonight? 🍕',
       isOnline: true,
-      isInRoom: false,
       avatar: 'assets/images/UserAvatar.png',
       interest: 'Cats',
     );
@@ -496,8 +495,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
             child: Image.asset(
               bgImage,
               fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) =>
-                  Container(color: Colors.grey.shade400),
+              errorBuilder: (_, _, _) => Container(color: Colors.grey.shade400),
             ),
           ),
           // Avatars — shifted left to avoid Song/Topic buttons
@@ -871,7 +869,7 @@ class _TopicCardState extends State<_TopicCard>
             child: Image.asset(
               widget.assetPath,
               width: 180,
-              errorBuilder: (_, __, ___) => Container(
+              errorBuilder: (_, _, _) => Container(
                 width: 180,
                 height: 260,
                 decoration: BoxDecoration(
@@ -988,7 +986,7 @@ class _TypingIndicatorState extends State<_TypingIndicator>
                 3,
                 (i) => AnimatedBuilder(
                   animation: _anims[i],
-                  builder: (_, __) => Transform.translate(
+                  builder: (_, _) => Transform.translate(
                     offset: Offset(0, _anims[i].value),
                     child: Container(
                       width: 7,

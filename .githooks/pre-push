@@ -16,6 +16,9 @@ printf "\n  CozyTalk pre-push\n\n"
 # ── 1. build_runner — generated files must be up to date (mirrors CI) ─────────
 printf "  build_runner build...    "
 (cd "$REPO/apps/mobile" && dart run build_runner build --delete-conflicting-outputs > /dev/null 2>&1)
+# dart run may resolve pub dependencies and update pubspec.lock; restore it so
+# the lock-drift check below sees the committed state, not a Flutter SDK artifact.
+git checkout HEAD -- apps/mobile/pubspec.lock 2>/dev/null || true
 
 CHANGED_GEN=$(git diff --name-only -- '*.g.dart' '*.freezed.dart' 2>/dev/null || true)
 if [ -n "$CHANGED_GEN" ]; then
@@ -61,18 +64,20 @@ if ! (cd "$REPO/apps/mobile" && flutter test --no-pub 2>&1); then
   FAIL=1
 fi
 
-# ── 5. pubspec.lock consistency (catches lock drift after pubspec.yaml edits) ─
+# ── 5. pubspec.lock consistency (catches uncommitted manual edits to the lock) ─
+# Note: we intentionally do NOT run `flutter pub get` here because the local
+# Flutter SDK version may differ from CI (e.g. 3.38.x vs 3.41.x), which would
+# cause spurious resolution differences that only CI can authoritatively resolve.
+# CI's `flutter pub get` + `git diff --exit-code` gate catches real lock drift.
 printf "  pubspec.lock check...    "
-(cd "$REPO/apps/mobile" && flutter pub get --no-pub-cache > /dev/null 2>&1) || true
-if git diff --quiet apps/mobile/pubspec.lock 2>/dev/null; then
+if git diff --quiet -- apps/mobile/pubspec.lock 2>/dev/null && \
+   git diff --cached --quiet -- apps/mobile/pubspec.lock 2>/dev/null; then
   printf "ok\n"
 else
-  printf "OUT OF SYNC\n\n"
-  printf "  pubspec.lock differs from pubspec.yaml. Commit the updated lock:\n\n"
-  printf "    flutter pub get\n"
+  printf "UNCOMMITTED CHANGES\n\n"
+  printf "  pubspec.lock has uncommitted changes. Commit them:\n\n"
   printf "    git add apps/mobile/pubspec.lock\n"
   printf "    git commit -m 'chore(deps): update pubspec.lock'\n\n"
-  git checkout HEAD -- apps/mobile/pubspec.lock 2>/dev/null || true
   FAIL=1
 fi
 

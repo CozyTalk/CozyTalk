@@ -42,8 +42,9 @@ class _FindingRoomScreenState extends State<FindingRoomScreen>
 
     // Tuk-tuk frame animation — cycle every 180 ms
     _frameTimer = Timer.periodic(const Duration(milliseconds: 180), (_) {
-      if (mounted)
+      if (mounted) {
         setState(() => _frameIndex = (_frameIndex + 1) % _frames.length);
+      }
     });
 
     // Elapsed time — tick every second
@@ -100,7 +101,7 @@ class _FindingRoomScreenState extends State<FindingRoomScreen>
 
   // ── Elapsed time string ────────────────────────────────────────────────────
   String get _timeLabel {
-    if (_elapsedSeconds < 60) return '${_elapsedSeconds} sec';
+    if (_elapsedSeconds < 60) return '$_elapsedSeconds sec';
     final m = _elapsedSeconds ~/ 60;
     final s = (_elapsedSeconds % 60).toString().padLeft(2, '0');
     return '${m}m ${s}s';
@@ -221,7 +222,7 @@ class _FindingRoomScreenState extends State<FindingRoomScreen>
                 child: Image.asset(
                   _frames[_frameIndex],
                   fit: BoxFit.contain,
-                  errorBuilder: (_, __, ___) => const Center(
+                  errorBuilder: (_, _, _) => const Center(
                     child: Icon(
                       Icons.directions_car_rounded,
                       size: 80,

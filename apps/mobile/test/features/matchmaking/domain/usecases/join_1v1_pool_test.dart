@@ -19,6 +19,19 @@ void main() {
       expect(repo.join1v1PoolCalls, 1);
     });
 
+    test('forwards interestText to repository', () async {
+      await useCase.call(interestText: 'football');
+
+      expect(repo.join1v1PoolCalls, 1);
+      expect(repo.lastJoin1v1PoolInterest, 'football');
+    });
+
+    test('passes null interestText when not provided', () async {
+      await useCase.call();
+
+      expect(repo.lastJoin1v1PoolInterest, isNull);
+    });
+
     test('propagates repository exception', () async {
       repo.error = Exception('already queued');
 

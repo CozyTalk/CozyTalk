@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 // Pixel position is expressed relative to HomeScreen's 270px-tall avatar card
 // where UserAvatar.png sits at top:118, left:center-45, size:90×90.
@@ -30,8 +31,8 @@ class AvatarOverlays {
       path: 'assets/images/moods/Happy.png',
       top: 130,
       cx: 0,
-      w: 35,
-      h: 35,
+      w: 33,
+      h: 33,
     ),
     'Thrilled': AvatarOverlay(
       path: 'assets/images/moods/Thrilled.png',
@@ -44,29 +45,29 @@ class AvatarOverlays {
       path: 'assets/images/moods/Sad.png',
       top: 130,
       cx: 0,
-      w: 36,
-      h: 36,
+      w: 37,
+      h: 37,
     ),
     'Lonely': AvatarOverlay(
       path: 'assets/images/moods/Lonely.png',
       top: 130,
       cx: 0,
-      w: 35,
-      h: 35,
+      w: 33,
+      h: 33,
     ),
     'Silly': AvatarOverlay(
       path: 'assets/images/moods/Silly.png',
-      top: 130,
+      top: 132,
       cx: 0,
-      w: 35,
-      h: 35,
+      w: 33,
+      h: 33,
     ),
     'Grumpy': AvatarOverlay(
       path: 'assets/images/moods/Grumpy.png',
       top: 127,
       cx: 0,
-      w: 38,
-      h: 38,
+      w: 39,
+      h: 39,
     ),
   };
 
@@ -98,10 +99,11 @@ class AvatarOverlays {
       cx: 0,
       w: 60,
       h: 24,
+      aboveMood: true,
     ),
     'Cat Headband': AvatarOverlay(
       path: 'assets/images/dressup/CatHeadband.png',
-      top: 97,
+      top: 98,
       cx: 1,
       w: 67,
       h: 65,
@@ -124,15 +126,63 @@ class AvatarState {
 }
 
 class AvatarNotifier extends Notifier<AvatarState> {
+  static const _moodKey = 'avatar_mood';
+  static const _accessoryKey = 'avatar_accessory';
+
   @override
-  AvatarState build() => const AvatarState();
+  AvatarState build() {
+    _loadSaved();
+    return AvatarState(mood: AvatarOverlays.mood['Happy']);
+  }
 
-  void setMood(AvatarOverlay? v) =>
-      state = AvatarState(mood: v, accessory: state.accessory);
+  Future<void> _loadSaved() async {
+    final prefs = await SharedPreferences.getInstance();
+    final savedMood = prefs.getString(_moodKey);
+    final savedAccessory = prefs.getString(_accessoryKey);
+    state = AvatarState(
+      mood: savedMood != null
+          ? AvatarOverlays.mood[savedMood]
+          : AvatarOverlays.mood['Happy'],
+      accessory: savedAccessory != null
+          ? AvatarOverlays.accessory[savedAccessory]
+          : null,
+    );
+  }
 
-  void setAccessory(AvatarOverlay? v) =>
-      state = AvatarState(mood: state.mood, accessory: v);
+  Future<void> setMood(AvatarOverlay? v) async {
+    state = AvatarState(mood: v, accessory: state.accessory);
+    final prefs = await SharedPreferences.getInstance();
+    final key = AvatarOverlays.mood.entries
+        .firstWhere(
+          (e) => e.value == v,
+          orElse: () => const MapEntry('', _dummy),
+        )
+        .key;
+    if (key.isNotEmpty) {
+      await prefs.setString(_moodKey, key);
+    } else {
+      await prefs.remove(_moodKey);
+    }
+  }
+
+  Future<void> setAccessory(AvatarOverlay? v) async {
+    state = AvatarState(mood: state.mood, accessory: v);
+    final prefs = await SharedPreferences.getInstance();
+    final key = AvatarOverlays.accessory.entries
+        .firstWhere(
+          (e) => e.value == v,
+          orElse: () => const MapEntry('', _dummy),
+        )
+        .key;
+    if (key.isNotEmpty) {
+      await prefs.setString(_accessoryKey, key);
+    } else {
+      await prefs.remove(_accessoryKey);
+    }
+  }
 }
+
+const _dummy = AvatarOverlay(path: '', top: 0, w: 0, h: 0);
 
 final avatarProvider = NotifierProvider<AvatarNotifier, AvatarState>(
   AvatarNotifier.new,

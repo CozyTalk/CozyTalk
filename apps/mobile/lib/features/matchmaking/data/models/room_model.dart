@@ -19,6 +19,7 @@ abstract class RoomModel with _$RoomModel {
     required bool isLocked,
     required int createdAt,
     int? paddingUntil,
+    List<double>? roomInterestVector,
   }) = _RoomModel;
 
   factory RoomModel.fromJson(Map<String, dynamic> json) =>
@@ -43,6 +44,15 @@ abstract class RoomModel with _$RoomModel {
     data.putIfAbsent('isLocked', () => false);
     data.putIfAbsent('memberCount', () => 0);
     data.putIfAbsent('maxUsers', () => 5);
+
+    final rvRaw = data['roomInterestVector'];
+    if (rvRaw is List) {
+      data['roomInterestVector'] = List<double>.from(
+        rvRaw.map((e) => (e as num).toDouble()),
+      );
+    } else {
+      data.remove('roomInterestVector');
+    }
 
     return RoomModel.fromJson(data);
   }
@@ -74,6 +84,7 @@ extension RoomModelX on RoomModel {
       paddingUntil: paddingUntil != null
           ? DateTime.fromMillisecondsSinceEpoch(paddingUntil!)
           : null,
+      roomInterestVector: roomInterestVector,
     );
   }
 }

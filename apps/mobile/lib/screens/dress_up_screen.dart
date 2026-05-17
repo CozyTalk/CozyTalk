@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../theme/app_colors.dart';
 import '../shared/avatar_overlay.dart';
 import '../shared/layered_avatar.dart';
+import 'widgets.dart';
 
 class _DressItem {
   final String name;
@@ -30,6 +31,21 @@ class DressUpScreen extends ConsumerStatefulWidget {
 
 class _DressUpScreenState extends ConsumerState<DressUpScreen> {
   String? _selected;
+  final List<String?> _history = [];
+  final List<String?> _future = [];
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final saved = ref.read(avatarProvider).accessory;
+      final key = AvatarOverlays.accessory.entries
+          .where((e) => e.value == saved)
+          .map((e) => e.key)
+          .firstOrNull;
+      setState(() => _selected = key);
+    });
+  }
 
   static const List<_DressItem> _items = [
     _DressItem('Cap', 'assets/images/dressup/Cap.png', 'Cap', 80, 55),
@@ -64,6 +80,43 @@ class _DressUpScreenState extends ConsumerState<DressUpScreen> {
     _DressItem('Crown', 'assets/images/dressup/Crown.png', 'Crown', 100, 35),
   ];
 
+  void _select(String name) {
+    setState(() {
+      _history.add(_selected);
+      _future.clear();
+      _selected = name;
+    });
+    ref
+        .read(avatarProvider.notifier)
+        .setAccessory(AvatarOverlays.accessory[name]);
+  }
+
+  void _undo() {
+    if (_history.isEmpty) return;
+    setState(() {
+      _future.add(_selected);
+      _selected = _history.removeLast();
+    });
+  }
+
+  void _redo() {
+    if (_future.isEmpty) return;
+    setState(() {
+      _history.add(_selected);
+      _selected = _future.removeLast();
+    });
+  }
+
+  void _delete() {
+    if (_selected == null) return;
+    setState(() {
+      _history.add(_selected);
+      _future.clear();
+      _selected = null;
+    });
+    ref.read(avatarProvider.notifier).setAccessory(null);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -73,131 +126,151 @@ class _DressUpScreenState extends ConsumerState<DressUpScreen> {
           Column(
             children: [
               _buildCustomAppBar(context),
+
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
+                child: Container(
+                  width: double.infinity,
+                  height: 250,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(25),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.12),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(25),
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        Positioned.fill(
+                          child: Image.asset(
+                            'assets/images/backgrounds/DressUpBg.png',
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, _, _) =>
+                                Container(color: AppColors.tanGreen),
+                          ),
+                        ),
+                        Positioned(
+                          bottom: -15,
+                          child: LayeredAvatar(
+                            boxSize: 130,
+                            moodOverlay: ref.watch(avatarProvider).mood,
+                            accessoryOverlay: _selected != null
+                                ? AvatarOverlays.accessory[_selected]
+                                : ref.watch(avatarProvider).accessory,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 14,
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    AvatarActionButton(
+                      svgPath: 'assets/images/icons/Undo.svg',
+                      enabled: _history.isNotEmpty,
+                      onTap: _undo,
+                    ),
+                    const SizedBox(width: 12),
+                    AvatarActionButton(
+                      svgPath: 'assets/images/icons/Redo.svg',
+                      enabled: _future.isNotEmpty,
+                      onTap: _redo,
+                    ),
+                    const SizedBox(width: 12),
+                    AvatarActionButton(
+                      svgPath: 'assets/images/icons/Trash.svg',
+                      enabled: _selected != null,
+                      onTap: _delete,
+                    ),
+                  ],
+                ),
+              ),
+
               Expanded(
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.only(
-                    left: 20,
-                    right: 20,
-                    top: 24,
-                    bottom: 120,
-                  ),
-                  child: Column(
-                    children: [
-                      // ── Avatar Preview ──
-                      Container(
-                        width: double.infinity,
-                        height: 250,
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(25),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.12),
-                              blurRadius: 12,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
+                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 120),
+                  child: GridView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    padding: EdgeInsets.zero,
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 3,
+                          crossAxisSpacing: 15,
+                          mainAxisSpacing: 15,
+                          childAspectRatio: 0.85,
                         ),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(25),
-                          child: Stack(
-                            alignment: Alignment.center,
-                            children: [
-                              Positioned.fill(
-                                child: Image.asset(
-                                  'assets/images/backgrounds/DressUpBg.png',
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (_, _, _) =>
-                                      Container(color: AppColors.tanGreen),
-                                ),
+                    itemCount: _items.length,
+                    itemBuilder: (_, i) {
+                      final item = _items[i];
+                      final sel = _selected == item.name;
+                      return GestureDetector(
+                        onTap: () => _select(item.name),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          curve: Curves.easeOut,
+                          transform: Matrix4.translationValues(
+                            0,
+                            sel ? -10.0 : 0,
+                            0,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(22),
+                            border: Border.all(
+                              color: sel
+                                  ? const Color(0xFFCE5E42)
+                                  : Colors.grey.shade300,
+                              width: sel ? 2.5 : 1.5,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.08),
+                                blurRadius: 10,
+                                offset: const Offset(0, 4),
                               ),
-                              Positioned(
-                                bottom: -15,
-                                child: LayeredAvatar(
-                                  boxSize: 130,
-                                  moodOverlay: ref.watch(avatarProvider).mood,
-                                  accessoryOverlay: _selected != null
-                                      ? AvatarOverlays.accessory[_selected]
-                                      : ref.watch(avatarProvider).accessory,
+                            ],
+                          ),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Image.asset(
+                                item.imagePath,
+                                height: 45,
+                                width: 45,
+                                fit: BoxFit.contain,
+                                errorBuilder: (_, _, _) =>
+                                    const Icon(Icons.style, size: 40),
+                              ),
+                              const SizedBox(height: 10),
+                              Text(
+                                item.label,
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w900,
+                                  color: Colors.black,
                                 ),
                               ),
                             ],
                           ),
                         ),
-                      ),
-
-                      const SizedBox(height: 12),
-
-                      // ── Items Grid ──
-                      GridView.builder(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        padding: EdgeInsets.zero,
-                        gridDelegate:
-                            const SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount: 3,
-                              crossAxisSpacing: 15,
-                              mainAxisSpacing: 15,
-                              childAspectRatio: 0.85,
-                            ),
-                        itemCount: _items.length,
-                        itemBuilder: (_, i) {
-                          final item = _items[i];
-                          final sel = _selected == item.name;
-                          return GestureDetector(
-                            onTap: () => setState(() => _selected = item.name),
-                            child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 200),
-                              curve: Curves.easeOut,
-                              transform: Matrix4.translationValues(
-                                0,
-                                sel ? -10.0 : 0,
-                                0,
-                              ),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(22),
-                                border: Border.all(
-                                  color: sel
-                                      ? const Color(0xFFCE5E42)
-                                      : Colors.grey.shade300,
-                                  width: sel ? 2.5 : 1.5,
-                                ),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withValues(alpha: 0.08),
-                                    blurRadius: 10,
-                                    offset: const Offset(0, 4),
-                                  ),
-                                ],
-                              ),
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Image.asset(
-                                    item.imagePath,
-                                    height: 45,
-                                    width: 45,
-                                    fit: BoxFit.contain,
-                                    errorBuilder: (_, _, _) =>
-                                        const Icon(Icons.style, size: 40),
-                                  ),
-                                  const SizedBox(height: 10),
-                                  Text(
-                                    item.label,
-                                    style: const TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w900,
-                                      color: Colors.black,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                    ],
+                      );
+                    },
                   ),
                 ),
               ),
@@ -248,11 +321,10 @@ class _DressUpScreenState extends ConsumerState<DressUpScreen> {
     );
   }
 
-  // ─── Custom App Bar ──────────────────────────────────────────
   Widget _buildCustomAppBar(BuildContext context) {
     return Container(
       decoration: const BoxDecoration(
-        color: Color(0xFF695959),
+        color: AppColors.brownDeep,
         borderRadius: BorderRadius.vertical(top: Radius.circular(35)),
       ),
       child: SafeArea(

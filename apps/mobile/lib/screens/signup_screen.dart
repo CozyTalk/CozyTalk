@@ -392,8 +392,9 @@ class _SignupScreenState extends State<SignupScreen> {
   String? _validateEmail(String? value) {
     if (value == null || value.trim().isEmpty) return 'Email is required.';
     final emailRegex = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
-    if (!emailRegex.hasMatch(value.trim()))
+    if (!emailRegex.hasMatch(value.trim())) {
       return 'Enter a valid email address.';
+    }
     return null;
   }
 

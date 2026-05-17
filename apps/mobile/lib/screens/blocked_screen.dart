@@ -21,7 +21,6 @@ class _BlockedScreenState extends State<BlockedScreen> {
       username: 'somchai99',
       lastMessage: '',
       isOnline: false,
-      isInRoom: false,
       avatar: 'assets/images/UserAvatar.png',
       interest: '',
     ),
@@ -30,7 +29,6 @@ class _BlockedScreenState extends State<BlockedScreen> {
       username: 'somying55',
       lastMessage: '',
       isOnline: false,
-      isInRoom: false,
       avatar: 'assets/images/UserAvatar.png',
       interest: '',
     ),
@@ -68,7 +66,7 @@ class _BlockedScreenState extends State<BlockedScreen> {
                 : ListView.separated(
                     padding: const EdgeInsets.symmetric(horizontal: 20),
                     itemCount: _blocked.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 16),
+                    separatorBuilder: (_, _) => const SizedBox(height: 16),
                     itemBuilder: (context, i) =>
                         _buildBlockedCard(context, _blocked[i], i),
                   ),

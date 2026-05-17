@@ -216,7 +216,7 @@ class _ChooseRoomTypeScreenState extends State<ChooseRoomTypeScreen> {
               imagePath,
               height: imageHeight,
               fit: BoxFit.contain,
-              errorBuilder: (_, __, ___) => const Icon(
+              errorBuilder: (_, _, _) => const Icon(
                 Icons.groups_rounded,
                 size: 48,
                 color: Colors.black26,
