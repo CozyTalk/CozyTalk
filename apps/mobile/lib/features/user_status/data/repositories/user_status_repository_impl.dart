@@ -1,0 +1,31 @@
+import '../../domain/entities/user_status.dart';
+import '../../domain/repositories/user_status_repository.dart';
+import '../datasources/user_status_datasource.dart';
+import '../models/user_status_model.dart';
+
+class UserStatusRepositoryImpl implements UserStatusRepository {
+  final UserStatusDatasource _datasource;
+
+  UserStatusRepositoryImpl(this._datasource);
+
+  @override
+  Stream<UserStatus> watchStatus(String uid) {
+    return _datasource
+        .watchStatus(uid)
+        .map(
+          (model) =>
+              model?.toEntity(uid) ??
+              UserStatus(uid: uid, status: UserOnlineStatus.offline),
+        );
+  }
+
+  @override
+  Future<void> setOnline() => _datasource.setOnline();
+
+  @override
+  Future<void> setInRoom({required String roomId, required String mode}) =>
+      _datasource.setInRoom(roomId: roomId, mode: mode);
+
+  @override
+  Future<void> clearStatus() => _datasource.clearStatus();
+}
