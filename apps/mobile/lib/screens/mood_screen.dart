@@ -20,9 +20,22 @@ class MoodScreen extends ConsumerStatefulWidget {
 }
 
 class _MoodScreenState extends ConsumerState<MoodScreen> {
-  String? _selected = 'Happy';
+  String? _selected;
   final List<String?> _history = [];
   final List<String?> _future = [];
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final saved = ref.read(avatarProvider).mood;
+      final key = AvatarOverlays.mood.entries
+          .where((e) => e.value == saved)
+          .map((e) => e.key)
+          .firstOrNull;
+      setState(() => _selected = key ?? 'Happy');
+    });
+  }
 
   static const List<_MoodOption> _moods = [
     _MoodOption('Happy', 'assets/images/moods/Happy.png'),
@@ -39,6 +52,7 @@ class _MoodScreenState extends ConsumerState<MoodScreen> {
       _future.clear();
       _selected = name;
     });
+    ref.read(avatarProvider.notifier).setMood(AvatarOverlays.mood[name]);
   }
 
   void _undo() {
@@ -64,6 +78,7 @@ class _MoodScreenState extends ConsumerState<MoodScreen> {
       _future.clear();
       _selected = null;
     });
+    ref.read(avatarProvider.notifier).setMood(null);
   }
 
   @override

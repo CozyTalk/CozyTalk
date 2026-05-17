@@ -34,6 +34,19 @@ class _DressUpScreenState extends ConsumerState<DressUpScreen> {
   final List<String?> _history = [];
   final List<String?> _future = [];
 
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final saved = ref.read(avatarProvider).accessory;
+      final key = AvatarOverlays.accessory.entries
+          .where((e) => e.value == saved)
+          .map((e) => e.key)
+          .firstOrNull;
+      setState(() => _selected = key);
+    });
+  }
+
   static const List<_DressItem> _items = [
     _DressItem('Cap', 'assets/images/dressup/Cap.png', 'Cap', 80, 55),
     _DressItem(
@@ -73,6 +86,9 @@ class _DressUpScreenState extends ConsumerState<DressUpScreen> {
       _future.clear();
       _selected = name;
     });
+    ref
+        .read(avatarProvider.notifier)
+        .setAccessory(AvatarOverlays.accessory[name]);
   }
 
   void _undo() {
@@ -98,6 +114,7 @@ class _DressUpScreenState extends ConsumerState<DressUpScreen> {
       _future.clear();
       _selected = null;
     });
+    ref.read(avatarProvider.notifier).setAccessory(null);
   }
 
   @override

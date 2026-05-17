@@ -185,7 +185,7 @@ class FriendRoomCard extends StatelessWidget {
               ],
             ),
           ),
-          if (!room.isOneOnOne) _ActionButton(room: room, onJoin: onJoin),
+          _ActionButton(room: room, onJoin: onJoin),
         ],
       ),
     );
@@ -255,7 +255,25 @@ class _ActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (room.canJoin) {
+    if (room.isOneOnOne) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+        decoration: BoxDecoration(
+          color: Colors.grey.shade200,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: Colors.grey.shade300, width: 1.5),
+        ),
+        child: Text(
+          'Join',
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w900,
+            color: Colors.grey.shade400,
+          ),
+        ),
+      );
+    }
+    if (room.canJoin && onJoin != null) {
       return GestureDetector(
         onTap: onJoin,
         child: Container(

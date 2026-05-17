@@ -1,6 +1,7 @@
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
+import '../theme/app_routes.dart';
 import '../models/friend.dart';
 import '../dialogs/report_dialog.dart';
 import '../shared/layered_avatar.dart';
@@ -142,7 +143,7 @@ class _FriendChatScreenState extends State<FriendChatScreen> {
                 onJoin: _friend.room!.canJoin
                     ? () => Navigator.pushNamed(
                         context,
-                        '/group-chat',
+                        AppRoutes.groupChatScreen,
                         arguments: {
                           'roomName': _friend.room!.name,
                           'bgImage': _friend.room!.thumbnail,

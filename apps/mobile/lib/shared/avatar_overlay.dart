@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 // Pixel position is expressed relative to HomeScreen's 270px-tall avatar card
 // where UserAvatar.png sits at top:118, left:center-45, size:90×90.
@@ -125,15 +126,63 @@ class AvatarState {
 }
 
 class AvatarNotifier extends Notifier<AvatarState> {
+  static const _moodKey = 'avatar_mood';
+  static const _accessoryKey = 'avatar_accessory';
+
   @override
-  AvatarState build() => AvatarState(mood: AvatarOverlays.mood['Happy']);
+  AvatarState build() {
+    _loadSaved();
+    return AvatarState(mood: AvatarOverlays.mood['Happy']);
+  }
 
-  void setMood(AvatarOverlay? v) =>
-      state = AvatarState(mood: v, accessory: state.accessory);
+  Future<void> _loadSaved() async {
+    final prefs = await SharedPreferences.getInstance();
+    final savedMood = prefs.getString(_moodKey);
+    final savedAccessory = prefs.getString(_accessoryKey);
+    state = AvatarState(
+      mood: savedMood != null
+          ? AvatarOverlays.mood[savedMood]
+          : AvatarOverlays.mood['Happy'],
+      accessory: savedAccessory != null
+          ? AvatarOverlays.accessory[savedAccessory]
+          : null,
+    );
+  }
 
-  void setAccessory(AvatarOverlay? v) =>
-      state = AvatarState(mood: state.mood, accessory: v);
+  Future<void> setMood(AvatarOverlay? v) async {
+    state = AvatarState(mood: v, accessory: state.accessory);
+    final prefs = await SharedPreferences.getInstance();
+    final key = AvatarOverlays.mood.entries
+        .firstWhere(
+          (e) => e.value == v,
+          orElse: () => const MapEntry('', _dummy),
+        )
+        .key;
+    if (key.isNotEmpty) {
+      await prefs.setString(_moodKey, key);
+    } else {
+      await prefs.remove(_moodKey);
+    }
+  }
+
+  Future<void> setAccessory(AvatarOverlay? v) async {
+    state = AvatarState(mood: state.mood, accessory: v);
+    final prefs = await SharedPreferences.getInstance();
+    final key = AvatarOverlays.accessory.entries
+        .firstWhere(
+          (e) => e.value == v,
+          orElse: () => const MapEntry('', _dummy),
+        )
+        .key;
+    if (key.isNotEmpty) {
+      await prefs.setString(_accessoryKey, key);
+    } else {
+      await prefs.remove(_accessoryKey);
+    }
+  }
 }
+
+const _dummy = AvatarOverlay(path: '', top: 0, w: 0, h: 0);
 
 final avatarProvider = NotifierProvider<AvatarNotifier, AvatarState>(
   AvatarNotifier.new,
