@@ -21,6 +21,7 @@ import {
   adminFirestoreList,
   buildRoom,
   tryLeaveRoom,
+  rtdbGet,
 } from "../../matchmaking/__tests__/helpers";
 
 const RETENTION_DAYS = 3;
@@ -268,6 +269,22 @@ describe("session_keys TTL", () => {
 
     const keyDoc = await adminFirestoreDoc(`session_keys/${sessionId}`);
     expect(keyDoc).toBeNull();
+  });
+
+  test("endSession tombstones new-style room and archives session_keys", async () => {
+    const roomId = await buildRoom(2);
+    // buildRoom leaves the 2nd anonymous user signed in
+    await callFn("endSession", {sessionId: roomId});
+
+    const roomDoc = await adminFirestoreDoc(`rooms/${roomId}`);
+    expect(roomDoc?.["status"]).toBe("expired");
+    expect((roomDoc?.["users"] as string[]).length).toBe(0);
+
+    const rtdbRoom = await rtdbGet(`rooms/${roomId}`);
+    expect(rtdbRoom.exists).toBe(false);
+
+    const keyDoc = await adminFirestoreDoc(`session_keys/${roomId}`);
+    expect(keyDoc).not.toBeNull();
   });
 });
 

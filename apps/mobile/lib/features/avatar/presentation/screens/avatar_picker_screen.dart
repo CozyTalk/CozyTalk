@@ -1,9 +1,9 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../shared/avatar_overlay.dart';
 import '../../../../shared/layered_avatar.dart';
+import '../../../auth/presentation/providers/auth_provider.dart';
 import '../providers/avatar_decoration_provider.dart';
 
 class AvatarPickerScreen extends ConsumerStatefulWidget {
@@ -45,7 +45,7 @@ class _AvatarPickerScreenState extends ConsumerState<AvatarPickerScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final uid = FirebaseAuth.instance.currentUser?.uid;
+      final uid = ref.read(authNotifierProvider).user?.uid;
       if (uid != null) {
         ref.read(avatarDecorationNotifierProvider.notifier).load(uid);
       }
@@ -54,7 +54,7 @@ class _AvatarPickerScreenState extends ConsumerState<AvatarPickerScreen> {
 
   Future<void> _save() async {
     if (_isSaving) return;
-    final uid = FirebaseAuth.instance.currentUser?.uid;
+    final uid = ref.read(authNotifierProvider).user?.uid;
     if (uid == null) return;
 
     setState(() => _isSaving = true);

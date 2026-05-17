@@ -29,12 +29,13 @@ Future<void> setupFirebaseForTest() async {
       ? DefaultFirebaseOptions.web
       : DefaultFirebaseOptions.currentPlatform;
   await Firebase.initializeApp(options: options);
-  await FirebaseAuth.instance.useAuthEmulator('127.0.0.1', 9099);
+  final host = _emulatorHost;
+  await FirebaseAuth.instance.useAuthEmulator(host, 9099);
   FirebaseFunctions.instanceFor(
     region: 'us-central1',
-  ).useFunctionsEmulator('127.0.0.1', 5001);
-  FirebaseFirestore.instance.useFirestoreEmulator('127.0.0.1', 8080);
-  FirebaseDatabase.instance.useDatabaseEmulator('127.0.0.1', 9000);
+  ).useFunctionsEmulator(host, 5001);
+  FirebaseFirestore.instance.useFirestoreEmulator(host, 8080);
+  FirebaseDatabase.instance.useDatabaseEmulator(host, 9000);
 }
 
 /// Signs in anonymously and returns the uid.

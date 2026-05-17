@@ -1,6 +1,6 @@
 import {onCall, HttpsError} from "firebase-functions/v2/https";
 import * as admin from "firebase-admin";
-import {Timestamp} from "firebase-admin/firestore";
+import {FieldValue, Timestamp} from "firebase-admin/firestore";
 import * as logger from "firebase-functions/logger";
 import {deleteSubcollection} from "../matchmaking/_utils";
 
@@ -25,10 +25,18 @@ export const endSession = onCall(
     const db = admin.firestore();
     const rtdb = admin.database();
 
-    const sessionDoc = await db
-      .collection("active_sessions")
-      .doc(sessionId)
-      .get();
+    // Check rooms collection first (new matchmaking system), then fall back
+    // to active_sessions (proto-session backward compat) — mirrors sendMessage.
+    const roomSnap = await db.collection("rooms").doc(sessionId).get();
+    const isNewStyleRoom = roomSnap.exists;
+    const sessionRef = isNewStyleRoom
+      ? db.collection("rooms").doc(sessionId)
+      : db.collection("active_sessions").doc(sessionId);
+
+    const sessionDoc = isNewStyleRoom
+      ? roomSnap
+      : await db.collection("active_sessions").doc(sessionId).get();
+
     if (!sessionDoc.exists) {
       throw new HttpsError("not-found", "Session not found.");
     }
@@ -64,9 +72,20 @@ export const endSession = onCall(
       rtdb.ref(`presence/${sessionId}`).remove(),
     ]);
 
-    // Delete active_sessions first — this revokes client read access to
-    // chat_rooms via Firestore rules before we begin the message wipe.
-    await db.collection("active_sessions").doc(sessionId).delete();
+    if (isNewStyleRoom) {
+      // Tombstone the room so the expireRooms cleanup skips it and clients
+      // can detect the session ended. Revokes participant read access via rules.
+      await sessionRef.set(
+        {status: "expired", expiredAt: FieldValue.serverTimestamp(), users: []},
+        {merge: false},
+      );
+      // Also remove RTDB room membership so cleanupMember doesn't double-fire.
+      await rtdb.ref(`rooms/${sessionId}`).remove();
+    } else {
+      // Delete active_sessions first — this revokes client read access to
+      // chat_rooms via Firestore rules before we begin the message wipe.
+      await db.collection("active_sessions").doc(sessionId).delete();
+    }
 
     // Privacy by Design: destroy all chat messages now that the session key has
     // been archived and access has been revoked.
@@ -75,7 +94,7 @@ export const endSession = onCall(
       db.collection("chat_rooms").doc(sessionId).collection("messages"),
     );
 
-    logger.info("Session ended", {sessionId, initiatedBy: uid});
+    logger.info("Session ended", {sessionId, initiatedBy: uid, isNewStyleRoom});
     return {success: true};
   },
 );

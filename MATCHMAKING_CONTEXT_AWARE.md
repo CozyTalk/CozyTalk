@@ -388,7 +388,7 @@ Tests verify:
 
 Run: `cd functions && npm test` (after `./dev.sh --emulator-only` in another terminal)
 
-**~55 tests across 11 describe groups:**
+**60 tests across 14 describe groups:**
 
 | Group | Tests | What it covers |
 |---|---|---|
@@ -403,6 +403,9 @@ Run: `cd functions && npm test` (after `./dev.sh --emulator-only` in another ter
 | `1v1 interest matching: room interest vectors` | 2 | Fields set on matched rooms |
 | `group room: roomInterestVector maintained on leave` | 2 | Vector recomputed/nulled on leave |
 | `1v1 interest matching: prefers similar-interest candidate` | 2 | Interest sort over FIFO |
+| `join1v1Pool: interest text and embedding` | 3 | Pool doc written with `interestText` + `interestVector` when text provided; null vector when no text; text truncated at 500 chars |
+| `joinGroupRoom: interest text seeded into room` | 3 | Room doc gets `memberInterests` + `roomInterestVector` on join; recomputed on leave; null when last member leaves |
+| `group interest matching: Phase 0 routing` | 7 | Interest-filtered candidate selection; falls back to Phase 1 when no interest match; lone-user room with matching vector found via Phase 0 |
 
 #### Interest-specific test helpers (defined inline in test file)
 

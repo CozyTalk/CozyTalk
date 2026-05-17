@@ -18,17 +18,16 @@ CozyTalk is a **cross-platform stranger chat app** targeting **Android and Web**
 | Concern | Package |
 |---|---|
 | State management | `flutter_riverpod` 3.3.1 + `riverpod_annotation` (code-gen) |
-| Navigation | `go_router` 17.2.2 with auth guards |
+| Navigation | `MaterialApp.routes` + `AppRoutes` constants (`theme/app_routes.dart`). `go_router` is in `pubspec.yaml` but never imported or used. |
 | Firebase | `firebase_core`, `firebase_auth`, `cloud_functions`, `cloud_firestore`, `firebase_database` |
-| Observability | Firebase Crashlytics + structured logging |
+| Observability | Structured CF logging (`firebase-functions/logger`) |
 | Models | `freezed` + `json_serializable` (code-gen) |
 | Auth | `google_sign_in` |
-| Local caching | `drift` + `flutter_secure_storage` (offline-first degradation) |
-| Config | `flutter_dotenv` |
+| Local caching | `flutter_secure_storage` |
 
 ### Cloud Functions (`functions/`)
 - TypeScript, Firebase Functions v2
-- 16 functions deployed across two regions (see Cloud Functions table in Firebase Configuration)
+- 15 functions exported across two regions (see Cloud Functions table in Firebase Configuration)
 - Max 10 instances (cost control)
 - Matchmaking and chat logic **must** live here — never on client
 
@@ -115,13 +114,28 @@ Full authentication flow following the same Clean Architecture pattern.
 - `LoginScreen` — email/password form + "Sign in with Google" + "Continue as Guest"
 - `SignupScreen` — email/password/confirm form; pops to root on success
 
-**Firestore user doc** is created by the datasource on `signUp` and on first-time Google sign-in (`additionalUserInfo.isNewUser == true`). Anonymous users do not get a Firestore doc.
+**Firestore user doc** is created by the datasource on `signUp` and on first-time Google sign-in (`additionalUserInfo.isNewUser == true`). Anonymous users get a minimal doc on first sign-in (uid, role, createdAt, lastSeen).
+
+### `matchmaking` feature (complete)
+Full Clean Architecture feature for joining the waiting pool, creating/joining rooms, and watching for a match. See [`CLAUDE.md` Matchmaking section](CLAUDE.md) and [`MATCHMAKING_CONTEXT_AWARE.md`](MATCHMAKING_CONTEXT_AWARE.md) for details.
+
+### `chat` feature (complete)
+In-session messaging layer. Handles AES-256-GCM message decryption, streaming messages and typing indicators, and session teardown. Works with both proto-sessions (client-side encryption) and 1v1 sessions (Cloud Function encryption). See [`CLAUDE.md` Chat Feature section](CLAUDE.md).
+
+### `profile` feature (complete)
+Read and update user profile fields (`displayName`, `interest`, `thoughts`) in `users/{uid}`. See [`CLAUDE.md` Profile Feature section](CLAUDE.md).
+
+### `avatar` feature (complete)
+Hat and mood overlay selection for the in-chat avatar. Reads/writes `hatKey` and `moodKey` fields in `users/{uid}`. See [`CLAUDE.md` Avatar Feature section](CLAUDE.md).
+
+### `home` feature (stub)
+Navigation hub `HomeScreen`. Used only when `_useMainUI = true`. No domain/data layers — intentionally thin.
 
 ### App bootstrap (`lib/main.dart`)
 Initialises Firebase, points to emulators (Auth `9099`, Functions `5001`, Firestore `8080`) when `USE_EMULATOR=true`. No automatic sign-in — `_AuthRouter` widget watches `authNotifierProvider` and routes to `LoginScreen` or `HelloScreen`.
 
-### Tests (`test/widget_test.dart`)
-Three widget tests for `HelloScreen` using `_FakeHelloNotifier` with `callCount`.
+### Tests
+347 Flutter unit + widget tests across auth, chat, matchmaking, profile, and hello features. See [Test Coverage](#quality-gates-definition-of-done) for the full breakdown.
 
 ---
 
@@ -167,11 +181,9 @@ See `database.rules.json` for the canonical source. All nodes require `auth != n
 | Node | Value | Access | Notes |
 |---|---|---|---|
 | `rooms/{roomId}/members/{uid}` | boolean | Read: room member; Write: owner | CF-written membership anchor for new rooms |
-| `sessions/{roomId}/users/{uid}` | `true` | Read: room member; Write: false | Legacy proto-session compat; auth anchor for `messages/` |
-| `messages/{roomId}/{messageId}` | `{ senderId, text, timestamp }` | Read: `sessions/` member; Write: `sessions/` member (append-only, no edit/delete) | Max 1000 chars; destroyed on session end |
 | `typing/{roomId}/{uid}` | `{ isTyping: bool, displayName: string }` | Read: any signed-in; Write: owner | `displayName` max 100 chars |
 | `presence/{roomId}/{uid}` | string (displayName) | Read: any signed-in; Write: owner | Max 30 chars; `onDisconnect().remove()` |
-| `nameQueue/{roomId}` | any | Read/Write: any signed-in | Transient display name exchange on room join |
+| `nameQueue/{roomId}` | any | Read/Write: room member only | Transient display name exchange on room join |
 | `pool_presence/{uid}` | boolean | Read/Write: owner | Tracks whether user is actively in the waiting pool |
 
 ### Firestore Indexes — `firestore.indexes.json` (deployed ✓)
@@ -185,7 +197,7 @@ See `database.rules.json` for the canonical source. All nodes require `auth != n
 | `rooms` | `mode ASC, status ASC, isLocked ASC, memberCount ASC` | Group room picker: available unlocked rooms by fill level |
 | `rooms` | `status ASC, paddingUntil ASC` | `expireRooms` cron: find rooms past their padding window |
 
-### Cloud Functions — deployed (16 total)
+### Cloud Functions — deployed (15 total)
 
 | Function | Trigger | Region | Module |
 |---|---|---|---|
@@ -204,9 +216,11 @@ See `database.rules.json` for the canonical source. All nodes require `auth != n
 | `sendMessage` | callable | us-central1 | chat |
 | `endSession` | callable | us-central1 | chat |
 | `reportSession` | callable | us-central1 | chat |
-| `seedTtlCollections` | HTTP GET | us-central1 | dev (one-time setup) |
+No CF needed for typing — clients write `typing/{roomId}/{uid}` directly via RTDB SDK.
 
-`setTyping` source exists (`functions/src/chat/setTyping.ts`) but is not yet deployed.
+`seedTtlCollections` (`functions/src/dev/`) is a one-time dev HTTP helper; not included in the exported count above.
+
+`onProtoPresenceDeleted` (`functions/src/chat/`) is an RTDB trigger for proto-session presence cleanup; internal, not exported.
 
 ### Feature Flags — Firebase Remote Config
 
@@ -229,6 +243,8 @@ Rollback: set to `false` in Remote Config console; clients pick it up within 12 
 | `lastSeen` | timestamp | updated on profile refresh |
 | `hatKey` | string? | avatar hat decoration key; absent = no hat |
 | `moodKey` | string? | avatar mood decoration key; absent = no mood |
+| `interest` | string? | user's free-text interest (used for embedding-based matchmaking) |
+| `thoughts` | string? | short status/mood text; max 50 chars |
 
 Anonymous users get a minimal doc on first sign-in (`uid`, `role: 'user'`, `createdAt`, `lastSeen`) to prevent `isAdmin()` from throwing. The avatar datasource will also create this minimal doc (plus the decoration field) if it doesn't exist yet.
 
@@ -277,7 +293,7 @@ Expired tombstone shape: `{ status: 'expired', expiredAt: Timestamp, users: [] }
 | `reporterId` | string | UID of reporting user |
 | `reportedUserId` | string | UID of reported user |
 | `sessionId` | string | session where it occurred |
-| `chatLog` | map[] | snapshot of messages retained for review |
+| `encryptionKey` | string | hex AES-256 key stored for moderator decryption; CF-written via admin SDK only |
 | `reason` | string | max 500 chars |
 | `description` | string? | max 2000 chars |
 | `createdAt` | timestamp | |
@@ -315,22 +331,12 @@ See the RTDB rules table above (under Firebase Configuration) for the full path 
 | Path | Purpose |
 |---|---|
 | `rooms/{roomId}/members/{uid}` | CF-written membership anchor (new rooms) |
-| `sessions/{roomId}/users/{uid}` | Legacy proto-session membership anchor |
-| `messages/{roomId}/{messageId}` | Append-only chat messages (legacy sessions) |
 | `typing/{roomId}/{uid}` | Real-time typing indicator |
 | `presence/{roomId}/{uid}` | Real-time presence; `onDisconnect().remove()` |
 | `nameQueue/{roomId}` | Transient display name exchange on room join |
 | `pool_presence/{uid}` | Whether user is actively in the waiting pool |
 
 Presence, typing, and nameQueue data are removed by `leaveRoom` CF on explicit leave and by `expireRooms` on room expiry. `cleanupMember` (RTDB trigger) fires when a `rooms/{roomId}/members/{uid}` node is deleted to handle abrupt disconnects.
-
-### Local Cache (Drift)
-
-| Table | Columns | Purpose |
-|---|---|---|
-| `cached_users` | `uid, displayName, photoUrl, email, role, lastSeen` | Current user's own profile — shown while offline |
-
-Profile data is the only thing worth caching — live chat is inherently online-only.
 
 ---
 
@@ -339,7 +345,7 @@ Profile data is the only thing worth caching — live chat is inherently online-
 | Phase | Work | Status |
 |---|---|---|
 | **1.0 Frontend & UI** | UI/UX design, Auth screens, Waiting screen, Chat Room UI (bubbles, typing, SVGs, Skip) | Auth complete; main UI screens complete (not yet wired to backend) |
-| **2.0 Backend & Matchmaking** | Matchmaking Cloud Functions (race-condition safe), session cleanup/lifecycle, word censor, reporting | **Largely complete** — 16 CFs deployed (matchmaking + chat + dev); Flutter matchmaking feature + Clean Architecture done; 43 Jest CF integration tests + 43 Flutter integration tests passing; word censor + group reporting deferred |
+| **2.0 Backend & Matchmaking** | Matchmaking Cloud Functions (race-condition safe), session cleanup/lifecycle, word censor, reporting | **Largely complete** — 15 CFs exported (matchmaking + chat); Flutter matchmaking + chat + avatar + profile features complete; 99 Jest unit tests + 43 Flutter integration tests passing; word censor + group reporting deferred |
 | **3.0 Logic & Integration** | Wire main UI to matchmaking backend, session state machine, network drop detection, biometric/passkey auth | Not started |
 | **4.0 Testing & Management** | Cross-platform UI tests (Android + Web), accessibility sweeps, performance profiling | Not started |
 
@@ -354,15 +360,16 @@ Profile data is the only thing worth caching — live chat is inherently online-
 | **Accessibility** | WCAG 2.2 AA on all screens (semantic labels, contrast, dynamic type) |
 | **Performance** | No unbounded ListViews; SVGs cached/compressed; no jank on message scroll |
 
-### Test Coverage (~175+ tests total)
+### Test Coverage (~450+ tests total)
 
 | Suite | Count | Location | Requires |
 |---|---|---|---|
-| Flutter unit + widget | ~132 tests | `apps/mobile/test/` | Nothing |
-| Cloud Functions Jest | 43 tests | `functions/src/matchmaking/__tests__/matchmaking.test.ts` | `./dev.sh --emulator-only` |
+| Flutter unit + widget | 347 tests | `apps/mobile/test/` | Nothing |
+| Cloud Functions Jest | 93 unit tests | `functions/src/**/__tests__/*.test.ts` | `./dev.sh --emulator-only` |
+| Cloud Functions Jest (integration) | 7 live tests | `functions/src/matchmaking/__tests__/embeddingService.integration.test.ts` | Vertex AI credentials + `npm run test:embedding` |
 | Flutter integration | 43 tests | `apps/mobile/integration_test/matchmaking_advanced_test.dart` | Emulators + Android device |
 
-**CF Jest test topics (7 describe groups):** priority room selection, secondary random distribution, padding state lifecycle, RTDB cleanup after leave, 1v1 pool full flow, concurrent join races, complete end-to-end flows.
+**CF Jest unit test breakdown:** `matchmaking.test.ts` (60 tests, 14 describe groups — priority selection, distribution, padding lifecycle, RTDB cleanup, 1v1/group flows, interest matching), `embeddingService.test.ts` (21 tests — cosine similarity, mean vector, mocked Vertex AI), `chat.test.ts` (12 tests — sendMessage, message destruction, TTL, rooms/ path, reportSession). Plus 7 integration tests in `embeddingService.integration.test.ts` (live Vertex AI, requires `npm run test:embedding`). Grand total: 100.
 
 **Jest vs Flutter integration:** Jest tests run on the host (no Android clock skew) so timing bounds are tight (≤35s padding). Flutter integration tests use ≤60s bounds to account for Android emulator clock offset.
 
@@ -389,30 +396,25 @@ CozyTalk/
 ├── apps/mobile/                      ← Flutter app (Android + Web)
 │   ├── lib/
 │   │   ├── main.dart                 ← Firebase init, emulator setup, _AuthRouter
-│   │   └── features/
-│   │       ├── hello/                ← proof-of-concept (template)
-│   │       └── auth/                 ← authentication feature (complete)
-│   │           ├── domain/
-│   │           │   ├── entities/auth_user.dart
-│   │           │   ├── repositories/auth_repository.dart
-│   │           │   └── usecases/     ← SignUp, SignIn, SignOut, SignInAnonymously, SignInWithGoogle
-│   │           ├── data/
-│   │           │   ├── models/auth_user_model.dart  (@freezed)
-│   │           │   ├── datasources/auth_datasource.dart
-│   │           │   └── repositories/auth_repository_impl.dart
-│   │           └── presentation/
-│   │               ├── providers/auth_provider.dart  ← AuthState, AuthNotifier, DI
-│   │               └── screens/      ← LoginScreen, SignupScreen
-│   ├── test/widget_test.dart
+│   │   ├── features/
+│   │   │   ├── hello/                ← proof-of-concept template (complete)
+│   │   │   ├── auth/                 ← authentication (complete; LoginScreen, SignupScreen)
+│   │   │   ├── matchmaking/          ← room joining + 1v1 pool (complete; 9 use cases)
+│   │   │   ├── chat/                 ← in-session messaging + typing (complete; 5 use cases)
+│   │   │   ├── profile/              ← display name, interest, thoughts (complete; 4 use cases)
+│   │   │   ├── avatar/               ← hat + mood decoration (complete; 4 use cases; screen widget test pending)
+│   │   │   └── home/                 ← navigation hub stub (presentation only)
+│   │   └── screens/                  ← legacy design-preview UI (not wired to features layer)
+│   ├── test/                         ← 347 unit + widget tests
 │   └── .env.example                  ← committed; USE_EMULATOR=true by default
 ├── functions/src/
-│   ├── index.ts                      ← exports all functions
-│   ├── matchmaking/                  ← 12 matchmaking CFs + _utils.ts + __tests__/
-│   ├── chat/                         ← endSession, sendMessage, reportSession, setTyping, (onProtoPresenceDeleted disabled)
-│   └── dev/                          ← seedTtlCollections (one-time setup; remove after use)
+│   ├── index.ts                      ← exports all 15 functions
+│   ├── matchmaking/                  ← 11 exported CFs + embeddingService.ts + _utils.ts + __tests__/
+│   ├── chat/                         ← sendMessage, endSession, reportSession (exported); onProtoPresenceDeleted (internal stub)
+│   └── dev/                          ← seedTtlCollections (one-time HTTP dev helper)
 ├── firestore.rules                   ← deployed Firestore security rules
 ├── database.rules.json               ← deployed RTDB security rules
-├── firestore.indexes.json            ← Firestore composite indexes
+├── firestore.indexes.json            ← Firestore composite indexes (6 indexes)
 ├── firebase.json                     ← Firebase deploy config (predeploy: npm --prefix functions)
 ├── .gitattributes                    ← enforces LF line endings repo-wide
 ├── .claude/agents/                   ← specialized agent definitions

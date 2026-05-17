@@ -10,7 +10,7 @@ Anonymous 1-on-1 stranger chat — Flutter (Android + Web) + Firebase.
 |---|---|---|
 | Flutter SDK | 3.41+ | [flutter.dev](https://docs.flutter.dev/get-started/install) |
 | Node.js | 24+ | [nodejs.org](https://nodejs.org) |
-| Java 17 | 17+ | Required by the Firebase emulators |
+| Java 21 | 21+ | Required by the Firebase emulators and Android builds |
 | firebase-tools | latest | `npm i -g firebase-tools` |
 | gcloud CLI | any | [cloud.google.com/sdk](https://cloud.google.com/sdk/docs/install) — optional; needed for interest matching locally |
 
@@ -95,7 +95,7 @@ The suite covers matchmaking (group rooms, 1v1 pool, priority selection, padding
 
 ### `cd apps/mobile && flutter test` — Flutter unit + widget tests
 
-Runs all 87 unit and widget tests for the Flutter app (domain, data, and presentation layers). No emulators needed — all Firebase calls are faked.
+Runs all 347 unit and widget tests for the Flutter app (domain, data, and presentation layers). No emulators needed — all Firebase calls are faked.
 
 ### `cd apps/mobile && flutter test integration_test/...` — Flutter integration tests
 
@@ -111,7 +111,7 @@ cd apps/mobile && flutter test integration_test/matchmaking_advanced_test.dart
 Run this after every `firebase deploy` to verify the live project is correctly wired. Checks:
 
 - Firestore TTL policies are **ACTIVE** on `chat_rooms/*/messages` and `session_keys` (3-day retention)
-- All 16 Cloud Functions are deployed in the correct regions
+- All 15 Cloud Functions are deployed in the correct regions
 - `expireRooms` scheduled function exists
 - Prints a manual checklist for things that can't be automated (Cloud Scheduler enabled, `onDisconnect` behaviour, auth providers)
 
@@ -154,6 +154,7 @@ When running with emulators:
 | Firestore | 8080 | — |
 | Realtime Database | 9000 | — |
 | Functions | 5001 | — |
+| Pub/Sub | 8085 | — |
 
 ---
 
