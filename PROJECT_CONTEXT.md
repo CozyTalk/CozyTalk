@@ -18,13 +18,12 @@ CozyTalk is a **cross-platform stranger chat app** targeting **Android and Web**
 | Concern | Package |
 |---|---|
 | State management | `flutter_riverpod` 3.3.1 + `riverpod_annotation` (code-gen) |
-| Navigation | `go_router` 17.2.2 with auth guards |
+| Navigation | `MaterialApp.routes` + `AppRoutes` constants (`theme/app_routes.dart`). `go_router` is in `pubspec.yaml` but never imported or used. |
 | Firebase | `firebase_core`, `firebase_auth`, `cloud_functions`, `cloud_firestore`, `firebase_database` |
-| Observability | Firebase Crashlytics + structured logging |
+| Observability | Structured CF logging (`firebase-functions/logger`) |
 | Models | `freezed` + `json_serializable` (code-gen) |
 | Auth | `google_sign_in` |
-| Local caching | `drift` + `flutter_secure_storage` (offline-first degradation) |
-| Config | `flutter_dotenv` |
+| Local caching | `flutter_secure_storage` |
 
 ### Cloud Functions (`functions/`)
 - TypeScript, Firebase Functions v2
@@ -217,7 +216,7 @@ See `database.rules.json` for the canonical source. All nodes require `auth != n
 | `sendMessage` | callable | us-central1 | chat |
 | `endSession` | callable | us-central1 | chat |
 | `reportSession` | callable | us-central1 | chat |
-No CF needed for typing — clients write `typing/{roomId}/{uid}` directly via RTDB SDK. (`setTyping.ts` was removed as dead code.)
+No CF needed for typing — clients write `typing/{roomId}/{uid}` directly via RTDB SDK.
 
 `seedTtlCollections` (`functions/src/dev/`) is a one-time dev HTTP helper; not included in the exported count above.
 
@@ -294,7 +293,7 @@ Expired tombstone shape: `{ status: 'expired', expiredAt: Timestamp, users: [] }
 | `reporterId` | string | UID of reporting user |
 | `reportedUserId` | string | UID of reported user |
 | `sessionId` | string | session where it occurred |
-| `chatLog` | map[] | snapshot of messages retained for review; CF-written only (not client-writable) |
+| `encryptionKey` | string | hex AES-256 key stored for moderator decryption; CF-written via admin SDK only |
 | `reason` | string | max 500 chars |
 | `description` | string? | max 2000 chars |
 | `createdAt` | timestamp | |
@@ -339,14 +338,6 @@ See the RTDB rules table above (under Firebase Configuration) for the full path 
 
 Presence, typing, and nameQueue data are removed by `leaveRoom` CF on explicit leave and by `expireRooms` on room expiry. `cleanupMember` (RTDB trigger) fires when a `rooms/{roomId}/members/{uid}` node is deleted to handle abrupt disconnects.
 
-### Local Cache (Drift)
-
-| Table | Columns | Purpose |
-|---|---|---|
-| `cached_users` | `uid, displayName, photoUrl, email, role, lastSeen` | Current user's own profile — shown while offline |
-
-Profile data is the only thing worth caching — live chat is inherently online-only.
-
 ---
 
 ## Development Phases (WBS)
@@ -374,11 +365,11 @@ Profile data is the only thing worth caching — live chat is inherently online-
 | Suite | Count | Location | Requires |
 |---|---|---|---|
 | Flutter unit + widget | 347 tests | `apps/mobile/test/` | Nothing |
-| Cloud Functions Jest | 92 unit tests | `functions/src/**/__tests__/*.test.ts` | `./dev.sh --emulator-only` |
+| Cloud Functions Jest | 93 unit tests | `functions/src/**/__tests__/*.test.ts` | `./dev.sh --emulator-only` |
 | Cloud Functions Jest (integration) | 7 live tests | `functions/src/matchmaking/__tests__/embeddingService.integration.test.ts` | Vertex AI credentials + `npm run test:embedding` |
 | Flutter integration | 43 tests | `apps/mobile/integration_test/matchmaking_advanced_test.dart` | Emulators + Android device |
 
-**CF Jest unit test breakdown:** `matchmaking.test.ts` (60 tests, 14 describe groups — priority selection, distribution, padding lifecycle, RTDB cleanup, 1v1/group flows, interest matching), `embeddingService.test.ts` (21 tests — cosine similarity, mean vector, mocked Vertex AI), `chat.test.ts` (12 tests — sendMessage, message destruction, TTL, rooms/ path, reportSession). Plus 7 integration tests in `embeddingService.integration.test.ts` (live Vertex AI, requires `npm run test:embedding`). Grand total: 99.
+**CF Jest unit test breakdown:** `matchmaking.test.ts` (60 tests, 14 describe groups — priority selection, distribution, padding lifecycle, RTDB cleanup, 1v1/group flows, interest matching), `embeddingService.test.ts` (21 tests — cosine similarity, mean vector, mocked Vertex AI), `chat.test.ts` (12 tests — sendMessage, message destruction, TTL, rooms/ path, reportSession). Plus 7 integration tests in `embeddingService.integration.test.ts` (live Vertex AI, requires `npm run test:embedding`). Grand total: 100.
 
 **Jest vs Flutter integration:** Jest tests run on the host (no Android clock skew) so timing bounds are tight (≤35s padding). Flutter integration tests use ≤60s bounds to account for Android emulator clock offset.
 
@@ -419,7 +410,7 @@ CozyTalk/
 ├── functions/src/
 │   ├── index.ts                      ← exports all 15 functions
 │   ├── matchmaking/                  ← 11 exported CFs + embeddingService.ts + _utils.ts + __tests__/
-│   ├── chat/                         ← sendMessage, endSession, reportSession (exported); setTyping + onProtoPresenceDeleted (internal)
+│   ├── chat/                         ← sendMessage, endSession, reportSession (exported); onProtoPresenceDeleted (internal stub)
 │   └── dev/                          ← seedTtlCollections (one-time HTTP dev helper)
 ├── firestore.rules                   ← deployed Firestore security rules
 ├── database.rules.json               ← deployed RTDB security rules

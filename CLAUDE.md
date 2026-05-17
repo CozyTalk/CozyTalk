@@ -1,7 +1,7 @@
 # CozyTalk — Claude Code Project Guide
 
 > Read fully before every session. Single source of truth for rules, conventions, and standards.
-> Deep reference: [`PROJECT_CONTEXT.md`](PROJECT_CONTEXT.md) (schema, rules) · [`MATCHMAKING_CONTEXT_AWARE.md`](MATCHMAKING_CONTEXT_AWARE.md) (interest matching)
+> Deep reference: [`PROJECT_CONTEXT.md`](PROJECT_CONTEXT.md) (schema, rules) · [`MATCHMAKING_CONTEXT_AWARE.md`](MATCHMAKING_CONTEXT_AWARE.md) (interest matching) · [`docs/INDEX.md`](docs/INDEX.md) (codebase map — features, screens, CFs, schema)
 
 ---
 
@@ -13,20 +13,20 @@ Always use [`.github/pull_request_template.md`](.github/pull_request_template.md
 
 ## 2. Project
 
-Anonymous 1-on-1 stranger chat — Flutter (Android + Web) + Firebase.
+Anonymous stranger chat — 1v1 and group rooms (up to 5 users) — Flutter (Android + Web) + Firebase.
 
-**Privacy by Design (non-negotiable):** On session end, `chat_rooms/{id}/messages` is destroyed, RTDB presence/typing wiped, `rooms/{id}` tombstoned (`status: expired`). Only `reportSession` CF retains messages for moderation. Never suggest persisting messages outside this flow.
+**Privacy by Design (non-negotiable):** On session end, `chat_rooms/{id}/messages` is destroyed, RTDB presence/typing wiped, `rooms/{id}` tombstoned (`status: expired`). Only `reportSession` CF preserves messages for moderation — it sets `flagged: true` and clears `expiresAt` TTL on the existing `chat_rooms` messages (does not copy to `reports/`; the report doc stores `encryptionKey`). Never suggest persisting messages outside this flow.
 
 | Concern | Choice |
 |---|---|
 | Framework | Flutter 3.41+ · Dart 3.x |
-| State | Riverpod 2.x + `Notifier` pattern |
+| State | Riverpod 3.x + `Notifier` pattern |
 | Backend | Firebase Auth, Firestore, RTDB, Cloud Functions v2 (TypeScript) |
 | Models | Freezed + json_serializable |
 | Navigation | `MaterialApp.routes` + `AppRoutes` constants (`theme/app_routes.dart`) |
-| Observability | Firebase Crashlytics + structured CF logging |
+| Observability | Structured CF logging (`firebase-functions/logger`) |
 
-Firebase project: `cozytalk-5d984` · RTDB region: `asia-southeast1` · Functions: `us-central1`
+Firebase project: `cozytalk-5d984` · RTDB region: `asia-southeast1` · Functions: `us-central1` (default; `match1v1Users`, `cleanupMember`, `cleanupPoolMember` use `asia-southeast1`)
 
 ---
 
@@ -77,7 +77,7 @@ npm install && npm run build && npm test   # npm test requires emulators first
 .\dev.ps1 [...]                           # Windows
 ```
 
-Jest: 93 unit (matchmaking 60, embeddingService 21, chat 12) + 7 Vertex AI integration = 100 total.
+Jest: 93 unit (matchmaking 60, embeddingService 21, chat 12). The 7 Vertex AI integration tests run separately via `jest.integration.config.js` — excluded from `npm test`.
 Flutter: 347 unit + widget tests.
 
 ---
@@ -109,13 +109,13 @@ In screens: `ref.watch(fooNotifierProvider)` for state · `ref.read(fooNotifierP
 
 ## 6. Key Feature Notes
 
-**Auth:** `AuthNotifier.build()` subscribes to `watchAuthState()`. Stream skips updates while `status == loading`. Google: web uses `signInWithPopup`, native uses `GoogleSignIn.instance.authenticate()`. Firestore user doc written on first sign-in for all auth methods; use `set(merge: true)` for profile updates. `_anonymousName(uid)`: UID-seeded djb2 → adjective+animal (225 combos) in `auth_datasource.dart` — extract if a third caller appears.
+**Auth:** `AuthNotifier.build()` subscribes to `watchAuthState()`. Stream skips updates while `status == loading`. Google: web uses `signInWithPopup`, native uses `GoogleSignIn.instance.authenticate()`. Firestore user doc written on account creation / first sign-in (`signUp`, `signInAnonymously` new user, `signInWithGoogle` new user) — not re-written on returning `signIn`. Use `set(merge: true)` for profile updates. `_anonymousName(uid)`: UID-seeded djb2 → adjective+animal (225 combos) in `auth_datasource.dart`. Also duplicated in `chat_datasource.dart` — extract if a third caller appears.
 
 **Matchmaking (11 exported CFs):** `cancel1v1Pool` returns `{success: false, reason: "matching_in_progress"}` when status is already `"matching"` — Flutter must handle this. `match1v1Users` deployed to `asia-southeast1` (co-located with RTDB — intentional). Interest matching: Vertex AI `text-multilingual-embedding-002`, 256 dims, cosine threshold 0.65. `onProtoPresenceDeleted.ts` is a disabled stub (`export {};`) — re-enable after proto-session cleanup is fully wired.
 
-**Chat:** `ChatDatasourceImpl` splits on `sessionId.startsWith('proto-')`: proto uses SHA256-derived key + direct Firestore writes; 1v1 calls `sendMessage`/`endSession` CFs. `ChatNotifier.enterSession()` is the entry point. RTDB: `typing/{id}/{uid}`, `presence/{id}/{uid}` (with `onDisconnect().remove()`). `setTyping.ts` is dead code — ignore it.
+**Chat:** `ChatDatasourceImpl` splits on `sessionId.startsWith('proto-')`: proto uses SHA256-derived key + direct Firestore writes; 1v1 calls `sendMessage`/`endSession` CFs. `ChatNotifier.enterSession()` is the entry point. RTDB: `typing/{id}/{uid}`, `presence/{id}/{uid}`. `onDisconnect().remove()` is set only on `presence` in proto sessions; for real sessions the `endSession` CF handles RTDB cleanup server-side. No `setTyping` CF exists — the file was never created; clients write typing state directly to RTDB.
 
-**Profile:** Validates client-side before calling notifier: username ≤ 20, interest ≤ 200, thoughts ≤ 50. Pre-fills controllers on mount and each successful save via `ref.listen`.
+**Profile:** The CA dev screen (`features/profile/`) validates: username ≤ 20, interest ≤ 200, thoughts ≤ 50. The production screen (`screens/profile_edit_screen.dart`) caps interest at 100 and has no thoughts field. Pre-fills controllers on mount and each successful save via `ref.listen`.
 
 **Avatar:** `FieldValue.delete()` for null fields. Syncs to shared `avatarProvider` via `_syncToSharedProvider()`.
 
@@ -125,13 +125,13 @@ In screens: `ref.watch(fooNotifierProvider)` for state · `ref.read(fooNotifierP
 
 | Collection | Key fields |
 |---|---|
-| `users/{uid}` | uid, email, role (user\|admin), displayName?, photoUrl?, hatKey?, moodKey?, interest?, thoughts? |
-| `waiting_pool/{uid}` | status, mode, interestText?, interestVector? (256-dim) |
-| `rooms/{roomId}` | 5-char ID; mode (1v1\|group), roomType (public\|custom), status (active\|padding\|expired), encryptionKey, paddingUntil? |
+| `users/{uid}` | uid, email (absent for anonymous), role (user\|admin), createdAt, lastSeen, displayName?, photoUrl?, hatKey?, moodKey?, interest?, thoughts? |
+| `waiting_pool/{uid}` | status, mode, createdAt, updatedAt, interestText?, interestVector? (256-dim), roomId? |
+| `rooms/{roomId}` | 5-char ID; mode (1v1\|group), roomType (public\|custom), status (active\|padding\|expired), users[], maxUsers, memberCount, isLocked, encryptionKey, createdAt, paddingUntil? |
 | `active_sessions/{id}` | Legacy proto-sessions only — new code uses `rooms/` |
-| `chat_rooms/{id}/messages/{id}` | AES-256-GCM: encryptedText, iv, authTag; expiresAt TTL (3 days) |
-| `session_keys/{id}` | Archived keys; expiresAt TTL |
-| `reports/{id}` | Admin-only read; chatLog is CF-written only (not client-writable) |
+| `chat_rooms/{id}/messages/{id}` | senderId, displayName, encryptedText, iv, authTag (AES-256-GCM), timestamp, expiresAt TTL (3 days), flagged? |
+| `session_keys/{id}` | sessionId, encryptionKey, users[], createdAt, expiresAt TTL (cleared when flagged by `reportSession`), flagged? |
+| `reports/{id}` | Authenticated users may create; read/update/delete admin-only. `encryptionKey` is CF-written (not in client `hasOnly` list) |
 
 RTDB paths: `rooms/{id}/members/{uid}`, `typing/{id}/{uid}`, `presence/{id}/{uid}`, `nameQueue/{id}`, `pool_presence/{uid}`. Full schema + security rules: [`PROJECT_CONTEXT.md`](PROJECT_CONTEXT.md).
 
@@ -142,8 +142,8 @@ RTDB paths: `rooms/{id}/members/{uid}`, `typing/{id}/{uid}`, `presence/{id}/{uid
 `USE_EMULATOR` — compile-time constant (default `true`). Pass `--dart-define=USE_EMULATOR=false` for production. Emulators: Auth 9099, Functions 5001, Firestore 8080, RTDB 9000.
 
 **`_useMainUI` toggle (main.dart line 35):**
-- `false` (default) → dev/test mode: `_AuthRouter` → `LoginScreen` (features/auth) → `HelloScreen`
-- `true` → production mode: `HomeScreen` (screens/) + full `AppRoutes` navigation
+- `false` (default) → chatroom/backend testing: `_AuthRouter` → `LoginScreen` (features/auth) → `HelloScreen`. Registers `findingRoom` route.
+- `true` → legacy UI / design preview: `HomeScreen` (screens/) + `AppRoutes` named routes. Note: `findingRoom` route is absent from this branch.
 
 `_AuthRouter` routes: `authenticated → HelloScreen` · `idle → spinner` · others → `LoginScreen`.
 
@@ -151,7 +151,7 @@ RTDB paths: `rooms/{id}/members/{uid}`, `typing/{id}/{uid}`, `presence/{id}/{uid
 
 ## 9. Integration Rules
 
-Integration = wiring `screens/` (the real production frontend) to `features/` (CA backend). `screens/` are not "legacy" — they are the designed production UI. `_useMainUI = true` is the production mode.
+Integration = wiring `screens/` (production frontend) to `features/` (CA backend). When `_useMainUI = true`, the app uses `HomeScreen` + named routes (design preview). When `false` (default), it uses `_AuthRouter` → `HelloScreen` for backend testing.
 
 **Hard rules:**
 - Convert screen: `StatefulWidget` → `ConsumerStatefulWidget`, add `ref.watch/read` calls for real data
