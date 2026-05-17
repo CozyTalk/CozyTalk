@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../features/avatar/presentation/screens/avatar_picker_screen.dart';
 import '../../../../features/matchmaking/presentation/screens/matchmaking_test_screen.dart';
+import '../../../../features/profile/presentation/screens/profile_screen.dart';
 import '../providers/hello_provider.dart';
 
 class HelloScreen extends ConsumerStatefulWidget {
@@ -63,6 +64,15 @@ class _HelloScreenState extends ConsumerState<HelloScreen> {
               ),
               icon: const Icon(Icons.face),
               label: const Text('Test avatar picker'),
+            ),
+            const SizedBox(height: 8),
+            OutlinedButton.icon(
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const ProfileScreen()),
+              ),
+              icon: const Icon(Icons.person_outline),
+              label: const Text('Edit profile'),
             ),
             const SizedBox(height: 32),
             if (state.isLoading)

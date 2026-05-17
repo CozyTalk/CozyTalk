@@ -199,21 +199,16 @@ describe("Privacy by Design — message destruction", () => {
     });
 
     // Write a fake message so we can verify it gets wiped
-    await adminFirestoreSet(
-      `chat_rooms/${sessionId}/messages/fake-msg-1`,
-      {
-        senderId: uidB,
-        displayName: "Test User",
-        encryptedText: "abc",
-        iv: "def",
-        authTag: "ghi",
-        flagged: false,
-      },
-    );
+    await adminFirestoreSet(`chat_rooms/${sessionId}/messages/fake-msg-1`, {
+      senderId: uidB,
+      displayName: "Test User",
+      encryptedText: "abc",
+      iv: "def",
+      authTag: "ghi",
+      flagged: false,
+    });
 
-    let messages = await adminFirestoreList(
-      `chat_rooms/${sessionId}/messages`,
-    );
+    let messages = await adminFirestoreList(`chat_rooms/${sessionId}/messages`);
     expect(messages.length).toBe(1);
 
     // uidB ends the session
@@ -289,9 +284,10 @@ describe("reportSession", () => {
     const roomDoc = await adminFirestoreDoc(`rooms/${roomId}`);
     const users = roomDoc!["users"] as string[];
     // callFn is authenticated as uidB (current token); pick uidA as reported
-    const reportedUid = users.find(
-      (u) => u !== (roomDoc!["users"] as string[])[users.length - 1],
-    ) ?? users[0];
+    const reportedUid =
+      users.find(
+        (u) => u !== (roomDoc!["users"] as string[])[users.length - 1],
+      ) ?? users[0];
 
     await callFn("reportSession", {
       sessionId: roomId,

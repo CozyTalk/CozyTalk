@@ -42,10 +42,23 @@ class AuthDatasourceImpl implements AuthDatasource {
     try {
       final credential = await _auth.signInAnonymously();
       final user = credential.user!;
+      final displayName = _anonymousName(user.uid, {});
+      if (credential.additionalUserInfo?.isNewUser == true) {
+        await _firestore.collection('users').doc(user.uid).set({
+          'uid': user.uid,
+          'role': 'user',
+          'displayName': displayName,
+          'interest': '',
+          'hatKey': null,
+          'moodKey': null,
+          'createdAt': FieldValue.serverTimestamp(),
+          'lastSeen': FieldValue.serverTimestamp(),
+        });
+      }
       return AuthUserModel(
         uid: user.uid,
         email: user.email,
-        displayName: user.displayName,
+        displayName: displayName,
       );
     } on FirebaseAuthException catch (e) {
       throw Exception(_authErrorMessage(e.code));
@@ -67,10 +80,17 @@ class AuthDatasourceImpl implements AuthDatasource {
       }
       final user = credential.user!;
       if (credential.additionalUserInfo?.isNewUser == true) {
+        final displayName = (user.displayName?.trim().isNotEmpty ?? false)
+            ? user.displayName!
+            : _anonymousName(user.uid, {});
         await _firestore.collection('users').doc(user.uid).set({
           'uid': user.uid,
           'email': user.email,
           'role': 'user',
+          'displayName': displayName,
+          'interest': '',
+          'hatKey': null,
+          'moodKey': null,
           'createdAt': FieldValue.serverTimestamp(),
           'lastSeen': FieldValue.serverTimestamp(),
         });
@@ -96,17 +116,22 @@ class AuthDatasourceImpl implements AuthDatasource {
         password: password,
       );
       final user = credential.user!;
+      final displayName = _anonymousName(user.uid, {});
       await _firestore.collection('users').doc(user.uid).set({
         'uid': user.uid,
         'email': email,
         'role': 'user',
+        'displayName': displayName,
+        'interest': '',
+        'hatKey': null,
+        'moodKey': null,
         'createdAt': FieldValue.serverTimestamp(),
         'lastSeen': FieldValue.serverTimestamp(),
       });
       return AuthUserModel(
         uid: user.uid,
         email: user.email,
-        displayName: user.displayName,
+        displayName: displayName,
       );
     } on FirebaseAuthException catch (e) {
       throw Exception(_authErrorMessage(e.code));
@@ -136,6 +161,56 @@ class AuthDatasourceImpl implements AuthDatasource {
 
   @override
   Future<void> signOut() => _auth.signOut();
+}
+
+// UID-derived seed ensures the same user gets the same name in an empty room; steps forward on collision.
+String _anonymousName(String uid, Set<String> taken) {
+  const adjectives = [
+    'Brave',
+    'Calm',
+    'Cozy',
+    'Daring',
+    'Eager',
+    'Fluffy',
+    'Gentle',
+    'Happy',
+    'Kind',
+    'Lucky',
+    'Mellow',
+    'Noble',
+    'Quiet',
+    'Swift',
+    'Witty',
+  ];
+  const animals = [
+    'Bear',
+    'Crane',
+    'Deer',
+    'Duck',
+    'Fox',
+    'Frog',
+    'Hawk',
+    'Lynx',
+    'Otter',
+    'Owl',
+    'Panda',
+    'Quail',
+    'Seal',
+    'Wolf',
+    'Wren',
+  ];
+  final total = adjectives.length * animals.length;
+  final seed = uid.codeUnits.fold(
+    5381,
+    (h, c) => ((h << 5) + h + c) & 0x7FFFFFFF,
+  );
+  for (var i = 0; i < total; i++) {
+    final idx = (seed + i) % total;
+    final name =
+        '${adjectives[idx % adjectives.length]} ${animals[idx ~/ adjectives.length]}';
+    if (!taken.contains(name)) return name;
+  }
+  return 'Anonymous';
 }
 
 String _authErrorMessage(String code) => switch (code) {
