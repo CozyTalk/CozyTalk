@@ -28,6 +28,25 @@
         ".write": "auth != null && root.child('rooms').child($room_id).child('members').child(auth.uid).exists()"
       }
     },
+    "user_status": {
+      "$uid": {
+        ".read": "auth != null",
+        ".write": "auth != null && auth.uid == $uid",
+        ".validate": "newData.hasChildren(['status'])",
+        "status": {
+          ".validate": "newData.isString() && (newData.val() == 'online' || newData.val() == 'in_room')"
+        },
+        "roomId": {
+          ".validate": "newData.isString() && newData.val().length == 5"
+        },
+        "roomMode": {
+          ".validate": "newData.isString() && (newData.val() == '1v1' || newData.val() == 'group')"
+        },
+        "$other": {
+          ".validate": false
+        }
+      }
+    },
     "pool_presence": {
       "$uid": {
         ".read": "auth != null && auth.uid == $uid",
