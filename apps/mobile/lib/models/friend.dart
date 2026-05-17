@@ -28,6 +28,7 @@ class Friend {
   final RoomInfo? room;
   final String avatar;
   final String interest;
+  bool isBlocked;
 
   Friend({
     required this.name,
@@ -39,6 +40,7 @@ class Friend {
     this.room,
     this.avatar = '',
     this.interest = '',
+    this.isBlocked = false,
   });
 
   Friend copyWith({
@@ -51,6 +53,7 @@ class Friend {
     Object? room = _sentinel,
     String? avatar,
     String? interest,
+    bool? isBlocked,
   }) => Friend(
     name: name ?? this.name,
     username: username ?? this.username,
@@ -61,8 +64,12 @@ class Friend {
     room: room == _sentinel ? this.room : room as RoomInfo?,
     avatar: avatar ?? this.avatar,
     interest: interest ?? this.interest,
+    isBlocked: isBlocked ?? this.isBlocked,
   );
 
+  bool get isInRoom => room != null;
+
+  // Display name: use note if set, otherwise fall back to username
   String get displayName =>
       (note != null && note!.isNotEmpty) ? note! : username;
 }

@@ -16,7 +16,6 @@ class HomeScreen extends ConsumerStatefulWidget {
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   bool _hasNotification = true;
-  String _moodText = '';
   Future<void> _navigateMood() async {
     final result = await Navigator.pushNamed(context, AppRoutes.mood);
     if (result is String && mounted) {
@@ -37,10 +36,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   void _editMood() async {
     final result = await showThoughtBubbleDialog(
       context: context,
-      initialText: _moodText,
+      initialText: ref.read(userProfileProvider).thought,
     );
     if (result != null && mounted) {
-      setState(() => _moodText = result);
+      ref.read(userProfileProvider.notifier).setThought(result);
     }
   }
 
@@ -79,7 +78,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     const SizedBox(height: 8),
 
                     _AvatarCard(
-                      moodText: _moodText,
+                      moodText: ref.watch(userProfileProvider).thought,
                       onMoodTap: _editMood,
                       moodOverlay: ref.watch(avatarProvider).mood,
                       accessoryOverlay: ref.watch(avatarProvider).accessory,

@@ -1,205 +1,230 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+import '../shared/avatar_overlay.dart';
+import '../shared/layered_avatar.dart';
+import '../shared/user_profile.dart';
 import 'report_dialog.dart';
 
-class UserProfileDialog extends StatefulWidget {
+class UserProfileDialog extends ConsumerStatefulWidget {
   final String username;
-  const UserProfileDialog({super.key, required this.username});
+  final bool isMe;
+  const UserProfileDialog({
+    super.key,
+    required this.username,
+    this.isMe = false,
+  });
 
   @override
-  State<UserProfileDialog> createState() => _UserProfileDialogState();
+  ConsumerState<UserProfileDialog> createState() => _UserProfileDialogState();
 }
 
-class _UserProfileDialogState extends State<UserProfileDialog> {
-  bool isFriendAdded = false;
+class _UserProfileDialogState extends ConsumerState<UserProfileDialog> {
+  bool _friendAdded = false;
 
   @override
   Widget build(BuildContext context) {
+    final avatarState = ref.watch(avatarProvider);
+    final userProfile = ref.watch(userProfileProvider);
+
     return Dialog(
       backgroundColor: Colors.transparent,
       elevation: 0,
-      insetPadding: const EdgeInsets.symmetric(horizontal: 40, vertical: 24),
+      insetPadding: const EdgeInsets.symmetric(horizontal: 28, vertical: 40),
       child: Container(
         decoration: BoxDecoration(
-          color: const Color(0xFF6B5E5B),
-          borderRadius: BorderRadius.circular(24),
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: Colors.grey.shade200, width: 1),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.4),
+              color: Colors.black.withValues(alpha: 0.18),
               blurRadius: 20,
-              spreadRadius: 2,
-              offset: const Offset(0, 10),
+              spreadRadius: 0,
+              offset: const Offset(0, 6),
             ),
           ],
         ),
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.fromLTRB(20, 20, 16, 24),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // ── Close row ──
-              Align(
-                alignment: Alignment.centerRight,
-                child: GestureDetector(
-                  onTap: () => Navigator.pop(context),
-                  child: Container(
-                    padding: const EdgeInsets.all(4),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Icon(
-                      Icons.close,
-                      size: 20,
-                      color: Colors.white,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 8),
-              // ── Profile card ──
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.15),
-                      blurRadius: 6,
-                      offset: const Offset(0, 3),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Avatar + action buttons
-                    Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          width: 80,
-                          height: 80,
-                          decoration: BoxDecoration(
-                            color: Colors.grey.shade100,
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(
-                              color: Colors.grey.shade200,
-                              width: 1.5,
-                            ),
-                          ),
-                          child: const Icon(
-                            Icons.person,
-                            color: Colors.grey,
-                            size: 40,
+              // ── Content row with close button ──
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // ── Left column: avatar + action buttons ──
+                  Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Avatar
+                      Container(
+                        width: 100,
+                        height: 100,
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade100,
+                          borderRadius: BorderRadius.circular(18),
+                          border: Border.all(
+                            color: Colors.grey.shade300,
+                            width: 1,
                           ),
                         ),
-                        const SizedBox(height: 12),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(17),
+                          child: LayeredAvatar(
+                            boxSize: 100,
+                            moodOverlay: widget.isMe ? avatarState.mood : null,
+                            accessoryOverlay: widget.isMe
+                                ? avatarState.accessory
+                                : null,
+                          ),
+                        ),
+                      ),
+                      // Action buttons (only for others)
+                      if (!widget.isMe) ...[
+                        const SizedBox(height: 14),
                         Row(
+                          mainAxisSize: MainAxisSize.min,
                           children: [
-                            // Add friend button
+                            // Add friend
                             GestureDetector(
-                              onTap: () => setState(() => isFriendAdded = true),
-                              child: Container(
-                                padding: const EdgeInsets.all(8),
+                              onTap: () => setState(() => _friendAdded = true),
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 200),
+                                width: 44,
+                                height: 44,
                                 decoration: BoxDecoration(
-                                  color: isFriendAdded
-                                      ? Colors.grey.shade300
-                                      : const Color(0xFFDEF1C2),
-                                  borderRadius: BorderRadius.circular(10),
+                                  color: _friendAdded
+                                      ? Colors.grey.shade200
+                                      : const Color(0xFFDCEBCE),
+                                  borderRadius: BorderRadius.circular(12),
                                   border: Border.all(
-                                    color: isFriendAdded
+                                    color: _friendAdded
                                         ? Colors.grey.shade400
                                         : const Color(0xFFC7D2B5),
-                                    width: 1.5,
+                                    width: 1,
                                   ),
                                 ),
-                                child: Icon(
-                                  isFriendAdded
-                                      ? Icons.person
-                                      : Icons.person_add_alt_1,
-                                  color: isFriendAdded
-                                      ? Colors.grey.shade600
-                                      : const Color(0xFF4A553F),
-                                  size: 20,
+                                child: Center(
+                                  child: SvgPicture.asset(
+                                    'assets/images/icons/add_friend.svg',
+                                    width: 24,
+                                    height: 24,
+                                    colorFilter: _friendAdded
+                                        ? ColorFilter.mode(
+                                            Colors.grey.shade500,
+                                            BlendMode.srcIn,
+                                          )
+                                        : null,
+                                  ),
                                 ),
                               ),
                             ),
-                            const SizedBox(width: 8),
-                            // Report button
+                            const SizedBox(width: 10),
+                            // Report
                             GestureDetector(
-                              onTap: () => showDialog(
-                                context: context,
-                                builder: (_) => const ReportDialog(),
-                              ),
+                              onTap: () {
+                                Navigator.pop(context);
+                                showDialog(
+                                  context: context,
+                                  builder: (_) => const ReportDialog(),
+                                );
+                              },
                               child: Container(
-                                padding: const EdgeInsets.all(8),
+                                width: 44,
+                                height: 44,
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFFFFCCAA),
-                                  borderRadius: BorderRadius.circular(10),
+                                  color: const Color(0xFFFFDBC8),
+                                  borderRadius: BorderRadius.circular(12),
                                   border: Border.all(
-                                    color: const Color(0xFFCF5733),
-                                    width: 1.5,
+                                    color: const Color(0xFFA33615),
+                                    width: 1,
                                   ),
                                 ),
-                                child: const Icon(
-                                  Icons.flag_outlined,
-                                  color: Color(0xFFCF5733),
-                                  size: 20,
+                                child: Center(
+                                  child: SvgPicture.asset(
+                                    'assets/images/icons/Report.svg',
+                                    width: 20,
+                                    height: 20,
+                                    colorFilter: const ColorFilter.mode(
+                                      Color(0xFFD4633A),
+                                      BlendMode.srcIn,
+                                    ),
+                                  ),
                                 ),
                               ),
                             ),
                           ],
                         ),
                       ],
+                    ],
+                  ),
+                  const SizedBox(width: 18),
+                  // ── Right column: info + close button ──
+                  Expanded(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Username row with close button
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Expanded(
+                              child: Text(
+                                'Username',
+                                style: TextStyle(
+                                  fontSize: 17,
+                                  fontWeight: FontWeight.w900,
+                                  color: Colors.black,
+                                ),
+                              ),
+                            ),
+                            GestureDetector(
+                              onTap: () => Navigator.pop(context),
+                              child: const Icon(
+                                Icons.close,
+                                size: 28,
+                                color: Colors.black,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          widget.isMe ? userProfile.username : widget.username,
+                          style: const TextStyle(
+                            fontSize: 15,
+                            color: Colors.black87,
+                          ),
+                        ),
+                        const SizedBox(height: 18),
+                        const Text(
+                          'Interest',
+                          style: TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.w900,
+                            color: Colors.black,
+                          ),
+                        ),
+                        const SizedBox(height: 5),
+                        Text(
+                          widget.isMe
+                              ? (userProfile.interest.isNotEmpty
+                                    ? userProfile.interest
+                                    : 'No interest set yet.')
+                              : 'I love TikTok very much. TikTok is the best application in the world.',
+                          style: const TextStyle(
+                            fontSize: 14,
+                            color: Colors.black87,
+                            height: 1.5,
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 16),
-                    // Name + interest
-                    Expanded(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Username',
-                            style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.black54,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            widget.username,
-                            style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w900,
-                              color: Colors.black,
-                            ),
-                          ),
-                          const SizedBox(height: 14),
-                          const Text(
-                            'Interest',
-                            style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.black54,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          const Text(
-                            'I love TikTok very much.\nTikTok is the best\napplication in the world.',
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: Colors.black87,
-                              height: 1.4,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ],
           ),

@@ -34,6 +34,8 @@ dependencies:
   json_annotation: ^4.11.0
   cryptography: ^2.7.0
   flutter_svg: ^2.0.17
+  image_picker: ^1.1.2
+  google_fonts: ^6.2.1
 
 dev_dependencies:
   flutter_test:
@@ -56,50 +58,10 @@ flutter:
   uses-material-design: true
 
   assets:
-    - assets/images/ThinkBubble.png
-    - assets/images/UserAvatar.png
-    - assets/images/Logo.png
-    - assets/images/1on1_doodle.png
-    - assets/images/create_group_doodle.png
-    - assets/images/group_doodle.png
-    - assets/images/backgrounds/HomeBg.png
-    - assets/images/backgrounds/DressUpBg.png
-    - assets/images/backgrounds/MoodBg.png
-    - assets/images/backgrounds/kao_tapu.png
-    - assets/images/backgrounds/lumphini_park.png
-    - assets/images/backgrounds/red_lotus_lake.png
-    - assets/images/backgrounds/sea_of_cloud.png
-    - assets/images/icons/Setting.svg
-    - assets/images/icons/Back.svg
-    - assets/images/icons/ThreeDot.svg
-    - assets/images/icons/LogOut.svg
-    - assets/images/icons/Edit.svg
-    - assets/images/icons/Discord.svg
-    - assets/images/icons/Report.svg
-    - assets/images/icons/sent.svg
-    - assets/images/icons/User.svg
-    - assets/images/icons/Notification.svg
-    - assets/images/icons/Mood.svg
-    - assets/images/icons/LetsChat.svg
-    - assets/images/icons/Friends.svg
-    - assets/images/icons/DressUp.svg
-    - assets/images/icons/Close.svg
-    - assets/images/icons/Search.svg
-    - assets/images/icons/1on1.svg
-    - assets/images/icons/Group.svg
-    - assets/images/icons/Lock.svg
-    - assets/images/icons/Undo.svg
-    - assets/images/icons/Redo.svg
-    - assets/images/icons/Trash.svg
-    - assets/images/moods/Happy.png
-    - assets/images/moods/Sad.png
-    - assets/images/moods/Thrilled.png
-    - assets/images/moods/Silly.png
-    - assets/images/moods/Lonely.png
-    - assets/images/moods/Grumpy.png
-    - assets/images/dressup/Cap.png
-    - assets/images/dressup/CatHeadband.png
-    - assets/images/dressup/Crown.png
-    - assets/images/dressup/Pinkbeanie.png
-    - assets/images/dressup/Sunglasses.png
-    - assets/images/dressup/WitchHat.png
+    - assets/images/
+    - assets/images/backgrounds/
+    - assets/images/icons/
+    - assets/images/moods/
+    - assets/images/dressup/
+    - assets/images/cards/
+    - assets/images/tuktuk/

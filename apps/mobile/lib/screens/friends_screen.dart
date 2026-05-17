@@ -416,7 +416,14 @@ class _FriendsScreenState extends State<FriendsScreen> {
             showConfirmBlockDialog(
               context: context,
               username: friend.displayName,
-              onConfirm: () => setState(() => _friends.removeAt(index)),
+              onConfirm: () => setState(() => _friends[index].isBlocked = true),
+            );
+          case 'Unblock':
+            showConfirmUnblockDialog(
+              context: context,
+              username: friend.displayName,
+              onConfirm: () =>
+                  setState(() => _friends[index].isBlocked = false),
             );
           case 'Unfriend':
             showRemoveConfirmDialog(
@@ -429,7 +436,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
       itemBuilder: (_) => [
         _popupItem('Edit'),
         _divider(),
-        _popupItem('Block'),
+        _popupItem(friend.isBlocked ? 'Unblock' : 'Block'),
         _divider(),
         _popupItem('Unfriend'),
       ],

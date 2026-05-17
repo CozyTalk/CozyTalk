@@ -43,7 +43,12 @@ class _FriendChatScreenState extends State<FriendChatScreen> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     if (!_initialized) {
-      _friend = ModalRoute.of(context)!.settings.arguments as Friend;
+      final args = ModalRoute.of(context)?.settings.arguments;
+      if (args is! Friend) {
+        Navigator.pop(context);
+        return;
+      }
+      _friend = args;
       _messages = List<ChatMessage>.from(
         _mockConversations[_friend.name] ??
             [
@@ -164,7 +169,7 @@ class _FriendChatScreenState extends State<FriendChatScreen> {
               ],
             ),
           ),
-          _buildInputBar(),
+          _friend.isBlocked ? _buildBlockedBar() : _buildInputBar(),
         ],
       ),
     );
@@ -419,13 +424,39 @@ class _FriendChatScreenState extends State<FriendChatScreen> {
     );
   }
 
+  // ─── Blocked bar ───
+  Widget _buildBlockedBar() {
+    return Container(
+      decoration: const BoxDecoration(color: AppColors.brownDeep),
+      padding: EdgeInsets.fromLTRB(
+        16,
+        14,
+        16,
+        MediaQuery.of(context).padding.bottom + 14,
+      ),
+      child: Container(
+        height: 58,
+        decoration: BoxDecoration(
+          color: Colors.grey.shade300,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        alignment: Alignment.center,
+        child: Text(
+          'You can no longer send messages in this chat.',
+          style: TextStyle(
+            fontSize: 13,
+            color: Colors.grey.shade600,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ),
+    );
+  }
+
   // ─── Bottom input bar ───
   Widget _buildInputBar() {
     return Container(
-      decoration: const BoxDecoration(
-        color: AppColors.brownDeep,
-        borderRadius: BorderRadius.vertical(bottom: Radius.circular(35)),
-      ),
+      decoration: const BoxDecoration(color: AppColors.brownDeep),
       padding: EdgeInsets.fromLTRB(
         16,
         14,
