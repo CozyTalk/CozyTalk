@@ -54,10 +54,16 @@ class _FakeAuthNotifier extends AuthNotifier {
   AuthState build() => _initial;
 
   @override
-  Future<void> signIn({required String email, required String password}) async {}
+  Future<void> signIn({
+    required String email,
+    required String password,
+  }) async {}
 
   @override
-  Future<void> signUp({required String email, required String password}) async {}
+  Future<void> signUp({
+    required String email,
+    required String password,
+  }) async {}
 
   @override
   Future<void> signOut() async {}
@@ -118,16 +124,18 @@ void main() {
       expect(fake.loadCount, 1);
     });
 
-    testWidgets('does not call updateDisplayName when username field is empty',
-        (tester) async {
-      final fake = _FakeProfileNotifier();
-      await tester.pumpWidget(_buildProfileScreen(fake));
+    testWidgets(
+      'does not call updateDisplayName when username field is empty',
+      (tester) async {
+        final fake = _FakeProfileNotifier();
+        await tester.pumpWidget(_buildProfileScreen(fake));
 
-      await tester.tap(find.text('Save Username'));
-      await tester.pump();
+        await tester.tap(find.text('Save Username'));
+        await tester.pump();
 
-      expect(fake.updateDisplayNameCount, 0);
-    });
+        expect(fake.updateDisplayNameCount, 0);
+      },
+    );
 
     testWidgets('calls updateDisplayName with trimmed text on valid input', (
       tester,
@@ -146,7 +154,9 @@ void main() {
       expect(fake.lastDisplayName, 'Alice');
     });
 
-    testWidgets('calls updateDisplayName with exactly 20 chars', (tester) async {
+    testWidgets('calls updateDisplayName with exactly 20 chars', (
+      tester,
+    ) async {
       final fake = _FakeProfileNotifier();
       await tester.pumpWidget(_buildProfileScreen(fake));
 

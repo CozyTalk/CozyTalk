@@ -86,10 +86,7 @@ void main() {
 
       test('propagates datasource exception', () {
         datasource.error = Exception('not found');
-        expect(
-          () => repository.getProfile('uid-1'),
-          throwsA(isA<Exception>()),
-        );
+        expect(() => repository.getProfile('uid-1'), throwsA(isA<Exception>()));
       });
     });
 

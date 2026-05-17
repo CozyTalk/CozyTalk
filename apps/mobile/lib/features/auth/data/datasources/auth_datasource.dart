@@ -80,10 +80,9 @@ class AuthDatasourceImpl implements AuthDatasource {
       }
       final user = credential.user!;
       if (credential.additionalUserInfo?.isNewUser == true) {
-        final displayName =
-            (user.displayName?.trim().isNotEmpty ?? false)
-                ? user.displayName!
-                : _anonymousName(user.uid, {});
+        final displayName = (user.displayName?.trim().isNotEmpty ?? false)
+            ? user.displayName!
+            : _anonymousName(user.uid, {});
         await _firestore.collection('users').doc(user.uid).set({
           'uid': user.uid,
           'email': user.email,
