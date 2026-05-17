@@ -11,6 +11,7 @@ import 'firebase_options.dart';
 import 'features/auth/presentation/providers/auth_provider.dart';
 import 'features/auth/presentation/screens/login_screen.dart';
 import 'features/hello/presentation/screens/hello_screen.dart';
+import 'features/user_status/presentation/providers/user_status_provider.dart';
 // main UI imports
 import 'theme/app_theme.dart';
 import 'theme/app_routes.dart';
@@ -114,6 +115,7 @@ class _AuthRouter extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    ref.watch(ownStatusNotifierProvider);
     final status = ref.watch(authNotifierProvider.select((s) => s.status));
     return switch (status) {
       AuthStatus.authenticated => const HelloScreen(),
