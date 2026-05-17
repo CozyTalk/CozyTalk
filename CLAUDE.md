@@ -289,3 +289,29 @@ DONE WHEN: <criteria>
 ## 15. AI Authorship
 
 Write all output — code, comments, commits, PRs, docs — as a human developer. No AI signatures, "generated with" footers, co-author tags, or attribution lines anywhere. Commit messages: concise, imperative, focused on what changed and why.
+
+---
+
+## 16. Doc Maintenance (non-negotiable)
+
+Every code change that affects a documented behaviour **must** be accompanied by a doc update in the same PR. Docs that drift from code are worse than no docs.
+
+**What to update and when:**
+
+| You changed… | Update… |
+|---|---|
+| A Cloud Function (inputs, outputs, process, trigger) | `docs/backend/cloud-functions.md` |
+| A Firestore collection, field, or security rule | `docs/database/schema.md` + `PROJECT_CONTEXT.md` schema table |
+| A Firestore index | `docs/database/schema.md` indexes section + `PROJECT_CONTEXT.md` |
+| A feature provider, state, or use case | `docs/features/<feature>.md` |
+| A production screen's integration status | `docs/frontend/screens.md` |
+| The navigation system or app mode (`_useMainUI`) | `CLAUDE.md` §8, `docs/frontend/screens.md` |
+| The matchmaking CF logic or tests | `MATCHMAKING_CONTEXT_AWARE.md` |
+| Any package added or removed | `PROJECT_CONTEXT.md` tech stack table + `CLAUDE.md` §2 |
+| Test counts (Jest or Flutter) | `PROJECT_CONTEXT.md` test coverage table + `CLAUDE.md` §4 |
+
+**Hard rules:**
+- Docs must describe what the code **actually does right now** — not what was planned, not what it used to do.
+- Never document a file, field, or behaviour that does not exist in the current codebase.
+- If you are unsure what a doc should say, read the source file first — the code is the ground truth.
+- Doc updates are part of the task, not optional cleanup after. A PR that changes code without updating docs is incomplete.
