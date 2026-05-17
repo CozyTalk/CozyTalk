@@ -1699,7 +1699,7 @@ describe("joinGroupRoom: interest text seeded into room", () => {
     const room = await adminFirestoreDoc(`rooms/${roomId}`);
     const vec = room!["roomInterestVector"];
 
-    if (vec !== null) {
+    if (Array.isArray(vec)) {
       expect(Array.isArray(vec)).toBe(true);
       expect((vec as number[]).length).toBe(256);
       const interests = room!["memberInterests"] as Record<string, unknown>;
@@ -1727,7 +1727,7 @@ describe("joinGroupRoom: interest text seeded into room", () => {
     if (resB["roomId"] === roomId) {
       const room = await adminFirestoreDoc(`rooms/${roomId}`);
       const vec = room!["roomInterestVector"];
-      if (vec !== null) {
+      if (Array.isArray(vec)) {
         expect(Array.isArray(vec)).toBe(true);
         expect((vec as number[]).length).toBe(256);
         const interests = room!["memberInterests"] as Record<string, unknown>;
@@ -1820,7 +1820,7 @@ describe("group interest matching: Phase 0 routing", () => {
     expect(room!["users"] as string[]).toContain(uid);
 
     const vec = room!["roomInterestVector"];
-    if (vec !== null) {
+    if (Array.isArray(vec)) {
       expect(Array.isArray(vec)).toBe(true);
       expect((vec as number[]).length).toBe(256);
       const interests = room!["memberInterests"] as Record<string, unknown>;

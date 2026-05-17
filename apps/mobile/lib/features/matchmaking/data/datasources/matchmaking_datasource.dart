@@ -166,9 +166,14 @@ class MatchmakingDatasourceImpl implements MatchmakingDatasource {
   Future<void> _registerDisconnect(String roomId) async {
     final uid = _auth.currentUser?.uid;
     if (uid == null) return;
-    final membersRef = _rtdb.ref('rooms/$roomId/members/$uid');
-    await membersRef.onDisconnect().remove();
-    await _rtdb.ref('typing/$roomId/$uid').onDisconnect().remove();
-    await _rtdb.ref('presence/$roomId/$uid').onDisconnect().remove();
+    // rooms/{roomId}/members/{uid} is CF-managed (write: false for clients);
+    // cleanupMember handles removal on disconnect. Only register paths the
+    // client is allowed to write: typing and presence.
+    try {
+      await _rtdb.ref('typing/$roomId/$uid').onDisconnect().remove();
+      await _rtdb.ref('presence/$roomId/$uid').onDisconnect().remove();
+    } catch (_) {
+      // Non-fatal — server-side cleanupMember handles stale entries.
+    }
   }
 }

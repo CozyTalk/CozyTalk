@@ -434,7 +434,7 @@ class MatchmakingNotifier extends Notifier<MatchmakingState> {
       },
       onError: (Object e) => state = state.copyWith(
         status: MatchmakingStatus.error,
-        error: e.toString(),
+        error: _message(e),
       ),
     );
   }
