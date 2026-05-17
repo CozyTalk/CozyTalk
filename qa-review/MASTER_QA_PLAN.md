@@ -31,6 +31,10 @@
 | 11 | Cloud Functions Tests | `plans/ch11_cf_tests.md` | `reviews/ch11_cf_tests.md` | Jest unit + integration tests, coverage, patterns |
 | 12 | CI/CD, Scripts & DevOps | `plans/ch12_cicd_scripts.md` | `reviews/ch12_cicd_scripts.md` | GitHub Actions, shell scripts, emulator setup, build configs |
 | 13 | Documentation Sync | `plans/ch13_doc_sync.md` | `reviews/ch13_doc_sync.md` | CLAUDE.md, README, PROJECT_CONTEXT, MATCHMAKING_CONTEXT_AWARE |
+| 14 | CLEAN_ARCH_EXPLAINER Doc | — | `reviews/ch14_clean_arch_explainer.md` | Accuracy audit of the Clean Architecture explainer against hello feature code |
+| 15 | Context-Aware Matchmaking Docs | — | `reviews/ch15_context_aware_matchmaking_doc.md` | Accuracy audit of context-aware_matchmaking.md and MATCHMAKING_CONTEXT_AWARE.md |
+| 16 | Agent Definitions | — | `reviews/ch16_agent_definitions.md` | .claude/agents/*.md — stale counts, wrong paths, outdated auth state |
+| 17 | Integration Tests & Gap Analysis | — | `reviews/ch17_integration_tests.md` | Flutter integration test infrastructure, coverage gaps, broken Android emulator host |
 
 ---
 
@@ -119,3 +123,7 @@ Copy this table to track progress. Mark each chapter when review file is complet
 | 11 | ✅ | ✅ | ✅ | ✅ |
 | 12 | ✅ | ✅ | ✅ | ✅ |
 | 13 | ✅ | ✅ | ✅ | ✅ |
+| 14 | — | ✅ | ✅ | ✅ |
+| 15 | — | ✅ | ✅ | ⬜ |
+| 16 | — | ✅ | ✅ | ⬜ |
+| 17 | — | ✅ | ✅ | ✅ |

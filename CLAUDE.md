@@ -67,7 +67,7 @@ npm test -- --verbose                          # per-test output
 npm test -- --testNamePattern "priority"       # single describe group
 ```
 
-Jest tests: 92 unit tests across three files — `matchmaking.test.ts` (60 tests, 14 describe groups), `embeddingService.test.ts` (21 tests), `chat.test.ts` (11 tests). Plus 7 live Vertex AI integration tests in `embeddingService.integration.test.ts` (requires `npm run test:embedding`). Grand total: 99.
+Jest tests: 93 unit tests across three files — `matchmaking.test.ts` (60 tests, 14 describe groups), `embeddingService.test.ts` (21 tests), `chat.test.ts` (12 tests). Plus 7 live Vertex AI integration tests in `embeddingService.integration.test.ts` (requires `npm run test:embedding`). Grand total: 100.
 
 ### Dev scripts
 Run `./setup.sh` (Linux/macOS) or `.\setup.ps1` (Windows) to install all dependencies and run code generation in one step.
