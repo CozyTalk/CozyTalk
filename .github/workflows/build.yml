@@ -26,14 +26,19 @@ jobs:
       - uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5.2.0
         with:
           distribution: temurin
-          java-version: '17'
+          java-version: '21'
           cache: gradle
 
       - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
         with:
-          flutter-version: '3.41.6'
+          flutter-version: '3.41.7'
           channel: stable
           cache: true
+
+      - name: Inject google-services.json
+        env:
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+        run: echo "$GOOGLE_SERVICES_JSON" | base64 --decode > android/app/google-services.json
 
       - run: flutter pub get
 
@@ -52,7 +57,7 @@ jobs:
 
       - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
         with:
-          flutter-version: '3.41.6'
+          flutter-version: '3.41.7'
           channel: stable
           cache: true
 
@@ -60,4 +65,4 @@ jobs:
 
       - run: dart run build_runner build
 
-      - run: flutter build web
+      - run: flutter build web --dart-define=USE_EMULATOR=false

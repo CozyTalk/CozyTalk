@@ -11,6 +11,9 @@ firebase-debug.*.log*
 .firebase/
 
 # Firebase config
+# Generated per-environment via `flutterfire configure` — do not commit.
+apps/mobile/android/app/google-services.json
+apps/mobile/ios/Runner/GoogleService-Info.plist
 
 # Uncomment this if you'd like others to create their own Firebase project.
 # For a team working on the same Firebase project(s), it is recommended to leave

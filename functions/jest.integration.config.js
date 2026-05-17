@@ -8,7 +8,7 @@ module.exports = {
     },
   },
   testMatch: ["**/__tests__/**/*.integration.test.ts"],
-  // Vertex AI round-trips can take a few seconds each.
-  testTimeout: 30_000,
+  // Vertex AI round-trips can take a few seconds each; allow the same budget as unit tests.
+  testTimeout: 60_000,
   maxWorkers: 1,
 };

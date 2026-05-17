@@ -388,7 +388,7 @@ Tests verify:
 
 Run: `cd functions && npm test` (after `./dev.sh --emulator-only` in another terminal)
 
-**~55 tests across 11 describe groups:**
+**60 tests across 14 describe groups:**
 
 | Group | Tests | What it covers |
 |---|---|---|

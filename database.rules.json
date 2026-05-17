@@ -13,22 +13,6 @@
         }
       }
     },
-    "sessions": {
-      "$room_id": {
-        ".read": "auth != null && data.child('users').child(auth.uid).exists()",
-        ".write": false
-      }
-    },
-    "messages": {
-      "$room_id": {
-        ".read": "auth != null && root.child('sessions').child($room_id).child('users').child(auth.uid).exists()",
-        ".write": false,
-        "$messageId": {
-          ".write": "!data.exists() && auth != null && root.child('sessions').child($room_id).child('users').child(auth.uid).exists()",
-          ".validate": "newData.hasChildren(['senderId', 'text', 'timestamp']) && newData.child('senderId').val() == auth.uid && newData.child('text').isString() && newData.child('text').val().length > 0 && newData.child('text').val().length <= 1000 && newData.child('timestamp').isNumber()"
-        }
-      }
-    },
     "typing": {
       "$room_id": {
         ".read": "auth != null",
@@ -40,8 +24,8 @@
     },
     "nameQueue": {
       "$room_id": {
-        ".read": "auth != null",
-        ".write": "auth != null"
+        ".read": "auth != null && root.child('rooms').child($room_id).child('members').child(auth.uid).exists()",
+        ".write": "auth != null && root.child('rooms').child($room_id).child('members').child(auth.uid).exists()"
       }
     },
     "pool_presence": {

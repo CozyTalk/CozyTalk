@@ -153,6 +153,11 @@ check_fn "reportSession"     "us-central1"
 check_fn "leaveRoom"         "us-central1"
 check_fn "join1v1Pool"       "us-central1"
 check_fn "joinGroupRoom"     "us-central1"
+check_fn "helloWorld"        "us-central1"
+check_fn "createCustomRoom"  "us-central1"
+check_fn "joinRoomById"      "us-central1"
+check_fn "setRoomLock"       "us-central1"
+check_fn "cancel1v1Pool"     "us-central1"
 
 # ── 3. Cloud Scheduler ────────────────────────────────────────────────────────
 hr "3. Cloud Scheduler"

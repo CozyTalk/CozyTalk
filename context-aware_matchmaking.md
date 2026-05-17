@@ -1,4 +1,6 @@
-# Context-Aware Interest Matchmaking
+# Context-Aware Interest Matchmaking — Decision Log
+
+> **Authoritative reference:** [`MATCHMAKING_CONTEXT_AWARE.md`](MATCHMAKING_CONTEXT_AWARE.md) — full implementation details, file map, CF logic, test suites, and known pitfalls. This document is a decision log only; it records *what* was decided and *why*, not how to use it.
 
 Text-embedding-based interest matching for CozyTalk's 1v1 and group room flows. Users optionally type a phrase ("I like football") before joining; the system generates a 256-dimensional embedding vector and uses cosine similarity to prefer interest-compatible pairings. Users with no interest typed fall back to the existing algorithm unchanged.
 
