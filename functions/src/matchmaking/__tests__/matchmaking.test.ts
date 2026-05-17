@@ -29,6 +29,7 @@ afterEach(async () => {
 // ── Group Room: Priority Selection ─────────────────────────────────────────
 
 describe("priority", () => {
+  // 120 s — first CF call after emulator start triggers JIT compilation
   test("1-member room chosen over 2-member room", async () => {
     const roomA = await buildRoom(2);
     const roomB = await buildRoom(1);
@@ -42,7 +43,7 @@ describe("priority", () => {
     const docA = await adminFirestoreDoc(`rooms/${roomA}`);
     expect(docA!["memberCount"]).toBe(2);
     await tryLeaveRoom(res["roomId"] as string);
-  });
+  }, 120_000);
 
   test("1-member room chosen when competing with 3-member and 4-member rooms", async () => {
     const roomA = await buildRoom(4);
