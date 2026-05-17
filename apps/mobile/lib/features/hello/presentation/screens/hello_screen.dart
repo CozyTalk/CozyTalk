@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../features/avatar/presentation/screens/avatar_picker_screen.dart';
 import '../../../../features/matchmaking/presentation/screens/matchmaking_test_screen.dart';
 import '../../../../features/profile/presentation/screens/profile_screen.dart';
+import '../../../../features/report/presentation/screens/report_test_screen.dart';
 import '../providers/hello_provider.dart';
 
 class HelloScreen extends ConsumerStatefulWidget {
@@ -55,6 +56,17 @@ class _HelloScreenState extends ConsumerState<HelloScreen> {
               ),
               icon: const Icon(Icons.shuffle_rounded),
               label: const Text('Test Matchmaking'),
+            ),
+            const SizedBox(height: 8),
+            OutlinedButton.icon(
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute<void>(
+                  builder: (_) => const ReportTestScreen(),
+                ),
+              ),
+              icon: const Icon(Icons.flag_outlined),
+              label: const Text('Test Report'),
             ),
             const SizedBox(height: 8),
             OutlinedButton.icon(

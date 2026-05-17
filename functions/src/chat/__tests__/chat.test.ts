@@ -309,6 +309,7 @@ describe("reportSession", () => {
     await callFn("reportSession", {
       sessionId: roomId,
       reportedUserId: reportedUid,
+      reportType: "spam",
       reason: "test report reason",
     });
 

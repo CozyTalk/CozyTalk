@@ -6,12 +6,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../domain/entities/session_status.dart';
 import '../../domain/entities/typing_user.dart';
 import '../providers/chat_provider.dart';
+import '../../../report/presentation/screens/report_sheet.dart';
 
 class ChatScreen extends ConsumerStatefulWidget {
   final String sessionId;
   final String currentUserId;
   final String? currentUserDisplayName;
   final String? currentUserPhotoUrl;
+  final String? reportedUserId;
 
   const ChatScreen({
     super.key,
@@ -19,6 +21,7 @@ class ChatScreen extends ConsumerStatefulWidget {
     required this.currentUserId,
     this.currentUserDisplayName,
     this.currentUserPhotoUrl,
+    this.reportedUserId,
   });
 
   @override
@@ -71,6 +74,19 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       appBar: AppBar(
         title: const Text('CozyTalk'),
         actions: [
+          if (widget.reportedUserId != null)
+            Semantics(
+              label: 'Report this user',
+              button: true,
+              child: IconButton(
+                icon: const Icon(Icons.flag_outlined),
+                tooltip: 'Report',
+                color: Colors.white,
+                onPressed: state.status == SessionStatus.chatting
+                    ? _showReportSheet
+                    : null,
+              ),
+            ),
           Semantics(
             label: 'Skip to next person',
             button: true,
@@ -159,6 +175,18 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   void _endSession() {
     ref.read(chatNotifierProvider.notifier).endSession();
+  }
+
+  void _showReportSheet() {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (_) => ReportSheet(
+        sessionId: widget.sessionId,
+        reportedUserId: widget.reportedUserId!,
+      ),
+    );
   }
 
   void _scrollToBottom() {

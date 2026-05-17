@@ -112,17 +112,24 @@ service cloud.firestore {
     // chatLog and encryptionKey are written by the reportSession CF via admin SDK.
     // Client creates must not include chatLog to prevent fabricated evidence.
     match /reports/{reportId} {
+      // Reports are written exclusively by the reportSession Cloud Function
+      // (admin SDK bypasses these rules). This client-side rule is
+      // defense-in-depth only.
       allow create: if isSignedIn()
         && request.resource.data.keys().hasOnly([
-            'reporterId', 'reportedUserId', 'sessionId', 'reason',
-            'description', 'createdAt', 'status'
+            'reporterId', 'reportedUserId', 'sessionId', 'reportType',
+            'reason', 'contextText', 'contextImageUrls',
+            'chatLogStoragePath', 'createdAt', 'status'
            ])
         && request.resource.data.keys().hasAll([
-            'reporterId', 'reportedUserId', 'sessionId', 'reason',
-            'createdAt', 'status'
+            'reporterId', 'reportedUserId', 'sessionId', 'reportType',
+            'reason', 'createdAt', 'status'
            ])
         && request.resource.data.reporterId == request.auth.uid
         && request.resource.data.status == 'pending'
+        && request.resource.data.reportType in [
+            'spam', 'harassment', 'inappropriate_content', 'other'
+           ]
         && request.resource.data.createdAt == request.time;
       allow read, update, delete: if isAdmin();
     }
