@@ -198,8 +198,8 @@ Emulator ports: Auth `9099`, Functions `5001`, Firestore `8080`, RTDB `9000`. Se
 
 | Collection | Purpose |
 |---|---|
-| `users/{uid}` | User profile. Fields: `uid`, `email`, `role` (`user`\|`admin`), `createdAt`, `lastSeen`, `displayName?`, `photoUrl?`, `hatKey?`, `moodKey?`. |
-| `waiting_pool/{uid}` | Matchmaking queue. Fields: `createdAt`, `status`, `updatedAt`, `mode`, `roomId?`. |
+| `users/{uid}` | User profile. Fields: `uid`, `email`, `role` (`user`\|`admin`), `createdAt`, `lastSeen`, `displayName?`, `photoUrl?`, `hatKey?`, `moodKey?`, `interest?`, `thoughts?`. Created on first sign-in (all auth methods including anonymous) by `AuthDatasourceImpl` using `_anonymousName()` for initial `displayName`. |
+| `waiting_pool/{uid}` | Matchmaking queue. Fields: `createdAt`, `status`, `updatedAt`, `mode`, `roomId?`, `interestText?`, `interestVector?` (256-dim Vertex AI embedding). |
 | `rooms/{roomId}` | All active/padding/expired rooms (1v1 + group). 5-char alphanumeric ID. Write-locked to Cloud Functions only except `isLocked` on custom rooms. |
 | `active_sessions/{sessionId}` | **Legacy proto-sessions only.** New rooms use `rooms/{roomId}`. |
 | `reports/{reportId}` | Moderation reports. Admin-only read. Chat log retained here if reported. |
@@ -228,6 +228,8 @@ The `matchmaking` feature is fully implemented as the **third reference implemen
 - `rooms/{roomId}` is the unified collection for all new rooms; 5-char alphanumeric ID is atomically claimed via `create()` with retry
 - Slot reservation uses Firestore transactions; expiry uses a scheduled function that re-checks `memberCount == 0` before deleting
 - `isLocked` lives in Firestore (queryable for matchmaking); participants update it directly via security rules (custom rooms only)
+
+**Context-aware interest matching** (`embeddingService.ts`): `join1v1Pool` and `joinGroupRoom` accept optional `interestText`. If provided, it's embedded via Vertex AI (`text-multilingual-embedding-002`, 256 dims) and stored as `interestVector`. `match1v1Users` uses cosine similarity (threshold `0.65`) to prefer interest-compatible pairs. `embedText()` returns `null` on failure — matching degrades gracefully to FIFO. Full reference doc at [`MATCHMAKING_CONTEXT_AWARE.md`](MATCHMAKING_CONTEXT_AWARE.md).
 
 ---
 
@@ -376,15 +378,41 @@ The `auth` feature is the **second reference implementation** (alongside `hello`
 
 **Platform split in `AuthDatasourceImpl.signInWithGoogle()`:** web uses `signInWithPopup(GoogleAuthProvider())`, native uses `GoogleSignIn.instance.authenticate()` + `GoogleAuthProvider.credential(idToken:)`. Checked via `kIsWeb`.
 
-**Firestore user doc creation:** written by the datasource on `signUp` and on first-time Google sign-in (`additionalUserInfo.isNewUser == true`). Anonymous users do not get a Firestore doc.
+**Firestore user doc creation:** written by the datasource on all first-time sign-ins — `signUp`, `signInAnonymously`, and Google (`additionalUserInfo.isNewUser == true`). The doc always includes `displayName` (generated via `_anonymousName(uid, {})` — a UID-seeded djb2 hash → adjective+animal), `interest: ''`, `hatKey: null`, `moodKey: null`. Google users use their Google display name if non-empty, otherwise the generated name. Use `set(merge: true)` when writing profile updates so legacy accounts without a doc are handled.
 
 **`_AuthRouter`** (in [`main.dart`](apps/mobile/lib/main.dart)) watches `authNotifierProvider` and routes: `authenticated` → `HelloScreen`, `idle` → loading spinner, anything else → `LoginScreen`.
+
+---
+
+## Profile Feature (`features/profile/`)
+
+The `profile` feature is a Clean Architecture feature for reading and updating user profile fields in `users/{uid}`. See [`features/profile/`](apps/mobile/lib/features/profile/).
+
+**Use cases:** `GetProfile`, `UpdateDisplayName`, `UpdateInterest`, `UpdateThoughts`
+
+**`ProfileUser` entity fields:** `uid` (required), `displayName?`, `interest?`, `thoughts?`
+
+**`ProfileState` fields:** `profile` (`ProfileUser?`), `isLoading`, `error` (`String?`), `successField` (`String?` — `'username'|'interest'|'thoughts'`) — all nullable fields use the sentinel pattern.
+
+**`ProfileDatasourceImpl`** reads from `users/{uid}` and writes individual fields via `set(merge: true)` so updates work on legacy accounts that predate the profile doc.
+
+**`ProfileScreen`** pre-fills controllers from cached state on mount and on each successful save via `ref.listen`. Save buttons validate length constraints client-side (username ≤ 20, interest ≤ 200, thoughts ≤ 50) before calling the notifier.
+
+**Access:** `HelloScreen` → "Edit profile" button (dev/test mode via `_AuthRouter`). In production UI, wire via `AppRoutes.profile` route.
+
+**`_anonymousName` function** (in `auth_datasource.dart`, top-level, not exported): UID-seeded djb2 hash → `adjective animal` pair from 15×15 word lists = 225 possible names. Duplicated from `chat_datasource.dart` — extract to a shared utility if a third caller appears.
 
 ---
 
 ## Environment Config
 
 [`main.dart`](apps/mobile/lib/main.dart) reads `USE_EMULATOR` via `bool.fromEnvironment` (compile-time constant, default `true`). Set it in [`.env.example`](apps/mobile/.env.example) or pass `--dart-define=USE_EMULATOR=false` for production builds. Never put real secrets here. Use `--dart-define-from-file` for secrets.
+
+**Dual-mode app toggle (`_useMainUI`):**
+- `false` (default) → Firebase-backed auth flow: `_AuthRouter` → `LoginScreen` (features/auth) → `HelloScreen` (dev staging area)
+- `true` → legacy design-preview UI: `HomeScreen` (screens/) with full navigation routes
+
+The legacy UI screens under `apps/mobile/lib/screens/` are design-preview implementations — home, finding room, choose room type, select background, friends, profile edit, admin console, etc. They are not yet wired to the Clean Architecture features layer. When integrating, route legacy screens to the features/ providers rather than reimplementing logic.
 
 ---
 

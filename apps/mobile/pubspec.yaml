@@ -39,6 +39,7 @@ dependencies:
   json_annotation: ^4.11.0
   cryptography: ^2.7.0
   flutter_svg: ^2.0.17
+  google_fonts: ^6.2.1
 
 dev_dependencies:
   flutter_test:
@@ -62,7 +63,9 @@ flutter:
 
   assets:
     - assets/images/
+    - assets/images/backgrounds/
     - assets/images/icons/
     - assets/images/moods/
     - assets/images/dressup/
-    - assets/images/backgrounds/
+    - assets/images/cards/
+    - assets/images/tuktuk/

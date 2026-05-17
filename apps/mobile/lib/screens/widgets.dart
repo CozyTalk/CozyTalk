@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import '../theme/app_colors.dart';
+import '../models/friend.dart';
 
 /// Standard back-arrow AppBar used by all sub-screens
 PreferredSizeWidget buildAppBar(BuildContext context, String title) {
@@ -80,6 +82,267 @@ class CozyCard extends StatelessWidget {
         ],
       ),
       child: child,
+    );
+  }
+}
+
+/// Room card shown inside friend cards and friend chat screen.
+/// [showLabel] = true → shows "CURRENTLY IN" label above room name (chat style).
+class FriendRoomCard extends StatelessWidget {
+  final RoomInfo room;
+  final bool showLabel;
+  final VoidCallback? onJoin;
+  final Color backgroundColor;
+
+  const FriendRoomCard({
+    super.key,
+    required this.room,
+    this.showLabel = false,
+    this.onJoin,
+    this.backgroundColor = AppColors.scaffoldBg,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: AppColors.gray.withValues(alpha: 0.25),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(10),
+            child: Image.asset(
+              room.thumbnail,
+              width: 44,
+              height: 44,
+              fit: BoxFit.cover,
+              errorBuilder: (_, _, _) =>
+                  Container(width: 44, height: 44, color: Colors.grey.shade200),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (showLabel)
+                  const Text(
+                    'CURRENTLY IN',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.brownDeep,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                if (showLabel) const SizedBox(height: 2),
+                Text(
+                  room.name,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.black87,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Row(
+                  children: [
+                    SvgPicture.asset(
+                      room.isOneOnOne
+                          ? 'assets/images/icons/1on1.svg'
+                          : 'assets/images/icons/Group.svg',
+                      width: 13,
+                      height: 13,
+                      colorFilter: const ColorFilter.mode(
+                        AppColors.brownDeep,
+                        BlendMode.srcIn,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      '${room.current}/${room.max}',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.brownDeep,
+                      ),
+                    ),
+                    if (!room.isOneOnOne && (room.isLocked || room.isFull)) ...[
+                      const Text(
+                        '  ·  ',
+                        style: TextStyle(fontSize: 12, color: Colors.grey),
+                      ),
+                      _StatusPill(room: room),
+                    ],
+                  ],
+                ),
+              ],
+            ),
+          ),
+          _ActionButton(room: room, onJoin: onJoin),
+        ],
+      ),
+    );
+  }
+}
+
+class _StatusPill extends StatelessWidget {
+  final RoomInfo room;
+  const _StatusPill({required this.room});
+
+  @override
+  Widget build(BuildContext context) {
+    if (room.isLocked) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF0E6DC),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SvgPicture.asset(
+              'assets/images/icons/Lock.svg',
+              width: 10,
+              height: 10,
+              colorFilter: const ColorFilter.mode(
+                AppColors.brownDeep,
+                BlendMode.srcIn,
+              ),
+            ),
+            const SizedBox(width: 3),
+            const Text(
+              'Locked',
+              style: TextStyle(
+                fontSize: 11,
+                color: AppColors.brownDeep,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade200,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: const Text(
+        'Full',
+        style: TextStyle(
+          fontSize: 11,
+          color: Colors.grey,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+  }
+}
+
+class _ActionButton extends StatelessWidget {
+  final RoomInfo room;
+  final VoidCallback? onJoin;
+  const _ActionButton({required this.room, this.onJoin});
+
+  @override
+  Widget build(BuildContext context) {
+    if (room.isOneOnOne) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+        decoration: BoxDecoration(
+          color: Colors.grey.shade200,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: Colors.grey.shade300, width: 1.5),
+        ),
+        child: Text(
+          'Join',
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w900,
+            color: Colors.grey.shade400,
+          ),
+        ),
+      );
+    }
+    if (room.canJoin && onJoin != null) {
+      return GestureDetector(
+        onTap: onJoin,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+          decoration: BoxDecoration(
+            color: const Color(0xFFDEF1C2),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: const Color(0xFFC7D2B5), width: 1.5),
+          ),
+          child: const Text(
+            'Join',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w900,
+              color: Color(0xFF4A553F),
+            ),
+          ),
+        ),
+      );
+    }
+    if (room.isLocked) return const SizedBox.shrink();
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade200,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.grey.shade300, width: 1.5),
+      ),
+      child: Text(
+        'Join',
+        style: TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.w900,
+          color: Colors.grey.shade400,
+        ),
+      ),
+    );
+  }
+}
+
+/// SVG icon button used in Mood/DressUp screens (undo, redo, delete)
+class AvatarActionButton extends StatelessWidget {
+  final String svgPath;
+  final bool enabled;
+  final VoidCallback onTap;
+
+  const AvatarActionButton({
+    super.key,
+    required this.svgPath,
+    required this.enabled,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: enabled ? onTap : null,
+      child: Opacity(
+        opacity: enabled ? 1.0 : 0.35,
+        child: SvgPicture.asset(
+          svgPath,
+          width: 28,
+          height: 28,
+          colorFilter: const ColorFilter.mode(
+            AppColors.brownDeep,
+            BlendMode.srcIn,
+          ),
+        ),
+      ),
     );
   }
 }

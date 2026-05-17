@@ -11,7 +11,7 @@ class _NotifItem {
   final bool isFriendRequest;
   final String? roomName;
   bool accepted = false;
-  bool declined;
+  bool declined = false;
 
   _NotifItem({
     required this.imagePath,

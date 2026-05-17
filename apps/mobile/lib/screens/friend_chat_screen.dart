@@ -1,10 +1,12 @@
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
+import '../theme/app_routes.dart';
 import '../models/friend.dart';
 import '../dialogs/report_dialog.dart';
 import '../shared/layered_avatar.dart';
 import 'friend_profile_dialog.dart';
+import 'widgets.dart';
 
 // Mock conversation history per friend name — ready to swap with real API
 final Map<String, List<ChatMessage>> _mockConversations = {
@@ -41,7 +43,12 @@ class _FriendChatScreenState extends State<FriendChatScreen> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     if (!_initialized) {
-      _friend = ModalRoute.of(context)!.settings.arguments as Friend;
+      final args = ModalRoute.of(context)?.settings.arguments;
+      if (args is! Friend) {
+        Navigator.pop(context);
+        return;
+      }
+      _friend = args;
       _messages = List<ChatMessage>.from(
         _mockConversations[_friend.name] ??
             [
@@ -119,6 +126,37 @@ class _FriendChatScreenState extends State<FriendChatScreen> {
       body: Column(
         children: [
           _buildHeader(context),
+          if (_friend.room != null && _friend.isOnline)
+            Container(
+              margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.grey.shade200, width: 1.5),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.06),
+                    blurRadius: 8,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
+              ),
+              child: FriendRoomCard(
+                room: _friend.room!,
+                showLabel: true,
+                backgroundColor: Colors.white,
+                onJoin: _friend.room!.canJoin
+                    ? () => Navigator.pushNamed(
+                        context,
+                        AppRoutes.groupChatScreen,
+                        arguments: {
+                          'roomName': _friend.room!.name,
+                          'bgImage': _friend.room!.thumbnail,
+                        },
+                      )
+                    : null,
+              ),
+            ),
           Expanded(
             child: ListView(
               controller: _scrollCtrl,
@@ -131,7 +169,7 @@ class _FriendChatScreenState extends State<FriendChatScreen> {
               ],
             ),
           ),
-          _buildInputBar(),
+          _friend.isBlocked ? _buildBlockedBar() : _buildInputBar(),
         ],
       ),
     );
@@ -386,13 +424,39 @@ class _FriendChatScreenState extends State<FriendChatScreen> {
     );
   }
 
+  // ─── Blocked bar ───
+  Widget _buildBlockedBar() {
+    return Container(
+      decoration: const BoxDecoration(color: AppColors.brownDeep),
+      padding: EdgeInsets.fromLTRB(
+        16,
+        14,
+        16,
+        MediaQuery.of(context).padding.bottom + 14,
+      ),
+      child: Container(
+        height: 58,
+        decoration: BoxDecoration(
+          color: Colors.grey.shade300,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        alignment: Alignment.center,
+        child: Text(
+          'You can no longer send messages in this chat.',
+          style: TextStyle(
+            fontSize: 13,
+            color: Colors.grey.shade600,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ),
+    );
+  }
+
   // ─── Bottom input bar ───
   Widget _buildInputBar() {
     return Container(
-      decoration: const BoxDecoration(
-        color: AppColors.brownDeep,
-        borderRadius: BorderRadius.vertical(bottom: Radius.circular(35)),
-      ),
+      decoration: const BoxDecoration(color: AppColors.brownDeep),
       padding: EdgeInsets.fromLTRB(
         16,
         14,

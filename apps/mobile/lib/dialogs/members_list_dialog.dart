@@ -1,142 +1,168 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+import '../theme/app_colors.dart';
+import '../shared/avatar_overlay.dart';
+import '../shared/layered_avatar.dart';
 import 'report_dialog.dart';
 
-class MembersListDialog extends StatefulWidget {
-  const MembersListDialog({super.key});
+/// The visual content of the members slide-down panel.
+/// Rendered inside a Stack in GroupChatScreen so the header stays on top.
+class MembersPanelBody extends StatefulWidget {
+  final List<String> members;
+  final VoidCallback onClose;
+
+  /// The display name used to identify the current user (e.g. "Me").
+  final String currentUser;
+  final AvatarState avatarState;
+
+  const MembersPanelBody({
+    super.key,
+    required this.members,
+    required this.onClose,
+    this.currentUser = 'Me',
+    this.avatarState = const AvatarState(),
+  });
 
   @override
-  State<MembersListDialog> createState() => _MembersListDialogState();
+  State<MembersPanelBody> createState() => _MembersPanelBodyState();
 }
 
-class _MembersListDialogState extends State<MembersListDialog> {
-  final Map<int, bool> _friendsAdded = {0: false, 1: false, 2: false};
-  final List<String> members = ['Somtum', 'Kaitom', 'Somjeed'];
+class _MembersPanelBodyState extends State<MembersPanelBody> {
+  final Map<int, bool> _friendsAdded = {};
 
   @override
   Widget build(BuildContext context) {
-    return Dialog(
-      backgroundColor: Colors.transparent,
-      elevation: 0,
-      insetPadding: const EdgeInsets.symmetric(horizontal: 40, vertical: 24),
-      child: Container(
-        decoration: BoxDecoration(
-          color: const Color(0xFF6B5E5B),
-          borderRadius: BorderRadius.circular(24),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.4),
-              blurRadius: 20,
-              spreadRadius: 2,
-              offset: const Offset(0, 10),
-            ),
-          ],
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: List.generate(members.length, (index) {
-              bool isAdded = _friendsAdded[index] ?? false;
-              return Container(
-                margin: const EdgeInsets.only(bottom: 12),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 10,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.15),
-                      blurRadius: 6,
-                      offset: const Offset(0, 3),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 45,
-                      height: 45,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(12),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.1),
-                            blurRadius: 4,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        members[index],
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w900,
-                          color: Colors.black,
-                        ),
-                      ),
-                    ),
-                    GestureDetector(
-                      onTap: () => setState(() => _friendsAdded[index] = true),
-                      child: Container(
-                        padding: const EdgeInsets.all(6),
-                        decoration: BoxDecoration(
-                          color: isAdded
-                              ? Colors.grey.shade300
-                              : const Color(0xFFDEF1C2),
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(
-                            color: isAdded
-                                ? Colors.grey.shade400
-                                : const Color(0xFFC7D2B5),
-                            width: 1.5,
-                          ),
-                        ),
-                        child: Icon(
-                          isAdded ? Icons.person : Icons.person_add_alt_1,
-                          color: isAdded
-                              ? Colors.grey.shade600
-                              : const Color(0xFF4A553F),
-                          size: 20,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    GestureDetector(
-                      onTap: () => showDialog(
-                        context: context,
-                        builder: (_) => const ReportDialog(),
-                      ),
-                      child: Container(
-                        padding: const EdgeInsets.all(6),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFFFCCAA),
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(
-                            color: const Color(0xFFCF5733),
-                            width: 1.5,
-                          ),
-                        ),
-                        child: const Icon(
-                          Icons.flag_outlined,
-                          color: Color(0xFFCF5733),
-                          size: 20,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            }),
-          ),
-        ),
+    return Container(
+      color: AppColors.brownDeep,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: widget.members.asMap().entries.map((e) {
+          return _buildRow(e.key, e.value);
+        }).toList(),
       ),
     );
   }
+
+  Widget _buildRow(int index, String name) {
+    final bool isMe = name == widget.currentUser;
+    final bool isAdded = _friendsAdded[index] ?? false;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.12),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          // Avatar — use LayeredAvatar for Me, base for others
+          ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: isMe
+                ? LayeredAvatar(
+                    boxSize: 46,
+                    moodOverlay: widget.avatarState.mood,
+                    accessoryOverlay: widget.avatarState.accessory,
+                  )
+                : LayeredAvatar(boxSize: 46),
+          ),
+          const SizedBox(width: 14),
+          // Name
+          Expanded(
+            child: Text(
+              name,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w900,
+                color: Colors.black,
+              ),
+            ),
+          ),
+          // Hide buttons for self
+          if (!isMe) ...[
+            // Add friend
+            GestureDetector(
+              onTap: () => setState(() => _friendsAdded[index] = true),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: isAdded
+                      ? Colors.grey.shade300
+                      : const Color(0xFFDCEBCE),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: isAdded
+                        ? Colors.grey.shade400
+                        : const Color(0xFFC7D2B5),
+                  ),
+                ),
+                child: Center(
+                  child: SvgPicture.asset(
+                    'assets/images/icons/add_friend.svg',
+                    width: 22,
+                    height: 22,
+                    colorFilter: isAdded
+                        ? ColorFilter.mode(
+                            Colors.grey.shade500,
+                            BlendMode.srcIn,
+                          )
+                        : null,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            // Report
+            GestureDetector(
+              onTap: () {
+                widget.onClose();
+                showDialog(
+                  context: context,
+                  builder: (_) => const ReportDialog(),
+                );
+              },
+              child: Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFDBC8),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: const Color(0xFFA33615)),
+                ),
+                child: Center(
+                  child: SvgPicture.asset(
+                    'assets/images/icons/Report.svg',
+                    width: 17,
+                    height: 17,
+                    colorFilter: const ColorFilter.mode(
+                      Color(0xFFD4633A),
+                      BlendMode.srcIn,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// Stub kept so any leftover import doesn't break.
+class MembersListDialog extends StatelessWidget {
+  const MembersListDialog({super.key});
+  @override
+  Widget build(BuildContext context) => const SizedBox.shrink();
 }
