@@ -11,7 +11,7 @@ import {
 } from "./embeddingService";
 
 export const joinGroupRoom = onCall(
-  {invoker: "public", cors: true},
+  {invoker: "public", cors: true, memory: "512MiB"},
   async (request) => {
     if (!request.auth) {
       throw new HttpsError("unauthenticated", "Must be signed in.");

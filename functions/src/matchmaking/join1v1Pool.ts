@@ -5,7 +5,7 @@ import * as logger from "firebase-functions/logger";
 import {embedText} from "./embeddingService";
 
 export const join1v1Pool = onCall(
-  {invoker: "public", cors: true},
+  {invoker: "public", cors: true, memory: "512MiB"},
   async (request) => {
     if (!request.auth) {
       throw new HttpsError("unauthenticated", "Must be signed in.");
