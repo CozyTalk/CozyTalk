@@ -173,7 +173,7 @@ class FriendRoomCard extends StatelessWidget {
                         color: AppColors.brownDeep,
                       ),
                     ),
-                    if (!room.isOneOnOne && room.isLocked) ...[
+                    if (!room.isOneOnOne && (room.isLocked || room.isFull)) ...[
                       const Text(
                         '  ·  ',
                         style: TextStyle(fontSize: 12, color: Colors.grey),
