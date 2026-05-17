@@ -1,4 +1,3 @@
-import {v1, helpers} from "@google-cloud/aiplatform";
 import * as logger from "firebase-functions/logger";
 
 const EMBEDDING_MODEL = "text-multilingual-embedding-002";
@@ -7,15 +6,22 @@ const EMBEDDING_LOCATION = "us-central1";
 
 export const INTEREST_SIMILARITY_THRESHOLD = 0.65;
 
-let _client: v1.PredictionServiceClient | null = null;
+// Type-only reference — erased at compile time, no runtime import.
+let _client:
+  | import("@google-cloud/aiplatform").v1.PredictionServiceClient
+  | null = null;
 
 /**
  * Returns a lazily-initialised Vertex AI prediction client.
- * Reuses the same instance across invocations within the same Function instance.
- * @return {v1.PredictionServiceClient} Singleton prediction client.
+ * Imports @google-cloud/aiplatform on first call so the package is not loaded
+ * at container startup (avoids OOM on the default 256 MiB memory limit).
+ * @return {Promise<import("@google-cloud/aiplatform").v1.PredictionServiceClient>} Singleton client.
  */
-function _getClient(): v1.PredictionServiceClient {
+async function _getClient(): Promise<
+  import("@google-cloud/aiplatform").v1.PredictionServiceClient
+> {
   if (!_client) {
+    const {v1} = await import("@google-cloud/aiplatform");
     _client = new v1.PredictionServiceClient({
       apiEndpoint: `${EMBEDDING_LOCATION}-aiplatform.googleapis.com`,
     });
@@ -43,7 +49,12 @@ export async function embedText(text: string): Promise<number[] | null> {
       `projects/${project}/locations/${EMBEDDING_LOCATION}` +
       `/publishers/google/models/${EMBEDDING_MODEL}`;
 
-    const [response] = await _getClient().predict({
+    const [{helpers}, client] = await Promise.all([
+      import("@google-cloud/aiplatform"),
+      _getClient(),
+    ]);
+
+    const [response] = await client.predict({
       endpoint,
       instances: [
         helpers.toValue({
