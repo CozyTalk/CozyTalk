@@ -26,8 +26,8 @@ Default region: `us-central1` (unless noted)
 ### `reportSession`
 `functions/src/chat/reportSession.ts`
 - **Trigger:** callable (authenticated)
-- **Input:** `{ sessionId: string, reportedUserId: string, reason: string, description: string }`
-- **Process:** Validates inputs (`reason` ≤500 chars, `description` optional ≤2000 chars, no self-reporting). Looks up `encryptionKey` from `rooms/{sessionId}` (falls back to `active_sessions`, then `session_keys`). Upserts `session_keys/{sessionId}` with `flagged: true` and `expiresAt: null` — removes TTL so the key persists for moderation. Batch-updates every `chat_rooms/{sessionId}/messages` doc with `{flagged: true, expiresAt: null}` — preserves messages in-place by removing their TTL. Creates `reports/{auto-id}` via admin SDK with fields: `reporterId`, `reportedUserId`, `sessionId`, `encryptionKey`, `reason`, `description`, `createdAt`, `status: "pending"`. Room is NOT ended — caller should call `endSession` after.
+- **Input:** `{ sessionId, reportedUserId, reportType, reason, contextText?, contextImageUrls? }`
+- **Process:** Validates all inputs (`reason` ≤500 chars, `contextText` optional ≤2000 chars, `reportType` one of `spam|harassment|inappropriate_content|other`, `contextImageUrls` ≤5 strings, no self-reporting). Verifies both `reporterId` **and** `reportedUserId` are actual session participants. Looks up `encryptionKey` from `rooms/{sessionId}` (falls back to `active_sessions`, then `session_keys`). Upserts `session_keys/{sessionId}` with `flagged: true, expiresAt: null`. Decrypts all messages (AES-256-GCM), sorts by timestamp, saves plaintext to `reports/{reportId}/chat_log.json` in Cloud Storage (non-fatal if Storage write fails). Batch-updates `chat_rooms/{sessionId}/messages` with `{flagged: true, expiresAt: null}`. Creates `reports/{auto-id}` in Firestore (no `encryptionKey` in the doc — key remains in `session_keys/` only). Room is NOT ended — caller should call `endSession` after.
 - **Output:** `{ reportId: string }`
 
 ---

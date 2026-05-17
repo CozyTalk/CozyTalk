@@ -12,7 +12,7 @@ import '../../domain/usecases/submit_report.dart';
 final _reportDatasourceProvider = Provider<ReportDatasource>(
   (ref) => ReportDatasourceImpl(
     FirebaseStorage.instance,
-    FirebaseFunctions.instance,
+    FirebaseFunctions.instanceFor(region: 'us-central1'),
     FirebaseAuth.instance,
   ),
 );

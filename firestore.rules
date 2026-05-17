@@ -109,8 +109,8 @@ service cloud.firestore {
     }
 
     // ── reports ──────────────────────────────────────────────────────────────
-    // chatLog and encryptionKey are written by the reportSession CF via admin SDK.
-    // Client creates must not include chatLog to prevent fabricated evidence.
+    // Written exclusively by the reportSession Cloud Function via admin SDK.
+    // Client-side create rule is defense-in-depth only.
     match /reports/{reportId} {
       // Reports are written exclusively by the reportSession Cloud Function
       // (admin SDK bypasses these rules). This client-side rule is

@@ -97,15 +97,19 @@ Rules: deny all client access — admin SDK only.
 | Field | Type | Notes |
 |---|---|---|
 | `reporterId` | string | set from `request.auth.uid` by CF |
-| `reportedUserId` | string | |
+| `reportedUserId` | string | validated to be an actual session participant |
 | `sessionId` | string | |
-| `reason` | string | |
-| `description` | string | |
+| `reportType` | string | one of `spam`, `harassment`, `inappropriate_content`, `other` |
+| `reason` | string | ≤500 chars |
+| `contextText` | string? | optional free-text ≤2000 chars |
+| `contextImageUrls` | string[] | Storage URLs of up to 5 screenshots uploaded by reporter |
+| `chatLogStoragePath` | string? | path to `reports/{reportId}/chat_log.json` in Cloud Storage; null if Storage write failed |
 | `createdAt` | timestamp | |
-| `status` | string | |
-| `encryptionKey` | string | hex AES-256 key stored for moderator decryption — CF-written via admin SDK, not in client `hasOnly()` list |
+| `status` | string | `pending` on creation; updated by admin |
 
-Rules: any authenticated user may create (restricted: `reporterId == uid`, `status == 'pending'`, required fields only). Read, update, delete are admin-only.
+Note: `encryptionKey` is NOT stored here — it lives exclusively in `session_keys/{sessionId}`. The decrypted chat log is in Cloud Storage at `chatLogStoragePath`.
+
+Rules: any authenticated user may create (restricted: `reporterId == uid`, `status == 'pending'`, `reportType` validated, required fields only). Read, update, delete are admin-only.
 
 ---
 
