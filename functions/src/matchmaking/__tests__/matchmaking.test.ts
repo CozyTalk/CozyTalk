@@ -16,6 +16,16 @@ import {
   callScheduledFn,
 } from "./helpers";
 
+// Warm up the emulator before the suite runs. The first CF invocation after
+// emulator start triggers JIT compilation and can take 60-90 s. Absorbing that
+// cost here means no individual test needs an inflated timeout.
+beforeAll(async () => {
+  await signInAnon();
+  await callFn("joinGroupRoom").catch(() => {});
+  signOut();
+  await resetEmulatorData();
+}, 120_000);
+
 beforeEach(async () => {
   await signOut();
   await resetEmulatorData();
@@ -29,7 +39,6 @@ afterEach(async () => {
 // ── Group Room: Priority Selection ─────────────────────────────────────────
 
 describe("priority", () => {
-  // 120 s — first CF call after emulator start triggers JIT compilation
   test("1-member room chosen over 2-member room", async () => {
     const roomA = await buildRoom(2);
     const roomB = await buildRoom(1);
