@@ -34,8 +34,9 @@ final _updateThoughtsProvider = Provider<UpdateThoughts>(
   (ref) => UpdateThoughts(ref.watch(_profileRepositoryProvider)),
 );
 
-final profileNotifierProvider =
-    NotifierProvider<ProfileNotifier, ProfileState>(ProfileNotifier.new);
+final profileNotifierProvider = NotifierProvider<ProfileNotifier, ProfileState>(
+  ProfileNotifier.new,
+);
 
 const _sentinel = Object();
 
@@ -61,10 +62,9 @@ class ProfileState {
     profile: profile == _sentinel ? this.profile : profile as ProfileUser?,
     isLoading: isLoading ?? this.isLoading,
     error: error == _sentinel ? this.error : error as String?,
-    successField:
-        successField == _sentinel
-            ? this.successField
-            : successField as String?,
+    successField: successField == _sentinel
+        ? this.successField
+        : successField as String?,
   );
 }
 
