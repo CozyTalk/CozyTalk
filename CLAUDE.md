@@ -277,10 +277,10 @@ All rules below are enforced by CI. Do not write code that needs a `// ignore:` 
 | Edit generated files (`*.g.dart`, `*.freezed.dart`) | Always run `build_runner` instead |
 | Use unbounded `ListView` with `children: [...]` for dynamic data | Performance violation |
 | Remove or rename `_useMainUI` | It is the dev/test toggle — `false` keeps `HelloScreen` as the backend staging area; its removal breaks the whole team's test workflow |
-| Change any widget layout, padding, color, or typography during integration work | Integration = route swapping only; visual changes require a separate scoped PR |
-| Delete a legacy `screens/` file during integration | Delete only when a separate PR with explicit approval says to |
+| Change widget layout, padding, color, or typography during integration work | Integration wires real data into the existing design; visual changes require a separate scoped PR |
 | Call `FirebaseFirestore.instance` or any Firebase SDK directly in a `Screen` widget | All Firebase access goes through a `datasource/` behind a provider |
 | Read auth state from `FirebaseAuth.instance.currentUser` in a screen | Use `ref.watch(authNotifierProvider).user` |
+| Put business logic (validation beyond input length, retry, routing decisions) in a screen | Belongs in a UseCase or Notifier |
 | Add new packages to `pubspec.yaml` during integration | Integration reuses existing packages; new deps require Architect approval |
 
 ---
@@ -480,24 +480,77 @@ When wiring the production UI, route `HomeScreen` to the features/ providers (ma
 [`main.dart`](apps/mobile/lib/main.dart) reads `USE_EMULATOR` via `bool.fromEnvironment` (compile-time constant, default `true`). Set it in [`.env.example`](apps/mobile/.env.example) or pass `--dart-define=USE_EMULATOR=false` for production builds. Never put real secrets here. Use `--dart-define-from-file` for secrets.
 
 **Dual-mode app toggle (`_useMainUI`):**
-- `false` (default) → Firebase-backed auth flow: `_AuthRouter` → `LoginScreen` (features/auth) → `HelloScreen` (dev staging area)
-- `true` → legacy design-preview UI: `HomeScreen` (screens/) with full navigation routes
+- `false` (default) → dev/test mode: `_AuthRouter` → `LoginScreen` (features/auth) → `HelloScreen` (backend staging area for testing CA features directly)
+- `true` → production mode: `HomeScreen` (screens/) with full navigation — this is the real app frontend being integrated with the CA backend
 
-The legacy UI screens under `apps/mobile/lib/screens/` are design-preview implementations — home, finding room, choose room type, select background, friends, profile edit, admin console, etc. They are not yet wired to the Clean Architecture features layer. When integrating, route legacy screens to the features/ providers rather than reimplementing logic. See the **Integration Rules** section for the exact rules governing this work — UI and design must not change during integration.
+The production UI screens live under `apps/mobile/lib/screens/`. They are the real frontend — the actual app look, feel, and navigation flow. They are not yet connected to the CA backend (`features/`). Integration work wires these screens to the real backend so buttons and data actually work. See the **Integration Rules** section for the exact rules governing this work.
 
 ---
 
 ## Integration Rules
 
-This section governs all work that wires the legacy design-preview screens (`apps/mobile/lib/screens/`) into the Clean Architecture features layer. Read this before touching any screen that appears in both `screens/` and `features/*/presentation/screens/`.
+Integration = wiring the production frontend screens (`apps/mobile/lib/screens/`) to the Clean Architecture backend (`apps/mobile/lib/features/`) so they use real Firebase data instead of hardcoded stubs. The goal is to make `_useMainUI = true` a fully working app.
+
+Read this section before touching any file in `screens/` for integration purposes.
 
 ---
 
-### What "integration" means
+### The two modes — preserve both
 
-Integration = changing the `routes` map in `main.dart` (and `_AuthRouter` where applicable) to point an `AppRoutes` path at the CA screen instead of the legacy screen. **That is the only required change.** The legacy screen's visual code is never touched during integration unless a separate UI task explicitly asks for it.
+| `_useMainUI` | What runs | Purpose |
+|---|---|---|
+| `false` (default) | `_AuthRouter` → `LoginScreen` (features/auth) → `HelloScreen` | **Dev/test mode.** CA screens via `HelloScreen` for backend testing. Never break this. |
+| `true` | `HomeScreen` (screens/) + full `AppRoutes` navigation | **Production mode.** The real frontend. This is what integration work enables. |
 
-This follows the **Strangler Fig pattern**: new implementations replace old ones through routing, not rewrites. The old file stays in the repo until every caller has been migrated and the legacy file is explicitly approved for deletion.
+Both modes must work at all times. Integration never breaks `_useMainUI = false`.
+
+---
+
+### What integration means in practice
+
+A screen in `screens/` starts as a design-complete `StatefulWidget` with hardcoded data and no-op button handlers. Integration converts it to a `ConsumerStatefulWidget` (or `ConsumerWidget`) and wires it to the appropriate feature provider. Example:
+
+```dart
+// Before — hardcoded, no-op
+class FindingRoomScreen extends StatefulWidget { ... }
+class _FindingRoomScreenState extends State<FindingRoomScreen> {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      // ... all the real UI already here, looking perfect ...
+      body: Column(children: [
+        const CircularProgressIndicator(),   // always spinning
+        ElevatedButton(
+          onPressed: () {},                  // does nothing
+          child: const Text('Cancel'),
+        ),
+      ]),
+    );
+  }
+}
+
+// After — wired to real backend, visual design unchanged
+class FindingRoomScreen extends ConsumerStatefulWidget { ... }
+class _FindingRoomScreenState extends ConsumerState<FindingRoomScreen> {
+  @override
+  Widget build(BuildContext context) {
+    final state = ref.watch(matchmakingNotifierProvider);
+    return Scaffold(
+      // ... identical widget tree, padding, colors, typography ...
+      body: Column(children: [
+        if (state.isSearching) const CircularProgressIndicator(),
+        ElevatedButton(
+          onPressed: state.isLoading ? null
+              : () => ref.read(matchmakingNotifierProvider.notifier).cancelSearch(),
+          child: const Text('Cancel'),
+        ),
+      ]),
+    );
+  }
+}
+```
+
+**The widget tree, padding, colors, fonts, and layout do not change.** Only the data source and button handlers change.
 
 ---
 
@@ -505,75 +558,88 @@ This follows the **Strangler Fig pattern**: new implementations replace old ones
 
 | Rule | What it means |
 |---|---|
-| **Never delete `_useMainUI`** | The flag at `main.dart` line 35 must remain. It switches between the CA auth flow (`false`, current default) and the legacy design-preview flow (`true`). Never remove it, rename it, or change its default value. |
-| **Never break `_AuthRouter`** | The `_AuthRouter` widget (watches `authNotifierProvider`, routes `authenticated → HelloScreen`, others → `LoginScreen`) is the production auth gate. Never modify its routing logic during integration work. |
-| **Never remove `HelloScreen` from the auth flow** | `HelloScreen` is the backend test and developer staging area when `_useMainUI = false`. The route `authenticated → HelloScreen()` inside `_AuthRouter` must not be changed, even when production UI is being wired. |
-| **Never touch UI during integration** | Padding, colors, font sizes, widget hierarchy, spacing, layout, icons, and any visual element in a screen file are frozen during integration. Zero pixel-level changes. If design changes are needed, open a separate PR scoped to that screen's design. |
-| **One screen per PR** | Each integration PR wires exactly one screen or one feature flow. No multi-screen mega-PRs. Reviewer trust is built screen by screen. |
-| **Legacy files stay until explicitly approved for deletion** | After routing swaps to a CA screen, the old `screens/foo_screen.dart` remains in the repo. Only delete it when a separate PR or explicit instruction says to. |
-| **CA screen, not rewrite** | If `features/foo/presentation/screens/foo_screen.dart` already exists, use it as-is. If it does not exist, create it following CA conventions — do not modify the legacy screen to add Firebase calls. |
-| **Domain and data layer changes are separate PRs** | Integration touches only `main.dart` routes (and the CA screen's `ProviderScope` wiring). New use cases, entities, or datasource changes belong in separate PRs that go through Architect review. |
+| **Never change visual design** | Padding, margins, colors, font sizes, widget tree structure, icon choices, spacing — all frozen. Integration only changes data sources and callbacks, never how the screen looks. If a design change is needed, it goes in a separate PR scoped to that screen. |
+| **Never add Firebase SDK calls to a screen** | All Firebase access goes through a datasource behind a provider. A screen calls `ref.read(notifier).doAction()` — never `FirebaseFirestore.instance` directly. |
+| **Never put business logic in a screen** | Validation beyond input length, routing decisions based on backend state, retry logic — all belong in a UseCase or Notifier. The screen observes state and dispatches actions only. |
+| **Never break `_useMainUI = false`** | The `_AuthRouter` → `HelloScreen` dev flow must continue working unchanged after every integration PR. |
+| **Never modify `_useMainUI`** | The flag value, name, and usage in `main.dart` are frozen. It exists specifically to keep the dev/test path alive during integration. |
+| **One screen per PR** | Each integration PR wires exactly one screen. No multi-screen batches. |
+| **Domain and data layer changes are separate PRs** | If a screen needs a new use case or datasource method, that work goes in its own PR reviewed before the integration PR. Integration assumes the CA backend is already complete for that feature. |
+| **All existing tests must pass** | Run `flutter test` before opening a PR. If an existing test breaks because of an integration change, fix the integration — never weaken or delete the test. |
 
 ---
 
-### What changes during integration (and what does not)
+### What you touch during integration (and what you don't)
 
-**You MAY change during integration:**
-- `main.dart` routes map — swap a route value from legacy to CA screen
-- `_AuthRouter` → only to change `authenticated` destination once that feature is fully wired (requires explicit instruction)
-- A CA screen's `ProviderScope` setup if a provider override is missing
-- `AppRoutes` constants — add new constants; never remove or rename existing ones
+**Touch only:**
+- `class FooScreen extends StatefulWidget` → `extends ConsumerStatefulWidget`
+- `class _FooScreenState extends State<FooScreen>` → `extends ConsumerState<FooScreen>`
+- Add `ref.watch(fooNotifierProvider)` to get state
+- Replace hardcoded values with `state.fieldName`
+- Replace `onPressed: () {}` with `onPressed: () => ref.read(fooNotifierProvider.notifier).doAction()`
+- Add `ref.listen(fooNotifierProvider, ...)` for navigation side-effects (e.g. navigate to chat screen after match found)
+- Add `@override void initState()` to call an entry-point action (e.g. `ref.read(notifier).enterSession(id)`)
 
-**You MUST NOT change during integration:**
-- Any `Widget build()` method in `screens/*.dart` (legacy) or `features/*/presentation/screens/*.dart` (CA) for visual/layout reasons
-- `_useMainUI` value, type, or usage
-- `_AuthRouter`'s routing logic
-- Existing `AppRoutes` constant names or values
-- Any test file — integration must not break existing tests; if a test breaks, fix the integration, not the test
-- `pubspec.yaml` packages — integration reuses existing packages only; new dependencies require Architect approval
+**Never touch:**
+- Any `Widget` in the `build()` return tree that controls visual output
+- `EdgeInsets`, `SizedBox`, `Padding`, `Container` dimensions
+- `TextStyle`, `Color`, `Theme` references
+- `AppRoutes` constant names or values
+- Generated files (`*.g.dart`, `*.freezed.dart`)
+- Any file in `features/` domain or data layers
+
+---
+
+### Passing data between screens
+
+Use the Notifier state machine — never constructor arguments for runtime data.
+
+```dart
+// WRONG — couples screens tightly, bypasses state machine
+Navigator.pushNamed(context, AppRoutes.chatScreen,
+    arguments: {'roomId': roomId, 'key': key});
+
+// RIGHT — matchmaking notifier already holds the roomId after matching;
+// chat screen reads it from the auth + matchmaking providers on entry
+ref.listen(matchmakingNotifierProvider, (_, next) {
+  if (next.status == MatchmakingStatus.matched && next.currentRoom != null) {
+    ref.read(chatNotifierProvider.notifier).enterSession(next.currentRoom!.roomId);
+    Navigator.pushNamed(context, AppRoutes.chatScreen);
+  }
+});
+```
 
 ---
 
 ### Integration progression order
 
-Wire screens in this order to keep the auth and session flows coherent:
+Wire screens in dependency order — a screen that needs data from a prior screen cannot be wired before that screen's backend is working:
 
-1. **Login / Sign Up** (`AppRoutes.home` → auth feature) — already routed via `_AuthRouter`; no action needed
-2. **Finding Room / Searching** (`AppRoutes.findingRoom`) → `matchmaking` feature screen
-3. **Chat Room** (`AppRoutes.chatScreen`) → `features/chat/presentation/screens/chat_screen.dart`
-4. **Group Chat** (`AppRoutes.groupChatScreen`) → `features/chat` (group mode, same feature)
-5. **Profile Edit** (`AppRoutes.profileEdit`) → `features/profile/presentation/screens/profile_screen.dart`
-6. **Dress Up / Avatar** (`AppRoutes.dressUp`) → `features/avatar/presentation/screens/avatar_picker_screen.dart`
-7. **Choose Room Type** / **Join by ID** → `matchmaking` feature (createCustomRoom / joinRoomById flows)
-8. Remaining cosmetic-only screens (notifications, blocked, friends) — defer until those CA features exist
+1. **Auth** (`screens/login_screen.dart`, `screens/signup_screen.dart`) → `features/auth` — wire `AuthNotifier`; handle all four `AuthStatus` states
+2. **Finding Room** (`screens/finding_room_screen.dart`) → `features/matchmaking` — wire `MatchmakingNotifier`; show spinner while searching, navigate to chat on match
+3. **Choose Room Type / Join by ID** (`screens/choose_room_type_screen.dart`, `screens/join_room_id_screen.dart`) → `features/matchmaking` — `createCustomRoom`, `joinRoomById`
+4. **Chat** (`screens/chat_screen.dart`) → `features/chat` — wire `ChatNotifier`; stream messages, typing indicators, Skip button calls `endSession`
+5. **Group Chat** (`screens/group_chat_screen.dart`) → `features/chat` (group mode)
+6. **Profile Edit** (`screens/profile_edit_screen.dart`) → `features/profile` — wire `ProfileNotifier`
+7. **Dress Up** (`screens/dress_up_screen.dart`) → `features/avatar` — wire `AvatarDecorationNotifier`
+8. Remaining screens (notifications, friends, blocked, admin) — defer until their CA features exist
 
-Do not skip ahead. A screen that depends on a previous screen's data (e.g. chat depends on matchmaking having established a session) cannot be integrated before its dependency.
+Do not skip ahead. Chat cannot be wired before matchmaking is working.
 
 ---
 
-### Provider wiring pattern for integration
+### Auth state in screens
 
-When the CA screen exists but needs to be reachable from the legacy route, wrap it in `ProviderScope` only if the parent `MaterialApp` does not already provide `ProviderScope` at the root. In this project, `ProviderScope` is already at the root — just navigate to the CA screen directly.
+Never read `FirebaseAuth.instance.currentUser` directly. The auth notifier is the single source of truth:
 
 ```dart
-// main.dart routes — before
-AppRoutes.findingRoom: (_) => const FindingRoomScreen(),  // legacy
+// WRONG
+final uid = FirebaseAuth.instance.currentUser?.uid;
 
-// main.dart routes — after integration
-AppRoutes.findingRoom: (_) => const MatchmakingScreen(),  // CA screen
+// RIGHT
+final user = ref.watch(authNotifierProvider.select((s) => s.user));
+final uid = user?.uid;
 ```
-
-No other changes. The CA screen's `build()` method already calls `ref.watch(matchmakingNotifierProvider)` via the root `ProviderScope`.
-
----
-
-### Anti-corruption layer
-
-The CA features layer must never absorb legacy patterns. During integration:
-- Never copy `StatefulWidget` + `FirebaseFirestore.instance` calls from a legacy screen into a CA screen
-- Never add `context.go()` or navigator pushes from a Notifier
-- Never read auth state from `FirebaseAuth.instance.currentUser` in a screen — use `ref.watch(authNotifierProvider).user`
-- Never pass data between screens via constructor arguments that bypass the Notifier state machine — use `ref.read(notifier).enterSession(id)` or equivalent entry point
 
 ---
 
@@ -581,11 +647,11 @@ The CA features layer must never absorb legacy patterns. During integration:
 
 | Test type | Requirement |
 |---|---|
-| Existing `flutter test` | Must still pass with zero failures after the route change |
-| Widget test for the CA screen | Must exist before the PR is merged (create if missing, following the fake notifier pattern) |
-| Route smoke test | Navigate to the integrated route in the test and verify the CA screen renders its key widget |
+| `flutter test` (full suite) | Zero failures — run before opening the PR |
+| Widget test for the wired screen | Must exist and cover: renders key widgets with fake notifier state, submit/action buttons call the notifier, loading state disables buttons, error state shows error widget |
+| Integration smoke test | If the screen is part of the matchmaking/chat flow, add or update a Flutter integration test |
 
-No Firebase SDK in any test file. No mockito. Follow the fake notifier pattern in the existing test suite.
+All screen widget tests use the fake notifier pattern — `_FakeXxxNotifier extends XxxNotifier`, override `build()`, never call `super.build()`. No Firebase SDK in any test file.
 
 ---
 
