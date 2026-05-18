@@ -1,5 +1,6 @@
 import * as admin from "firebase-admin";
-import {HttpsError, CallableRequest} from "firebase-functions/v2/https";
+import {HttpsError} from "firebase-functions/v2/https";
+import type {CallableRequest} from "firebase-functions/v2/https";
 
 export interface AdminCaller {
   uid: string;
