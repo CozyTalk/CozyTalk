@@ -41,11 +41,15 @@ dependencies:
   flutter_svg: ^2.0.17
   google_fonts: ^6.2.1
 
+  # Jukebox
+  http: ^1.6.0
+  just_audio: ^0.9.40
+  web: ^1.1.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
 
-  http: ^1.6.0
   flutter_lints: ^6.0.0
   riverpod_generator: ^4.0.3
   build_runner: ^2.15.0
