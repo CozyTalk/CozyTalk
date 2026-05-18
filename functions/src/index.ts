@@ -10,6 +10,9 @@ admin.initializeApp({
 
 setGlobalOptions({maxInstances: 10});
 
+// ── Friends ───────────────────────────────────────────────────────────────────
+export {onFriendshipDeleted} from "./friends/removeFriendship";
+
 // ── Chat (existing) ───────────────────────────────────────────────────────────
 export {sendMessage} from "./chat/sendMessage";
 export {endSession} from "./chat/endSession";

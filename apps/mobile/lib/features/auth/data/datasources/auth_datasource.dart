@@ -85,7 +85,6 @@ class AuthDatasourceImpl implements AuthDatasource {
             : _anonymousName(user.uid, {});
         await _firestore.collection('users').doc(user.uid).set({
           'uid': user.uid,
-          'email': user.email,
           'role': 'user',
           'displayName': displayName,
           'interest': '',
@@ -119,7 +118,6 @@ class AuthDatasourceImpl implements AuthDatasource {
       final displayName = _anonymousName(user.uid, {});
       await _firestore.collection('users').doc(user.uid).set({
         'uid': user.uid,
-        'email': email,
         'role': 'user',
         'displayName': displayName,
         'interest': '',

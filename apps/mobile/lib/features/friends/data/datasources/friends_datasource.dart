@@ -139,20 +139,19 @@ class FriendsDatasourceImpl implements FriendsDatasource {
     required String myDisplayName,
   }) async {
     final friendshipId = _makeFriendshipId(fromUid, currentUid);
-    final batch = _firestore.batch();
 
-    batch.update(_firestore.collection('friend_requests').doc(requestId), {
+    // Commit the status update first so the friendships create rule can see
+    // the accepted friend_request via get().
+    await _firestore.collection('friend_requests').doc(requestId).update({
       'status': 'accepted',
     });
 
-    batch.set(_firestore.collection('friendships').doc(friendshipId), {
+    await _firestore.collection('friendships').doc(friendshipId).set({
       'users': [fromUid, currentUid],
       'displayNames': {fromUid: fromDisplayName, currentUid: myDisplayName},
       'chatRoomId': friendshipId,
       'createdAt': FieldValue.serverTimestamp(),
     });
-
-    await batch.commit();
   }
 
   @override

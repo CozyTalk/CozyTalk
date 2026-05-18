@@ -126,7 +126,7 @@ In screens: `ref.watch(fooNotifierProvider)` for state · `ref.read(fooNotifierP
 
 | Collection | Key fields |
 |---|---|
-| `users/{uid}` | uid, email (absent for anonymous), role (user\|admin), createdAt, lastSeen, displayName?, photoUrl?, hatKey?, moodKey?, interest?, thoughts? |
+| `users/{uid}` | uid, role (user\|admin), createdAt, lastSeen, displayName?, photoUrl?, hatKey?, moodKey?, interest?, thoughts? — email is never stored in Firestore |
 | `waiting_pool/{uid}` | status, mode, createdAt, updatedAt, interestText?, interestVector? (256-dim), roomId? |
 | `rooms/{roomId}` | 5-char ID; mode (1v1\|group), roomType (public\|custom), status (active\|padding\|expired), users[], maxUsers, memberCount, isLocked, encryptionKey, createdAt, paddingUntil? |
 | `active_sessions/{id}` | Legacy proto-sessions only — new code uses `rooms/` |
@@ -137,7 +137,7 @@ In screens: `ref.watch(fooNotifierProvider)` for state · `ref.read(fooNotifierP
 | `friend_messages/{id}/messages/{id}` | senderId, senderDisplayName, text, timestamp — permanent, no TTL, no encryption (prototype) |
 | `reports/{id}` | Authenticated users may create; read/update/delete admin-only. `encryptionKey` is CF-written (not in client `hasOnly` list) |
 
-RTDB paths: `rooms/{id}/members/{uid}`, `typing/{id}/{uid}`, `presence/{id}/{uid}`, `nameQueue/{id}`, `pool_presence/{uid}`. Full schema + security rules: [`PROJECT_CONTEXT.md`](PROJECT_CONTEXT.md).
+RTDB paths: `rooms/{id}/members/{uid}`, `typing/{id}/{uid}` (read: room member), `presence/{id}/{uid}` (read: room member), `nameQueue/{id}`, `user_status/{uid}` (read/write: owner), `pool_presence/{uid}`. Full schema + security rules: [`PROJECT_CONTEXT.md`](PROJECT_CONTEXT.md).
 
 ---
 

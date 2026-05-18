@@ -11,18 +11,22 @@ CozyTalk — anonymous stranger chat app targeting Android and Web. Firebase-bac
 ## Known Security State (current)
 
 ### Firestore rules — deployed ✓
-- `users/{uid}`: user-owned read; create enforces `uid==userId` and `role=='user'`; update blocks `role`/`uid` mutation ✓
+- `users/{uid}`: **any signed-in user may read** (needed for friend search); email never stored in Firestore; create enforces `uid==userId`, `role=='user'`, no-email allowlist; update blocks `role`/`uid`/`createdAt` mutation ✓
 - `waiting_pool/{uid}`: user-owned; create enforces `status=='waiting'`, `createdAt==request.time`, and required fields; update restricted to `updatedAt` only (status written by Cloud Functions) ✓
 - `rooms/{roomId}`: participants read active/padding rooms; any signed-in user reads expired tombstones (contains only status/expiredAt/users:[]); `isLocked` update restricted to custom-room members; create/delete CF-only ✓
 - `active_sessions/{sessionId}`: **legacy proto-sessions only**; client read-only, write=false ✓
 - `reports/{reportId}`: create restricted to allowed fields, `reporterId==auth.uid`, `status=='pending'`, `createdAt==request.time`; admin-only read/update/delete ✓
+- `friend_requests/{id}`: sender-create only; sender+recipient read; only recipient may update status (accepted/declined); delete=false ✓
+- `friendships/{id}`: create requires accepted `friend_requests` doc cross-reference (get() check on both orderings); participant read/delete; update=false ✓
+- `friend_messages/{chatRoomId}/messages/{id}`: participant create/read; field allowlist + length limits; update/delete=false ✓
 - `isChatRoomParticipant()`: checks both `rooms/{id}` (new) and `active_sessions/{id}` (legacy) — backward compatible ✓
 - `isAdmin()` has `exists()` guard — safe for anonymous users ✓
 
 ### Realtime DB rules — deployed ✓
 - `rooms/{roomId}/members/{uid}`: CF-written membership anchor; client read gated by own membership; write=false for clients ✓
-- `sessions/{roomId}`: legacy proto-session compat; read scoped to session participants; write=false ✓
-- `typing/{roomId}/{uid}` / `presence/{roomId}/{uid}`: user-scoped write; validates field types ✓
+- `typing/{roomId}/{uid}`: user-scoped write; **read restricted to room members** (not any auth user); per-field validate + `$other: false` to reject unknown fields; `photoUrl` optional ✓
+- `presence/{roomId}/{uid}`: user-scoped write; **read restricted to room members** (not any auth user) ✓
+- `user_status/{uid}`: **read + write restricted to owner** (`auth.uid == $uid`); `$other: false` blocks unknown fields ✓
 
 ### Auth — current state
 - Anonymous auth: on. Users get a UID but no persistent identity. Reinstall = new UID.
@@ -52,6 +56,11 @@ CozyTalk — anonymous stranger chat app targeting Android and Web. Firebase-bac
 - [ ] `waiting_pool` update restricted to `updatedAt` only (status/roomId set by Cloud Functions) ✓ (deployed)
 - [ ] `active_sessions` write is `false` for clients ✓ (deployed, kept for proto-session compat)
 - [ ] `reports` create validates required fields and `reporterId==auth.uid` ✓ (deployed)
+- [ ] `users` create/update allowlist contains no `email` field
+- [ ] RTDB `typing` and `presence` reads are gated on room membership, not just `auth != null`
+- [ ] RTDB `user_status` read is owner-only (`auth.uid == $uid`)
+- [ ] `friendships` create cross-checks an accepted `friend_requests` doc (both orderings)
+- [ ] `contextImageUrls` in `reportSession` validated as `https://firebasestorage.googleapis.com/` URLs
 
 ### Secrets & Storage
 - [ ] No secrets or credentials in committed files

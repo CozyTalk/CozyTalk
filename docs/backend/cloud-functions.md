@@ -1,6 +1,6 @@
 # Cloud Functions
 
-15 exported functions total. All in `functions/src/`. Deployed via Firebase CLI.
+16 exported functions total. All in `functions/src/`. Deployed via Firebase CLI.
 
 Firebase project: `cozytalk-5d984`
 Default region: `us-central1` (unless noted)
@@ -27,7 +27,7 @@ Default region: `us-central1` (unless noted)
 `functions/src/chat/reportSession.ts`
 - **Trigger:** callable (authenticated)
 - **Input:** `{ sessionId, reportedUserId, reportType, reason, contextText?, contextImageUrls? }`
-- **Process:** Validates all inputs (`reason` ≤500 chars, `contextText` optional ≤2000 chars, `reportType` one of `spam|harassment|inappropriate_content|other`, `contextImageUrls` ≤5 strings, no self-reporting). Verifies both `reporterId` **and** `reportedUserId` are actual session participants. Looks up `encryptionKey` from `rooms/{sessionId}` (falls back to `active_sessions`, then `session_keys`). Upserts `session_keys/{sessionId}` with `flagged: true, expiresAt: null`. Decrypts all messages (AES-256-GCM), sorts by timestamp, saves plaintext to `reports/{reportId}/chat_log.json` in Cloud Storage (non-fatal if Storage write fails). Batch-updates `chat_rooms/{sessionId}/messages` with `{flagged: true, expiresAt: null}`. Creates `reports/{auto-id}` in Firestore (no `encryptionKey` in the doc — key remains in `session_keys/` only). Room is NOT ended — caller should call `endSession` after.
+- **Process:** Validates all inputs (`reason` ≤500 chars, `contextText` optional ≤2000 chars, `reportType` one of `spam|harassment|inappropriate_content|other`, `contextImageUrls` ≤5 Firebase Storage URLs (`https://firebasestorage.googleapis.com/` prefix required), no self-reporting). Verifies both `reporterId` **and** `reportedUserId` are actual session participants. Looks up `encryptionKey` from `rooms/{sessionId}` (falls back to `active_sessions`, then `session_keys`). Upserts `session_keys/{sessionId}` with `flagged: true, expiresAt: null`. Decrypts all messages (AES-256-GCM), sorts by timestamp, saves plaintext to `reports/{reportId}/chat_log.json` in Cloud Storage (non-fatal if Storage write fails). Batch-updates `chat_rooms/{sessionId}/messages` with `{flagged: true, expiresAt: null}`. Creates `reports/{auto-id}` in Firestore (no `encryptionKey` in the doc — key remains in `session_keys/` only). Room is NOT ended — caller should call `endSession` after.
 - **Output:** `{ reportId: string }`
 
 ---
@@ -105,6 +105,16 @@ Default region: `us-central1` (unless noted)
 `functions/src/matchmaking/cleanupPoolMember.ts`
 - **Trigger:** RTDB `onValueDeleted` — `pool_presence/{uid}` — **region: `asia-southeast1`**
 - **Process:** When pool presence deleted (disconnect), removes user from `waiting_pool/{uid}`.
+- **Output:** void (trigger)
+
+---
+
+## Friends (1 function)
+
+### `onFriendshipDeleted`
+`functions/src/friends/removeFriendship.ts`
+- **Trigger:** Firestore `onDocumentDeleted` — `friendships/{friendshipId}`
+- **Process:** When a `friendships` doc is deleted, deletes the entire `friend_messages/{friendshipId}/messages` subcollection to prevent orphaned data consuming storage indefinitely.
 - **Output:** void (trigger)
 
 ---
