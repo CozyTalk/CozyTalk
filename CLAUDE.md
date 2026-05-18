@@ -78,7 +78,7 @@ npm install && npm run build && npm test   # npm test requires emulators first
 ```
 
 Jest: 93 unit (matchmaking 60, embeddingService 21, chat 12). The 7 Vertex AI integration tests run separately via `jest.integration.config.js` — excluded from `npm test`.
-Flutter: 347 unit + widget tests.
+Flutter: 464 unit + widget tests.
 
 ---
 
@@ -93,6 +93,7 @@ Flutter: 347 unit + widget tests.
 | `profile` | `profileNotifierProvider` | `successField`: 'username'\|'interest'\|'thoughts' | Complete |
 | `avatar` | `avatarDecorationNotifierProvider` | `AvatarDecorationStatus`: idle\|loading\|saving\|error | Complete |
 | `home` | — | Thin nav hub, no domain/data | Complete |
+| `jukebox` | `jukeboxNotifierProvider` | `JukeboxUiState`: roomId, roomState, isResolving, resolveError, urlInput | Complete · Android + Web |
 
 **State pattern (all features):** Nullable fields in `FooState.copyWith` use `_sentinel` so callers can explicitly pass `null` to clear them. Never use `??` for clearable fields.
 

@@ -24,6 +24,8 @@ CozyTalk is a **cross-platform stranger chat app** targeting **Android and Web**
 | Models | `freezed` + `json_serializable` (code-gen) |
 | Auth | `google_sign_in` |
 | Local caching | `flutter_secure_storage` |
+| HTTP | `http` ^1.6.0 |
+| Audio playback | `just_audio` ^0.9.40 (Android) · `web` ^1.1.0 (Jukebox web iframe) |
 
 ### Cloud Functions (`functions/`)
 - TypeScript, Firebase Functions v2
@@ -135,7 +137,7 @@ Navigation hub `HomeScreen`. Used only when `_useMainUI = true`. No domain/data 
 Initialises Firebase, points to emulators (Auth `9099`, Functions `5001`, Firestore `8080`) when `USE_EMULATOR=true`. No automatic sign-in — `_AuthRouter` widget watches `authNotifierProvider` and routes to `LoginScreen` or `HelloScreen`.
 
 ### Tests
-347 Flutter unit + widget tests across auth, chat, matchmaking, profile, and hello features. See [Test Coverage](#quality-gates-definition-of-done) for the full breakdown.
+464 Flutter unit + widget tests across auth, chat, matchmaking, profile, hello, and jukebox features. See [Test Coverage](#quality-gates-definition-of-done) for the full breakdown.
 
 ---
 
@@ -185,6 +187,7 @@ See `database.rules.json` for the canonical source. All nodes require `auth != n
 | `presence/{roomId}/{uid}` | string (displayName) | Read: any signed-in; Write: owner | Max 30 chars; `onDisconnect().remove()` |
 | `nameQueue/{roomId}` | any | Read/Write: room member only | Transient display name exchange on room join |
 | `pool_presence/{uid}` | boolean | Read/Write: owner | Tracks whether user is actively in the waiting pool |
+| `jukebox/{roomId}` | `{ isPlaying, currentIndex, startedAt, queue[] }` | Read/Write: room member | Synced music queue; cleared by `endSession` CF |
 
 ### Firestore Indexes — `firestore.indexes.json` (deployed ✓)
 
@@ -364,7 +367,7 @@ Presence, typing, and nameQueue data are removed by `leaveRoom` CF on explicit l
 
 | Suite | Count | Location | Requires |
 |---|---|---|---|
-| Flutter unit + widget | 347 tests | `apps/mobile/test/` | Nothing |
+| Flutter unit + widget | 464 tests | `apps/mobile/test/` | Nothing |
 | Cloud Functions Jest | 93 unit tests | `functions/src/**/__tests__/*.test.ts` | `./dev.sh --emulator-only` |
 | Cloud Functions Jest (integration) | 7 live tests | `functions/src/matchmaking/__tests__/embeddingService.integration.test.ts` | Vertex AI credentials + `npm run test:embedding` |
 | Flutter integration | 43 tests | `apps/mobile/integration_test/matchmaking_advanced_test.dart` | Emulators + Android device |
