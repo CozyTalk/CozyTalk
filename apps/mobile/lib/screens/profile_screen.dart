@@ -4,10 +4,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../theme/app_colors.dart';
 import '../shared/avatar_overlay.dart';
 import '../shared/layered_avatar.dart';
-import '../shared/user_profile.dart';
+import '../features/auth/presentation/providers/auth_provider.dart';
+import '../features/profile/presentation/providers/profile_provider.dart';
 import 'profile_edit_screen.dart';
 import 'blocked_screen.dart';
-import 'login_screen.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
@@ -17,6 +17,17 @@ class ProfileScreen extends ConsumerStatefulWidget {
 }
 
 class _ProfileScreenState extends ConsumerState<ProfileScreen> {
+  @override
+  void initState() {
+    super.initState();
+    final uid = ref.read(authNotifierProvider).user?.uid;
+    if (uid != null) {
+      Future.microtask(
+        () => ref.read(profileNotifierProvider.notifier).load(uid),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -99,8 +110,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                         const SizedBox(height: 6),
                                         Text(
                                           ref
-                                              .watch(userProfileProvider)
-                                              .username,
+                                                  .watch(
+                                                    profileNotifierProvider,
+                                                  )
+                                                  .profile
+                                                  ?.displayName ??
+                                              '',
                                           style: const TextStyle(
                                             fontSize: 15,
                                             color: Colors.black,
@@ -118,8 +133,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                         const SizedBox(height: 6),
                                         Text(
                                           ref
-                                              .watch(userProfileProvider)
-                                              .interest,
+                                                  .watch(
+                                                    profileNotifierProvider,
+                                                  )
+                                                  .profile
+                                                  ?.interest ??
+                                              '',
                                           style: const TextStyle(
                                             fontSize: 15,
                                             color: Colors.black,
@@ -135,29 +154,44 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                 right: 0,
                                 child: GestureDetector(
                                   onTap: () async {
-                                    final profile = ref.read(
-                                      userProfileProvider,
-                                    );
+                                    final uid = ref
+                                        .read(authNotifierProvider)
+                                        .user
+                                        ?.uid;
+                                    if (uid == null) return;
+                                    final profile = ref
+                                        .read(profileNotifierProvider)
+                                        .profile;
                                     final result = await Navigator.push(
                                       context,
                                       MaterialPageRoute(
                                         builder: (_) => ProfileEditScreen(
-                                          currentName: profile.username,
-                                          currentInterest: profile.interest,
+                                          currentName:
+                                              profile?.displayName ?? '',
+                                          currentInterest:
+                                              profile?.interest ?? '',
                                         ),
                                       ),
                                     );
                                     if (result is Map && mounted) {
-                                      ref
-                                          .read(userProfileProvider.notifier)
-                                          .update(
-                                            username:
-                                                result['name'] as String? ??
-                                                profile.username,
-                                            interest:
-                                                result['interest'] as String? ??
-                                                profile.interest,
-                                          );
+                                      final notifier = ref.read(
+                                        profileNotifierProvider.notifier,
+                                      );
+                                      final newName = result['name'] as String?;
+                                      final newInterest =
+                                          result['interest'] as String?;
+                                      if (newName != null) {
+                                        await notifier.updateDisplayName(
+                                          uid,
+                                          newName,
+                                        );
+                                      }
+                                      if (newInterest != null) {
+                                        await notifier.updateInterest(
+                                          uid,
+                                          newInterest,
+                                        );
+                                      }
                                     }
                                   },
                                   child: SvgPicture.asset(
@@ -170,31 +204,35 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                             ],
                           ),
                         ),
-                        const SizedBox(height: 16),
+                        if (ref.watch(authNotifierProvider).user?.email !=
+                            null) ...[
+                          const SizedBox(height: 16),
 
-                        // ── Email Card ──
-                        _buildCard(
-                          child: Row(
-                            children: const [
-                              Text(
-                                'Email :',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w900,
-                                  fontSize: 15,
-                                  color: Colors.black,
+                          // ── Email Card ──
+                          _buildCard(
+                            child: Row(
+                              children: [
+                                const Text(
+                                  'Email :',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w900,
+                                    fontSize: 15,
+                                    color: Colors.black,
+                                  ),
                                 ),
-                              ),
-                              SizedBox(width: 12),
-                              Text(
-                                'Sekloso@gmail.com',
-                                style: TextStyle(
-                                  fontSize: 15,
-                                  color: Colors.black,
+                                const SizedBox(width: 12),
+                                Text(
+                                  ref.watch(authNotifierProvider).user?.email ??
+                                      '',
+                                  style: const TextStyle(
+                                    fontSize: 15,
+                                    color: Colors.black,
+                                  ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
-                        ),
+                        ],
                         const SizedBox(height: 16),
 
                         // ── Blocked Card ──
@@ -261,13 +299,16 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
                         // ── Log out Card ──
                         _buildCard(
-                          onTap: () => Navigator.pushAndRemoveUntil(
-                            context,
-                            MaterialPageRoute<void>(
-                              builder: (_) => const LoginScreen(),
-                            ),
-                            (_) => false,
-                          ),
+                          onTap: () async {
+                            await ref
+                                .read(authNotifierProvider.notifier)
+                                .signOut();
+                            if (context.mounted) {
+                              Navigator.of(
+                                context,
+                              ).popUntil((route) => route.isFirst);
+                            }
+                          },
                           child: Row(
                             children: [
                               SvgPicture.asset(
