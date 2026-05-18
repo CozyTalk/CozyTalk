@@ -14,6 +14,7 @@ import '../shared/user_profile.dart';
 import '../shared/friend_message_popup.dart';
 import '../theme/app_routes.dart';
 import '../models/friend.dart';
+import '../shared/gif_picker.dart';
 
 // ── Card assets ────────────────────────────────────────────────────────────
 const _cardAssets = [
@@ -36,7 +37,7 @@ String _nowTime() {
 
 // ── Message model ──────────────────────────────────────────────────────────
 class ChatMessage {
-  final String type; // 'warning' | 'system' | 'me' | 'other' | 'card'
+  final String type; // 'warning' | 'system' | 'me' | 'other' | 'card' | 'gif'
   final String text; // for 'card' = asset image path
   final String? time;
   ChatMessage({required this.type, required this.text, this.time});
@@ -169,6 +170,13 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
   void _sendTopicCard() {
     setState(() {
       messages.add(ChatMessage(type: 'card', text: _pickCard()));
+    });
+    _scrollToBottom();
+  }
+
+  void _sendGif(String label) {
+    setState(() {
+      messages.add(ChatMessage(type: 'gif', text: label, time: _nowTime()));
     });
     _scrollToBottom();
   }
@@ -595,6 +603,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
           'me' => _buildBubble(msg, isMe: true, avatarState: avatarState),
           'other' => _buildBubble(msg, isMe: false),
           'card' => _buildCard(msg.text),
+          'gif' => _buildGifBubble(msg, avatarState: avatarState),
           _ => const SizedBox.shrink(),
         };
       },
@@ -719,6 +728,71 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
     return _TopicCard(assetPath: assetPath, onShuffle: _shuffleTopic);
   }
 
+  Widget _buildGifBubble(ChatMessage msg, {AvatarState? avatarState}) {
+    final maxW = MediaQuery.of(context).size.width * 0.55;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.end,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Text(
+            msg.time ?? '',
+            style: const TextStyle(fontSize: 10, color: Colors.black45),
+          ),
+          const SizedBox(width: 6),
+          Container(
+            constraints: BoxConstraints(maxWidth: maxW),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF1CEE4),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  msg.text,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 15,
+                    color: Color(0xFF4A3228),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.yellowWarm,
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: const Text(
+                    'GIF',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF4A3228),
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          LayeredAvatar(
+            boxSize: 40,
+            moodOverlay: avatarState?.mood,
+            accessoryOverlay: avatarState?.accessory,
+          ),
+        ],
+      ),
+    );
+  }
+
   // ── Blocked bar ───────────────────────────────────────────────────────────
   Widget _buildBlockedBar() {
     return Container(
@@ -779,6 +853,38 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
                   contentPadding: const EdgeInsets.symmetric(
                     horizontal: 18,
                     vertical: 16,
+                  ),
+                  suffixIcon: GestureDetector(
+                    onTap: () async {
+                      final gif = await showGifPicker(context);
+                      if (!mounted) return;
+                      if (gif != null) _sendGif(gif);
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 12,
+                      ),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 7,
+                          vertical: 3,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.yellowWarm,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: const Text(
+                          'GIF',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w900,
+                            fontSize: 11,
+                            color: Color(0xFF4A3228),
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ),
+                    ),
                   ),
                 ),
               ),
