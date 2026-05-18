@@ -15,10 +15,14 @@
     },
     "typing": {
       "$room_id": {
-        ".read": "auth != null",
+        ".read": "auth != null && root.child('rooms').child($room_id).child('members').child(auth.uid).exists()",
         "$uid": {
           ".write": "auth != null && auth.uid == $uid",
-          ".validate": "newData.hasChildren(['isTyping', 'displayName']) && newData.child('isTyping').isBoolean() && newData.child('displayName').isString() && newData.child('displayName').val().length <= 100"
+          ".validate": "newData.hasChildren(['isTyping', 'displayName'])",
+          "isTyping": { ".validate": "newData.isBoolean()" },
+          "displayName": { ".validate": "newData.isString() && newData.val().length <= 100" },
+          "photoUrl": { ".validate": "!newData.exists() || (newData.isString() && newData.val().length <= 500)" },
+          "$other": { ".validate": false }
         }
       }
     },
@@ -30,7 +34,7 @@
     },
     "user_status": {
       "$uid": {
-        ".read": "auth != null",
+        ".read": "auth != null && auth.uid == $uid",
         ".write": "auth != null && auth.uid == $uid",
         ".validate": "newData.hasChildren(['status'])",
         "status": {
@@ -56,7 +60,7 @@
     },
     "presence": {
       "$room_id": {
-        ".read": "auth != null",
+        ".read": "auth != null && root.child('rooms').child($room_id).child('members').child(auth.uid).exists()",
         "$uid": {
           ".write": "auth != null && auth.uid == $uid",
           ".validate": "!newData.exists() || (newData.isString() && newData.val().length > 0 && newData.val().length <= 30)"

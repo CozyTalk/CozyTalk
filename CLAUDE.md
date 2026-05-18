@@ -78,7 +78,7 @@ npm install && npm run build && npm test   # npm test requires emulators first
 ```
 
 Jest: 93 unit (matchmaking 60, embeddingService 21, chat 12). The 7 Vertex AI integration tests run separately via `jest.integration.config.js` — excluded from `npm test`.
-Flutter: 462 unit + widget tests.
+Flutter: 530 unit + widget tests.
 
 ---
 
@@ -93,7 +93,7 @@ Flutter: 462 unit + widget tests.
 | `profile` | `profileNotifierProvider` | `successField`: 'username'\|'interest'\|'thoughts' | Complete |
 | `avatar` | `avatarDecorationNotifierProvider` | `AvatarDecorationStatus`: idle\|loading\|saving\|error | Complete |
 | `home` | — | Thin nav hub, no domain/data | Complete |
-| `jukebox` | `jukeboxNotifierProvider` | `JukeboxUiState`: roomId, roomState, isResolving, resolveError, urlInput | Complete · Android + Web |
+| `friends` | `friendsNotifierProvider` · `friendChatNotifierProvider` | `FriendsState`: allUsers\|friends\|incomingRequests · `FriendChatState`: messages\|chatRoomId | Prototype (dev screens only) |
 
 **State pattern (all features):** Nullable fields in `FooState.copyWith` use `_sentinel` so callers can explicitly pass `null` to clear them. Never use `??` for clearable fields.
 
@@ -126,15 +126,18 @@ In screens: `ref.watch(fooNotifierProvider)` for state · `ref.read(fooNotifierP
 
 | Collection | Key fields |
 |---|---|
-| `users/{uid}` | uid, email (absent for anonymous), role (user\|admin), createdAt, lastSeen, displayName?, photoUrl?, hatKey?, moodKey?, interest?, thoughts? |
+| `users/{uid}` | uid, role (user\|admin), createdAt, lastSeen, displayName?, photoUrl?, hatKey?, moodKey?, interest?, thoughts? — email is never stored in Firestore |
 | `waiting_pool/{uid}` | status, mode, createdAt, updatedAt, interestText?, interestVector? (256-dim), roomId? |
 | `rooms/{roomId}` | 5-char ID; mode (1v1\|group), roomType (public\|custom), status (active\|padding\|expired), users[], maxUsers, memberCount, isLocked, encryptionKey, createdAt, paddingUntil? |
 | `active_sessions/{id}` | Legacy proto-sessions only — new code uses `rooms/` |
 | `chat_rooms/{id}/messages/{id}` | senderId, displayName, encryptedText, iv, authTag (AES-256-GCM), timestamp, expiresAt TTL (3 days), flagged? |
 | `session_keys/{id}` | sessionId, encryptionKey, users[], createdAt, expiresAt TTL (cleared when flagged by `reportSession`), flagged? |
+| `friend_requests/{id}` | fromUid, fromDisplayName, toUid, toDisplayName, status (pending\|accepted\|declined), createdAt |
+| `friendships/{id}` | users[], displayNames{uid:name}, chatRoomId (= doc ID = sorted UIDs), createdAt |
+| `friend_messages/{id}/messages/{id}` | senderId, senderDisplayName, text, timestamp — permanent, no TTL, no encryption (prototype) |
 | `reports/{id}` | Authenticated users may create; read/update/delete admin-only. `encryptionKey` is CF-written (not in client `hasOnly` list) |
 
-RTDB paths: `rooms/{id}/members/{uid}`, `typing/{id}/{uid}`, `presence/{id}/{uid}`, `nameQueue/{id}`, `pool_presence/{uid}`. Full schema + security rules: [`PROJECT_CONTEXT.md`](PROJECT_CONTEXT.md).
+RTDB paths: `rooms/{id}/members/{uid}`, `typing/{id}/{uid}` (read: room member), `presence/{id}/{uid}` (read: room member), `nameQueue/{id}`, `user_status/{uid}` (read/write: owner), `pool_presence/{uid}`. Full schema + security rules: [`PROJECT_CONTEXT.md`](PROJECT_CONTEXT.md).
 
 ---
 

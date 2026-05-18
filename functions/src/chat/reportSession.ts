@@ -124,11 +124,12 @@ export const reportSession = onCall(
           `Cannot attach more than ${MAX_IMAGES} images.`,
         );
       }
+      const STORAGE_BASE = "https://firebasestorage.googleapis.com/";
       for (const url of contextImageUrls) {
-        if (typeof url !== "string") {
+        if (typeof url !== "string" || !url.startsWith(STORAGE_BASE)) {
           throw new HttpsError(
             "invalid-argument",
-            "Each image URL must be a string.",
+            "Each image URL must be a Firebase Storage URL.",
           );
         }
       }
