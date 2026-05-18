@@ -179,11 +179,11 @@ service cloud.firestore {
            ])
         && (
           (
-            exists(/databases/$(database)/documents/friend_requests/$(request.resource.data.users[0] + '_' + request.resource.data.users[1]))
-            && get(/databases/$(database)/documents/friend_requests/$(request.resource.data.users[0] + '_' + request.resource.data.users[1])).data.status == 'accepted'
+            existsAfter(/databases/$(database)/documents/friend_requests/$(request.resource.data.users[0] + '_' + request.resource.data.users[1]))
+            && getAfter(/databases/$(database)/documents/friend_requests/$(request.resource.data.users[0] + '_' + request.resource.data.users[1])).data.status == 'accepted'
           ) || (
-            exists(/databases/$(database)/documents/friend_requests/$(request.resource.data.users[1] + '_' + request.resource.data.users[0]))
-            && get(/databases/$(database)/documents/friend_requests/$(request.resource.data.users[1] + '_' + request.resource.data.users[0])).data.status == 'accepted'
+            existsAfter(/databases/$(database)/documents/friend_requests/$(request.resource.data.users[1] + '_' + request.resource.data.users[0]))
+            && getAfter(/databases/$(database)/documents/friend_requests/$(request.resource.data.users[1] + '_' + request.resource.data.users[0])).data.status == 'accepted'
           )
         );
       allow delete: if isSignedIn()
