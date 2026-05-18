@@ -82,7 +82,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             child: IconButton(
               icon: const Icon(Icons.queue_music_rounded),
               tooltip: 'Jukebox',
-              color: Colors.white,
               onPressed: state.status == SessionStatus.chatting
                   ? _openJukeboxSheet
                   : null,
@@ -95,7 +94,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               child: IconButton(
                 icon: const Icon(Icons.flag_outlined),
                 tooltip: 'Report',
-                color: Colors.white,
                 onPressed: state.status == SessionStatus.chatting
                     ? _showReportSheet
                     : null,
@@ -108,10 +106,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               onPressed: state.status == SessionStatus.chatting
                   ? _endSession
                   : null,
-              child: const Text(
-                'Skip',
-                style: TextStyle(color: Colors.white, fontSize: 16),
-              ),
+              child: const Text('Skip', style: TextStyle(fontSize: 16)),
             ),
           ),
         ],

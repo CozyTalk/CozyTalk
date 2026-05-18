@@ -65,8 +65,8 @@
     },
     "jukebox": {
       "$room_id": {
-        ".read":  "auth != null && root.child('rooms').child($room_id).child('members').child(auth.uid).exists()",
-        ".write": "auth != null && root.child('rooms').child($room_id).child('members').child(auth.uid).exists()"
+        ".read":  "auth != null && root.child('presence').child($room_id).child(auth.uid).exists()",
+        ".write": "auth != null && root.child('presence').child($room_id).child(auth.uid).exists()"
       }
     }
   }

@@ -105,9 +105,25 @@ class JukeboxNotifier extends Notifier<JukeboxUiState> {
     if (state.roomId == roomId) return;
     _rtdbSub?.cancel();
     state = state.copyWith(roomId: roomId);
+    _subscribeToJukebox(roomId);
+  }
+
+  void _subscribeToJukebox(String roomId) {
     _rtdbSub = ref
         .read(_watchJukeboxProvider)(roomId)
-        .listen(_onRtdbState, onError: (_) {});
+        .listen(
+          _onRtdbState,
+          onError: (Object e) {
+            // Presence is written asynchronously after enterRoom; retry once so
+            // the subscription reconnects after the permission window opens.
+            final msg = e.toString().toLowerCase();
+            if (msg.contains('permission') || msg.contains('denied')) {
+              Future.delayed(const Duration(seconds: 3), () {
+                if (state.roomId == roomId) _subscribeToJukebox(roomId);
+              });
+            }
+          },
+        );
   }
 
   void setUrlInput(String url) =>
