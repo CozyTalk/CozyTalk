@@ -7,28 +7,25 @@ import 'report_dialog.dart';
 
 /// The visual content of the members slide-down panel.
 /// Rendered inside a Stack in GroupChatScreen so the header stays on top.
-class MembersPanelBody extends StatefulWidget {
+class MembersPanelBody extends StatelessWidget {
   final List<String> members;
   final VoidCallback onClose;
-
-  /// The display name used to identify the current user (e.g. "Me").
   final String currentUser;
   final AvatarState avatarState;
+  final Map<String, bool> friendRequestSent;
+  final void Function(String name) onAddFriend;
+  final void Function(String name) onCancelRequest;
 
   const MembersPanelBody({
     super.key,
     required this.members,
     required this.onClose,
+    required this.onAddFriend,
+    required this.onCancelRequest,
     this.currentUser = 'Me',
     this.avatarState = const AvatarState(),
+    this.friendRequestSent = const {},
   });
-
-  @override
-  State<MembersPanelBody> createState() => _MembersPanelBodyState();
-}
-
-class _MembersPanelBodyState extends State<MembersPanelBody> {
-  final Map<int, bool> _friendsAdded = {};
 
   @override
   Widget build(BuildContext context) {
@@ -37,16 +34,14 @@ class _MembersPanelBodyState extends State<MembersPanelBody> {
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       child: Column(
         mainAxisSize: MainAxisSize.min,
-        children: widget.members.asMap().entries.map((e) {
-          return _buildRow(e.key, e.value);
-        }).toList(),
+        children: members.map((name) => _buildRow(context, name)).toList(),
       ),
     );
   }
 
-  Widget _buildRow(int index, String name) {
-    final bool isMe = name == widget.currentUser;
-    final bool isAdded = _friendsAdded[index] ?? false;
+  Widget _buildRow(BuildContext context, String name) {
+    final bool isMe = name == currentUser;
+    final bool isAdded = friendRequestSent[name] == true;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
@@ -64,19 +59,17 @@ class _MembersPanelBodyState extends State<MembersPanelBody> {
       ),
       child: Row(
         children: [
-          // Avatar — use LayeredAvatar for Me, base for others
           ClipRRect(
             borderRadius: BorderRadius.circular(12),
             child: isMe
                 ? LayeredAvatar(
                     boxSize: 46,
-                    moodOverlay: widget.avatarState.mood,
-                    accessoryOverlay: widget.avatarState.accessory,
+                    moodOverlay: avatarState.mood,
+                    accessoryOverlay: avatarState.accessory,
                   )
                 : LayeredAvatar(boxSize: 46),
           ),
           const SizedBox(width: 14),
-          // Name
           Expanded(
             child: Text(
               name,
@@ -87,11 +80,11 @@ class _MembersPanelBodyState extends State<MembersPanelBody> {
               ),
             ),
           ),
-          // Hide buttons for self
           if (!isMe) ...[
-            // Add friend
+            // Add / Cancel friend request
             GestureDetector(
-              onTap: () => setState(() => _friendsAdded[index] = true),
+              onTap: () =>
+                  isAdded ? onCancelRequest(name) : onAddFriend(name),
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
                 width: 38,
@@ -126,7 +119,7 @@ class _MembersPanelBodyState extends State<MembersPanelBody> {
             // Report
             GestureDetector(
               onTap: () {
-                widget.onClose();
+                onClose();
                 showDialog(
                   context: context,
                   builder: (_) => const ReportDialog(),

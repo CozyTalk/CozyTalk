@@ -15,6 +15,8 @@ import '../shared/friend_message_popup.dart';
 import '../theme/app_routes.dart';
 import '../models/friend.dart';
 import '../shared/gif_picker.dart';
+import '../shared/friend_request_popup.dart';
+import '../shared/info_dialog.dart';
 
 // ── Card assets ────────────────────────────────────────────────────────────
 const _cardAssets = [
@@ -67,6 +69,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
   late final Animation<Offset> _songSlide;
 
   String friendMood = 'I love TikTok very much.';
+  bool _friendRequestSent = false;
+  bool _friendAccepted = false;
 
   final List<ChatMessage> messages = [
     ChatMessage(
@@ -179,6 +183,56 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
       messages.add(ChatMessage(type: 'gif', text: label, time: _nowTime()));
     });
     _scrollToBottom();
+  }
+
+  void _sendFriendRequest([String name = 'kaitom']) {
+    if (_friendRequestSent) return;
+    setState(() => _friendRequestSent = true);
+    showInfoDialog(
+      context,
+      type: InfoDialogType.info,
+      title: 'Friend Request Sent',
+      message:
+          'Your friend request has been sent to $name.\nWaiting for them to accept.',
+    );
+    Future.delayed(const Duration(milliseconds: 1500), () {
+      if (!mounted) return;
+      showFriendRequestPopup(
+        context,
+        requesterName: name,
+        onAccept: () {
+          setState(() => _friendAccepted = true);
+          showInfoDialog(
+            context,
+            type: InfoDialogType.success,
+            title: "You're now friends! 🎉",
+            message:
+                'You and $name are now friends.\nYou can find them in your friends list.',
+          );
+        },
+        onDecline: () => setState(() => _friendRequestSent = false),
+      );
+    });
+  }
+
+  void _cancelFriendRequest([String name = 'kaitom']) {
+    if (_friendAccepted) {
+      showInfoDialog(
+        context,
+        type: InfoDialogType.warning,
+        title: 'Cannot Cancel Request',
+        message:
+            '$name has already accepted your friend request.\nYou are now friends!',
+      );
+      return;
+    }
+    setState(() => _friendRequestSent = false);
+    showInfoDialog(
+      context,
+      type: InfoDialogType.info,
+      title: 'Request Cancelled',
+      message: 'Your friend request to $name has been cancelled.',
+    );
   }
 
   void _shuffleTopic() {
@@ -511,23 +565,33 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
             bottom: 0,
             left: 0,
             right: 70,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                _StaticAvatar(
-                  username: 'kaitom',
-                  moodText: friendMood,
-                  isMe: false,
-                ),
-                const SizedBox(width: 20),
-                _StaticAvatar(
-                  username: myUsername,
-                  moodText: myMood,
-                  isMe: true,
-                  avatarState: avatarState,
-                ),
-              ],
+            child: LayoutBuilder(
+              builder: (_, c) {
+                final eachW = ((c.maxWidth - 20) / 2).clamp(80.0, 120.0);
+                return Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    _StaticAvatar(
+                      username: 'kaitom',
+                      moodText: friendMood,
+                      isMe: false,
+                      boxWidth: eachW,
+                      onFriendRequest: _sendFriendRequest,
+                      onCancelRequest: _cancelFriendRequest,
+                      friendRequestSent: _friendRequestSent,
+                    ),
+                    const SizedBox(width: 20),
+                    _StaticAvatar(
+                      username: myUsername,
+                      moodText: myMood,
+                      isMe: true,
+                      avatarState: avatarState,
+                      boxWidth: eachW,
+                    ),
+                  ],
+                );
+              },
             ),
           ),
           // Side buttons
@@ -678,7 +742,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
             GestureDetector(
               onTap: () => showDialog(
                 context: context,
-                builder: (_) => UserProfileDialog(username: 'kaitom'),
+                builder: (_) => UserProfileDialog(
+                  username: 'kaitom',
+                  initialAdded: _friendRequestSent,
+                  onAddFriend: () => _sendFriendRequest(),
+                  onCancelRequest: () => _cancelFriendRequest(),
+                ),
               ),
               child: LayeredAvatar(boxSize: 40),
             ),
@@ -1121,18 +1190,27 @@ class _StaticAvatar extends StatelessWidget {
     required this.moodText,
     required this.isMe,
     this.avatarState,
+    this.boxWidth = 120,
+    this.onFriendRequest,
+    this.onCancelRequest,
+    this.friendRequestSent = false,
   });
 
   final String username;
   final String moodText;
   final bool isMe;
   final AvatarState? avatarState;
+  final VoidCallback? onFriendRequest;
+  final VoidCallback? onCancelRequest;
+  final bool friendRequestSent;
+  final double boxWidth;
 
   @override
   Widget build(BuildContext context) {
+    final s = boxWidth / 120;
     return SizedBox(
-      width: 120,
-      height: 190,
+      width: boxWidth,
+      height: 190 * s,
       child: Stack(
         clipBehavior: Clip.none,
         children: [
@@ -1143,40 +1221,44 @@ class _StaticAvatar extends StatelessWidget {
             child: GestureDetector(
               onTap: () => showDialog(
                 context: context,
-                builder: (_) =>
-                    UserProfileDialog(username: username, isMe: isMe),
+                builder: (_) => UserProfileDialog(
+                  username: username,
+                  isMe: isMe,
+                  initialAdded: !isMe && friendRequestSent,
+                  onAddFriend: isMe ? null : onFriendRequest,
+                  onCancelRequest: isMe ? null : onCancelRequest,
+                ),
               ),
               child: LayeredAvatar(
-                boxSize: 90,
+                boxSize: 90 * s,
                 moodOverlay: isMe ? avatarState?.mood : null,
                 accessoryOverlay: isMe ? avatarState?.accessory : null,
               ),
             ),
           ),
           Positioned(
-            bottom: 75,
-            left: isMe ? 25 : -15,
-            right: isMe ? -15 : 25,
+            bottom: 80 * s,
+            left: (boxWidth - 92 * s) / 2,
             child: Container(
-              width: 95,
-              height: 105,
+              width: 92 * s,
+              height: 104 * s,
               decoration: const BoxDecoration(
                 image: DecorationImage(
-                  image: AssetImage('assets/images/ThinkBubble.png'),
+                  image: AssetImage('assets/images/chat_t_bubble.png'),
                   fit: BoxFit.contain,
                 ),
               ),
-              padding: const EdgeInsets.only(bottom: 12, left: 15, right: 10),
+              padding: EdgeInsets.all(10 * s),
               alignment: Alignment.center,
               child: Text(
                 moodText,
-                style: const TextStyle(
-                  fontSize: 11,
+                style: TextStyle(
+                  fontSize: (9 * s).clamp(7.0, 9.0),
                   fontWeight: FontWeight.bold,
                   color: Colors.black87,
                 ),
                 textAlign: TextAlign.center,
-                maxLines: 3,
+                maxLines: 4,
                 overflow: TextOverflow.ellipsis,
               ),
             ),
