@@ -17,6 +17,17 @@ class _JukeboxSheetState extends ConsumerState<JukeboxSheet> {
   final _urlController = TextEditingController();
 
   @override
+  void initState() {
+    super.initState();
+    // Safety net: re-subscribe if JukeboxPlayer's subscription errored.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        ref.read(jukeboxNotifierProvider.notifier).enterRoom(widget.roomId);
+      }
+    });
+  }
+
+  @override
   void dispose() {
     _urlController.dispose();
     super.dispose();

@@ -94,6 +94,8 @@ class JukeboxUiState {
 
 class JukeboxNotifier extends Notifier<JukeboxUiState> {
   StreamSubscription<JukeboxRoomState?>? _rtdbSub;
+  // True only while the subscription has connected and is receiving data.
+  bool _subActive = false;
 
   @override
   JukeboxUiState build() {
@@ -101,9 +103,13 @@ class JukeboxNotifier extends Notifier<JukeboxUiState> {
     return const JukeboxUiState();
   }
 
+  // Called from both JukeboxPlayer (on every ChatScreen build) and
+  // JukeboxSheet.initState as a safety net.
   void enterRoom(String roomId) {
-    if (state.roomId == roomId) return;
+    // Re-subscribe if: different room, OR subscription is dead/errored.
+    if (state.roomId == roomId && _subActive) return;
     _rtdbSub?.cancel();
+    _subActive = false;
     state = state.copyWith(roomId: roomId);
     _subscribeToJukebox(roomId);
   }
@@ -112,17 +118,22 @@ class JukeboxNotifier extends Notifier<JukeboxUiState> {
     _rtdbSub = ref
         .read(_watchJukeboxProvider)(roomId)
         .listen(
-          _onRtdbState,
-          onError: (Object e) {
-            // Presence is written asynchronously after enterRoom; retry once so
-            // the subscription reconnects after the permission window opens.
-            final msg = e.toString().toLowerCase();
-            if (msg.contains('permission') || msg.contains('denied')) {
-              Future.delayed(const Duration(seconds: 3), () {
-                if (state.roomId == roomId) _subscribeToJukebox(roomId);
-              });
-            }
+          (s) {
+            _subActive = true;
+            _onRtdbState(s);
           },
+          onError: (Object e) {
+            _subActive = false;
+            // presence/{roomId}/{uid} is written async by joinProtoSession.
+            // Retry after a short delay so the subscription reconnects once the
+            // permission rule passes.
+            Future.delayed(const Duration(seconds: 2), () {
+              if (state.roomId == roomId && !_subActive) {
+                _subscribeToJukebox(roomId);
+              }
+            });
+          },
+          onDone: () => _subActive = false,
         );
   }
 
@@ -132,7 +143,13 @@ class JukeboxNotifier extends Notifier<JukeboxUiState> {
   Future<void> addUrl() async {
     final roomId = state.roomId;
     final url = state.urlInput.trim();
-    if (roomId == null || url.isEmpty || state.isResolving) return;
+    if (roomId == null) {
+      state = state.copyWith(
+        resolveError: 'Connecting to room… try again in a moment.',
+      );
+      return;
+    }
+    if (url.isEmpty || state.isResolving) return;
     if ((state.roomState?.queue.length ?? 0) >= 4) {
       state = state.copyWith(resolveError: 'Queue is full (max 4 tracks).');
       return;
