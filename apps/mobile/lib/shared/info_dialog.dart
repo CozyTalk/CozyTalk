@@ -41,9 +41,9 @@ class _InfoDialog extends StatelessWidget {
 
   static const _icons = {
     InfoDialogType.success: (Icons.check_circle_rounded, Color(0xFF6B8F4E)),
-    InfoDialogType.error:   (Icons.cancel_rounded,        AppColors.redOrange),
+    InfoDialogType.error: (Icons.cancel_rounded, AppColors.redOrange),
     InfoDialogType.warning: (Icons.warning_amber_rounded, Color(0xFFB07D10)),
-    InfoDialogType.info:    (Icons.info_rounded,          AppColors.brownDeep),
+    InfoDialogType.info: (Icons.info_rounded, AppColors.brownDeep),
   };
 
   @override

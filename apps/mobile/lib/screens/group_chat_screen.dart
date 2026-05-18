@@ -313,8 +313,7 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
                 'You and $targetName are now friends.\nYou can find them in your friends list.',
           );
         },
-        onDecline: () =>
-            setState(() => _friendRequestSent[targetName] = false),
+        onDecline: () => setState(() => _friendRequestSent[targetName] = false),
       );
     });
   }
@@ -811,7 +810,9 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
                               builder: (_) => UserProfileDialog(
                                 username: displayName,
                                 isMe: isMe,
-                                initialAdded: !isMe && (_friendRequestSent[displayName] == true),
+                                initialAdded:
+                                    !isMe &&
+                                    (_friendRequestSent[displayName] == true),
                                 onAddFriend: isMe
                                     ? null
                                     : () => _sendFriendRequest(displayName),
@@ -1014,8 +1015,7 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
                   username: msg.sender ?? '',
                   initialAdded: _friendRequestSent[msg.sender ?? ''] == true,
                   onAddFriend: () => _sendFriendRequest(msg.sender ?? ''),
-                  onCancelRequest: () =>
-                      _cancelFriendRequest(msg.sender ?? ''),
+                  onCancelRequest: () => _cancelFriendRequest(msg.sender ?? ''),
                 ),
               ),
               child: LayeredAvatar(boxSize: 40),

@@ -243,7 +243,8 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
                               context,
                               type: InfoDialogType.success,
                               title: 'Profile Saved',
-                              message: 'Your profile has been updated successfully.',
+                              message:
+                                  'Your profile has been updated successfully.',
                               onConfirm: () => Navigator.pop(context, result),
                             );
                           },

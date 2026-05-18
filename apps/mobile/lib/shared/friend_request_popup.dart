@@ -106,8 +106,7 @@ class _FriendRequestBanner extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: Colors.grey.shade100,
                       borderRadius: BorderRadius.circular(12),
-                      border:
-                          Border.all(color: Colors.grey.shade300, width: 1),
+                      border: Border.all(color: Colors.grey.shade300, width: 1),
                     ),
                     child: const Icon(
                       Icons.person,

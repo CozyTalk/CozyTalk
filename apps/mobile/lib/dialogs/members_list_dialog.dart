@@ -83,8 +83,7 @@ class MembersPanelBody extends StatelessWidget {
           if (!isMe) ...[
             // Add / Cancel friend request
             GestureDetector(
-              onTap: () =>
-                  isAdded ? onCancelRequest(name) : onAddFriend(name),
+              onTap: () => isAdded ? onCancelRequest(name) : onAddFriend(name),
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
                 width: 38,
