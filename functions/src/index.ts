@@ -10,6 +10,13 @@ admin.initializeApp({
 
 setGlobalOptions({maxInstances: 10});
 
+// ── Admin ─────────────────────────────────────────────────────────────────────
+export {adminGetDashboard} from "./admin/adminGetDashboard";
+export {adminResolveReport} from "./admin/adminResolveReport";
+export {adminGetChatLog} from "./admin/adminGetChatLog";
+export {adminBanUser} from "./admin/adminBanUser";
+export {adminUnbanUser} from "./admin/adminUnbanUser";
+
 // ── Chat (existing) ───────────────────────────────────────────────────────────
 export {sendMessage} from "./chat/sendMessage";
 export {endSession} from "./chat/endSession";

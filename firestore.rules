@@ -37,7 +37,7 @@ service cloud.firestore {
 
     // ── users ────────────────────────────────────────────────────────────────
     match /users/{userId} {
-      allow read: if isOwner(userId);
+      allow read: if isOwner(userId) || isAdmin();
 
       // role and uid are set at creation and immutable forever
       allow create: if isOwner(userId)

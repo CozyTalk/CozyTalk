@@ -21,8 +21,17 @@ Full reference: `PROJECT_CONTEXT.md` (Firestore rules) and `MATCHMAKING_CONTEXT_
 | `moodKey` | string? | avatar mood |
 | `interest` | string? | free-text interest for matching |
 | `thoughts` | string? | |
+| `banned` | boolean? | present and `true` only while actively banned |
+| `banReason` | string? | e.g. "Harassment or Bullying" |
+| `banDuration` | string? | `"1 Day"` \| `"7 Days"` \| `"30 Days"` \| `"Permanent"` |
+| `bannedAt` | timestamp? | |
+| `banExpiresAt` | timestamp? | `null` for permanent ban |
+| `bannedBy` | string? | admin uid |
+| `bannedByName` | string? | admin displayName at time of ban |
+| `banNote` | string? | optional moderator note |
+| `banHistory` | array? | append-only log; each entry: `{ reason, duration, bannedAt, expiresAt, bannedBy, bannedByName, note, unbannedAt, unbannedBy }` |
 
-Rules: create allowed for authenticated users (must include uid, email, role, createdAt, lastSeen). Update allowed for own doc; `role` field immutable.
+Rules: create allowed for authenticated users (must include uid, email, role, createdAt, lastSeen). Update allowed for own doc; `role` field immutable. Read: owner **or** admin.
 
 ### `waiting_pool/{uid}`
 
@@ -105,7 +114,8 @@ Rules: deny all client access — admin SDK only.
 | `contextImageUrls` | string[] | Storage URLs of up to 5 screenshots uploaded by reporter |
 | `chatLogStoragePath` | string? | path to `reports/{reportId}/chat_log.json` in Cloud Storage; null if Storage write failed |
 | `createdAt` | timestamp | |
-| `status` | string | `pending` on creation; updated by admin |
+| `status` | string | `pending` on creation; `reviewed` or `dismissed` after admin action |
+| `outcome` | map? | written by admin CFs: `{ kind: "banned"\|"reviewed"\|"dismissed", by: uid, byName: string, at: timestamp, note: string? }` |
 
 Note: `encryptionKey` is NOT stored here — it lives exclusively in `session_keys/{sessionId}`. The decrypted chat log is in Cloud Storage at `chatLogStoragePath`.
 
