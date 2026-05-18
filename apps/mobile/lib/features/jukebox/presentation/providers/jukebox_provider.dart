@@ -137,12 +137,9 @@ class JukeboxNotifier extends Notifier<JukeboxUiState> {
         );
   }
 
-  void setUrlInput(String url) =>
-      state = state.copyWith(urlInput: url, resolveError: null);
-
-  Future<void> addUrl() async {
+  // URL is passed directly from the text field — no state sync required.
+  Future<void> addUrl(String url) async {
     final roomId = state.roomId;
-    final url = state.urlInput.trim();
     if (roomId == null) {
       state = state.copyWith(
         resolveError: 'Connecting to room… try again in a moment.',
@@ -154,7 +151,7 @@ class JukeboxNotifier extends Notifier<JukeboxUiState> {
       state = state.copyWith(resolveError: 'Queue is full (max 4 tracks).');
       return;
     }
-    state = state.copyWith(isResolving: true, resolveError: null);
+    state = state.copyWith(isResolving: true, resolveError: null, urlInput: '');
     try {
       final user = FirebaseAuth.instance.currentUser;
       final track = await ref.read(_resolveTrackProvider)(
@@ -175,7 +172,7 @@ class JukeboxNotifier extends Notifier<JukeboxUiState> {
         current: current,
         track: track,
       );
-      state = state.copyWith(isResolving: false, urlInput: '');
+      state = state.copyWith(isResolving: false);
     } catch (e) {
       state = state.copyWith(
         isResolving: false,

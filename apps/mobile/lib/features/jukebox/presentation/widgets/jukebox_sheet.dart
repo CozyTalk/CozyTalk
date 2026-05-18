@@ -40,8 +40,11 @@ class _JukeboxSheetState extends ConsumerState<JukeboxSheet> {
     final notifier = ref.read(jukeboxNotifierProvider.notifier);
 
     ref.listen<JukeboxUiState>(jukeboxNotifierProvider, (_, next) {
-      if (next.urlInput.isEmpty && _urlController.text.isNotEmpty) {
-        _urlController.clear();
+      if (!next.isResolving &&
+          _urlController.text.isNotEmpty &&
+          next.resolveError == null) {
+        // URL was cleared after successful add
+        if (next.urlInput.isEmpty) _urlController.clear();
       }
     });
 
@@ -202,7 +205,6 @@ class _JukeboxSheetState extends ConsumerState<JukeboxSheet> {
                 const SizedBox(height: 8),
                 TextField(
                   controller: _urlController,
-                  onChanged: notifier.setUrlInput,
                   decoration: const InputDecoration(
                     hintText: 'audiomack.com/artist/song/slug',
                     border: OutlineInputBorder(),
@@ -230,19 +232,25 @@ class _JukeboxSheetState extends ConsumerState<JukeboxSheet> {
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
                     else
-                      Semantics(
-                        label: 'Add song to queue',
-                        button: true,
-                        child: FilledButton.icon(
-                          icon: const Icon(Icons.add),
-                          label: const Text('Add URL'),
-                          onPressed:
-                              state.urlInput.trim().isNotEmpty &&
-                                  !state.isResolving &&
-                                  (roomState?.queue.length ?? 0) < 4
-                              ? notifier.addUrl
-                              : null,
-                        ),
+                      ValueListenableBuilder<TextEditingValue>(
+                        valueListenable: _urlController,
+                        builder: (_, value, _) {
+                          final hasText = value.text.trim().isNotEmpty;
+                          final queueFull = (roomState?.queue.length ?? 0) >= 4;
+                          return Semantics(
+                            label: 'Add song to queue',
+                            button: true,
+                            child: FilledButton.icon(
+                              icon: const Icon(Icons.add),
+                              label: const Text('Add URL'),
+                              onPressed: (hasText && !queueFull)
+                                  ? () => notifier.addUrl(
+                                      _urlController.text.trim(),
+                                    )
+                                  : null,
+                            ),
+                          );
+                        },
                       ),
                   ],
                 ),

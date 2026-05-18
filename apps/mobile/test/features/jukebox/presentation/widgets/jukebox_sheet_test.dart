@@ -25,10 +25,7 @@ class _FakeJukeboxNotifier extends JukeboxNotifier {
   void enterRoom(String roomId) {}
 
   @override
-  void setUrlInput(String url) {}
-
-  @override
-  Future<void> addUrl() async => addUrlCount++;
+  Future<void> addUrl(String url) async => addUrlCount++;
 
   @override
   Future<void> skip() async => skipCount++;
