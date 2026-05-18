@@ -76,6 +76,9 @@ class _AdminConsoleScreenState extends ConsumerState<AdminConsoleScreen> {
                 );
             if (mounted) _showToast('User banned');
           },
+          onGetChatLog: displayReport.chatLogStoragePath != null
+              ? () => reportsNotifier.getChatLogUrl(displayReport.id)
+              : null,
         ),
       ),
     );
@@ -170,6 +173,8 @@ class _AdminConsoleScreenState extends ConsumerState<AdminConsoleScreen> {
       context: e.reason,
       time: _formatTime(e.createdAt),
       evidence: e.contextImageUrls.length,
+      contextImageUrls: e.contextImageUrls,
+      chatLogStoragePath: e.chatLogStoragePath,
       severity: _reportTypeSeverity(e.reportType),
       room: '',
       roomId: e.sessionId,
@@ -190,7 +195,7 @@ class _AdminConsoleScreenState extends ConsumerState<AdminConsoleScreen> {
     );
   }
 
-  AdminUser _toDisplayUser(feat.AdminUser e) {
+  AdminUser _toDisplayUser(feat.AdminUser e, {int reportCount = 0}) {
     return AdminUser(
       id: e.uid,
       userId: e.uid,
@@ -201,13 +206,13 @@ class _AdminConsoleScreenState extends ConsumerState<AdminConsoleScreen> {
       room: e.online ? 'In room' : '',
       roomId: '',
       session: e.online ? 'Active' : 'Offline',
-      reports: 0,
+      reports: reportCount,
       joined: _formatJoined(e.createdAt),
       banHistory: e.banHistory.map(_toDisplayBanRecord).toList(),
     );
   }
 
-  BannedUser _toBannedUser(feat.AdminUser e) {
+  BannedUser _toBannedUser(feat.AdminUser e, {int reportCount = 0}) {
     return BannedUser(
       id: e.uid,
       name: e.displayName,
@@ -221,7 +226,7 @@ class _AdminConsoleScreenState extends ConsumerState<AdminConsoleScreen> {
       reportRefs: const [],
       previous: e.banHistory.map(_toDisplayBanRecord).toList(),
       interest: e.interest,
-      reports: 0,
+      reports: reportCount,
       joined: _formatJoined(e.createdAt),
     );
   }
@@ -237,7 +242,10 @@ class _AdminConsoleScreenState extends ConsumerState<AdminConsoleScreen> {
     );
   }
 
-  AdminBanDetailSubject _toBanDetailSubject(feat.AdminUser e) {
+  AdminBanDetailSubject _toBanDetailSubject(
+    feat.AdminUser e, {
+    int reportCount = 0,
+  }) {
     final currentBan = e.banned
         ? AdminBanRecord(
             reason: e.banReason ?? '',
@@ -255,7 +263,7 @@ class _AdminConsoleScreenState extends ConsumerState<AdminConsoleScreen> {
       uid: e.uid,
       online: e.online,
       interest: e.interest,
-      reports: 0,
+      reports: reportCount,
       joined: _formatJoined(e.createdAt),
       current: currentBan,
       reportRefs: const [],
@@ -269,14 +277,20 @@ class _AdminConsoleScreenState extends ConsumerState<AdminConsoleScreen> {
     final reportsState = ref.watch(feat.adminReportsProvider);
     final usersState = ref.watch(feat.adminUsersProvider);
 
+    final reportCounts = <String, int>{};
+    for (final r in reportsState.reports) {
+      reportCounts[r.reportedUserId] =
+          (reportCounts[r.reportedUserId] ?? 0) + 1;
+    }
+
     final reports = reportsState.reports.map(_toDisplayReport).toList();
     final users = usersState.users
         .where((u) => !u.banned)
-        .map(_toDisplayUser)
+        .map((e) => _toDisplayUser(e, reportCount: reportCounts[e.uid] ?? 0))
         .toList();
     final banned = usersState.users
         .where((u) => u.banned)
-        .map(_toBannedUser)
+        .map((e) => _toBannedUser(e, reportCount: reportCounts[e.uid] ?? 0))
         .toList();
 
     final pendingCount =
@@ -308,6 +322,7 @@ class _AdminConsoleScreenState extends ConsumerState<AdminConsoleScreen> {
                   banned: banned,
                   usersState: usersState,
                   onlineCount: onlineCount,
+                  reportCounts: reportCounts,
                 ),
               ),
             ],
@@ -619,6 +634,7 @@ class _AdminConsoleScreenState extends ConsumerState<AdminConsoleScreen> {
     required List<BannedUser> banned,
     required feat.AdminUsersState usersState,
     required int onlineCount,
+    required Map<String, int> reportCounts,
   }) {
     return switch (_tab) {
       0 => AdminReportsTab(
@@ -669,7 +685,10 @@ class _AdminConsoleScreenState extends ConsumerState<AdminConsoleScreen> {
             context,
             MaterialPageRoute(
               builder: (_) => AdminBanDetailScreen(
-                subject: _toBanDetailSubject(entity),
+                subject: _toBanDetailSubject(
+                  entity,
+                  reportCount: reportCounts[entity.uid] ?? 0,
+                ),
                 onUnban: (subject) async {
                   await ref
                       .read(feat.adminUsersProvider.notifier)

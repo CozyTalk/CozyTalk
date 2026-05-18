@@ -91,6 +91,8 @@ class AdminReport {
   final String context;
   final String time;
   final int evidence;
+  final List<String> contextImageUrls;
+  final String? chatLogStoragePath;
   final String severity;
   final String room;
   final String roomId;
@@ -108,6 +110,8 @@ class AdminReport {
     required this.context,
     required this.time,
     required this.evidence,
+    this.contextImageUrls = const [],
+    this.chatLogStoragePath,
     required this.severity,
     required this.room,
     required this.roomId,

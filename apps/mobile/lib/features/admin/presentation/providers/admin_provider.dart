@@ -176,14 +176,16 @@ class AdminReportsNotifier extends Notifier<AdminReportsState> {
     }
   }
 
-  Future<void> getChatLogUrl(String reportId) async {
-    if (state.isSubmitting) return;
+  Future<String?> getChatLogUrl(String reportId) async {
+    if (state.isSubmitting) return null;
     state = state.copyWith(isSubmitting: true, actionError: null, chatLogUrl: null);
     try {
       final url = await ref.read(_getChatLogUrlProvider).call(reportId);
       state = state.copyWith(isSubmitting: false, chatLogUrl: url);
+      return url;
     } catch (e) {
       state = state.copyWith(isSubmitting: false, actionError: e.toString());
+      return null;
     }
   }
 }

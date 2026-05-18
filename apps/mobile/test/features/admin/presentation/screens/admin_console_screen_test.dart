@@ -45,8 +45,9 @@ class _FakeReportsNotifier extends AdminReportsNotifier {
   }
 
   @override
-  Future<void> getChatLogUrl(String reportId) async {
+  Future<String?> getChatLogUrl(String reportId) async {
     chatLogCount++;
+    return null;
   }
 }
 
