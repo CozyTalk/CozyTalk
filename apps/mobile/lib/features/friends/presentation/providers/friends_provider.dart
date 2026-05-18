@@ -19,41 +19,41 @@ import '../../domain/usecases/watch_all_users.dart';
 import '../../domain/usecases/watch_friends.dart';
 import '../../domain/usecases/watch_incoming_requests.dart';
 
-final _friendsDatasourceProvider = Provider<FriendsDatasource>(
+final friendsDatasourceProvider = Provider<FriendsDatasource>(
   (ref) =>
       FriendsDatasourceImpl(FirebaseFirestore.instance, FirebaseAuth.instance),
 );
 
-final _friendsRepositoryProvider = Provider<FriendsRepository>(
-  (ref) => FriendsRepositoryImpl(ref.watch(_friendsDatasourceProvider)),
+final friendsRepositoryProvider = Provider<FriendsRepository>(
+  (ref) => FriendsRepositoryImpl(ref.watch(friendsDatasourceProvider)),
 );
 
 final _watchAllUsersProvider = Provider<WatchAllUsers>(
-  (ref) => WatchAllUsers(ref.watch(_friendsRepositoryProvider)),
+  (ref) => WatchAllUsers(ref.watch(friendsRepositoryProvider)),
 );
 
 final _watchFriendsProvider = Provider<WatchFriends>(
-  (ref) => WatchFriends(ref.watch(_friendsRepositoryProvider)),
+  (ref) => WatchFriends(ref.watch(friendsRepositoryProvider)),
 );
 
 final _watchIncomingRequestsProvider = Provider<WatchIncomingRequests>(
-  (ref) => WatchIncomingRequests(ref.watch(_friendsRepositoryProvider)),
+  (ref) => WatchIncomingRequests(ref.watch(friendsRepositoryProvider)),
 );
 
 final _sendFriendRequestProvider = Provider<SendFriendRequest>(
-  (ref) => SendFriendRequest(ref.watch(_friendsRepositoryProvider)),
+  (ref) => SendFriendRequest(ref.watch(friendsRepositoryProvider)),
 );
 
 final _acceptFriendRequestProvider = Provider<AcceptFriendRequest>(
-  (ref) => AcceptFriendRequest(ref.watch(_friendsRepositoryProvider)),
+  (ref) => AcceptFriendRequest(ref.watch(friendsRepositoryProvider)),
 );
 
 final _declineFriendRequestProvider = Provider<DeclineFriendRequest>(
-  (ref) => DeclineFriendRequest(ref.watch(_friendsRepositoryProvider)),
+  (ref) => DeclineFriendRequest(ref.watch(friendsRepositoryProvider)),
 );
 
 final _removeFriendProvider = Provider<RemoveFriend>(
-  (ref) => RemoveFriend(ref.watch(_friendsRepositoryProvider)),
+  (ref) => RemoveFriend(ref.watch(friendsRepositoryProvider)),
 );
 
 final friendsNotifierProvider = NotifierProvider<FriendsNotifier, FriendsState>(

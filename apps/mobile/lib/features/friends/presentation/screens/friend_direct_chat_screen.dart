@@ -148,7 +148,7 @@ class _FriendDirectChatScreenState
                         vertical: 10,
                       ),
                     ),
-                    onSubmitted: (_) => _send(),
+                    onSubmitted: state.isSending ? null : (_) => _send(),
                   ),
                 ),
                 const SizedBox(width: 8),

@@ -1,32 +1,19 @@
 import 'dart:async';
 
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../auth/presentation/providers/auth_provider.dart';
-import '../../data/datasources/friends_datasource.dart';
-import '../../data/repositories/friends_repository_impl.dart';
 import '../../domain/entities/friend_message.dart';
-import '../../domain/repositories/friends_repository.dart';
 import '../../domain/usecases/send_friend_message.dart';
 import '../../domain/usecases/watch_friend_messages.dart';
-
-final _friendChatDatasourceProvider = Provider<FriendsDatasource>(
-  (ref) =>
-      FriendsDatasourceImpl(FirebaseFirestore.instance, FirebaseAuth.instance),
-);
-
-final _friendChatRepositoryProvider = Provider<FriendsRepository>(
-  (ref) => FriendsRepositoryImpl(ref.watch(_friendChatDatasourceProvider)),
-);
+import 'friends_provider.dart';
 
 final _watchFriendMessagesProvider = Provider<WatchFriendMessages>(
-  (ref) => WatchFriendMessages(ref.watch(_friendChatRepositoryProvider)),
+  (ref) => WatchFriendMessages(ref.watch(friendsRepositoryProvider)),
 );
 
 final _sendFriendMessageProvider = Provider<SendFriendMessage>(
-  (ref) => SendFriendMessage(ref.watch(_friendChatRepositoryProvider)),
+  (ref) => SendFriendMessage(ref.watch(friendsRepositoryProvider)),
 );
 
 final friendChatNotifierProvider =

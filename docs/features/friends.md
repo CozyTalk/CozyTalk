@@ -55,6 +55,8 @@ See `docs/database/schema.md` for full field lists and security rules.
 
 | Provider | Type | Purpose |
 |---|---|---|
+| `friendsDatasourceProvider` | `Provider<FriendsDatasource>` | Shared datasource instance; consumed by both notifiers |
+| `friendsRepositoryProvider` | `Provider<FriendsRepository>` | Shared repository instance; consumed by both notifiers |
 | `friendsNotifierProvider` | `NotifierProvider<FriendsNotifier, FriendsState>` | Friends list + incoming requests + all-users list; subscriptions started in `build()` |
 | `friendChatNotifierProvider` | `NotifierProvider<FriendChatNotifier, FriendChatState>` | Single active chat; `enterChat(roomId, name)` starts subscription, `leaveChat()` cancels it |
 
