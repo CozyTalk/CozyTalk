@@ -62,6 +62,12 @@
           ".validate": "!newData.exists() || (newData.isString() && newData.val().length > 0 && newData.val().length <= 30)"
         }
       }
+    },
+    "jukebox": {
+      "$room_id": {
+        ".read":  "auth != null && root.child('rooms').child($room_id).child('members').child(auth.uid).exists()",
+        ".write": "auth != null && root.child('rooms').child($room_id).child('members').child(auth.uid).exists()"
+      }
     }
   }
 }
