@@ -6,6 +6,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../domain/entities/session_status.dart';
 import '../../domain/entities/typing_user.dart';
 import '../providers/chat_provider.dart';
+import '../../../jukebox/presentation/widgets/jukebox_player.dart';
+import '../../../jukebox/presentation/widgets/jukebox_sheet.dart';
 import '../../../report/presentation/screens/report_sheet.dart';
 
 class ChatScreen extends ConsumerStatefulWidget {
@@ -74,6 +76,18 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       appBar: AppBar(
         title: const Text('CozyTalk'),
         actions: [
+          Semantics(
+            label: 'Open Jukebox',
+            button: true,
+            child: IconButton(
+              icon: const Icon(Icons.queue_music_rounded),
+              tooltip: 'Jukebox',
+              color: Colors.white,
+              onPressed: state.status == SessionStatus.chatting
+                  ? _openJukeboxSheet
+                  : null,
+            ),
+          ),
           if (widget.reportedUserId != null)
             Semantics(
               label: 'Report this user',
@@ -104,6 +118,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       ),
       body: Column(
         children: [
+          JukeboxPlayer(roomId: widget.sessionId),
           Expanded(
             child: state.messages.isEmpty
                 ? const Center(
@@ -175,6 +190,15 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   void _endSession() {
     ref.read(chatNotifierProvider.notifier).endSession();
+  }
+
+  void _openJukeboxSheet() {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (_) => JukeboxSheet(roomId: widget.sessionId),
+    );
   }
 
   void _showReportSheet() {
