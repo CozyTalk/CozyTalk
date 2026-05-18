@@ -38,6 +38,8 @@ class _FakeJukeboxNotifier extends JukeboxNotifier {
     removeCount++;
     lastRemovedIndex = index;
   }
+
+  void fakeError(String error) => state = state.copyWith(resolveError: error);
 }
 
 Widget _buildSheet(_FakeJukeboxNotifier fake) {
@@ -153,12 +155,14 @@ void main() {
     );
   });
 
-  testWidgets('shows resolveError text', (tester) async {
-    final fake = _FakeJukeboxNotifier(
-      initial: const JukeboxUiState(resolveError: 'Invalid URL'),
-    );
+  testWidgets('shows resolveError as SnackBar', (tester) async {
+    final fake = _FakeJukeboxNotifier();
     await tester.pumpWidget(_buildSheet(fake));
-    expect(find.text('Invalid URL', skipOffstage: false), findsOneWidget);
+
+    fake.fakeError('Invalid URL');
+    await tester.pump();
+
+    expect(find.text('Invalid URL'), findsOneWidget);
   });
 
   testWidgets('Add URL button disabled when urlInput is empty', (tester) async {

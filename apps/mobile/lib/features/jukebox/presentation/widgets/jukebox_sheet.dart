@@ -39,12 +39,23 @@ class _JukeboxSheetState extends ConsumerState<JukeboxSheet> {
     final roomState = state.roomState;
     final notifier = ref.read(jukeboxNotifierProvider.notifier);
 
-    ref.listen<JukeboxUiState>(jukeboxNotifierProvider, (_, next) {
+    ref.listen<JukeboxUiState>(jukeboxNotifierProvider, (prev, next) {
+      // Show errors as a SnackBar so they're visible regardless of scroll.
+      if (next.resolveError != null &&
+          next.resolveError != prev?.resolveError) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(next.resolveError!),
+            backgroundColor: Colors.red.shade700,
+          ),
+        );
+      }
+      // Clear controller after successful add (urlInput reset to '').
       if (!next.isResolving &&
-          _urlController.text.isNotEmpty &&
-          next.resolveError == null) {
-        // URL was cleared after successful add
-        if (next.urlInput.isEmpty) _urlController.clear();
+          next.resolveError == null &&
+          next.urlInput.isEmpty &&
+          _urlController.text.isNotEmpty) {
+        _urlController.clear();
       }
     });
 
@@ -214,13 +225,6 @@ class _JukeboxSheetState extends ConsumerState<JukeboxSheet> {
                     ),
                   ),
                 ),
-                if (state.resolveError != null) ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    state.resolveError!,
-                    style: const TextStyle(color: Colors.red, fontSize: 12),
-                  ),
-                ],
                 const SizedBox(height: 8),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.end,
