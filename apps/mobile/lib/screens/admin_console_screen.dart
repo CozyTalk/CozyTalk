@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:mobile/features/admin/admin.dart' as feat;
 import 'admin_shared.dart';
 import 'admin_reports_tab.dart';
 import 'admin_users_tab.dart';
@@ -8,373 +10,16 @@ import 'admin_report_detail_screen.dart';
 import 'admin_profile_screen.dart';
 
 // ─── Admin Console Screen ───
-class AdminConsoleScreen extends StatefulWidget {
+class AdminConsoleScreen extends ConsumerStatefulWidget {
   const AdminConsoleScreen({super.key});
   @override
-  State<AdminConsoleScreen> createState() => _AdminConsoleScreenState();
+  ConsumerState<AdminConsoleScreen> createState() => _AdminConsoleScreenState();
 }
 
-class _AdminConsoleScreenState extends State<AdminConsoleScreen> {
+class _AdminConsoleScreenState extends ConsumerState<AdminConsoleScreen> {
   int _tab = 0; // 0=Reports 1=Users 2=Banned
   final _searchCtrl = TextEditingController();
   String _query = '';
-
-  final List<AdminReport> _reports = [
-    AdminReport(
-      id: 'r1',
-      status: 'pending',
-      reporter: 'Somtum',
-      reported: 'PhakYou',
-      reasons: ['Harassment or Bullying'],
-      context:
-          "He kept sending mean messages and called me names after I said I didn't want to keep chatting.",
-      time: '3m ago',
-      evidence: 2,
-      severity: 'high',
-      room: 'Kao Tapu',
-      roomId: 'AWD3V',
-      reportedUserId: '60743928',
-      reportedInterest: 'Gaming, Anime',
-    ),
-    AdminReport(
-      id: 'r2',
-      status: 'pending',
-      reporter: 'Mitsuru',
-      reported: 'TrueLove99',
-      reasons: ['Spam & Scams'],
-      context:
-          'Sent me a link to a sketchy site asking for my phone number and bank info.',
-      time: '18m ago',
-      evidence: 1,
-      severity: 'high',
-      room: 'Red Lotus Lake',
-      roomId: 'BLK7R',
-      reportedUserId: '46107382',
-      reportedInterest: '—',
-    ),
-    AdminReport(
-      id: 'r3',
-      status: 'pending',
-      reporter: 'KaiTom',
-      reported: 'NongPrae',
-      reasons: ['Exposing private identifying information'],
-      context:
-          'Posted my full name and school in the group chat without my permission.',
-      time: '42m ago',
-      evidence: 3,
-      severity: 'med',
-      room: 'Sea of Cloud',
-      roomId: 'CXP2M',
-      reportedUserId: '51078643',
-      reportedInterest: 'Cooking, K-pop',
-    ),
-    AdminReport(
-      id: 'r4',
-      status: 'pending',
-      reporter: 'Platoo',
-      reported: 'Somjeed',
-      reasons: ['Others'],
-      context: 'Was being weirdly aggressive but nothing specific yet.',
-      time: '1h ago',
-      evidence: 0,
-      severity: 'low',
-      room: 'Lumphini Park',
-      roomId: 'DYQ9T',
-      reportedUserId: '28940761',
-      reportedInterest: 'Art, Design',
-    ),
-    AdminReport(
-      id: 'r5',
-      status: 'pending',
-      reporter: 'Anonymous',
-      reported: 'CoolGuy42',
-      reasons: ['Harassment or Bullying', 'Others'],
-      context: 'Repeatedly DMs after being told no.',
-      time: '2h ago',
-      evidence: 1,
-      severity: 'med',
-      room: 'Kao Tapu',
-      roomId: 'EZN4W',
-      reportedUserId: '80539246',
-      reportedInterest: 'Sports, Gaming',
-    ),
-    AdminReport(
-        id: 'r6',
-        status: 'resolved',
-        reporter: 'NongPrae',
-        reported: 'SpamBot7',
-        reasons: ['Spam & Scams'],
-        context: 'Crypto giveaway scam.',
-        time: 'Yesterday',
-        evidence: 2,
-        severity: 'high',
-        room: 'Red Lotus Lake',
-        roomId: 'FXJ6S',
-        reportedUserId: '93714052',
-        reportedInterest: '—',
-      )
-      ..outcome = const AdminReportOutcome(
-        kind: 'banned',
-        label: 'Banned · Permanent',
-        by: 'admin@cozytalk.app',
-      ),
-  ];
-
-  final List<AdminUser> _users = [
-    AdminUser(
-      id: 'u1',
-      userId: '38210475',
-      name: 'Somtum',
-      interest: 'Music, Hiking',
-      online: true,
-      room: 'Kao Tapu',
-      roomId: 'AWD3V',
-      session: '42m',
-      reports: 0,
-      joined: 'Mar 2026',
-    ),
-    AdminUser(
-      id: 'u2',
-      userId: '60743928',
-      name: 'PhakYou',
-      interest: 'Gaming, Anime',
-      online: true,
-      room: 'Kao Tapu',
-      roomId: 'AWD3V',
-      session: '1h 12m',
-      reports: 3,
-      joined: 'Apr 2026',
-      banHistory: [
-        AdminBanRecord(
-          reason: 'Harassment or Bullying',
-          duration: '7 days',
-          date: '10 Apr 2026',
-          by: 'admin@cozytalk',
-          note: 'Sent repeated mean messages after being asked to stop.',
-        ),
-      ],
-    ),
-    AdminUser(
-      id: 'u3',
-      userId: '12594836',
-      name: 'Mitsuru',
-      interest: 'Reading, Coffee',
-      online: true,
-      room: 'Red Lotus Lake',
-      roomId: 'BLK7R',
-      session: '18m',
-      reports: 0,
-      joined: 'Jan 2026',
-    ),
-    AdminUser(
-      id: 'u4',
-      userId: '94382015',
-      name: 'KaiTom',
-      interest: 'Photography, Travel',
-      online: true,
-      room: 'Sea of Cloud',
-      roomId: 'CXP2M',
-      session: '2h 03m',
-      reports: 1,
-      joined: 'Feb 2026',
-    ),
-    AdminUser(
-      id: 'u5',
-      userId: '51078643',
-      name: 'NongPrae',
-      interest: 'Cooking, K-pop',
-      online: true,
-      room: 'Sea of Cloud',
-      roomId: 'CXP2M',
-      session: '33m',
-      reports: 2,
-      joined: 'Dec 2025',
-      banHistory: [
-        AdminBanRecord(
-          reason: 'Others',
-          duration: '1 day',
-          date: '5 Mar 2026',
-          by: 'admin@cozytalk',
-          note: 'Brief cooldown after dispute escalation.',
-        ),
-      ],
-    ),
-    AdminUser(
-      id: 'u6',
-      userId: '73625190',
-      name: 'Platoo',
-      interest: 'Fitness, Movies',
-      online: false,
-      room: '—',
-      session: '—',
-      reports: 0,
-      joined: 'Mar 2026',
-    ),
-    AdminUser(
-      id: 'u7',
-      userId: '28940761',
-      name: 'Somjeed',
-      interest: 'Art, Design',
-      online: true,
-      room: 'Lumphini Park',
-      roomId: 'DYQ9T',
-      session: '8m',
-      reports: 1,
-      joined: 'May 2026',
-    ),
-    AdminUser(
-      id: 'u8',
-      userId: '46107382',
-      name: 'TrueLove99',
-      interest: '—',
-      online: true,
-      room: 'Red Lotus Lake',
-      roomId: 'BLK7R',
-      session: '24m',
-      reports: 4,
-      joined: 'Apr 2026',
-      banHistory: [
-        AdminBanRecord(
-          reason: 'Spam & Scams',
-          duration: '7 days',
-          date: '18 Apr 2026',
-          by: 'admin@cozytalk',
-          note: 'First spam offense — short cooldown given.',
-        ),
-        AdminBanRecord(
-          reason: 'Spam & Scams',
-          duration: '1 day',
-          date: '10 Apr 2026',
-          by: 'admin@cozytalk',
-          note: 'Warning ban.',
-        ),
-      ],
-    ),
-    AdminUser(
-      id: 'u9',
-      userId: '80539246',
-      name: 'CoolGuy42',
-      interest: 'Sports, Gaming',
-      online: true,
-      room: 'Kao Tapu',
-      roomId: 'EZN4W',
-      session: '1h 47m',
-      reports: 2,
-      joined: 'Feb 2026',
-    ),
-    AdminUser(
-      id: 'u10',
-      userId: '31976458',
-      name: 'Seksan',
-      interest: 'Tech, Startups',
-      online: false,
-      room: '—',
-      session: '—',
-      reports: 0,
-      joined: 'Jan 2026',
-    ),
-    AdminUser(
-      id: 'u11',
-      userId: '29485731',
-      name: 'Wansika',
-      interest: 'Music, Poetry',
-      online: true,
-      room: '—',
-      session: '—',
-      reports: 0,
-      joined: 'Mar 2026',
-    ),
-  ];
-
-  final List<BannedUser> _banned = [
-    BannedUser(
-      id: 'b1',
-      name: 'SpamBot7',
-      uid: '00128844',
-      reason: 'Spam & Scams',
-      duration: 'Permanent',
-      date: 'Yesterday',
-      expires: 'Never',
-      by: 'admin@cozytalk',
-      note:
-          'Sent crypto giveaway links to 30+ users within minutes. Confirmed scam URL.',
-      interest:
-          'New account — no interests listed. Activity flagged as automated.',
-      reports: 7,
-      joined: 'Apr 2026',
-      reportRefs: [
-        AdminBanReportRef(id: 'r6', by: 'NongPrae', time: 'Yesterday'),
-        AdminBanReportRef(id: 'r-old1', by: 'Mitsuru', time: '2 days ago'),
-      ],
-      previous: [],
-    ),
-    BannedUser(
-      id: 'b2',
-      name: 'ToxicTed',
-      uid: '70013289',
-      reason: 'Harassment or Bullying',
-      duration: '30 days',
-      date: '2 May',
-      expires: '1 Jun 2026',
-      by: 'admin@cozytalk',
-      note:
-          'Sent threatening DMs to multiple users in Kao Tapu after being asked to stop.',
-      interest: 'Online games and trash talk.',
-      reports: 5,
-      joined: 'Jan 2026',
-      reportRefs: [
-        AdminBanReportRef(id: 'r-old2', by: 'Somtum', time: '3 May'),
-        AdminBanReportRef(id: 'r-old3', by: 'KaiTom', time: '2 May'),
-      ],
-      previous: [
-        AdminBanRecord(
-          reason: 'Harassment or Bullying',
-          duration: '7 days',
-          date: '14 Mar 2026',
-          by: 'admin@cozytalk',
-          note: 'First offense — 7-day cooldown.',
-        ),
-        AdminBanRecord(
-          reason: 'Others',
-          duration: '1 day',
-          date: '2 Feb 2026',
-          by: 'admin@cozytalk',
-          note: 'Warning ban after multiple flags.',
-        ),
-      ],
-    ),
-    BannedUser(
-      id: 'b3',
-      name: 'LeakyLou',
-      uid: '58294107',
-      reason: 'Exposing private identifying information',
-      duration: 'Permanent',
-      date: '28 Apr',
-      expires: 'Never',
-      by: 'admin@cozytalk',
-      note:
-          'Posted real names and home addresses of two users in Sea of Cloud.',
-      interest:
-          'Photography, travel, and collecting personal stories from strangers.',
-      reports: 3,
-      joined: 'Feb 2026',
-      reportRefs: [
-        AdminBanReportRef(id: 'r-old4', by: 'NongPrae', time: '28 Apr'),
-      ],
-      previous: [
-        AdminBanRecord(
-          reason: 'Exposing private identifying information',
-          duration: '30 days',
-          date: '1 Mar 2026',
-          by: 'admin@cozytalk',
-          note: 'Posted school name & class. Suspended for 30 days.',
-        ),
-      ],
-    ),
-  ];
-
-  AdminUser? _banUser;
-  AdminReport? _banFromReport;
   String? _toastMsg;
 
   @override
@@ -396,125 +41,277 @@ class _AdminConsoleScreenState extends State<AdminConsoleScreen> {
     });
   }
 
-  void _openReport(AdminReport r) {
-    final reporterUser = _users.where((u) => u.name == r.reporter).firstOrNull;
-    Navigator.push(
+  void _openReport(AdminReport displayReport) async {
+    final reportsNotifier = ref.read(feat.adminReportsProvider.notifier);
+    final usersState = ref.read(feat.adminUsersProvider);
+    final reporterEntity = usersState.users
+        .where((u) => u.uid == displayReport.reporterId)
+        .firstOrNull;
+    final reporterUser = reporterEntity != null
+        ? _toDisplayUser(reporterEntity)
+        : null;
+
+    await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => AdminReportDetailScreen(
-          report: r,
+          report: displayReport,
           reporterUser: reporterUser,
-          onDismiss: () {
-            setState(() {
-              r.status = 'resolved';
-              r.outcome = AdminReportOutcome(
-                kind: 'dismissed',
-                label: 'Dismissed',
-                by: 'admin@cozytalk.app',
-              );
-            });
-            _showToast('Report dismissed');
+          onDismiss: () async {
+            await reportsNotifier.resolveReport(
+              displayReport.id,
+              action: 'dismiss',
+            );
+            if (mounted) _showToast('Report dismissed');
           },
-          onBanConfirmed: (reason, duration, note) {
-            _banFromReport = r;
-            _banUser =
-                _users.where((u) => u.name == r.reported).firstOrNull ??
-                AdminUser(
-                  id: r.id,
-                  userId: r.reportedUserId,
-                  name: r.reported,
-                  interest: r.reportedInterest,
-                  online: false,
-                  room: '—',
-                  session: '—',
-                  reports: 0,
-                  joined: '',
+          onBanConfirmed: (reason, duration, note) async {
+            await ref
+                .read(feat.adminUsersProvider.notifier)
+                .banUser(
+                  uid: displayReport.reportedUserId,
+                  reason: reason,
+                  duration: _normalizeDuration(duration),
+                  note: note.trim().isEmpty ? null : note.trim(),
+                  reportId: displayReport.id,
                 );
-            _doBan(r.reported, reason, duration, note);
+            if (mounted) _showToast('User banned');
           },
         ),
       ),
     );
   }
 
-  void _doBan(String name, String reason, String duration, [String note = '']) {
-    setState(() {
-      _banned.insert(
-        0,
-        BannedUser(
-          id: 'b-${DateTime.now().millisecondsSinceEpoch}',
-          name: name,
-          uid: _banUser?.userId ?? '—',
-          reason: reason,
-          duration: duration,
-          date: 'Just now',
-          expires: duration == 'Permanent' ? 'Never' : '—',
-          by: 'admin@cozytalk',
-          note: note,
-          interest: _banUser?.interest ?? '',
-          reports: _banUser?.reports ?? 0,
-          joined: _banUser?.joined ?? '',
-        ),
-      );
-      if (_banFromReport != null) {
-        _banFromReport!.status = 'resolved';
-        _banFromReport!.outcome = AdminReportOutcome(
-          kind: 'banned',
-          label: 'Banned · $duration',
-          by: 'admin@cozytalk.app',
-        );
-        _banFromReport = null;
-      }
-      for (final u in _users) {
-        if (u.name == name) {
-          u.online = false;
-          u.banned = true;
-          u.room = '—';
-          u.session = '—';
-          u.banHistory.insert(
-            0,
-            AdminBanRecord(
-              reason: reason,
-              duration: duration,
-              date: 'Just now',
-              by: 'admin@cozytalk',
-              note: note,
-              expires: duration == 'Permanent' ? 'Never' : '—',
-            ),
-          );
-        }
-      }
-      _banUser = null;
-    });
-    _showToast('$name banned · $duration');
+  // ─── Mapping helpers ───
+
+  static String _normalizeDuration(String raw) {
+    final lower = raw.toLowerCase().trim();
+    if (lower == '1 day') return '1 Day';
+    if (lower == '7 days') return '7 Days';
+    if (lower == '30 days') return '30 Days';
+    return 'Permanent';
   }
 
-  int get _pendingCount => _reports.where((r) => r.status == 'pending').length;
-  int get _onlineCount => _users.where((u) => u.online).length;
+  static String _reportTypeLabel(String type) {
+    switch (type) {
+      case 'spam':
+        return 'Spam & Scams';
+      case 'harassment':
+        return 'Harassment or Bullying';
+      case 'inappropriate_content':
+        return 'Inappropriate Content';
+      default:
+        return 'Others';
+    }
+  }
+
+  static String _reportTypeSeverity(String type) {
+    switch (type) {
+      case 'harassment':
+      case 'spam':
+        return 'high';
+      case 'inappropriate_content':
+        return 'med';
+      default:
+        return 'low';
+    }
+  }
+
+  static String _formatTime(DateTime dt) {
+    final now = DateTime.now();
+    final diff = now.difference(dt);
+    if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
+    if (diff.inHours < 24) return '${diff.inHours}h ago';
+    return '${diff.inDays}d ago';
+  }
+
+  static String _formatDate(DateTime dt) {
+    final months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+    return '${months[dt.month - 1]} ${dt.day}, ${dt.year}';
+  }
+
+  static String _formatJoined(DateTime dt) {
+    final months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+    return '${months[dt.month - 1]} ${dt.year}';
+  }
+
+  AdminReport _toDisplayReport(feat.AdminReport e) {
+    return AdminReport(
+      id: e.id,
+      status: e.status,
+      reporter: e.reporterName,
+      reported: e.reportedName,
+      reasons: [_reportTypeLabel(e.reportType)],
+      context: e.reason,
+      time: _formatTime(e.createdAt),
+      evidence: e.contextImageUrls.length,
+      severity: _reportTypeSeverity(e.reportType),
+      room: '',
+      roomId: e.sessionId,
+      reportedUserId: e.reportedUserId,
+      reportedInterest: e.reportedInterest,
+      reporterId: e.reporterId,
+      outcome: e.outcome == null
+          ? null
+          : AdminReportOutcome(
+              kind: e.outcome!.kind,
+              label: e.outcome!.kind == 'banned'
+                  ? 'Banned'
+                  : e.outcome!.kind == 'dismissed'
+                  ? 'Dismissed'
+                  : 'Reviewed',
+              by: e.outcome!.byName,
+            ),
+    );
+  }
+
+  AdminUser _toDisplayUser(feat.AdminUser e) {
+    return AdminUser(
+      id: e.uid,
+      userId: e.uid,
+      name: e.displayName,
+      interest: e.interest,
+      online: e.online,
+      banned: e.banned,
+      room: e.online ? 'In room' : '',
+      roomId: '',
+      session: e.online ? 'Active' : 'Offline',
+      reports: 0,
+      joined: _formatJoined(e.createdAt),
+      banHistory: e.banHistory.map(_toDisplayBanRecord).toList(),
+    );
+  }
+
+  BannedUser _toBannedUser(feat.AdminUser e) {
+    return BannedUser(
+      id: e.uid,
+      name: e.displayName,
+      uid: e.uid,
+      reason: e.banReason ?? '',
+      duration: e.banDuration ?? '',
+      date: e.bannedAt != null ? _formatDate(e.bannedAt!) : '',
+      expires: e.banExpiresAt != null ? _formatDate(e.banExpiresAt!) : 'Never',
+      by: e.bannedByName ?? '',
+      note: e.banNote ?? '',
+      reportRefs: const [],
+      previous: e.banHistory.map(_toDisplayBanRecord).toList(),
+      interest: e.interest,
+      reports: 0,
+      joined: _formatJoined(e.createdAt),
+    );
+  }
+
+  AdminBanRecord _toDisplayBanRecord(feat.AdminBanRecord r) {
+    return AdminBanRecord(
+      reason: r.reason,
+      duration: r.duration,
+      date: _formatDate(r.bannedAt),
+      by: r.bannedByName,
+      note: r.note ?? '',
+      expires: r.expiresAt != null ? _formatDate(r.expiresAt!) : null,
+    );
+  }
+
+  AdminBanDetailSubject _toBanDetailSubject(feat.AdminUser e) {
+    final currentBan = e.banned
+        ? AdminBanRecord(
+            reason: e.banReason ?? '',
+            duration: e.banDuration ?? '',
+            date: e.bannedAt != null ? _formatDate(e.bannedAt!) : '',
+            by: e.bannedByName ?? '',
+            note: e.banNote ?? '',
+            expires: e.banExpiresAt != null
+                ? _formatDate(e.banExpiresAt!)
+                : null,
+          )
+        : null;
+    return AdminBanDetailSubject(
+      name: e.displayName,
+      uid: e.uid,
+      online: e.online,
+      interest: e.interest,
+      reports: 0,
+      joined: _formatJoined(e.createdAt),
+      current: currentBan,
+      reportRefs: const [],
+      previous: e.banHistory.map(_toDisplayBanRecord).toList(),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
+    final dashAsync = ref.watch(feat.adminDashboardProvider);
+    final reportsState = ref.watch(feat.adminReportsProvider);
+    final usersState = ref.watch(feat.adminUsersProvider);
+
+    final reports = reportsState.reports.map(_toDisplayReport).toList();
+    final users = usersState.users
+        .where((u) => !u.banned)
+        .map(_toDisplayUser)
+        .toList();
+    final banned = usersState.users
+        .where((u) => u.banned)
+        .map(_toBannedUser)
+        .toList();
+
+    final pendingCount =
+        dashAsync.value?.pendingReports ??
+        reportsState.reports.where((r) => r.status == 'pending').length;
+    final onlineCount = dashAsync.value?.onlineUsers ?? 0;
+    final bannedCount = dashAsync.value?.bannedUsers ?? banned.length;
+
     return Scaffold(
       backgroundColor: AdminC.cream,
       body: Stack(
         children: [
           Column(
             children: [
-              _buildHeader(),
-              _buildTabs(),
+              _buildHeader(
+                reports: reports,
+                reportsState: reportsState,
+                usersState: usersState,
+                pendingCount: pendingCount,
+                onlineCount: onlineCount,
+                bannedCount: bannedCount,
+              ),
+              _buildTabs(pendingCount: pendingCount),
               _buildSearchBar(),
-              Expanded(child: _buildBody()),
+              Expanded(
+                child: _buildBody(
+                  reports: reports,
+                  users: users,
+                  banned: banned,
+                  usersState: usersState,
+                  onlineCount: onlineCount,
+                ),
+              ),
             ],
           ),
-          if (_banUser != null)
-            AdminBanModal(
-              username: _banUser!.name,
-              onClose: () => setState(() {
-                _banUser = null;
-                _banFromReport = null;
-              }),
-              onConfirm: _doBan,
-            ),
           if (_toastMsg != null)
             Positioned(
               top: MediaQuery.of(context).padding.top + 16,
@@ -528,7 +325,14 @@ class _AdminConsoleScreenState extends State<AdminConsoleScreen> {
   }
 
   // ─── Header ───
-  Widget _buildHeader() {
+  Widget _buildHeader({
+    required List<AdminReport> reports,
+    required feat.AdminReportsState reportsState,
+    required feat.AdminUsersState usersState,
+    required int pendingCount,
+    required int onlineCount,
+    required int bannedCount,
+  }) {
     return Container(
       decoration: const BoxDecoration(
         color: AdminC.brown,
@@ -595,16 +399,13 @@ class _AdminConsoleScreenState extends State<AdminConsoleScreen> {
                   context,
                   MaterialPageRoute(
                     builder: (_) => AdminProfileScreen(
-                      resolvedCount: _reports
-                          .where(
-                            (r) =>
-                                r.status == 'resolved' &&
-                                r.outcome?.by == 'admin@cozytalk.app',
-                          )
+                      resolvedCount: reportsState.reports
+                          .where((r) => r.status == 'resolved')
                           .length,
-                      bansCount: _banned
-                          .where((b) => b.by == 'admin@cozytalk')
-                          .length,
+                      bansCount: usersState.users.fold<int>(
+                        0,
+                        (sum, u) => sum + u.banHistory.length,
+                      ),
                     ),
                   ),
                 ),
@@ -637,7 +438,7 @@ class _AdminConsoleScreenState extends State<AdminConsoleScreen> {
               Expanded(
                 child: _StatCard(
                   label: 'Pending reports',
-                  value: '$_pendingCount',
+                  value: '$pendingCount',
                   accentColor: AdminC.red,
                   icon: Icons.flag_rounded,
                   pulse: true,
@@ -647,7 +448,7 @@ class _AdminConsoleScreenState extends State<AdminConsoleScreen> {
               Expanded(
                 child: _StatCard(
                   label: 'Users online',
-                  value: '$_onlineCount',
+                  value: '$onlineCount',
                   accentColor: const Color(0xFF5BBE6B),
                   icon: Icons.people_rounded,
                 ),
@@ -656,7 +457,7 @@ class _AdminConsoleScreenState extends State<AdminConsoleScreen> {
               Expanded(
                 child: _StatCard(
                   label: 'Active bans',
-                  value: '${_banned.length}',
+                  value: '$bannedCount',
                   accentColor: AdminC.brownDarker,
                   icon: Icons.block_rounded,
                 ),
@@ -669,9 +470,9 @@ class _AdminConsoleScreenState extends State<AdminConsoleScreen> {
   }
 
   // ─── Tabs ───
-  Widget _buildTabs() {
+  Widget _buildTabs({required int pendingCount}) {
     final tabs = [
-      (icon: Icons.flag_rounded, label: 'Reports', badge: _pendingCount),
+      (icon: Icons.flag_rounded, label: 'Reports', badge: pendingCount),
       (icon: Icons.people_rounded, label: 'Users', badge: 0),
       (icon: Icons.block_rounded, label: 'Banned', badge: 0),
     ];
@@ -812,38 +613,76 @@ class _AdminConsoleScreenState extends State<AdminConsoleScreen> {
   }
 
   // ─── Body ───
-  Widget _buildBody() {
+  Widget _buildBody({
+    required List<AdminReport> reports,
+    required List<AdminUser> users,
+    required List<BannedUser> banned,
+    required feat.AdminUsersState usersState,
+    required int onlineCount,
+  }) {
     return switch (_tab) {
       0 => AdminReportsTab(
-        reports: _reports,
+        reports: reports,
         onOpen: _openReport,
         query: _query,
       ),
       1 => AdminUsersTab(
-        users: _users,
+        users: users,
         query: _query,
-        onlineCount: _onlineCount,
-        onAction: (action, user) {
-          if (action == 'ban') {
-            setState(() => _banUser = user);
-          }
+        onlineCount: onlineCount,
+        onAction: (action, displayUser) async {
+          if (action != 'ban') return;
+          final entity = usersState.users
+              .where((u) => u.uid == displayUser.userId)
+              .firstOrNull;
+          if (entity == null) return;
+          showModalBottomSheet(
+            context: context,
+            isScrollControlled: true,
+            builder: (_) => AdminBanModal(
+              username: entity.displayName,
+              onClose: () => Navigator.pop(context),
+              onConfirm: (_, reason, duration) async {
+                await ref
+                    .read(feat.adminUsersProvider.notifier)
+                    .banUser(
+                      uid: entity.uid,
+                      reason: reason,
+                      duration: _normalizeDuration(duration),
+                      reportId: null,
+                    );
+                if (mounted) _showToast('User banned');
+              },
+            ),
+          );
         },
       ),
       _ => AdminBannedTab(
-        banned: _banned,
+        banned: banned,
         query: _query,
-        onOpen: (b) => Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => AdminBanDetailScreen(
-              subject: b.toDetailSubject(),
-              onUnban: (s) {
-                setState(() => _banned.removeWhere((x) => x.name == s.name));
-                _showToast('${s.name} unbanned');
-              },
+        onOpen: (bannedUser) {
+          final entity = usersState.users
+              .where((u) => u.uid == bannedUser.uid)
+              .firstOrNull;
+          if (entity == null) return;
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => AdminBanDetailScreen(
+                subject: _toBanDetailSubject(entity),
+                onUnban: (subject) async {
+                  await ref
+                      .read(feat.adminUsersProvider.notifier)
+                      .unbanUser(subject.uid);
+                  if (mounted) {
+                    Navigator.pop(context);
+                    _showToast('User unbanned');
+                  }
+                },
+              ),
             ),
-          ),
-        ),
+          );
+        },
       ),
     };
   }

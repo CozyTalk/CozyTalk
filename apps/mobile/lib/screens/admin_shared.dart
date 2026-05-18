@@ -96,6 +96,7 @@ class AdminReport {
   final String roomId;
   final String reportedUserId;
   final String reportedInterest;
+  final String reporterId;
   AdminReportOutcome? outcome;
 
   AdminReport({
@@ -112,6 +113,7 @@ class AdminReport {
     required this.roomId,
     required this.reportedUserId,
     required this.reportedInterest,
+    this.reporterId = '',
   });
 }
 
