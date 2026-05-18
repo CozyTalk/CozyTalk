@@ -214,7 +214,8 @@ void main() {
       test('propagates datasource exception', () {
         datasource.error = Exception('already banned');
         expect(
-          () => repository.banUser(uid: 'u1', reason: 'Spam', duration: '1 Day'),
+          () =>
+              repository.banUser(uid: 'u1', reason: 'Spam', duration: '1 Day'),
           throwsA(isA<Exception>()),
         );
       });

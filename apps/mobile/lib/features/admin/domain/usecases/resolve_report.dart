@@ -5,9 +5,6 @@ class ResolveReport {
 
   ResolveReport(this._r);
 
-  Future<void> call(
-    String reportId, {
-    required String action,
-    String? note,
-  }) => _r.resolveReport(reportId, action: action, note: note);
+  Future<void> call(String reportId, {required String action, String? note}) =>
+      _r.resolveReport(reportId, action: action, note: note);
 }

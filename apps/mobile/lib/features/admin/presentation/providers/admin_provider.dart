@@ -126,10 +126,12 @@ class AdminReportsState {
     reports: reports ?? this.reports,
     isSubmitting: isSubmitting ?? this.isSubmitting,
     error: error == _sentinel ? this.error : error as String?,
-    actionError:
-        actionError == _sentinel ? this.actionError : actionError as String?,
-    chatLogUrl:
-        chatLogUrl == _sentinel ? this.chatLogUrl : chatLogUrl as String?,
+    actionError: actionError == _sentinel
+        ? this.actionError
+        : actionError as String?,
+    chatLogUrl: chatLogUrl == _sentinel
+        ? this.chatLogUrl
+        : chatLogUrl as String?,
   );
 }
 
@@ -139,21 +141,24 @@ class AdminReportsNotifier extends Notifier<AdminReportsState> {
   @override
   AdminReportsState build() {
     ref.onDispose(() => _sub?.cancel());
-    _sub = ref.read(_watchReportsProvider).call().listen(
-      (reports) {
-        state = state.copyWith(
-          status: AdminReportsStatus.loaded,
-          reports: reports,
-          error: null,
+    _sub = ref
+        .read(_watchReportsProvider)
+        .call()
+        .listen(
+          (reports) {
+            state = state.copyWith(
+              status: AdminReportsStatus.loaded,
+              reports: reports,
+              error: null,
+            );
+          },
+          onError: (Object e) {
+            state = state.copyWith(
+              status: AdminReportsStatus.error,
+              error: e.toString(),
+            );
+          },
         );
-      },
-      onError: (Object e) {
-        state = state.copyWith(
-          status: AdminReportsStatus.error,
-          error: e.toString(),
-        );
-      },
-    );
     return const AdminReportsState(status: AdminReportsStatus.loading);
   }
 
@@ -165,11 +170,9 @@ class AdminReportsNotifier extends Notifier<AdminReportsState> {
     if (state.isSubmitting) return;
     state = state.copyWith(isSubmitting: true, actionError: null);
     try {
-      await ref.read(_resolveReportProvider).call(
-        reportId,
-        action: action,
-        note: note,
-      );
+      await ref
+          .read(_resolveReportProvider)
+          .call(reportId, action: action, note: note);
       state = state.copyWith(isSubmitting: false);
     } catch (e) {
       state = state.copyWith(isSubmitting: false, actionError: e.toString());
@@ -178,7 +181,11 @@ class AdminReportsNotifier extends Notifier<AdminReportsState> {
 
   Future<String?> getChatLogUrl(String reportId) async {
     if (state.isSubmitting) return null;
-    state = state.copyWith(isSubmitting: true, actionError: null, chatLogUrl: null);
+    state = state.copyWith(
+      isSubmitting: true,
+      actionError: null,
+      chatLogUrl: null,
+    );
     try {
       final url = await ref.read(_getChatLogUrlProvider).call(reportId);
       state = state.copyWith(isSubmitting: false, chatLogUrl: url);
@@ -220,8 +227,9 @@ class AdminUsersState {
     users: users ?? this.users,
     isSubmitting: isSubmitting ?? this.isSubmitting,
     error: error == _sentinel ? this.error : error as String?,
-    actionError:
-        actionError == _sentinel ? this.actionError : actionError as String?,
+    actionError: actionError == _sentinel
+        ? this.actionError
+        : actionError as String?,
   );
 }
 
@@ -231,21 +239,24 @@ class AdminUsersNotifier extends Notifier<AdminUsersState> {
   @override
   AdminUsersState build() {
     ref.onDispose(() => _sub?.cancel());
-    _sub = ref.read(_watchUsersProvider).call().listen(
-      (users) {
-        state = state.copyWith(
-          status: AdminUsersStatus.loaded,
-          users: users,
-          error: null,
+    _sub = ref
+        .read(_watchUsersProvider)
+        .call()
+        .listen(
+          (users) {
+            state = state.copyWith(
+              status: AdminUsersStatus.loaded,
+              users: users,
+              error: null,
+            );
+          },
+          onError: (Object e) {
+            state = state.copyWith(
+              status: AdminUsersStatus.error,
+              error: e.toString(),
+            );
+          },
         );
-      },
-      onError: (Object e) {
-        state = state.copyWith(
-          status: AdminUsersStatus.error,
-          error: e.toString(),
-        );
-      },
-    );
     return const AdminUsersState(status: AdminUsersStatus.loading);
   }
 
@@ -259,13 +270,15 @@ class AdminUsersNotifier extends Notifier<AdminUsersState> {
     if (state.isSubmitting) return;
     state = state.copyWith(isSubmitting: true, actionError: null);
     try {
-      await ref.read(_banUserProvider).call(
-        uid: uid,
-        reason: reason,
-        duration: duration,
-        note: note,
-        reportId: reportId,
-      );
+      await ref
+          .read(_banUserProvider)
+          .call(
+            uid: uid,
+            reason: reason,
+            duration: duration,
+            note: note,
+            reportId: reportId,
+          );
       state = state.copyWith(isSubmitting: false);
     } catch (e) {
       state = state.copyWith(isSubmitting: false, actionError: e.toString());

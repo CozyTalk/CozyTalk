@@ -6,7 +6,11 @@ void main() {
     final date = DateTime(2025, 1, 10);
 
     test('constructs with required fields', () {
-      final outcome = AdminReportOutcome(kind: 'banned', byName: 'Admin', at: date);
+      final outcome = AdminReportOutcome(
+        kind: 'banned',
+        byName: 'Admin',
+        at: date,
+      );
       expect(outcome.kind, 'banned');
       expect(outcome.byName, 'Admin');
       expect(outcome.at, date);
@@ -24,7 +28,11 @@ void main() {
     });
 
     test('kind can be reviewed', () {
-      final outcome = AdminReportOutcome(kind: 'reviewed', byName: 'Admin', at: date);
+      final outcome = AdminReportOutcome(
+        kind: 'reviewed',
+        byName: 'Admin',
+        at: date,
+      );
       expect(outcome.kind, 'reviewed');
     });
   });

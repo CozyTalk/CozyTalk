@@ -6,7 +6,8 @@ class AdminReport {
   final String reporterId;
   final String reportedUserId;
   final String sessionId;
-  final String reportType; // "spam" | "harassment" | "inappropriate_content" | "other"
+  final String
+  reportType; // "spam" | "harassment" | "inappropriate_content" | "other"
   final String reason;
   final String? contextText;
   final List<String> contextImageUrls;

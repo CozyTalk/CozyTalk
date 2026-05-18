@@ -29,10 +29,7 @@ void main() {
 
     test('propagates repository exception', () {
       repo.error = Exception('not found');
-      expect(
-        () => usecase('r3', action: 'dismiss'),
-        throwsA(isA<Exception>()),
-      );
+      expect(() => usecase('r3', action: 'dismiss'), throwsA(isA<Exception>()));
     });
   });
 }

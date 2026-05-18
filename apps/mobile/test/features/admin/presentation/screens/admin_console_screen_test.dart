@@ -131,7 +131,9 @@ Widget _buildScreen({
 
 void main() {
   group('AdminConsoleScreen', () {
-    testWidgets('renders Reports, Users, and Banned tab labels', (tester) async {
+    testWidgets('renders Reports, Users, and Banned tab labels', (
+      tester,
+    ) async {
       await tester.pumpWidget(_buildScreen());
       await tester.pump();
 
@@ -174,14 +176,12 @@ void main() {
       final reports = _FakeReportsNotifier(
         AdminReportsState(
           status: AdminReportsStatus.loaded,
-          reports: [
-            _makeReport('r1'),
-            _makeReport('r2'),
-            _makeReport('r3'),
-          ],
+          reports: [_makeReport('r1'), _makeReport('r2'), _makeReport('r3')],
         ),
       );
-      await tester.pumpWidget(_buildScreen(dashboard: dashboard, reports: reports));
+      await tester.pumpWidget(
+        _buildScreen(dashboard: dashboard, reports: reports),
+      );
       await tester.pumpAndSettle();
 
       // Header stats and tab badge show pending count
@@ -212,10 +212,7 @@ void main() {
       final users = _FakeUsersNotifier(
         AdminUsersState(
           status: AdminUsersStatus.loaded,
-          users: [
-            _makeUser('u1'),
-            _makeUser('u2', banned: true),
-          ],
+          users: [_makeUser('u1'), _makeUser('u2', banned: true)],
         ),
       );
       await tester.pumpWidget(_buildScreen(users: users));

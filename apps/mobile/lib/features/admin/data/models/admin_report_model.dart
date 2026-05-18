@@ -21,12 +21,8 @@ abstract class AdminReportOutcomeModel with _$AdminReportOutcomeModel {
 }
 
 extension AdminReportOutcomeModelX on AdminReportOutcomeModel {
-  AdminReportOutcome toEntity() => AdminReportOutcome(
-    kind: kind,
-    byName: byName,
-    at: at,
-    note: note,
-  );
+  AdminReportOutcome toEntity() =>
+      AdminReportOutcome(kind: kind, byName: byName, at: at, note: note);
 }
 
 @freezed

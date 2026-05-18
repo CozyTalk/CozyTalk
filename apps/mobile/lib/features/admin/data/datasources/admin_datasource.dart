@@ -71,8 +71,9 @@ class AdminDatasourceImpl implements AdminDatasource {
           return snap.docs.map((doc) {
             final data = Map<String, dynamic>.from(doc.data());
             if (data['outcome'] is Map) {
-              data['outcome'] =
-                  Map<String, dynamic>.from(data['outcome'] as Map);
+              data['outcome'] = Map<String, dynamic>.from(
+                data['outcome'] as Map,
+              );
             }
             return AdminReportModel.fromJson(data).copyWith(
               id: doc.id,
@@ -132,10 +133,9 @@ class AdminDatasourceImpl implements AdminDatasource {
                   .map((e) => Map<String, dynamic>.from(e as Map))
                   .toList();
             }
-            return AdminUserModel.fromJson(data).copyWith(
-              uid: doc.id,
-              online: onlineUids.contains(doc.id),
-            );
+            return AdminUserModel.fromJson(
+              data,
+            ).copyWith(uid: doc.id, online: onlineUids.contains(doc.id));
           }).toList();
         });
   }

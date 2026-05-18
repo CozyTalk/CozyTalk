@@ -16,10 +16,9 @@ class AdminRepositoryImpl implements AdminRepository {
       _datasource.getDashboardStats();
 
   @override
-  Stream<List<AdminReport>> watchReports() =>
-      _datasource.watchReports().map(
-        (models) => models.map((m) => m.toEntity()).toList(),
-      );
+  Stream<List<AdminReport>> watchReports() => _datasource.watchReports().map(
+    (models) => models.map((m) => m.toEntity()).toList(),
+  );
 
   @override
   Future<void> resolveReport(
@@ -33,10 +32,9 @@ class AdminRepositoryImpl implements AdminRepository {
       _datasource.getChatLogUrl(reportId);
 
   @override
-  Stream<List<AdminUser>> watchUsers() =>
-      _datasource.watchUsers().map(
-        (models) => models.map((m) => m.toEntity()).toList(),
-      );
+  Stream<List<AdminUser>> watchUsers() => _datasource.watchUsers().map(
+    (models) => models.map((m) => m.toEntity()).toList(),
+  );
 
   @override
   Future<void> banUser({

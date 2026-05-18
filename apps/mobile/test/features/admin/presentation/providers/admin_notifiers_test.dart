@@ -66,42 +66,48 @@ void main() {
       expect(repo.resolveReportCount, 0);
     });
 
-    test('resolveReport: sets isSubmitting true then false on success', () async {
-      final repo = FakeAdminRepository();
-      final transitions = <bool>[];
+    test(
+      'resolveReport: sets isSubmitting true then false on success',
+      () async {
+        final repo = FakeAdminRepository();
+        final transitions = <bool>[];
 
-      var isSubmitting = false;
-      void setSubmitting(bool v) {
-        isSubmitting = v;
-        transitions.add(v);
-      }
+        var isSubmitting = false;
+        void setSubmitting(bool v) {
+          isSubmitting = v;
+          transitions.add(v);
+        }
 
-      setSubmitting(true);
-      await repo.resolveReport('r1', action: 'dismiss');
-      setSubmitting(false);
-
-      expect(transitions, [true, false]);
-      expect(repo.lastReportId, 'r1');
-      expect(repo.lastAction, 'dismiss');
-    });
-
-    test('resolveReport: sets actionError on exception, clears isSubmitting', () async {
-      final repo = FakeAdminRepository();
-      repo.error = Exception('CF error');
-      String? actionError;
-      bool isSubmitting = true;
-
-      try {
+        setSubmitting(true);
         await repo.resolveReport('r1', action: 'dismiss');
-        isSubmitting = false;
-      } catch (e) {
-        isSubmitting = false;
-        actionError = e.toString();
-      }
+        setSubmitting(false);
 
-      expect(isSubmitting, isFalse);
-      expect(actionError, isNotNull);
-    });
+        expect(transitions, [true, false]);
+        expect(repo.lastReportId, 'r1');
+        expect(repo.lastAction, 'dismiss');
+      },
+    );
+
+    test(
+      'resolveReport: sets actionError on exception, clears isSubmitting',
+      () async {
+        final repo = FakeAdminRepository();
+        repo.error = Exception('CF error');
+        String? actionError;
+        bool isSubmitting = true;
+
+        try {
+          await repo.resolveReport('r1', action: 'dismiss');
+          isSubmitting = false;
+        } catch (e) {
+          isSubmitting = false;
+          actionError = e.toString();
+        }
+
+        expect(isSubmitting, isFalse);
+        expect(actionError, isNotNull);
+      },
+    );
 
     test('getChatLogUrl: sets chatLogUrl on success', () async {
       final repo = FakeAdminRepository();

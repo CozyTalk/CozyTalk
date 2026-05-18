@@ -83,9 +83,7 @@ class _AdminReportDetailScreenState extends State<AdminReportDetailScreen> {
       if (url == null || !mounted) return;
       final response = await http.get(Uri.parse(url));
       if (!mounted) return;
-      final data = Map<String, dynamic>.from(
-        jsonDecode(response.body) as Map,
-      );
+      final data = Map<String, dynamic>.from(jsonDecode(response.body) as Map);
       showModalBottomSheet(
         context: context,
         isScrollControlled: true,
@@ -174,10 +172,7 @@ class _AdminReportDetailScreenState extends State<AdminReportDetailScreen> {
                     ),
                     if (widget.onGetChatLog != null) ...[
                       const SizedBox(height: 12),
-                      _buildSection(
-                        'Chat transcript',
-                        _buildChatLogButton(),
-                      ),
+                      _buildSection('Chat transcript', _buildChatLogButton()),
                     ],
                     if (widget.report.evidence > 0) ...[
                       const SizedBox(height: 12),
@@ -666,7 +661,10 @@ class _AdminReportDetailScreenState extends State<AdminReportDetailScreen> {
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(color: _C.border, width: 1.5),
               ),
-              child: const Icon(Icons.image_not_supported_rounded, color: _C.inkSoft),
+              child: const Icon(
+                Icons.image_not_supported_rounded,
+                color: _C.inkSoft,
+              ),
             );
           }
           return GestureDetector(
@@ -1372,7 +1370,8 @@ class _ChatTranscriptSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final messages = (data['messages'] as List?)
+    final messages =
+        (data['messages'] as List?)
             ?.map((e) => Map<String, dynamic>.from(e as Map))
             .toList() ??
         const <Map<String, dynamic>>[];
@@ -1473,10 +1472,9 @@ class _ChatTranscriptSheet extends StatelessWidget {
                       itemCount: messages.length,
                       itemBuilder: (_, i) {
                         final msg = messages[i];
-                        final name =
-                            msg['displayName'] as String? ?? 'Unknown';
-                        final text = msg['text'] as String? ??
-                            '[message unavailable]';
+                        final name = msg['displayName'] as String? ?? 'Unknown';
+                        final text =
+                            msg['text'] as String? ?? '[message unavailable]';
                         final ts = msg['timestamp'] as String? ?? '';
                         return Padding(
                           padding: const EdgeInsets.only(bottom: 10),
@@ -1506,8 +1504,7 @@ class _ChatTranscriptSheet extends StatelessWidget {
                               const SizedBox(width: 10),
                               Expanded(
                                 child: Column(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.start,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Row(
                                       children: [
@@ -1562,10 +1559,7 @@ class _ChatTranscriptSheet extends StatelessWidget {
                     ? 'No messages recorded'
                     : 'Exported: $exportedAt · ${messages.length} messages',
                 textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontSize: 11,
-                  color: Color(0xFF6B5F5A),
-                ),
+                style: const TextStyle(fontSize: 11, color: Color(0xFF6B5F5A)),
               ),
             ),
           ],
