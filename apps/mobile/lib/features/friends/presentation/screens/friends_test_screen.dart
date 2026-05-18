@@ -122,9 +122,10 @@ class _UserTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final name = user.displayName.isNotEmpty ? user.displayName : 'Unknown';
     return ListTile(
-      leading: CircleAvatar(child: Text(user.displayName[0].toUpperCase())),
-      title: Text(user.displayName),
+      leading: CircleAvatar(child: Text(name[0].toUpperCase())),
+      title: Text(name),
       subtitle: Text(user.uid, style: Theme.of(context).textTheme.bodySmall),
       trailing: isFriend
           ? const Chip(label: Text('Friends'))

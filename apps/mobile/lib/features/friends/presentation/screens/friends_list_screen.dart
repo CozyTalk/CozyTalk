@@ -98,11 +98,12 @@ class _FriendsTab extends StatelessWidget {
       itemCount: friends.length,
       itemBuilder: (context, i) {
         final friend = friends[i];
+        final friendName = friend.friendDisplayName.isNotEmpty
+            ? friend.friendDisplayName
+            : 'Unknown';
         return ListTile(
-          leading: CircleAvatar(
-            child: Text(friend.friendDisplayName[0].toUpperCase()),
-          ),
-          title: Text(friend.friendDisplayName),
+          leading: CircleAvatar(child: Text(friendName[0].toUpperCase())),
+          title: Text(friendName),
           subtitle: Text(
             'Since ${_formatDate(friend.friendedAt)}',
             style: Theme.of(context).textTheme.bodySmall,
@@ -140,7 +141,6 @@ class _FriendsTab extends StatelessWidget {
           FilledButton(
             onPressed: () {
               Navigator.pop(ctx);
-              // Access provider via the closest ProviderScope
               ProviderScope.containerOf(context)
                   .read(friendsNotifierProvider.notifier)
                   .removeFriend(friend.friendshipId);
@@ -187,7 +187,13 @@ class _RequestsTab extends StatelessWidget {
             padding: const EdgeInsets.all(12),
             child: Row(
               children: [
-                CircleAvatar(child: Text(req.fromDisplayName[0].toUpperCase())),
+                CircleAvatar(
+                  child: Text(
+                    req.fromDisplayName.isNotEmpty
+                        ? req.fromDisplayName[0].toUpperCase()
+                        : '?',
+                  ),
+                ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(

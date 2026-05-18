@@ -74,7 +74,7 @@ class _FriendDirectChatScreenState
       if (next.messages.length != (prev?.messages.length ?? 0)) {
         _scrollToBottom();
       }
-      if (next.error != null) {
+      if (next.error != null && next.error != prev?.error) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(next.error!), backgroundColor: Colors.red),
         );
