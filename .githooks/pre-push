@@ -187,7 +187,25 @@ if ! _emulators_up; then
     FAIL=1
   else
     printf "ok\n"
-    sleep 10  # ports open before functions finish loading; give them time
+    # Ports open before the Functions Node process finishes loading index.js.
+    # Poll until joinGroupRoom returns valid JSON (functions are registered).
+    printf "  Waiting for functions... "
+    FUNCS_READY=0
+    for i in $(seq 1 90); do
+      if _functions_loaded; then
+        FUNCS_READY=1
+        break
+      fi
+      sleep 1
+    done
+    if [ "$FUNCS_READY" -eq 0 ]; then
+      printf "TIMEOUT\n\n"
+      printf "  Functions emulator did not load within 90s. Emulator log:\n\n"
+      cat "$EMULATOR_LOG"
+      FAIL=1
+    else
+      printf "ok\n"
+    fi
   fi
 fi
 
