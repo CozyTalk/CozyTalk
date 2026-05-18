@@ -69,3 +69,4 @@ flutter:
     - assets/images/dressup/
     - assets/images/cards/
     - assets/images/tuktuk/
+    - assets/icebreaker-questions.json

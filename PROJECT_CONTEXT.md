@@ -128,6 +128,11 @@ Read and update user profile fields (`displayName`, `interest`, `thoughts`) in `
 ### `avatar` feature (complete)
 Hat and mood overlay selection for the in-chat avatar. Reads/writes `hatKey` and `moodKey` fields in `users/{uid}`. See [`CLAUDE.md` Avatar Feature section](CLAUDE.md).
 
+### `card_shuffle` feature (prototype)
+Icebreaker question deck for conversation starters in chat rooms. Reads 100 questions from `assets/icebreaker-questions.json`, implements a remaining/seen exhaustion-before-repeat deck with depth warm-up (first 5 draws are light/medium only, deep unlocks after). State persisted in `SharedPreferences` (= `localStorage` on web). See [`docs/features/card_shuffle.md`](docs/features/card_shuffle.md).
+
+**Prototype UI:** A `_TopicPanel` widget is embedded in `features/chat/presentation/screens/chat_screen.dart` — toggled by an "Icebreaker Topic" AppBar button. Not wired to server-side messaging.
+
 ### `home` feature (stub)
 Navigation hub `HomeScreen`. Used only when `_useMainUI = true`. No domain/data layers — intentionally thin.
 
