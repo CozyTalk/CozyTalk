@@ -120,7 +120,8 @@ class FriendsDatasourceImpl implements FriendsDatasource {
     required String toDisplayName,
     required String fromDisplayName,
   }) async {
-    await _firestore.collection('friend_requests').add({
+    final docId = '${currentUid}_$toUid';
+    await _firestore.collection('friend_requests').doc(docId).set({
       'fromUid': currentUid,
       'fromDisplayName': fromDisplayName,
       'toUid': toUid,

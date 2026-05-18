@@ -146,6 +146,10 @@ service cloud.firestore {
       allow create: if isSignedIn()
         && request.resource.data.fromUid == request.auth.uid
         && request.resource.data.status == 'pending'
+        && request.resource.data.keys().hasOnly([
+            'fromUid', 'fromDisplayName', 'toUid', 'toDisplayName',
+            'status', 'createdAt'
+           ])
         && request.resource.data.keys().hasAll([
             'fromUid', 'fromDisplayName', 'toUid', 'toDisplayName',
             'status', 'createdAt'
@@ -191,9 +195,18 @@ service cloud.firestore {
       allow create: if isSignedIn()
         && _isFriendshipParticipant(chatRoomId)
         && request.resource.data.senderId == request.auth.uid
+        && request.resource.data.keys().hasOnly([
+            'senderId', 'senderDisplayName', 'text', 'timestamp'
+           ])
         && request.resource.data.keys().hasAll([
             'senderId', 'senderDisplayName', 'text', 'timestamp'
-           ]);
+           ])
+        && request.resource.data.senderDisplayName is string
+        && request.resource.data.senderDisplayName.size() <= 200
+        && request.resource.data.text is string
+        && request.resource.data.text.size() > 0
+        && request.resource.data.text.size() <= 10000
+        && request.resource.data.timestamp == request.time;
       allow update, delete: if false;
     }
 
