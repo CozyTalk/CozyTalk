@@ -30,7 +30,6 @@ abstract class JukeboxDatasource {
 
 class JukeboxDatasourceImpl implements JukeboxDatasource {
   final FirebaseDatabase _rtdb;
-  static const _base = 'https://api.audiomack.com/v1';
 
   JukeboxDatasourceImpl(this._rtdb);
 
@@ -66,35 +65,32 @@ class JukeboxDatasourceImpl implements JukeboxDatasource {
     required String addedBy,
     required String addedByName,
   }) async {
-    final uri = Uri.parse('$_base/music/song/$artist/$slug');
+    final originalUrl = 'https://audiomack.com/$artist/song/$slug';
+    final encoded = Uri.encodeComponent(originalUrl);
+    final uri = Uri.parse(
+      'https://creators.audiomack.com/oembed?url=$encoded&format=json',
+    );
     final response = await http.get(uri);
     if (response.statusCode != 200) {
-      throw Exception('Audiomack API error ${response.statusCode}');
+      throw Exception('oEmbed ${response.statusCode}');
     }
     final data = Map<String, dynamic>.from(jsonDecode(response.body) as Map);
-    final id = data['id'].toString();
     return JukeboxTrackModel(
-      id: id,
-      audiomackUrl: 'https://audiomack.com/$artist/song/$slug',
-      embedUrl: 'https://audiomack.com/embed/$artist/song/$slug',
-      streamingUrl: data['streaming_url'] as String,
-      streamingUrlTimeout: (data['streaming_url_timeout'] as num).toInt(),
+      id: '$artist/$slug',
+      audiomackUrl: originalUrl,
+      embedUrl: 'https://audiomack.com/embed/song/$artist/$slug',
+      streamingUrl: '',
+      streamingUrlTimeout: 9999999999,
       title: data['title'] as String,
-      artist: data['artist'] as String,
-      artworkUrl: data['image'] as String,
+      artist: data['author_name'] as String,
+      artworkUrl: data['thumbnail_url'] as String,
       addedBy: addedBy,
       addedByName: addedByName,
     );
   }
 
   @override
-  Future<String> fetchFreshStreamingUrl(String trackId) async {
-    final response = await http.post(Uri.parse('$_base/music/$trackId/play'));
-    if (response.statusCode != 200) {
-      throw Exception('Failed to fetch streaming URL: ${response.statusCode}');
-    }
-    return response.body.trim();
-  }
+  Future<String> fetchFreshStreamingUrl(String trackId) async => '';
 
   @override
   Future<void> writeState({
@@ -107,23 +103,5 @@ class JukeboxDatasourceImpl implements JukeboxDatasource {
       _rtdb.ref('jukebox/$roomId').remove();
 
   @override
-  Future<void> reportPlayStats(String trackId) async {
-    try {
-      final tokenResp = await http.get(
-        Uri.parse(
-          '$_base/music/stats/token?device=anonymous&music_id=$trackId',
-        ),
-      );
-      if (tokenResp.statusCode != 200) return;
-      final token = (jsonDecode(tokenResp.body) as Map)['token'] as String?;
-      if (token == null) return;
-      await http.post(
-        Uri.parse('$_base/music/stats/$trackId'),
-        body: 'token=$token&type=play',
-        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-      );
-    } catch (_) {
-      // fire-and-forget — never rethrow
-    }
-  }
+  Future<void> reportPlayStats(String trackId) async => {};
 }

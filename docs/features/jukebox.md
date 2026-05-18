@@ -1,6 +1,6 @@
 # Feature: jukebox
 
-Synced music queue for chat rooms. Any participant can add an Audiomack song URL; all participants hear the same track in sync. Supports pause/resume, skip, and remove from queue. Android: `just_audio` streams the track directly with seek-based sync. Web: Audiomack embed iframe (`JukeboxEmbedPlayer`) loaded in `HtmlElementView`; the iframe player handles playback natively.
+Synced music queue for chat rooms. Any participant can add an Audiomack song URL; all participants see the same track and controls in sync. Supports skip and remove from queue. Playback is handled via the Audiomack embed iframe on both Android and web using `webview_flutter`.
 
 ## File Map
 
@@ -22,15 +22,13 @@ features/jukebox/
 │   ├── models/
 │   │   ├── jukebox_track_model.dart        @freezed JukeboxTrackModel + toEntity()
 │   │   └── jukebox_room_state_model.dart   @freezed JukeboxRoomStateModel + toEntity()
-│   ├── datasources/jukebox_datasource.dart  abstract + JukeboxDatasourceImpl (RTDB + Audiomack HTTP)
+│   ├── datasources/jukebox_datasource.dart  abstract + JukeboxDatasourceImpl (RTDB + Audiomack oEmbed)
 │   └── repositories/jukebox_repository_impl.dart
 └── presentation/
-    ├── providers/jukebox_provider.dart   jukeboxNotifierProvider, JukeboxNotifier (owns AudioPlayer), JukeboxUiState
+    ├── providers/jukebox_provider.dart   jukeboxNotifierProvider, JukeboxNotifier, JukeboxUiState
     └── widgets/
-        ├── jukebox_embed_player.dart         conditional export (web/stub)
-        ├── jukebox_embed_player_stub.dart    SizedBox.shrink() on Android
-        ├── jukebox_embed_player_web.dart     HtmlElementView iframe (package:web)
-        ├── jukebox_player.dart               invisible widget — mounts AudioPlayer in ChatScreen body
+        ├── jukebox_player.dart               invisible widget — calls enterRoom() in ChatScreen body
+        ├── jukebox_web_player.dart           WebViewWidget wrapping Audiomack embed iframe
         ├── jukebox_sheet.dart                DraggableScrollableSheet modal
         └── queue_slot_tile.dart              queue item tile with remove button
 ```
@@ -39,9 +37,9 @@ features/jukebox/
 
 | Provider | Type | Description |
 |---|---|---|
-| `jukeboxNotifierProvider` | `NotifierProvider<JukeboxNotifier, JukeboxUiState>` | owns AudioPlayer (Android only), drives RTDB sync and playback |
+| `jukeboxNotifierProvider` | `NotifierProvider<JukeboxNotifier, JukeboxUiState>` | subscribes to RTDB stream; no audio player |
 
-`JukeboxNotifier` skips `AudioPlayer` creation on web (`kIsWeb` guard) and `_syncPlayer()` returns early on web — playback is handled entirely by the `JukeboxEmbedPlayer` iframe.
+`JukeboxNotifier` has no `AudioPlayer`. Playback is handled entirely by the `JukeboxWebPlayer` iframe embed on both platforms.
 
 ## State
 
@@ -49,18 +47,19 @@ features/jukebox/
 
 Sentinel pattern for nullable fields (`roomId`, `roomState`, `resolveError`) — callers must pass `null` explicitly to clear.
 
-## Audiomack API
+## Audiomack oEmbed API
 
-Base: `https://api.audiomack.com/v1` — zero auth for all MVP endpoints.
+No authentication required.
 
 | Endpoint | Purpose |
 |---|---|
-| `GET /v1/music/song/{artist}/{slug}` | Fetch track metadata + streaming URL |
-| `POST /v1/music/{id}/play` | Refresh streaming URL (valid ~10s) |
-| `GET /v1/music/stats/token?device=anonymous&music_id={id}` | Stats token |
-| `POST /v1/music/stats/{id}` body `token=…&type=play` | Report play (ToS requirement) |
+| `GET https://creators.audiomack.com/oembed?url={encoded_url}&format=json` | Fetch track metadata (title, author_name, thumbnail_url) |
 
-URL format: `https://audiomack.com/{artist}/song/{slug}` — path segments [0] = artist, [2] = slug, [1] must be `'song'`.
+URL input format: `https://audiomack.com/{artist}/song/{slug}` — path segments [0] = artist, [2] = slug, [1] must be `'song'`.
+
+Embed URL format: `https://audiomack.com/embed/song/{artist}/{slug}` (note: `embed/song/` prefix, not `embed/{artist}/`).
+
+The Audiomack Data API (`api.audiomack.com/v1`) is NOT used — it requires OAuth 1.0.
 
 ## RTDB Path
 
@@ -68,25 +67,23 @@ URL format: `https://audiomack.com/{artist}/song/{slug}` — path segments [0] =
 
 Queue max: 4 tracks (index 0 = now playing + 3 up next). All writes are full-document `.set()` — never partial `.update()`.
 
-`startedAt` is client `DateTime.now().millisecondsSinceEpoch` (ms epoch). All clients seek to `now - startedAt` when a new track starts. Drift < 3s is acceptable.
+`startedAt` is client `DateTime.now().millisecondsSinceEpoch` (ms epoch). Written on track change; all clients reload the embed on each RTDB state update.
 
 ## Key Behavior
 
-- `JukeboxPlayer` widget mounts in `ChatScreen.body` (not inside the bottom sheet) — `AudioPlayer` lives in the `JukeboxNotifier` so audio continues when the sheet is closed.
+- `JukeboxPlayer` widget mounts in `ChatScreen.body` (not inside the bottom sheet) — ensures RTDB subscription stays alive when the sheet is closed.
 - First track added to an empty queue auto-starts: `isPlaying: true`, `startedAt: now`.
-- Streaming URL TTL: use stored URL if `streamingUrlTimeout > nowSec + 30`; otherwise call `/play` to refresh.
-- Stats reporting is fire-and-forget — never blocks UI or rethrows.
+- `JukeboxWebPlayer` uses a `WebViewController` with JS enabled. In test environments (no platform WebView available), the controller init throws and `build()` returns `SizedBox.shrink()` gracefully.
 - On session end: `endSession` CF clears `jukebox/{sessionId}` from RTDB.
 
 ## Platform Differences
 
 | | Android | Web |
 |---|---|---|
-| Audio playback | `just_audio` streams CloudFront signed URL | Audiomack embed iframe (`JukeboxEmbedPlayer`) |
-| Sync precision | Seek to `now - startedAt` on track change | Best-effort — iframe auto-plays from start on each track change |
-| Play/pause control | Notifier-driven (RTDB `isPlaying`) | Controlled within iframe player |
-| Pause/resume button | Shown in `JukeboxSheet` | Hidden (iframe has its own controls) |
-| Skip button | Shown | Shown |
+| Audio playback | Audiomack embed iframe (`JukeboxWebPlayer`) | Audiomack embed iframe (`JukeboxWebPlayer`) |
+| Sync precision | Best-effort — iframe auto-plays from start on each track change | Best-effort — same |
+| Play/pause control | Controlled within iframe player | Controlled within iframe player |
+| Skip button | Shown in `JukeboxSheet` | Shown in `JukeboxSheet` |
 
 ## Integration with ChatScreen
 

@@ -43,8 +43,7 @@ dependencies:
 
   # Jukebox
   http: ^1.6.0
-  just_audio: ^0.9.40
-  web: ^1.1.0
+  webview_flutter: ^4.0.0
 
 dev_dependencies:
   flutter_test:

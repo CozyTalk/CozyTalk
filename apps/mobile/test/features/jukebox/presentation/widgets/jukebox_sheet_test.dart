@@ -89,42 +89,6 @@ void main() {
     expect(find.text('My Artist'), findsOneWidget);
   });
 
-  testWidgets('pause button calls setPlaying(false)', (tester) async {
-    final roomState = JukeboxRoomState(
-      isPlaying: true,
-      currentIndex: 0,
-      startedAt: 0,
-      queue: [_track],
-    );
-    final fake = _FakeJukeboxNotifier(
-      initial: JukeboxUiState(roomId: 'room1', roomState: roomState),
-    );
-    await tester.pumpWidget(_buildSheet(fake));
-
-    final pauseButton = find.bySemanticsLabel('Pause');
-    expect(pauseButton, findsOneWidget);
-    await tester.tap(pauseButton);
-    expect(fake.lastSetPlaying, isFalse);
-  });
-
-  testWidgets('resume button calls setPlaying(true)', (tester) async {
-    final roomState = JukeboxRoomState(
-      isPlaying: false,
-      currentIndex: 0,
-      startedAt: 0,
-      queue: [_track],
-    );
-    final fake = _FakeJukeboxNotifier(
-      initial: JukeboxUiState(roomId: 'room1', roomState: roomState),
-    );
-    await tester.pumpWidget(_buildSheet(fake));
-
-    final resumeButton = find.bySemanticsLabel('Resume');
-    expect(resumeButton, findsOneWidget);
-    await tester.tap(resumeButton);
-    expect(fake.lastSetPlaying, isTrue);
-  });
-
   testWidgets('skip button calls skip()', (tester) async {
     final roomState = JukeboxRoomState(
       isPlaying: true,
@@ -137,7 +101,7 @@ void main() {
     );
     await tester.pumpWidget(_buildSheet(fake));
 
-    await tester.tap(find.bySemanticsLabel('Skip track'));
+    await tester.tap(find.byIcon(Icons.skip_next_rounded));
     expect(fake.skipCount, 1);
   });
 

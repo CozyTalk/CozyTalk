@@ -2,8 +2,6 @@ import 'dart:async';
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
-import 'package:just_audio/just_audio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/datasources/jukebox_datasource.dart';
@@ -96,9 +94,6 @@ class JukeboxUiState {
 
 class JukeboxNotifier extends Notifier<JukeboxUiState> {
   StreamSubscription<JukeboxRoomState?>? _rtdbSub;
-  AudioPlayer? _player;
-  String? _lastPlayedTrackId;
-  int? _lastCurrentIndex;
 
   @override
   JukeboxUiState build() {
@@ -109,7 +104,6 @@ class JukeboxNotifier extends Notifier<JukeboxUiState> {
   void enterRoom(String roomId) {
     if (state.roomId == roomId) return;
     _rtdbSub?.cancel();
-    if (!kIsWeb) _player ??= AudioPlayer();
     state = state.copyWith(roomId: roomId);
     _rtdbSub = ref
         .read(_watchJukeboxProvider)(roomId)
@@ -190,87 +184,10 @@ class JukeboxNotifier extends Notifier<JukeboxUiState> {
 
   void _onRtdbState(JukeboxRoomState? roomState) {
     state = state.copyWith(roomState: roomState);
-    if (roomState == null) {
-      _player?.pause();
-      _lastPlayedTrackId = null;
-      _lastCurrentIndex = null;
-      return;
-    }
-    _syncPlayer(roomState);
-  }
-
-  Future<void> _syncPlayer(JukeboxRoomState roomState) async {
-    if (kIsWeb) return; // iframe embed in JukeboxSheet handles playback on web
-    final player = _player;
-    if (player == null) return;
-
-    if (!roomState.isPlaying) {
-      await player.pause();
-      return;
-    }
-
-    final track = roomState.currentTrack;
-    if (track == null) {
-      await player.pause();
-      return;
-    }
-
-    final trackChanged =
-        track.id != _lastPlayedTrackId ||
-        roomState.currentIndex != _lastCurrentIndex;
-
-    if (!trackChanged) {
-      if (!player.playing) await player.play();
-      return;
-    }
-
-    _lastPlayedTrackId = track.id;
-    _lastCurrentIndex = roomState.currentIndex;
-
-    final nowMs = DateTime.now().millisecondsSinceEpoch;
-    final nowSec = nowMs ~/ 1000;
-
-    String streamUrl;
-    if (track.streamingUrlTimeout > nowSec + 30) {
-      streamUrl = track.streamingUrl;
-    } else {
-      try {
-        streamUrl = await ref
-            .read(_jukeboxRepositoryProvider)
-            .refreshStreamingUrl(track.id);
-      } catch (_) {
-        return;
-      }
-    }
-
-    await player.setUrl(streamUrl);
-
-    final elapsedMs = nowMs - roomState.startedAt;
-    final duration = player.duration;
-    if (duration != null && elapsedMs >= duration.inMilliseconds) {
-      final currentRoomState = state.roomState;
-      final roomId = state.roomId;
-      if (currentRoomState != null && roomId != null) {
-        await ref.read(_skipTrackProvider)(
-          roomId: roomId,
-          current: currentRoomState,
-        );
-      }
-      return;
-    }
-
-    if (elapsedMs > 0) {
-      await player.seek(Duration(milliseconds: elapsedMs));
-    }
-
-    await player.play();
-
-    ref.read(_jukeboxDatasourceProvider).reportPlayStats(track.id);
   }
 
   void _dispose() {
     _rtdbSub?.cancel();
-    if (!kIsWeb) _player?.dispose();
   }
 
   static String _friendlyError(Object e) {

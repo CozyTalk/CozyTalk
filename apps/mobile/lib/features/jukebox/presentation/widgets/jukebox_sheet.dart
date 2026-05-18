@@ -1,9 +1,8 @@
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../providers/jukebox_provider.dart';
-import 'jukebox_embed_player.dart';
+import 'jukebox_web_player.dart';
 import 'queue_slot_tile.dart';
 
 class JukeboxSheet extends ConsumerStatefulWidget {
@@ -57,7 +56,10 @@ class _JukeboxSheetState extends ConsumerState<JukeboxSheet> {
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Row(
               children: [
-                const Icon(Icons.queue_music_rounded),
+                Icon(
+                  Icons.queue_music_rounded,
+                  color: Theme.of(context).colorScheme.onSurface,
+                ),
                 const SizedBox(width: 8),
                 const Expanded(
                   child: Text(
@@ -66,7 +68,10 @@ class _JukeboxSheetState extends ConsumerState<JukeboxSheet> {
                   ),
                 ),
                 IconButton(
-                  icon: const Icon(Icons.close),
+                  icon: Icon(
+                    Icons.close,
+                    color: Theme.of(context).colorScheme.onSurface,
+                  ),
                   onPressed: () => Navigator.of(context).pop(),
                 ),
               ],
@@ -93,7 +98,10 @@ class _JukeboxSheetState extends ConsumerState<JukeboxSheet> {
                         width: 48,
                         height: 48,
                         fit: BoxFit.cover,
-                        errorBuilder: (_, _, _) => const Icon(Icons.music_note),
+                        errorBuilder: (_, _, _) => Icon(
+                          Icons.music_note,
+                          color: Theme.of(context).colorScheme.onSurface,
+                        ),
                       ),
                     ),
                     title: Text(
@@ -107,53 +115,24 @@ class _JukeboxSheetState extends ConsumerState<JukeboxSheet> {
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  if (kIsWeb) ...[
-                    JukeboxEmbedPlayer(
-                      embedUrl: roomState.currentTrack!.embedUrl,
-                      trackId: roomState.currentTrack!.id,
-                    ),
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: Semantics(
+                  JukeboxWebPlayer(embedUrl: roomState.currentTrack!.embedUrl),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      Semantics(
                         label: 'Skip track',
                         button: true,
                         child: IconButton(
                           iconSize: 36,
-                          icon: const Icon(Icons.skip_next_rounded),
+                          icon: Icon(
+                            Icons.skip_next_rounded,
+                            color: Theme.of(context).colorScheme.onSurface,
+                          ),
                           onPressed: notifier.skip,
                         ),
                       ),
-                    ),
-                  ] else ...[
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Semantics(
-                          label: roomState.isPlaying ? 'Pause' : 'Resume',
-                          button: true,
-                          child: IconButton(
-                            iconSize: 36,
-                            icon: Icon(
-                              roomState.isPlaying
-                                  ? Icons.pause_circle_rounded
-                                  : Icons.play_circle_rounded,
-                            ),
-                            onPressed: () =>
-                                notifier.setPlaying(!roomState.isPlaying),
-                          ),
-                        ),
-                        Semantics(
-                          label: 'Skip track',
-                          button: true,
-                          child: IconButton(
-                            iconSize: 36,
-                            icon: const Icon(Icons.skip_next_rounded),
-                            onPressed: notifier.skip,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
+                    ],
+                  ),
                   const SizedBox(height: 16),
                 ] else ...[
                   const Center(
