@@ -135,7 +135,7 @@ Navigation hub `HomeScreen`. Used only when `_useMainUI = true`. No domain/data 
 Initialises Firebase, points to emulators (Auth `9099`, Functions `5001`, Firestore `8080`) when `USE_EMULATOR=true`. No automatic sign-in â€” `_AuthRouter` widget watches `authNotifierProvider` and routes to `LoginScreen` or `HelloScreen`.
 
 ### Tests
-405 Flutter unit + widget tests across auth, chat, matchmaking, profile, hello, and admin features. See [Test Coverage](#quality-gates-definition-of-done) for the full breakdown.
+515 Flutter unit + widget tests across auth, chat, matchmaking, profile, hello, and admin features. See [Test Coverage](#quality-gates-definition-of-done) for the full breakdown.
 
 ---
 
@@ -364,7 +364,7 @@ Presence, typing, and nameQueue data are removed by `leaveRoom` CF on explicit l
 
 | Suite | Count | Location | Requires |
 |---|---|---|---|
-| Flutter unit + widget | 405 tests | `apps/mobile/test/` | Nothing |
+| Flutter unit + widget | 515 tests | `apps/mobile/test/` | Nothing |
 | Cloud Functions Jest | 93 unit tests | `functions/src/**/__tests__/*.test.ts` | `./dev.sh --emulator-only` |
 | Cloud Functions Jest (integration) | 7 live tests | `functions/src/matchmaking/__tests__/embeddingService.integration.test.ts` | Vertex AI credentials + `npm run test:embedding` |
 | Flutter integration | 43 tests | `apps/mobile/integration_test/matchmaking_advanced_test.dart` | Emulators + Android device |
@@ -405,7 +405,7 @@ CozyTalk/
 â”‚   â”‚   â”‚   â”œâ”€â”€ avatar/               â† hat + mood decoration (complete; 4 use cases; screen widget test pending)
 â”‚   â”‚   â”‚   â””â”€â”€ home/                 â† navigation hub stub (presentation only)
 â”‚   â”‚   â””â”€â”€ screens/                  â† legacy design-preview UI (not wired to features layer)
-â”‚   â”œâ”€â”€ test/                         â† 405 unit + widget tests
+â”‚   â”œâ”€â”€ test/                         â† 515 unit + widget tests
 â”‚   â””â”€â”€ .env.example                  â† committed; USE_EMULATOR=true by default
 â”œâ”€â”€ functions/src/
 â”‚   â”œâ”€â”€ index.ts                      â† exports all 15 functions
@@ -421,4 +421,5 @@ CozyTalk/
 â”œâ”€â”€ CLAUDE.md                         â† auto-loaded by Claude Code every session
 â””â”€â”€ PROJECT_CONTEXT.md                â† this file
 ```
+
 
