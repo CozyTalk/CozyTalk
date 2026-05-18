@@ -29,6 +29,7 @@ import 'screens/join_room_id_screen.dart';
 import 'screens/chat_screen.dart';
 import 'screens/group_chat_screen.dart';
 import 'screens/finding_room_screen.dart';
+import 'screens/admin_console_screen.dart';
 
 const _useEmulator = bool.fromEnvironment('USE_EMULATOR', defaultValue: true);
 
@@ -87,7 +88,7 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
       ),
-      home: const _AuthRouter(),
+      home: const AdminConsoleScreen(),
       routes: {
         AppRoutes.notification: (_) => const NotificationScreen(),
         AppRoutes.profile: (_) => const ProfileScreen(),

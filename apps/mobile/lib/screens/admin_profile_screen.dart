@@ -367,14 +367,12 @@ class _AdminProfileScreenState extends ConsumerState<AdminProfileScreen> {
                       child: GestureDetector(
                         onTap: () async {
                           setState(() => _showLogoutConfirm = false);
+                          final navigator = Navigator.of(context);
                           await ref
                               .read(authNotifierProvider.notifier)
                               .signOut();
-                          if (mounted) {
-                            Navigator.of(
-                              context,
-                            ).popUntil((route) => route.isFirst);
-                          }
+                          if (!mounted) return;
+                          navigator.popUntil((route) => route.isFirst);
                         },
                         child: Container(
                           padding: const EdgeInsets.symmetric(vertical: 13),
