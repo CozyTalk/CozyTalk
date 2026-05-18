@@ -114,6 +114,7 @@ class AdminReport {
     required this.reportedUserId,
     required this.reportedInterest,
     this.reporterId = '',
+    this.outcome,
   });
 }
 
