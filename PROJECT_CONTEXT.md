@@ -27,7 +27,7 @@ CozyTalk is a **cross-platform stranger chat app** targeting **Android and Web**
 
 ### Cloud Functions (`functions/`)
 - TypeScript, Firebase Functions v2
-- 15 functions exported across two regions (see Cloud Functions table in Firebase Configuration)
+- 16 functions exported across two regions (see Cloud Functions table in Firebase Configuration)
 - Max 10 instances (cost control)
 - Matchmaking and chat logic **must** live here — never on client
 
@@ -135,7 +135,7 @@ Navigation hub `HomeScreen`. Used only when `_useMainUI = true`. No domain/data 
 Initialises Firebase, points to emulators (Auth `9099`, Functions `5001`, Firestore `8080`) when `USE_EMULATOR=true`. No automatic sign-in — `_AuthRouter` widget watches `authNotifierProvider` and routes to `LoginScreen` or `HelloScreen`.
 
 ### Tests
-347 Flutter unit + widget tests across auth, chat, matchmaking, profile, and hello features. See [Test Coverage](#quality-gates-definition-of-done) for the full breakdown.
+530 Flutter unit + widget tests across auth, chat, matchmaking, profile, hello, and friends features. See [Test Coverage](#quality-gates-definition-of-done) for the full breakdown.
 
 ---
 
@@ -165,7 +165,7 @@ See `firestore.rules` for the canonical source. Key helper functions and per-col
 
 | Collection | read | create | update | delete |
 |---|---|---|---|---|
-| `users/{userId}` | owner only | owner; `role=='user'`, `uid==userId`, known-field allowlist | owner; `role`, `uid`, `createdAt` immutable; only `hatKey`, `moodKey`, `displayName`, `photoUrl`, `lastSeen`, `email`; `hatKey`/`moodKey` must be strings | — |
+| `users/{userId}` | any signed-in user (friends search) | owner; `role=='user'`, `uid==userId`, known-field allowlist (no email) | owner; `role`, `uid`, `createdAt` immutable; only `hatKey`, `moodKey`, `displayName`, `photoUrl`, `lastSeen`, `interest`, `thoughts` | — |
 | `waiting_pool/{userId}` | owner | owner; `createdAt==request.time`, `status=='waiting'`, required keys present | owner; only `updatedAt` field, must equal `request.time` | owner |
 | `rooms/{roomId}` | member or expired tombstone (any signed-in) | false (CF only) | member on custom room; only `isLocked` field | false |
 | `active_sessions/{sessionId}` | member or `proto-*` prefix (any signed-in) | false | false | false |
@@ -181,9 +181,10 @@ See `database.rules.json` for the canonical source. All nodes require `auth != n
 | Node | Value | Access | Notes |
 |---|---|---|---|
 | `rooms/{roomId}/members/{uid}` | boolean | Read: room member; Write: owner | CF-written membership anchor for new rooms |
-| `typing/{roomId}/{uid}` | `{ isTyping: bool, displayName: string }` | Read: any signed-in; Write: owner | `displayName` max 100 chars |
-| `presence/{roomId}/{uid}` | string (displayName) | Read: any signed-in; Write: owner | Max 30 chars; `onDisconnect().remove()` |
+| `typing/{roomId}/{uid}` | `{ isTyping: bool, displayName: string, photoUrl?: string }` | Read: room member; Write: owner | `displayName` max 100 chars; `photoUrl` optional max 500 chars; unknown fields rejected |
+| `presence/{roomId}/{uid}` | string (displayName) | Read: room member; Write: owner | Max 30 chars; `onDisconnect().remove()` |
 | `nameQueue/{roomId}` | any | Read/Write: room member only | Transient display name exchange on room join |
+| `user_status/{uid}` | `{ status, roomId?, roomMode? }` | Read/Write: owner only | `status`: `'online'`\|`'in_room'`; `roomId` 5 chars; `roomMode` `'1v1'`\|`'group'` |
 | `pool_presence/{uid}` | boolean | Read/Write: owner | Tracks whether user is actively in the waiting pool |
 
 ### Firestore Indexes — `firestore.indexes.json` (deployed ✓)
@@ -197,7 +198,7 @@ See `database.rules.json` for the canonical source. All nodes require `auth != n
 | `rooms` | `mode ASC, status ASC, isLocked ASC, memberCount ASC` | Group room picker: available unlocked rooms by fill level |
 | `rooms` | `status ASC, paddingUntil ASC` | `expireRooms` cron: find rooms past their padding window |
 
-### Cloud Functions — deployed (15 total)
+### Cloud Functions — deployed (16 total)
 
 | Function | Trigger | Region | Module |
 |---|---|---|---|
@@ -216,6 +217,7 @@ See `database.rules.json` for the canonical source. All nodes require `auth != n
 | `sendMessage` | callable | us-central1 | chat |
 | `endSession` | callable | us-central1 | chat |
 | `reportSession` | callable | us-central1 | chat |
+| `onFriendshipDeleted` | Firestore onDelete `friendships/{friendshipId}` | us-central1 | friends |
 No CF needed for typing — clients write `typing/{roomId}/{uid}` directly via RTDB SDK.
 
 `seedTtlCollections` (`functions/src/dev/`) is a one-time dev HTTP helper; not included in the exported count above.
@@ -237,7 +239,6 @@ Rollback: set to `false` in Remote Config console; clients pick it up within 12 
 | `uid` | string | matches auth UID; immutable |
 | `displayName` | string? | null for anonymous |
 | `photoUrl` | string? | null for anonymous |
-| `email` | string? | null for anonymous |
 | `role` | string | `'user'` \| `'admin'`; immutable after creation |
 | `createdAt` | timestamp | immutable after creation |
 | `lastSeen` | timestamp | updated on profile refresh |
@@ -345,7 +346,7 @@ Presence, typing, and nameQueue data are removed by `leaveRoom` CF on explicit l
 | Phase | Work | Status |
 |---|---|---|
 | **1.0 Frontend & UI** | UI/UX design, Auth screens, Waiting screen, Chat Room UI (bubbles, typing, SVGs, Skip) | Auth complete; main UI screens complete (not yet wired to backend) |
-| **2.0 Backend & Matchmaking** | Matchmaking Cloud Functions (race-condition safe), session cleanup/lifecycle, word censor, reporting | **Largely complete** — 15 CFs exported (matchmaking + chat); Flutter matchmaking + chat + avatar + profile features complete; 99 Jest unit tests + 43 Flutter integration tests passing; word censor + group reporting deferred |
+| **2.0 Backend & Matchmaking** | Matchmaking Cloud Functions (race-condition safe), session cleanup/lifecycle, word censor, reporting | **Largely complete** — 16 CFs exported (matchmaking + chat + friends); Flutter matchmaking + chat + avatar + profile features complete; 99 Jest unit tests + 43 Flutter integration tests passing; word censor + group reporting deferred |
 | **3.0 Logic & Integration** | Wire main UI to matchmaking backend, session state machine, network drop detection, biometric/passkey auth | Not started |
 | **4.0 Testing & Management** | Cross-platform UI tests (Android + Web), accessibility sweeps, performance profiling | Not started |
 
@@ -364,7 +365,7 @@ Presence, typing, and nameQueue data are removed by `leaveRoom` CF on explicit l
 
 | Suite | Count | Location | Requires |
 |---|---|---|---|
-| Flutter unit + widget | 347 tests | `apps/mobile/test/` | Nothing |
+| Flutter unit + widget | 530 tests | `apps/mobile/test/` | Nothing |
 | Cloud Functions Jest | 93 unit tests | `functions/src/**/__tests__/*.test.ts` | `./dev.sh --emulator-only` |
 | Cloud Functions Jest (integration) | 7 live tests | `functions/src/matchmaking/__tests__/embeddingService.integration.test.ts` | Vertex AI credentials + `npm run test:embedding` |
 | Flutter integration | 43 tests | `apps/mobile/integration_test/matchmaking_advanced_test.dart` | Emulators + Android device |
@@ -403,9 +404,10 @@ CozyTalk/
 │   │   │   ├── chat/                 ← in-session messaging + typing (complete; 5 use cases)
 │   │   │   ├── profile/              ← display name, interest, thoughts (complete; 4 use cases)
 │   │   │   ├── avatar/               ← hat + mood decoration (complete; 4 use cases; screen widget test pending)
-│   │   │   └── home/                 ← navigation hub stub (presentation only)
+│   │   │   ├── home/                 ← navigation hub stub (presentation only)
+│   │   │   └── friends/              ← friend requests, friend list, permanent direct chat (prototype)
 │   │   └── screens/                  ← legacy design-preview UI (not wired to features layer)
-│   ├── test/                         ← 347 unit + widget tests
+│   ├── test/                         ← 530 unit + widget tests
 │   └── .env.example                  ← committed; USE_EMULATOR=true by default
 ├── functions/src/
 │   ├── index.ts                      ← exports all 15 functions

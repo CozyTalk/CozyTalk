@@ -22,7 +22,7 @@ Full reference: `PROJECT_CONTEXT.md` (Firestore rules) and `MATCHMAKING_CONTEXT_
 | `interest` | string? | free-text interest for matching |
 | `thoughts` | string? | |
 
-Rules: create allowed for authenticated users (must include uid, email, role, createdAt, lastSeen). Update allowed for own doc; `role` field immutable.
+Rules: read by any signed-in user (broadened from owner-only to support friends user-search). Create allowed for authenticated users (must include uid, email, role, createdAt, lastSeen). Update allowed for own doc; `role` field immutable.
 
 ### `waiting_pool/{uid}`
 
@@ -92,6 +92,47 @@ Archived encryption keys after session ends.
 
 Rules: deny all client access — admin SDK only.
 
+### `friend_requests/{requestId}`
+
+Pending, accepted, or declined friend requests.
+
+| Field | Type | Notes |
+|---|---|---|
+| `fromUid` | string | sender UID |
+| `fromDisplayName` | string | sender's display name at time of request |
+| `toUid` | string | recipient UID |
+| `toDisplayName` | string | recipient's display name at time of request |
+| `status` | string | `'pending'` → `'accepted'` or `'declined'` |
+| `createdAt` | timestamp | |
+
+Rules: create by sender (must set `fromUid == uid`, `status == 'pending'`). Read by sender or recipient. Update by recipient only (status field only).
+
+### `friendships/{friendshipId}`
+
+One document per accepted friend pair. `friendshipId` = sorted UIDs joined with `_` (e.g. `uid1_uid2`).
+
+| Field | Type | Notes |
+|---|---|---|
+| `users` | string[] | both UIDs |
+| `displayNames` | map | `{uid: displayName}` for each user |
+| `chatRoomId` | string | equals `friendshipId`; used as path to `friend_messages` |
+| `createdAt` | timestamp | |
+
+Rules: read and delete by members. Create by either member (written client-side in batch with accepted request).
+
+### `friend_messages/{chatRoomId}/messages/{messageId}`
+
+Permanent friend-to-friend chat messages. `chatRoomId` equals the `friendshipId`. Messages are **not** ephemeral — no TTL, no encryption (prototype plaintext).
+
+| Field | Type | Notes |
+|---|---|---|
+| `senderId` | string | set from `request.auth.uid` |
+| `senderDisplayName` | string | sender's display name |
+| `text` | string | plaintext message body |
+| `timestamp` | timestamp | server timestamp |
+
+Rules: read/create by friendship participants (`_isFriendshipParticipant` helper checks `friendships/{chatRoomId}.users`). No update or delete.
+
 ### `reports/{id}`
 
 | Field | Type | Notes |
@@ -131,7 +172,7 @@ Note: `cleanupMember` CF triggers on `rooms/{roomId}/members/{uid}` deletion. `c
 
 ## Firestore Indexes
 
-`firestore.indexes.json` — 6 composite indexes deployed:
+`firestore.indexes.json` — 7 composite indexes deployed:
 
 | Collection | Fields | Purpose |
 |---|---|---|
@@ -141,6 +182,7 @@ Note: `cleanupMember` CF triggers on `rooms/{roomId}/members/{uid}` deletion. `c
 | `reports` | `status ASC, createdAt DESC` | Admin dashboard: pending reports by time |
 | `rooms` | `mode ASC, status ASC, isLocked ASC, memberCount ASC` | Group room picker: available unlocked rooms by fill level |
 | `rooms` | `status ASC, paddingUntil ASC` | `expireRooms` cron: find rooms past their padding window |
+| `friend_requests` | `toUid ASC, status ASC` | Friends: incoming pending requests for a user |
 
 TTL field policies (live in prod): `chat_rooms/{id}/messages.expiresAt` and `session_keys.expiresAt`.
 

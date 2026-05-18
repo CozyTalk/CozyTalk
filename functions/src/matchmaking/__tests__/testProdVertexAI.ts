@@ -8,13 +8,14 @@
  *   cd functions
  *   npx ts-node -P tsconfig.test.json src/matchmaking/__tests__/testProdVertexAI.ts
  *
- * No extra setup required — uses the public web API key from firebase_options.dart.
+ * Requires FIREBASE_WEB_API_KEY in functions/.env (see .env.example).
  */
+import * as dotenv from "dotenv";
+dotenv.config();
 
 const PROJECT = "cozytalk-5d984";
 const REGION = "us-central1";
-// Public web API key from apps/mobile/lib/firebase_options.dart (safe to commit).
-const API_KEY = "AIzaSyAhEm1tJRomLx7ErcaHDYSlnyrpchgmro8";
+const API_KEY = process.env.FIREBASE_WEB_API_KEY as string;
 const FUNCTIONS_BASE = `https://${REGION}-${PROJECT}.cloudfunctions.net`;
 const FIRESTORE_BASE = `https://firestore.googleapis.com/v1/projects/${PROJECT}/databases/(default)/documents`;
 
