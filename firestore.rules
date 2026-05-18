@@ -37,7 +37,8 @@ service cloud.firestore {
 
     // ── users ────────────────────────────────────────────────────────────────
     match /users/{userId} {
-      allow read: if isOwner(userId);
+      // Any signed-in user may read so the friends feature can search for users.
+      allow read: if isSignedIn();
 
       // role and uid are set at creation and immutable forever
       allow create: if isOwner(userId)
@@ -138,6 +139,62 @@ service cloud.firestore {
     // Written and read by Cloud Functions only via admin SDK — deny all client access.
     match /session_keys/{sessionId} {
       allow read, write: if false;
+    }
+
+    // ── friend_requests ──────────────────────────────────────────────────────
+    match /friend_requests/{requestId} {
+      allow create: if isSignedIn()
+        && request.resource.data.fromUid == request.auth.uid
+        && request.resource.data.status == 'pending'
+        && request.resource.data.keys().hasAll([
+            'fromUid', 'fromDisplayName', 'toUid', 'toDisplayName',
+            'status', 'createdAt'
+           ]);
+      allow read: if isSignedIn()
+        && (resource.data.fromUid == request.auth.uid
+            || resource.data.toUid == request.auth.uid);
+      // Only the recipient may update status to accept/decline.
+      allow update: if isSignedIn()
+        && resource.data.toUid == request.auth.uid
+        && request.resource.data.diff(resource.data)
+            .affectedKeys().hasOnly(['status'])
+        && request.resource.data.status in ['accepted', 'declined'];
+      allow delete: if false;
+    }
+
+    // ── friendships ───────────────────────────────────────────────────────────
+    // Created client-side when a request is accepted (batch write).
+    // chatRoomId equals the document ID (sorted uid pair).
+    match /friendships/{friendshipId} {
+      allow read: if isSignedIn()
+        && request.auth.uid in resource.data.users;
+      allow create: if isSignedIn()
+        && request.auth.uid in request.resource.data.users
+        && request.resource.data.keys().hasAll([
+            'users', 'displayNames', 'chatRoomId', 'createdAt'
+           ]);
+      allow delete: if isSignedIn()
+        && request.auth.uid in resource.data.users;
+      allow update: if false;
+    }
+
+    // ── friend_messages ───────────────────────────────────────────────────────
+    // Permanent per-friendship chat. chatRoomId == friendshipId.
+    function _isFriendshipParticipant(chatRoomId) {
+      return exists(/databases/$(database)/documents/friendships/$(chatRoomId))
+        && request.auth.uid in
+           get(/databases/$(database)/documents/friendships/$(chatRoomId)).data.users;
+    }
+
+    match /friend_messages/{chatRoomId}/messages/{messageId} {
+      allow read: if isSignedIn() && _isFriendshipParticipant(chatRoomId);
+      allow create: if isSignedIn()
+        && _isFriendshipParticipant(chatRoomId)
+        && request.resource.data.senderId == request.auth.uid
+        && request.resource.data.keys().hasAll([
+            'senderId', 'senderDisplayName', 'text', 'timestamp'
+           ]);
+      allow update, delete: if false;
     }
 
     // ── chat_rooms/messages ───────────────────────────────────────────────────

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../features/avatar/presentation/screens/avatar_picker_screen.dart';
+import '../../../../features/friends/presentation/screens/friends_test_screen.dart';
 import '../../../../features/matchmaking/presentation/screens/matchmaking_test_screen.dart';
 import '../../../../features/profile/presentation/screens/profile_screen.dart';
 import '../../../../features/report/presentation/screens/report_test_screen.dart';
@@ -85,6 +86,17 @@ class _HelloScreenState extends ConsumerState<HelloScreen> {
               ),
               icon: const Icon(Icons.person_outline),
               label: const Text('Edit profile'),
+            ),
+            const SizedBox(height: 8),
+            OutlinedButton.icon(
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute<void>(
+                  builder: (_) => const FriendsTestScreen(),
+                ),
+              ),
+              icon: const Icon(Icons.people_outline),
+              label: const Text('Test Friends'),
             ),
             const SizedBox(height: 32),
             if (state.isLoading)
