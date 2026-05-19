@@ -12,8 +12,8 @@ All screens in `apps/mobile/lib/screens/`. These are the production frontend —
 | `FindingRoomScreen` | `screens/finding_room_screen.dart` | `/finding-room` | StatefulWidget | ⬜ pending |
 | `ChooseRoomTypeScreen` | `screens/choose_room_type_screen.dart` | `/choose-room-type` | StatefulWidget | ⬜ pending |
 | `JoinRoomIdScreen` | `screens/join_room_id_screen.dart` | `/join-room` | StatefulWidget | ⬜ pending |
-| `ProfileScreen` | `screens/profile_screen.dart` | `/profile` | ConsumerStatefulWidget | ⚠️ partial — uses `shared/user_profile_provider`, not `profileNotifierProvider` |
-| `ProfileEditScreen` | `screens/profile_edit_screen.dart` | `/profile/edit` | ConsumerStatefulWidget | ⚠️ partial — uses `avatarProvider` only; not wired to `profileNotifierProvider`; not in any named-route table (navigated directly) |
+| `ProfileScreen` | `screens/profile_screen.dart` | `/profile` | ConsumerStatefulWidget | ✅ integrated — wired to `profileNotifierProvider` + `authNotifierProvider` + `avatarProvider` |
+| `ProfileEditScreen` | `screens/profile_edit_screen.dart` | `/profile/edit` | ConsumerStatefulWidget | ✅ integrated — pre-fills from `profileNotifierProvider`, saves via `updateDisplayName`/`updateInterest`, error via snackbar, navigated directly from `ProfileScreen` |
 | `DressUpScreen` | `screens/dress_up_screen.dart` | `/dressup` | ConsumerStatefulWidget | ⚠️ partial — uses shared `avatarProvider` (`StateProvider`), not `avatarDecorationNotifierProvider` |
 | `MoodScreen` | `screens/mood_screen.dart` | `/mood` | ConsumerStatefulWidget | ⚠️ partial — uses shared `avatarProvider` (`StateProvider`), not `avatarDecorationNotifierProvider` |
 | `FriendsScreen` | `screens/friends_screen.dart` | `/friends` | StatefulWidget | ⬜ pending |
