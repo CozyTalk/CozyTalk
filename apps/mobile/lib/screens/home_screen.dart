@@ -51,7 +51,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     }
   }
 
-  void _editMood() async {
+  void _editThoughts() async {
     final uid = ref.read(authNotifierProvider).user?.uid;
     final result = await showThoughtBubbleDialog(
       context: context,
@@ -103,7 +103,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                               .profile
                               ?.thoughts ??
                           '',
-                      onMoodTap: _editMood,
+                      onMoodTap: _editThoughts,
                       moodOverlay: ref.watch(avatarProvider).mood,
                       accessoryOverlay: ref.watch(avatarProvider).accessory,
                     ),

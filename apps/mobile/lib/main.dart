@@ -34,7 +34,7 @@ import 'screens/finding_room_screen.dart';
 const _useEmulator = bool.fromEnvironment('USE_EMULATOR', defaultValue: true);
 
 // TOGGLE: flip to true for legacy UI home (design preview), false for chatroom backend testing
-const _useMainUI = true;
+const _useMainUI = false;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -79,6 +79,7 @@ class MyApp extends StatelessWidget {
           AppRoutes.joinRoomId: (_) => const JoinRoomIdScreen(),
           AppRoutes.chatScreen: (_) => const ChatScreen(),
           AppRoutes.groupChatScreen: (_) => const GroupChatScreen(),
+          AppRoutes.findingRoom: (_) => const FindingRoomScreen(),
         },
       );
     }

@@ -122,7 +122,7 @@ class AuthDatasourceImpl implements AuthDatasource {
         'displayName': displayName,
         'interest': '',
         'hatKey': null,
-        'moodKey': null,
+        'moodKey': 'Happy',
         'createdAt': FieldValue.serverTimestamp(),
         'lastSeen': FieldValue.serverTimestamp(),
       });
