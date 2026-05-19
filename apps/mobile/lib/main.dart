@@ -16,6 +16,7 @@ import 'features/user_status/presentation/providers/user_status_provider.dart';
 import 'theme/app_theme.dart';
 import 'theme/app_routes.dart';
 import 'screens/home_screen.dart';
+import 'screens/login_screen.dart' as ui;
 import 'screens/notification_screen.dart';
 import 'screens/profile_screen.dart';
 import 'screens/blocked_screen.dart';
@@ -61,9 +62,8 @@ class MyApp extends StatelessWidget {
         title: 'CozyTalk',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.theme,
-        initialRoute: AppRoutes.home,
+        home: const _MainUIAuthRouter(),
         routes: {
-          AppRoutes.home: (_) => const HomeScreen(),
           AppRoutes.notification: (_) => const NotificationScreen(),
           AppRoutes.profile: (_) => const ProfileScreen(),
           AppRoutes.blocked: (_) => const BlockedScreen(),
@@ -79,6 +79,7 @@ class MyApp extends StatelessWidget {
           AppRoutes.joinRoomId: (_) => const JoinRoomIdScreen(),
           AppRoutes.chatScreen: (_) => const ChatScreen(),
           AppRoutes.groupChatScreen: (_) => const GroupChatScreen(),
+          AppRoutes.findingRoom: (_) => const FindingRoomScreen(),
         },
       );
     }
@@ -107,6 +108,27 @@ class MyApp extends StatelessWidget {
         AppRoutes.findingRoom: (_) => const FindingRoomScreen(),
       },
     );
+  }
+}
+
+class _MainUIAuthRouter extends ConsumerWidget {
+  const _MainUIAuthRouter();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    ref.listen(authNotifierProvider.select((s) => s.status), (_, next) {
+      if (next == AuthStatus.authenticated) {
+        Navigator.of(context).popUntil((route) => route.isFirst);
+      }
+    });
+    final status = ref.watch(authNotifierProvider.select((s) => s.status));
+    return switch (status) {
+      AuthStatus.authenticated => const HomeScreen(),
+      AuthStatus.idle => const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      ),
+      _ => const ui.LoginScreen(),
+    };
   }
 }
 
