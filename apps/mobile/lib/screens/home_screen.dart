@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import '../features/auth/presentation/providers/auth_provider.dart';
+import '../features/avatar/presentation/providers/avatar_decoration_provider.dart';
+import '../features/profile/presentation/providers/profile_provider.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_routes.dart';
 import '../shared/avatar_overlay.dart';
-import '../shared/user_profile.dart';
 import 'thought_bubble_dialog.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
@@ -16,30 +18,47 @@ class HomeScreen extends ConsumerStatefulWidget {
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   bool _hasNotification = true;
+
+  @override
+  void initState() {
+    super.initState();
+    final uid = ref.read(authNotifierProvider).user?.uid;
+    if (uid != null) {
+      Future.microtask(() {
+        ref.read(profileNotifierProvider.notifier).load(uid);
+        ref.read(avatarDecorationNotifierProvider.notifier).load(uid);
+      });
+    }
+  }
+
   Future<void> _navigateMood() async {
+    final uid = ref.read(authNotifierProvider).user?.uid;
     final result = await Navigator.pushNamed(context, AppRoutes.mood);
-    if (result is String && mounted) {
-      ref.read(avatarProvider.notifier).setMood(AvatarOverlays.mood[result]);
+    if (result is String && mounted && uid != null) {
+      await ref
+          .read(avatarDecorationNotifierProvider.notifier)
+          .updateMood(uid, result);
     }
   }
 
   Future<void> _navigateDressUp() async {
+    final uid = ref.read(authNotifierProvider).user?.uid;
     final result = await Navigator.pushNamed(context, AppRoutes.dressUp);
-    if (result is String && mounted) {
-      ref
-          .read(avatarProvider.notifier)
-          .setAccessory(AvatarOverlays.accessory[result]);
+    if (result is String && mounted && uid != null) {
+      await ref
+          .read(avatarDecorationNotifierProvider.notifier)
+          .updateHat(uid, result);
     }
   }
 
-  // ── Edit mood bubble ──
   void _editMood() async {
+    final uid = ref.read(authNotifierProvider).user?.uid;
     final result = await showThoughtBubbleDialog(
       context: context,
-      initialText: ref.read(userProfileProvider).thought,
+      initialText: ref.read(profileNotifierProvider).profile?.thoughts ?? '',
     );
-    if (result != null && mounted) {
-      ref.read(userProfileProvider.notifier).setThought(result);
+    if (result != null && mounted && uid != null) {
+      ref.read(profileNotifierProvider.notifier).updateThoughts(uid, result);
     }
   }
 
@@ -68,7 +87,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     const SizedBox(height: 35),
 
                     Text(
-                      'Hello, ${ref.watch(userProfileProvider).username}!',
+                      'Hello, ${ref.watch(profileNotifierProvider).profile?.displayName ?? ''}!',
                       style: const TextStyle(
                         fontSize: 22,
                         fontWeight: FontWeight.bold,
@@ -78,7 +97,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     const SizedBox(height: 8),
 
                     _AvatarCard(
-                      moodText: ref.watch(userProfileProvider).thought,
+                      moodText:
+                          ref
+                              .watch(profileNotifierProvider)
+                              .profile
+                              ?.thoughts ??
+                          '',
                       onMoodTap: _editMood,
                       moodOverlay: ref.watch(avatarProvider).mood,
                       accessoryOverlay: ref.watch(avatarProvider).accessory,
