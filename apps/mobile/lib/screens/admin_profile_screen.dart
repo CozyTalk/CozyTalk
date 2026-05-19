@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:mobile/features/auth/presentation/providers/auth_provider.dart';
 
 // Design tokens
 class _C {
@@ -14,7 +16,7 @@ class _C {
   // border unused but kept for reference
 }
 
-class AdminProfileScreen extends StatefulWidget {
+class AdminProfileScreen extends ConsumerStatefulWidget {
   final int resolvedCount;
   final int bansCount;
   const AdminProfileScreen({
@@ -23,18 +25,17 @@ class AdminProfileScreen extends StatefulWidget {
     this.bansCount = 0,
   });
   @override
-  State<AdminProfileScreen> createState() => _AdminProfileScreenState();
+  ConsumerState<AdminProfileScreen> createState() => _AdminProfileScreenState();
 }
 
-class _AdminProfileScreenState extends State<AdminProfileScreen> {
+class _AdminProfileScreenState extends ConsumerState<AdminProfileScreen> {
   bool _showLogoutConfirm = false;
-
-  // Mock admin data
-  final _adminName = 'Modkun';
-  final _adminEmail = 'admin@cozytalk.app';
 
   @override
   Widget build(BuildContext context) {
+    final authState = ref.watch(authNotifierProvider);
+    final adminName = authState.user?.displayName ?? 'Admin';
+    final adminEmail = authState.user?.email ?? '';
     return Scaffold(
       backgroundColor: _C.cream,
       body: Stack(
@@ -50,9 +51,9 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
                         padding: const EdgeInsets.fromLTRB(16, 18, 16, 0),
                         child: Column(
                           children: [
-                            _buildProfileCard(),
+                            _buildProfileCard(adminName),
                             const SizedBox(height: 12),
-                            _buildEmailCard(),
+                            _buildEmailCard(adminEmail),
                             const SizedBox(height: 12),
                             _buildStatsRow(),
                           ],
@@ -129,7 +130,7 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
   }
 
   // ─── Profile card ───
-  Widget _buildProfileCard() {
+  Widget _buildProfileCard(String adminName) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -160,7 +161,7 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
               ),
               const SizedBox(height: 2),
               Text(
-                _adminName,
+                adminName,
                 style: const TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w700,
@@ -175,7 +176,7 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
   }
 
   // ─── Email row ───
-  Widget _buildEmailCard() {
+  Widget _buildEmailCard(String adminEmail) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -206,7 +207,7 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
               ),
               const SizedBox(height: 2),
               Text(
-                _adminEmail,
+                adminEmail,
                 style: const TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w700,
@@ -364,11 +365,14 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
                     const SizedBox(width: 10),
                     Expanded(
                       child: GestureDetector(
-                        onTap: () {
+                        onTap: () async {
                           setState(() => _showLogoutConfirm = false);
-                          Navigator.of(
-                            context,
-                          ).popUntil((route) => route.isFirst);
+                          final navigator = Navigator.of(context);
+                          await ref
+                              .read(authNotifierProvider.notifier)
+                              .signOut();
+                          if (!mounted) return;
+                          navigator.popUntil((route) => route.isFirst);
                         },
                         child: Container(
                           padding: const EdgeInsets.symmetric(vertical: 13),
