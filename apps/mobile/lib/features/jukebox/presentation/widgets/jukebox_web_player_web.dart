@@ -159,7 +159,7 @@ window.addEventListener('message', function(e) {
   try {
     var d = JSON.parse(e.data);
     if (d.func === 'seekTo') player.seekTo(d.args[0], d.args[1]);
-    else if (d.func === 'playVideo') player.playVideo();
+    else if (d.func === 'playVideo') { player.unMute(); player.setVolume(100); player.playVideo(); }
     else if (d.func === 'pauseVideo') player.pauseVideo();
   } catch(_) {}
 });
@@ -170,9 +170,11 @@ var player;
 function onYouTubeIframeAPIReady() {
   player = new YT.Player('p', {
     videoId: '$safeId',
-    playerVars: { autoplay: ${isPlaying ? 1 : 0}, controls: 0, playsinline: 1, rel: 0 },
+    playerVars: { autoplay: ${isPlaying ? 1 : 0}, controls: 0, playsinline: 1, rel: 0, mute: 0 },
     events: {
       onReady: function() {
+        player.unMute();
+        player.setVolume(100);
         player.seekTo($seekSeconds, true);
         $autoCmd
         window.parent.postMessage(JSON.stringify({jukebox: true, event: 'ready'}), '*');
