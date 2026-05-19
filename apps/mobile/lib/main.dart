@@ -34,7 +34,7 @@ import 'screens/finding_room_screen.dart';
 const _useEmulator = bool.fromEnvironment('USE_EMULATOR', defaultValue: true);
 
 // TOGGLE: flip to true for legacy UI home (design preview), false for chatroom backend testing
-const _useMainUI = false;
+const _useMainUI = true;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
