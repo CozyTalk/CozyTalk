@@ -19,7 +19,7 @@ All screens in `apps/mobile/lib/screens/`. These are the production frontend —
 | `FriendsScreen` | `screens/friends_screen.dart` | `/friends` | StatefulWidget | ⬜ pending |
 | `FriendChatScreen` | `screens/friend_chat_screen.dart` | `/friends/chat` | StatefulWidget | ⬜ pending |
 | `BlockedScreen` | `screens/blocked_screen.dart` | `/blocked` | StatefulWidget | ⬜ pending |
-| `NotificationScreen` | `screens/notification_screen.dart` | `/notification` | StatefulWidget | ⬜ pending |
+| `NotificationScreen` | `screens/notification_screen.dart` | `/notification` | ConsumerStatefulWidget | ✅ integrated — `friendsNotifierProvider.incomingRequests`; accept/decline wired; App Update static card |
 | `SelectBackgroundScreen` | `screens/select_background_screen.dart` | `/select-background` | StatefulWidget | ⬜ pending |
 | `LoginScreen` | `screens/login_screen.dart` | — | ConsumerStatefulWidget | ⬜ design preview — never imported in `main.dart`; CA version (`features/auth/`) is used |
 | `SignupScreen` | `screens/signup_screen.dart` | — | ConsumerStatefulWidget | ⬜ design preview — never imported in `main.dart`; CA version (`features/auth/`) is used |

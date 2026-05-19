@@ -1,69 +1,23 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import '../features/friends/domain/entities/friend_request.dart';
+import '../features/friends/presentation/providers/friends_provider.dart';
 import '../theme/app_colors.dart';
 
-class _NotifItem {
-  final String imagePath;
-  final IconData fallbackIcon;
-  final String title;
-  final String subtitle;
-  final String time;
-  final bool isFriendRequest;
-  final String? roomName;
-  bool accepted = false;
-  bool declined = false;
-
-  _NotifItem({
-    required this.imagePath,
-    required this.fallbackIcon,
-    required this.title,
-    required this.subtitle,
-    required this.time,
-    this.isFriendRequest = false,
-    this.roomName,
-    this.declined = false,
-  });
-}
-
-class NotificationScreen extends StatefulWidget {
+class NotificationScreen extends ConsumerStatefulWidget {
   const NotificationScreen({super.key});
 
   @override
-  State<NotificationScreen> createState() => _NotificationScreenState();
+  ConsumerState<NotificationScreen> createState() => _NotificationScreenState();
 }
 
-class _NotificationScreenState extends State<NotificationScreen> {
-  final List<_NotifItem> _items = [
-    _NotifItem(
-      imagePath: 'assets/images/icons/Friends.svg',
-      fallbackIcon: Icons.favorite_border,
-      title: 'Kaitom wants to be friends',
-      subtitle: '',
-      time: '10m',
-      isFriendRequest: true,
-      roomName: 'Koh Tapu',
-    ),
-    _NotifItem(
-      imagePath: 'assets/images/icons/Friends.svg',
-      fallbackIcon: Icons.favorite_border,
-      title: 'Mitsuru wants to be friends',
-      subtitle: '',
-      time: '1h',
-      isFriendRequest: true,
-      roomName: 'Red Lotus Lake',
-      declined: true,
-    ),
-    _NotifItem(
-      imagePath: 'assets/images/icons/Setting.svg',
-      fallbackIcon: Icons.settings_outlined,
-      title: 'App Update',
-      subtitle: 'v.2.9 — bug fixes and improvements',
-      time: '20 April 2026',
-    ),
-  ];
-
+class _NotificationScreenState extends ConsumerState<NotificationScreen> {
   @override
   Widget build(BuildContext context) {
+    final state = ref.watch(friendsNotifierProvider);
+    final requests = state.incomingRequests;
+
     return Scaffold(
       backgroundColor: AppColors.scaffoldBg,
       body: Column(
@@ -72,14 +26,29 @@ class _NotificationScreenState extends State<NotificationScreen> {
           Expanded(
             child: ListView.separated(
               padding: const EdgeInsets.all(20),
-              itemCount: _items.length,
+              itemCount: requests.length + 1,
               separatorBuilder: (_, _) => const SizedBox(height: 16),
-              itemBuilder: (_, i) => _buildCard(_items[i], i),
+              itemBuilder: (_, i) {
+                if (i < requests.length) {
+                  return _buildCard(
+                    request: requests[i],
+                    isLoading: state.isLoading,
+                  );
+                }
+                return _buildCard();
+              },
             ),
           ),
         ],
       ),
     );
+  }
+
+  String _formatTime(DateTime dt) {
+    final diff = DateTime.now().difference(dt);
+    if (diff.inMinutes < 60) return '${diff.inMinutes}m';
+    if (diff.inHours < 24) return '${diff.inHours}h';
+    return '${diff.inDays}d';
   }
 
   // ─── Custom App Bar ──────────────────────────────────────────
@@ -139,7 +108,13 @@ class _NotificationScreenState extends State<NotificationScreen> {
   }
 
   // ─── Notification Card ───────────────────────────────────────
-  Widget _buildCard(_NotifItem item, int index) {
+  // request == null renders the static App Update card
+  Widget _buildCard({FriendRequest? request, bool isLoading = false}) {
+    final isRequest = request != null;
+    final imagePath = isRequest
+        ? 'assets/images/icons/Friends.svg'
+        : 'assets/images/icons/Setting.svg';
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -173,7 +148,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
               ],
               border: Border.all(color: Colors.grey.shade200, width: 1.5),
             ),
-            child: SvgPicture.asset(item.imagePath, width: 32, height: 32),
+            child: SvgPicture.asset(imagePath, width: 32, height: 32),
           ),
           const SizedBox(width: 16),
           Expanded(
@@ -185,7 +160,9 @@ class _NotificationScreenState extends State<NotificationScreen> {
                   children: [
                     Expanded(
                       child: Text(
-                        item.title,
+                        isRequest
+                            ? '${request.fromDisplayName} wants to be friends'
+                            : 'App Update',
                         style: const TextStyle(
                           fontWeight: FontWeight.w900,
                           fontSize: 15,
@@ -195,7 +172,9 @@ class _NotificationScreenState extends State<NotificationScreen> {
                     ),
                     const SizedBox(width: 8),
                     Text(
-                      item.time,
+                      isRequest
+                          ? _formatTime(request.createdAt)
+                          : '20 April 2026',
                       style: const TextStyle(
                         fontSize: 12,
                         color: Colors.black87,
@@ -203,70 +182,41 @@ class _NotificationScreenState extends State<NotificationScreen> {
                     ),
                   ],
                 ),
-                if (item.isFriendRequest && item.roomName != null) ...[
-                  const SizedBox(height: 3),
-                  Text(
-                    'from ${item.roomName!}',
-                    style: const TextStyle(fontSize: 12, color: Colors.black87),
-                  ),
-                ] else if (item.subtitle.isNotEmpty) ...[
+                if (!isRequest) ...[
                   const SizedBox(height: 4),
-                  Text(
-                    item.subtitle,
-                    style: const TextStyle(fontSize: 13, color: Colors.black87),
+                  const Text(
+                    'v.2.9 — bug fixes and improvements',
+                    style: TextStyle(fontSize: 13, color: Colors.black87),
                   ),
                 ],
-
-                if (item.isFriendRequest) ...[
+                if (isRequest) ...[
                   const SizedBox(height: 12),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
-                      if (!item.accepted && !item.declined) ...[
-                        _buildButton(
-                          label: 'Accept',
-                          backgroundColor: const Color(0xFFDEF1C2),
-                          borderColor: const Color(0xFFC7D2B5),
-                          textColor: Colors.black,
-                          onTap: () {
-                            setState(() {
-                              _items[index].accepted = true;
-                            });
-                          },
-                        ),
-                        const SizedBox(width: 8),
-                        _buildButton(
-                          label: 'Decline',
-                          backgroundColor: const Color(0xFFCF5733),
-                          borderColor: const Color(0xFFA33615),
-                          textColor: Colors.white,
-                          onTap: () {
-                            setState(() {
-                              _items[index].declined = true;
-                            });
-                          },
-                        ),
-                      ] else if (item.accepted) ...[
-                        _buildButton(
-                          label: 'Accept',
-                          backgroundColor: const Color(0xFFE0E0E0),
-                          borderColor: Colors.grey.shade400,
-                          textColor: Colors.black54,
-                          onTap: () => setState(() {
-                            _items[index].accepted = false;
-                          }),
-                        ),
-                      ] else if (item.declined) ...[
-                        _buildButton(
-                          label: 'Decline',
-                          backgroundColor: const Color(0xFFE0E0E0),
-                          borderColor: Colors.grey.shade400,
-                          textColor: Colors.black54,
-                          onTap: () => setState(() {
-                            _items[index].declined = false;
-                          }),
-                        ),
-                      ],
+                      _buildButton(
+                        label: 'Accept',
+                        backgroundColor: const Color(0xFFDEF1C2),
+                        borderColor: const Color(0xFFC7D2B5),
+                        textColor: Colors.black,
+                        onTap: isLoading
+                            ? null
+                            : () => ref
+                                  .read(friendsNotifierProvider.notifier)
+                                  .acceptRequest(request),
+                      ),
+                      const SizedBox(width: 8),
+                      _buildButton(
+                        label: 'Decline',
+                        backgroundColor: const Color(0xFFCF5733),
+                        borderColor: const Color(0xFFA33615),
+                        textColor: Colors.white,
+                        onTap: isLoading
+                            ? null
+                            : () => ref
+                                  .read(friendsNotifierProvider.notifier)
+                                  .declineRequest(request.id),
+                      ),
                     ],
                   ),
                 ],
