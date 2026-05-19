@@ -3,6 +3,11 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import '../features/auth/presentation/providers/auth_provider.dart';
+import '../features/chat/domain/entities/chat_message.dart' as chat_entity;
+import '../features/chat/domain/entities/session_status.dart';
+import '../features/chat/presentation/providers/chat_provider.dart';
+import '../features/matchmaking/presentation/providers/matchmaking_provider.dart';
 import '../theme/app_colors.dart';
 import '../dialogs/leave_room_dialog.dart';
 import '../dialogs/song_dialog.dart';
@@ -17,6 +22,7 @@ import '../models/friend.dart';
 import '../shared/gif_picker.dart';
 import '../shared/friend_request_popup.dart';
 import '../shared/info_dialog.dart';
+import 'home_screen.dart';
 
 // ── Card assets ────────────────────────────────────────────────────────────
 const _cardAssets = [
@@ -29,13 +35,6 @@ const _cardAssets = [
 ];
 
 String _pickCard() => _cardAssets[Random().nextInt(_cardAssets.length)];
-
-String _nowTime() {
-  final t = TimeOfDay.fromDateTime(DateTime.now());
-  final h = t.hourOfPeriod == 0 ? 12 : t.hourOfPeriod;
-  final m = t.minute.toString().padLeft(2, '0');
-  return '$h:$m ${t.period.name}';
-}
 
 // ── Message model ──────────────────────────────────────────────────────────
 class ChatMessage {
@@ -58,7 +57,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
   final TextEditingController _msgController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final FocusNode _focusNode = FocusNode();
-  bool _isOtherTyping = false;
   final bool _isBlocked = false;
   Timer? _typingTimer;
   Timer? _friendMsgTimer;
@@ -71,17 +69,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
   String friendMood = 'I love TikTok very much.';
   bool _friendRequestSent = false;
   bool _friendAccepted = false;
-
-  final List<ChatMessage> messages = [
-    ChatMessage(
-      type: 'warning',
-      text:
-          'Keep it friendly! Please be respectful and protect your personal info.\nReport any suspicious behavior to help keep our community safe.',
-    ),
-    ChatMessage(type: 'system', text: 'Kaitom Hop in', time: '27 April 2026'),
-    ChatMessage(type: 'other', text: 'Hello.', time: '10:00 pm'),
-    ChatMessage(type: 'me', text: 'Hello 🍪🙏🔥😣', time: '10:00 pm'),
-  ];
+  final List<ChatMessage> _localMessages = [];
+  String? _pendingGifUrl;
 
   @override
   void initState() {
@@ -94,7 +83,20 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
       begin: const Offset(0, -1),
       end: Offset.zero,
     ).animate(CurvedAnimation(parent: _songCtrl, curve: Curves.easeOutCubic));
-    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _scrollToBottom();
+      final matchState = ref.read(matchmakingNotifierProvider);
+      final authUser = ref.read(authNotifierProvider).user;
+      final roomId = matchState.roomId;
+      if (authUser == null || roomId == null) return;
+      ref
+          .read(chatNotifierProvider.notifier)
+          .enterSession(
+            sessionId: roomId,
+            currentUserId: authUser.uid,
+            currentUserDisplayName: authUser.displayName,
+          );
+    });
     // Mock: friend sends a message after 3 seconds
     _friendMsgTimer = Timer(const Duration(seconds: 3), () {
       if (!mounted) return;
@@ -150,39 +152,37 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
     });
   }
 
-  void _sendMessage() {
-    if (_msgController.text.trim().isEmpty) return;
-    setState(() {
-      messages.add(
-        ChatMessage(
-          type: 'me',
-          text: _msgController.text.trim(),
-          time: _nowTime(),
-        ),
-      );
-      _isOtherTyping = true;
-    });
-    _msgController.clear();
-    _focusNode.requestFocus();
-    _scrollToBottom();
-    _typingTimer?.cancel();
-    _typingTimer = Timer(const Duration(seconds: 2), () {
-      if (mounted) setState(() => _isOtherTyping = false);
-    });
+  Future<void> _sendMessage() async {
+    if (ref.read(chatNotifierProvider).isSending) return;
+    final notifier = ref.read(chatNotifierProvider.notifier);
+    bool sent = false;
+    if (_pendingGifUrl != null) {
+      final url = _pendingGifUrl!;
+      setState(() => _pendingGifUrl = null);
+      await notifier.sendMessage(url);
+      sent = true;
+    }
+    final text = _msgController.text.trim();
+    if (text.isNotEmpty) {
+      notifier.sendMessage(text);
+      notifier.setTyping(false);
+      _typingTimer?.cancel();
+      _msgController.clear();
+      _focusNode.requestFocus();
+      sent = true;
+    }
+    if (sent) _scrollToBottom();
   }
 
   void _sendTopicCard() {
     setState(() {
-      messages.add(ChatMessage(type: 'card', text: _pickCard()));
+      _localMessages.add(ChatMessage(type: 'card', text: _pickCard()));
     });
     _scrollToBottom();
   }
 
-  void _sendGif(String label) {
-    setState(() {
-      messages.add(ChatMessage(type: 'gif', text: label, time: _nowTime()));
-    });
-    _scrollToBottom();
+  void _sendGif(String url) {
+    setState(() => _pendingGifUrl = url);
   }
 
   void _sendFriendRequest([String name = 'kaitom']) {
@@ -237,16 +237,20 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
 
   void _shuffleTopic() {
     setState(() {
-      messages.add(
-        ChatMessage(type: 'system', text: 'Kaitom, shuffle the topics!'),
+      _localMessages.add(
+        ChatMessage(type: 'system', text: 'Someone shuffled the topic!'),
       );
-      messages.add(ChatMessage(type: 'card', text: _pickCard()));
+      _localMessages.add(ChatMessage(type: 'card', text: _pickCard()));
     });
     _scrollToBottom();
   }
 
   void _onWillPop() {
-    showDialog(context: context, builder: (_) => const LeaveRoomDialog());
+    final notifier = ref.read(chatNotifierProvider.notifier);
+    showDialog(
+      context: context,
+      builder: (_) => LeaveRoomDialog(onLeave: () => notifier.endSession()),
+    );
   }
 
   void _showLeaveForFriendChat() {
@@ -361,6 +365,27 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
     );
   }
 
+  static const _kWarning =
+      'Keep it friendly! Please be respectful and protect your personal info.\n'
+      'Report any suspicious behavior to help keep our community safe.';
+
+  static String _formatTime(DateTime t) {
+    final tod = TimeOfDay.fromDateTime(t);
+    final h = tod.hourOfPeriod == 0 ? 12 : tod.hourOfPeriod;
+    final m = tod.minute.toString().padLeft(2, '0');
+    return '$h:$m ${tod.period.name}';
+  }
+
+  ChatMessage _toDisplay(chat_entity.ChatMessage msg, String? myUid) {
+    final isMe = msg.senderId == myUid;
+    final isGif = msg.text.startsWith('http');
+    return ChatMessage(
+      type: isGif ? 'gif' : (isMe ? 'me' : 'other'),
+      text: msg.text,
+      time: _formatTime(msg.timestamp),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final args =
@@ -374,9 +399,27 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
 
     final avatarState = ref.watch(avatarProvider);
     final userProfile = ref.watch(userProfileProvider);
+    final chatState = ref.watch(chatNotifierProvider);
     final myMood = userProfile.thought.isNotEmpty
         ? userProfile.thought
         : 'Care to share?';
+
+    ref.listen(chatNotifierProvider.select((s) => s.status), (_, next) {
+      if (next == SessionStatus.disconnected) {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute<void>(builder: (_) => const HomeScreen()),
+          (_) => false,
+        );
+      }
+    });
+
+    ref.listen(chatNotifierProvider.select((s) => s.messages.length), (
+      prev,
+      next,
+    ) {
+      if ((prev ?? 0) < next) _scrollToBottom();
+    });
 
     return PopScope(
       canPop: false,
@@ -404,7 +447,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
                         Expanded(
                           child: Stack(
                             children: [
-                              _buildMessageList(avatarState),
+                              _buildMessageList(avatarState, chatState),
                               Positioned(
                                 top: 0,
                                 left: 0,
@@ -650,17 +693,24 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
   }
 
   // ── Message list ──────────────────────────────────────────────────────────
-  Widget _buildMessageList(AvatarState avatarState) {
-    final itemCount = messages.length + (_isOtherTyping ? 1 : 0);
+  Widget _buildMessageList(AvatarState avatarState, ChatState chatState) {
+    final displayMessages = [
+      ChatMessage(type: 'warning', text: _kWarning),
+      ...chatState.messages.map((m) => _toDisplay(m, chatState.currentUserId)),
+      ..._localMessages,
+    ];
+    final isTyping = chatState.typingUsers.isNotEmpty;
+    final itemCount = displayMessages.length + (isTyping ? 1 : 0);
+
     return ListView.builder(
       controller: _scrollController,
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
       itemCount: itemCount,
       itemBuilder: (context, i) {
-        if (i == messages.length && _isOtherTyping) {
+        if (i == displayMessages.length && isTyping) {
           return const _TypingIndicator();
         }
-        final msg = messages[i];
+        final msg = displayMessages[i];
         return switch (msg.type) {
           'warning' => _buildWarning(msg.text),
           'system' => _buildSystem(msg),
@@ -817,38 +867,23 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
               color: const Color(0xFFF1CEE4),
               borderRadius: BorderRadius.circular(20),
             ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  msg.text,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w800,
-                    fontSize: 15,
-                    color: Color(0xFF4A3228),
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 6,
-                    vertical: 2,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppColors.yellowWarm,
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: const Text(
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: Image.network(
+                msg.text,
+                fit: BoxFit.cover,
+                errorBuilder: (_, _, _) => const Padding(
+                  padding: EdgeInsets.all(8),
+                  child: Text(
                     'GIF',
                     style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 15,
                       color: Color(0xFF4A3228),
-                      letterSpacing: 0.5,
                     ),
                   ),
                 ),
-              ],
+              ),
             ),
           ),
           const SizedBox(width: 8),
@@ -886,8 +921,59 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
     );
   }
 
+  // ── GIF preview strip ─────────────────────────────────────────────────────
+  Widget _buildGifPreview() {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+      color: const Color(0xFF6B5E5B),
+      child: Row(
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: Image.network(
+              _pendingGifUrl!,
+              width: 80,
+              height: 60,
+              fit: BoxFit.cover,
+              errorBuilder: (_, _, _) => Container(
+                width: 80,
+                height: 60,
+                color: Colors.white12,
+                alignment: Alignment.center,
+                child: const Text(
+                  'GIF',
+                  style: TextStyle(color: Colors.white54),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          const Text(
+            'GIF ready to send',
+            style: TextStyle(color: Colors.white70, fontSize: 12),
+          ),
+          const Spacer(),
+          GestureDetector(
+            onTap: () => setState(() => _pendingGifUrl = null),
+            child: const Icon(Icons.close, color: Colors.white54, size: 20),
+          ),
+        ],
+      ),
+    );
+  }
+
   // ── Input bar ─────────────────────────────────────────────────────────────
   Widget _buildInputBar() {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (_pendingGifUrl != null) _buildGifPreview(),
+        _buildInputRow(),
+      ],
+    );
+  }
+
+  Widget _buildInputRow() {
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
       color: const Color(0xFF6B5E5B),
@@ -910,6 +996,18 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
                   height: 1.6,
                   forceStrutHeight: true,
                 ),
+                onChanged: (text) {
+                  _typingTimer?.cancel();
+                  final notifier = ref.read(chatNotifierProvider.notifier);
+                  if (text.isNotEmpty) {
+                    notifier.setTyping(true);
+                    _typingTimer = Timer(const Duration(seconds: 3), () {
+                      notifier.setTyping(false);
+                    });
+                  } else {
+                    notifier.setTyping(false);
+                  }
+                },
                 decoration: InputDecoration(
                   hintText: 'Type here ...',
                   hintStyle: const TextStyle(color: Colors.black38),
