@@ -174,8 +174,9 @@ RTDB instance: `cozytalk-5d984-default-rtdb.asia-southeast1.firebasedatabase.app
 | `presence/{roomId}/{uid}` | room members | own UID | online presence (onDisconnect removes) |
 | `nameQueue/{roomId}` | room members | room members | anonymous name assignment |
 | `pool_presence/{uid}` | own UID | own UID | pool presence (removed on disconnect) |
+| `jukebox/{roomId}` | room members | room members | synced music queue state (see jukebox feature) |
 
-Note: `cleanupMember` CF triggers on `rooms/{roomId}/members/{uid}` deletion. `cleanupPoolMember` triggers on `pool_presence/{uid}` deletion.
+Note: `cleanupMember` CF triggers on `rooms/{roomId}/members/{uid}` deletion. `cleanupPoolMember` triggers on `pool_presence/{uid}` deletion. `jukebox/{roomId}` is cleared by `endSession` CF when a session ends.
 
 ---
 

@@ -66,10 +66,11 @@ export const endSession = onCall(
         });
     }
 
-    // Remove real-time presence data.
+    // Remove real-time presence data and shared jukebox state.
     await Promise.all([
       rtdb.ref(`typing/${sessionId}`).remove(),
       rtdb.ref(`presence/${sessionId}`).remove(),
+      rtdb.ref(`jukebox/${sessionId}`).remove(),
     ]);
 
     if (isNewStyleRoom) {

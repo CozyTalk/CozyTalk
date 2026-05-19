@@ -86,6 +86,7 @@ class MyApp extends StatelessWidget {
     }
     return MaterialApp(
       title: 'CozyTalk',
+      debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
       ),

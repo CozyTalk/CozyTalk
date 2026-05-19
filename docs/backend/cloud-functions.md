@@ -61,7 +61,7 @@ All admin functions are callable, deployed to `us-central1`. Every function veri
 `functions/src/chat/endSession.ts`
 - **Trigger:** callable (authenticated)
 - **Input:** `{ sessionId: string }`
-- **Process:** Looks up `rooms/{sessionId}` then `active_sessions/{sessionId}`. Verifies caller is participant. Archives key to `session_keys/{sessionId}`. Tombstones room (`status: expired`). Deletes RTDB presence/typing for room. Deletes `chat_rooms/{sessionId}/messages`.
+- **Process:** Looks up `rooms/{sessionId}` then `active_sessions/{sessionId}`. Verifies caller is participant. Archives key to `session_keys/{sessionId}`. Tombstones room (`status: expired`). Deletes RTDB presence/typing/jukebox for room. Deletes `chat_rooms/{sessionId}/messages`.
 - **Output:** void
 
 ### `reportSession`

@@ -24,6 +24,8 @@ CozyTalk is a **cross-platform stranger chat app** targeting **Android and Web**
 | Models | `freezed` + `json_serializable` (code-gen) |
 | Auth | `google_sign_in` |
 | Local caching | `flutter_secure_storage` |
+| HTTP | `http` ^1.6.0 |
+| Jukebox embed player | `webview_flutter` ^4.0.0 — Audiomack iframe on Android + Web |
 | URL launching | `url_launcher` |
 
 ### Cloud Functions (`functions/`)
@@ -192,6 +194,7 @@ See `database.rules.json` for the canonical source. All nodes require `auth != n
 | `nameQueue/{roomId}` | any | Read/Write: room member only | Transient display name exchange on room join |
 | `user_status/{uid}` | `{ status, roomId?, roomMode? }` | Read/Write: owner only | `status`: `'online'`\|`'in_room'`; `roomId` 5 chars; `roomMode` `'1v1'`\|`'group'` |
 | `pool_presence/{uid}` | boolean | Read/Write: owner | Tracks whether user is actively in the waiting pool |
+| `jukebox/{roomId}` | `{ isPlaying, currentIndex, startedAt, queue[] }` | Read/Write: room member | Synced music queue; cleared by `endSession` CF |
 
 ### Firestore Indexes — `firestore.indexes.json` (deployed ✓)
 
