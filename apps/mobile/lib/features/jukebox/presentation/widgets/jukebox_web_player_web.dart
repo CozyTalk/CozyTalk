@@ -1,9 +1,51 @@
-import 'dart:convert';
+import 'dart:async';
 import 'dart:js_interop';
-import 'dart:ui_web' as ui_web;
+import 'dart:js_interop_unsafe';
 
 import 'package:flutter/widgets.dart';
 import 'package:web/web.dart' as web;
+
+// ── YouTube IFrame API — loaded once per page lifetime ────────────────────────
+
+Completer<void>? _ytApiReady;
+
+Future<void> _ensureYtApi() {
+  if (_ytApiReady != null) return _ytApiReady!.future;
+  _ytApiReady = Completer<void>();
+
+  // Already loaded (e.g. after hot-reload).
+  if ((web.window as JSObject).getProperty('YT'.toJS) != null) {
+    _ytApiReady!.complete();
+    return _ytApiReady!.future;
+  }
+
+  // YouTube calls this global when the API script finishes loading.
+  (web.window as JSObject).setProperty(
+    'onYouTubeIframeAPIReady'.toJS,
+    (() {
+      if (!_ytApiReady!.isCompleted) _ytApiReady!.complete();
+    }).toJS,
+  );
+
+  final script = web.document.createElement('script') as web.HTMLScriptElement;
+  script.src = 'https://www.youtube.com/iframe_api';
+  web.document.head!.append(script);
+  return _ytApiReady!.future;
+}
+
+// dart:js_interop_unsafe cannot call constructors directly.
+// Inject a tiny shim once; YT is defined by the time it is called.
+bool _shimInjected = false;
+
+void _ensureShim() {
+  if (_shimInjected) return;
+  _shimInjected = true;
+  final s = web.document.createElement('script') as web.HTMLScriptElement;
+  s.text = 'window._ytNew=function(el,o){return new YT.Player(el,o);};';
+  web.document.head!.append(s);
+}
+
+// ── Widget ────────────────────────────────────────────────────────────────────
 
 class JukeboxWebPlayer extends StatefulWidget {
   final String videoId;
@@ -26,45 +68,71 @@ class JukeboxWebPlayer extends StatefulWidget {
 }
 
 class _JukeboxWebPlayerState extends State<JukeboxWebPlayer> {
-  late final String _viewId;
-  web.HTMLIFrameElement? _iframe;
-  JSFunction? _msgListener;
+  JSObject? _player;
   bool _ready = false;
-  String? _blobUrl;
+  web.HTMLDivElement? _div;
 
   @override
   void initState() {
     super.initState();
-    _viewId = 'jukebox-${DateTime.now().microsecondsSinceEpoch}';
-    _createIframe();
-    _msgListener = ((JSAny? raw) => _handleMessage(raw)).toJS;
-    web.window.addEventListener('message', _msgListener!);
+    _ensureShim();
+    _ensureYtApi().then((_) {
+      if (mounted) _spawnPlayer();
+    });
   }
 
-  void _createIframe() {
-    final seek = _calcSeek();
-    final html = _buildHtml(widget.videoId, seek, widget.isPlaying);
+  void _spawnPlayer() {
+    // Append a hidden div to the main page DOM. YT.Player injects its iframe
+    // here as a direct child of the Flutter Web page — same origin, so
+    // autoplay-with-sound works (no nested blob-URL iframe chain).
+    final div = web.document.createElement('div') as web.HTMLDivElement;
+    div.style.cssText =
+        'position:fixed;top:-9999px;left:-9999px;width:0;height:0;';
+    web.document.body!.append(div);
+    _div = div;
 
-    // Serve the HTML as a blob so our page controls the JS context —
-    // no cross-origin postMessage issues, no "listening" registration needed.
-    final blobParts = <JSAny>[html.toJS].toJS;
-    final blob = web.Blob(blobParts, web.BlobPropertyBag(type: 'text/html'));
-    _blobUrl = web.URL.createObjectURL(blob);
+    final playerVars = JSObject()
+      ..setProperty('autoplay'.toJS, (widget.isPlaying ? 1 : 0).toJS)
+      ..setProperty('controls'.toJS, 1.toJS)
+      ..setProperty('playsinline'.toJS, 1.toJS)
+      ..setProperty('rel'.toJS, 0.toJS)
+      ..setProperty('mute'.toJS, 0.toJS);
 
-    final iframe = web.HTMLIFrameElement()
-      ..src = _blobUrl!
-      ..allow = 'autoplay; encrypted-media'
-      ..style.opacity = '0'
-      ..style.position = 'absolute'
-      ..style.pointerEvents = 'none'
-      ..style.width = '1px'
-      ..style.height = '1px';
-    _iframe = iframe;
+    final events = JSObject()
+      ..setProperty(
+        'onReady'.toJS,
+        ((JSAny? _) {
+          _ready = true;
+          _player?.callMethod('unMute'.toJS);
+          _player?.callMethod('setVolume'.toJS, 100.toJS);
+          _syncPlayer();
+        }).toJS,
+      )
+      ..setProperty(
+        'onStateChange'.toJS,
+        ((JSAny? e) {
+          try {
+            final data = (e as JSObject).getProperty('data'.toJS);
+            if (data == null) return;
+            final state = (data as JSNumber).toDartDouble.toInt();
+            if (state == 0) widget.onTrackEnded?.call();
+          } catch (_) {}
+        }).toJS,
+      );
 
-    ui_web.platformViewRegistry.registerViewFactory(
-      _viewId,
-      (int id) => iframe,
+    final opts = JSObject()
+      ..setProperty('width'.toJS, 0.toJS)
+      ..setProperty('height'.toJS, 0.toJS)
+      ..setProperty('videoId'.toJS, widget.videoId.toJS)
+      ..setProperty('playerVars'.toJS, playerVars)
+      ..setProperty('events'.toJS, events);
+
+    final result = (web.window as JSObject).callMethod(
+      '_ytNew'.toJS,
+      div as JSAny,
+      opts as JSAny,
     );
+    _player = result as JSObject?;
   }
 
   double _calcSeek() {
@@ -76,48 +144,22 @@ class _JukeboxWebPlayerState extends State<JukeboxWebPlayer> {
   }
 
   void _syncPlayer() {
-    if (!_ready) return;
+    if (!_ready || _player == null) return;
     final seek = _calcSeek();
-    _sendCmd('seekTo', [seek, true]);
+    _player!.callMethod('seekTo'.toJS, seek.toJS, true.toJS);
     if (widget.isPlaying) {
-      _sendCmd('playVideo', []);
+      _player!.callMethod('unMute'.toJS);
+      _player!.callMethod('setVolume'.toJS, 100.toJS);
+      _player!.callMethod('playVideo'.toJS);
     } else {
-      _sendCmd('pauseVideo', []);
+      _player!.callMethod('pauseVideo'.toJS);
     }
-  }
-
-  void _sendCmd(String func, List<dynamic> args) {
-    final msg = jsonEncode({'func': func, 'args': args});
-    _iframe?.contentWindow?.postMessage(msg.toJS, '*'.toJS);
-  }
-
-  void _handleMessage(JSAny? rawEvent) {
-    try {
-      final msg = rawEvent as web.MessageEvent;
-      final raw = (msg.data?.dartify() ?? '').toString();
-      if (raw.isEmpty) return;
-      final Map<String, dynamic> data;
-      try {
-        data = Map<String, dynamic>.from(jsonDecode(raw) as Map);
-      } catch (_) {
-        return;
-      }
-      if (data['jukebox'] != true) return;
-      final event = data['event'] as String?;
-      if (event == 'ready') {
-        _ready = true;
-        _syncPlayer();
-      } else if (event == 'ended') {
-        widget.onTrackEnded?.call();
-      }
-    } catch (_) {}
   }
 
   @override
   void didUpdateWidget(JukeboxWebPlayer old) {
     super.didUpdateWidget(old);
-    // videoId changes cause full widget recreation via ValueKey(currentIndex)
-    // in JukeboxPlayer, so only sync-state changes land here.
+    // videoId changes cause full widget recreation via ValueKey(currentIndex).
     if (old.isPlaying != widget.isPlaying ||
         old.startedAt != widget.startedAt ||
         old.pausedAt != widget.pausedAt) {
@@ -127,72 +169,13 @@ class _JukeboxWebPlayerState extends State<JukeboxWebPlayer> {
 
   @override
   void dispose() {
-    if (_msgListener != null) {
-      web.window.removeEventListener('message', _msgListener!);
-    }
-    if (_blobUrl != null) {
-      web.URL.revokeObjectURL(_blobUrl!);
-    }
+    try {
+      _player?.callMethod('destroy'.toJS);
+    } catch (_) {}
+    _div?.remove();
     super.dispose();
   }
 
-  // Mirrors native player HTML. Uses window.parent.postMessage instead of
-  // FlutterYT.postMessage, and receives commands via window.addEventListener.
-  static String _buildHtml(String videoId, double seekSeconds, bool isPlaying) {
-    final autoCmd = isPlaying ? 'player.playVideo();' : 'player.pauseVideo();';
-    final safeId = videoId.replaceAll("'", "\\'");
-    return '''<!DOCTYPE html>
-<html>
-<head>
-<style>
-* { margin: 0; padding: 0; box-sizing: border-box; }
-body { background: #000; width: 100%; height: 100%; overflow: hidden; }
-#p { width: 100%; height: 100%; }
-</style>
-</head>
-<body>
-<div id="p"></div>
-<script>
-window.addEventListener('message', function(e) {
-  if (e.source !== window.parent) return;
-  if (!player) return;
-  try {
-    var d = JSON.parse(e.data);
-    if (d.func === 'seekTo') player.seekTo(d.args[0], d.args[1]);
-    else if (d.func === 'playVideo') { player.unMute(); player.setVolume(100); player.playVideo(); }
-    else if (d.func === 'pauseVideo') player.pauseVideo();
-  } catch(_) {}
-});
-var tag = document.createElement('script');
-tag.src = 'https://www.youtube.com/iframe_api';
-document.head.appendChild(tag);
-var player;
-function onYouTubeIframeAPIReady() {
-  player = new YT.Player('p', {
-    videoId: '$safeId',
-    playerVars: { autoplay: ${isPlaying ? 1 : 0}, controls: 0, playsinline: 1, rel: 0, mute: 0 },
-    events: {
-      onReady: function() {
-        player.unMute();
-        player.setVolume(100);
-        player.seekTo($seekSeconds, true);
-        $autoCmd
-        window.parent.postMessage(JSON.stringify({jukebox: true, event: 'ready'}), '*');
-      },
-      onStateChange: function(e) {
-        if (e.data === 0) {
-          window.parent.postMessage(JSON.stringify({jukebox: true, event: 'ended'}), '*');
-        }
-      }
-    }
-  });
-}
-</script>
-</body>
-</html>''';
-  }
-
   @override
-  Widget build(BuildContext context) =>
-      SizedBox(height: 1, child: HtmlElementView(viewType: _viewId));
+  Widget build(BuildContext context) => const SizedBox.shrink();
 }
