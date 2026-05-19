@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
+import '../features/auth/presentation/providers/auth_provider.dart';
 import '../theme/app_colors.dart';
-import 'home_screen.dart';
 import 'signup_screen.dart';
 import '../dialogs/account_suspended_dialog.dart';
 
@@ -29,6 +29,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    ref.listen<AuthState>(authNotifierProvider, (previous, next) {
+      if (next.error != null && next.error != previous?.error) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(next.error!),
+            backgroundColor: Colors.red.shade700,
+          ),
+        );
+      }
+    });
     return Scaffold(
       backgroundColor: AppColors.scaffoldBg,
       body: SafeArea(
@@ -155,7 +165,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           ),
           const SizedBox(height: 14),
           GestureDetector(
-            onTap: _goToHome,
+            onTap: () =>
+                ref.read(authNotifierProvider.notifier).signInAnonymously(),
             child: const Text(
               'Login as a guest',
               textAlign: TextAlign.center,
@@ -265,71 +276,87 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     ],
   );
 
-  Widget _googleButton() => SizedBox(
-    height: 48,
-    child: ElevatedButton(
-      onPressed: _signInWithGoogle,
-      style: ElevatedButton.styleFrom(
-        backgroundColor: Colors.white,
-        foregroundColor: const Color(0xFF4A3228),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        elevation: 0,
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          SvgPicture.asset(
-            'assets/images/icons/google_logo.svg',
-            width: 22,
-            height: 22,
-          ),
-          const SizedBox(width: 10),
-          const Text(
-            'Continue with Google',
-            style: TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w600,
-              color: Color(0xFF4A3228),
-            ),
-          ),
-        ],
-      ),
-    ),
-  );
-
-  void _signInWithGoogle() {
-    _goToHome();
-  }
-
-  Widget _loginButton() => SizedBox(
-    height: 48,
-    child: ElevatedButton(
-      onPressed: _goToHome,
-      style: ElevatedButton.styleFrom(
-        backgroundColor: AppColors.saveBtn,
-        foregroundColor: const Color(0xFF4A3228),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        elevation: 0,
-      ),
-      child: const Text(
-        'Login',
-        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-      ),
-    ),
-  );
-
-  // ignore: unused_element
-  void _submit() {
-    if (!(_formKey.currentState?.validate() ?? false)) return;
-    _goToHome();
-  }
-
-  void _goToHome() {
-    Navigator.pushAndRemoveUntil(
-      context,
-      MaterialPageRoute<void>(builder: (_) => const HomeScreen()),
-      (_) => false,
+  Widget _googleButton() {
+    final isLoading = ref.watch(
+      authNotifierProvider.select((s) => s.status == AuthStatus.loading),
     );
+    return SizedBox(
+      height: 48,
+      child: ElevatedButton(
+        onPressed: isLoading ? null : _signInWithGoogle,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.white,
+          foregroundColor: const Color(0xFF4A3228),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+          ),
+          elevation: 0,
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            SvgPicture.asset(
+              'assets/images/icons/google_logo.svg',
+              width: 22,
+              height: 22,
+            ),
+            const SizedBox(width: 10),
+            const Text(
+              'Continue with Google',
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF4A3228),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _signInWithGoogle() async {
+    await ref.read(authNotifierProvider.notifier).signInWithGoogle();
+  }
+
+  Widget _loginButton() {
+    final isLoading = ref.watch(
+      authNotifierProvider.select((s) => s.status == AuthStatus.loading),
+    );
+    return SizedBox(
+      height: 48,
+      child: ElevatedButton(
+        onPressed: isLoading ? null : _submit,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppColors.saveBtn,
+          foregroundColor: const Color(0xFF4A3228),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+          ),
+          elevation: 0,
+        ),
+        child: isLoading
+            ? const SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : const Text(
+                'Login',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+      ),
+    );
+  }
+
+  Future<void> _submit() async {
+    if (!(_formKey.currentState?.validate() ?? false)) return;
+    await ref
+        .read(authNotifierProvider.notifier)
+        .signIn(
+          email: _emailController.text.trim(),
+          password: _passwordController.text,
+        );
   }
 
   void _goToSignUp() {
