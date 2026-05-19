@@ -9,8 +9,8 @@ All screens in `apps/mobile/lib/screens/`. These are the production frontend —
 | `HomeScreen` | `screens/home_screen.dart` | `/` | ConsumerStatefulWidget | ✅ integrated |
 | `ChatScreen` | `screens/chat_screen.dart` | `/chat` | ConsumerStatefulWidget | ⚠️ partial — uses `shared/` providers only, not wired to `chatNotifierProvider` |
 | `GroupChatScreen` | `screens/group_chat_screen.dart` | `/group-chat` | ConsumerStatefulWidget | ⚠️ partial — uses `shared/` providers only, not wired to `chatNotifierProvider` |
-| `FindingRoomScreen` | `screens/finding_room_screen.dart` | `/finding-room` | StatefulWidget | ⬜ pending |
-| `ChooseRoomTypeScreen` | `screens/choose_room_type_screen.dart` | `/choose-room-type` | StatefulWidget | ⬜ pending |
+| `FindingRoomScreen` | `screens/finding_room_screen.dart` | `/finding-room` | ConsumerStatefulWidget | ✅ integrated — calls `join1v1Pool()` / `joinGroupRoom()` / `createCustomRoom()` based on `roomType` arg; navigates to `chatScreen` (1v1) or `groupChatScreen` (group/create) on `matched`; `cancelSearch()` on Cancel or dispose |
+| `ChooseRoomTypeScreen` | `screens/choose_room_type_screen.dart` | `/choose-room-type` | StatefulWidget | ✅ integrated — back button uses `popUntil(isFirst)` to return home |
 | `JoinRoomIdScreen` | `screens/join_room_id_screen.dart` | `/join-room` | StatefulWidget | ⬜ pending |
 | `ProfileScreen` | `screens/profile_screen.dart` | `/profile` | ConsumerStatefulWidget | ✅ integrated — wired to `profileNotifierProvider` + `authNotifierProvider` + `avatarProvider` |
 | `ProfileEditScreen` | `screens/profile_edit_screen.dart` | `/profile/edit` | ConsumerStatefulWidget | ✅ integrated — pre-fills from `profileNotifierProvider`, saves via `updateDisplayName`/`updateInterest`, error via snackbar, success via `showInfoDialog`, navigated directly from `ProfileScreen` |
@@ -20,7 +20,7 @@ All screens in `apps/mobile/lib/screens/`. These are the production frontend —
 | `FriendChatScreen` | `screens/friend_chat_screen.dart` | `/friends/chat` | StatefulWidget | ⬜ pending |
 | `BlockedScreen` | `screens/blocked_screen.dart` | `/blocked` | StatefulWidget | ⬜ pending |
 | `NotificationScreen` | `screens/notification_screen.dart` | `/notification` | StatefulWidget | ⬜ pending |
-| `SelectBackgroundScreen` | `screens/select_background_screen.dart` | `/select-background` | StatefulWidget | ⬜ pending |
+| `SelectBackgroundScreen` | `screens/select_background_screen.dart` | `/select-background` | StatefulWidget | ✅ integrated — no Riverpod needed; passes `{ roomType, roomName, bgImage, isGroup }` to `findingRoom` route; back button pops to `chooseRoomType` |
 | `LoginScreen` | `screens/login_screen.dart` | — | ConsumerStatefulWidget | ⬜ design preview — never imported in `main.dart`; CA version (`features/auth/`) is used |
 | `SignupScreen` | `screens/signup_screen.dart` | — | ConsumerStatefulWidget | ⬜ design preview — never imported in `main.dart`; CA version (`features/auth/`) is used |
 

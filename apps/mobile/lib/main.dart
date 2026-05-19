@@ -78,9 +78,9 @@ class MyApp extends StatelessWidget {
             return SelectBackgroundScreen(roomType: args);
           },
           AppRoutes.joinRoomId: (_) => const JoinRoomIdScreen(),
+          AppRoutes.findingRoom: (_) => const FindingRoomScreen(),
           AppRoutes.chatScreen: (_) => const ChatScreen(),
           AppRoutes.groupChatScreen: (_) => const GroupChatScreen(),
-          AppRoutes.findingRoom: (_) => const FindingRoomScreen(),
         },
       );
     }
