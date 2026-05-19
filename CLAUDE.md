@@ -78,7 +78,7 @@ npm install && npm run build && npm test   # npm test requires emulators first
 ```
 
 Jest: 93 unit (matchmaking 60, embeddingService 21, chat 12). The 7 Vertex AI integration tests run separately via `jest.integration.config.js` — excluded from `npm test`.
-Flutter: 530 unit + widget tests.
+Flutter: 580 unit + widget tests.
 
 ---
 

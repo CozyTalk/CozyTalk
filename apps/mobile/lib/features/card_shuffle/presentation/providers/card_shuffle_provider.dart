@@ -55,7 +55,7 @@ class CardShuffleNotifier extends Notifier<CardShuffleState> {
 
   Future<IcebreakerQuestion?> draw() async {
     if (state.isLoading) return null;
-    state = state.copyWith(isLoading: true, error: _sentinel);
+    state = state.copyWith(isLoading: true, error: null);
     try {
       final question = await ref.read(_drawCardProvider).call();
       state = state.copyWith(currentQuestion: question, isLoading: false);
