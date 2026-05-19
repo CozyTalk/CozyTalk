@@ -37,14 +37,14 @@ else
   printf "ok\n"
 fi
 
-# ── 2. dart format — entire project (mirrors: dart format --set-exit-if-changed .) ──
+# ── 2. dart format — source only (build/ excluded: contains SPM SourcePackages) ──
 printf "  dart format check...     "
-if (cd "$REPO/apps/mobile" && dart format --set-exit-if-changed . > /dev/null 2>&1); then
+if (cd "$REPO/apps/mobile" && dart format --set-exit-if-changed lib/ test/ > /dev/null 2>&1); then
   printf "ok\n"
 else
   printf "FAILED\n\n"
   printf "  Unformatted Dart files detected. Run from apps/mobile:\n\n"
-  printf "    dart format .\n\n"
+  printf "    dart format lib/ test/\n\n"
   FAIL=1
 fi
 

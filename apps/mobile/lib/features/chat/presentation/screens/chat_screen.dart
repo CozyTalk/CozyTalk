@@ -9,6 +9,8 @@ import '../providers/chat_provider.dart';
 import '../../../jukebox/presentation/widgets/jukebox_chat_player.dart';
 import '../../../jukebox/presentation/widgets/jukebox_sheet.dart';
 import '../../../report/presentation/screens/report_sheet.dart';
+import '../../../card_shuffle/presentation/providers/card_shuffle_provider.dart';
+import '../../../card_shuffle/domain/entities/icebreaker_question.dart';
 
 class ChatScreen extends ConsumerStatefulWidget {
   final String sessionId;
@@ -34,6 +36,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   final _controller = TextEditingController();
   final _scrollController = ScrollController();
   Timer? _typingTimer;
+  bool _topicPanelVisible = false;
 
   @override
   void initState() {
@@ -85,6 +88,17 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               onPressed: state.status == SessionStatus.chatting
                   ? _openJukeboxSheet
                   : null,
+            ),
+          ),
+          Semantics(
+            label: 'Draw an icebreaker topic card',
+            button: true,
+            child: IconButton(
+              icon: Icon(
+                _topicPanelVisible ? Icons.style : Icons.style_outlined,
+              ),
+              tooltip: 'Topic',
+              onPressed: _toggleTopicPanel,
             ),
           ),
           if (widget.reportedUserId != null)
@@ -141,6 +155,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 textAlign: TextAlign.center,
               ),
             ),
+          if (_topicPanelVisible)
+            _TopicPanel(
+              onClose: () => setState(() => _topicPanelVisible = false),
+              onDraw: () =>
+                  ref.read(cardShuffleNotifierProvider.notifier).draw(),
+            ),
           _InputBar(
             controller: _controller,
             isSending: state.isSending,
@@ -180,6 +200,14 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       useSafeArea: true,
       builder: (_) => JukeboxSheet(roomId: widget.sessionId),
     );
+  }
+
+  void _toggleTopicPanel() {
+    final nowVisible = !_topicPanelVisible;
+    setState(() => _topicPanelVisible = nowVisible);
+    if (nowVisible) {
+      ref.read(cardShuffleNotifierProvider.notifier).draw();
+    }
   }
 
   void _showReportSheet() {
@@ -514,6 +542,140 @@ class _InputBar extends StatelessWidget {
       ),
     );
   }
+}
+
+// ── Icebreaker topic panel (prototype) ────────────────────────────────────────
+
+class _TopicPanel extends ConsumerWidget {
+  final VoidCallback onClose;
+  final Future<IcebreakerQuestion?> Function() onDraw;
+
+  const _TopicPanel({required this.onClose, required this.onDraw});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final state = ref.watch(cardShuffleNotifierProvider);
+    final question = state.currentQuestion;
+    final theme = Theme.of(context);
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: theme.colorScheme.outlineVariant),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.style_outlined,
+                size: 18,
+                color: theme.colorScheme.primary,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                'Icebreaker Topic',
+                style: theme.textTheme.labelLarge?.copyWith(
+                  color: theme.colorScheme.primary,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              if (question != null) ...[
+                const SizedBox(width: 8),
+                _DepthBadge(depth: question.depth),
+              ],
+              const Spacer(),
+              GestureDetector(
+                onTap: onClose,
+                child: Icon(
+                  Icons.close,
+                  size: 20,
+                  color: theme.colorScheme.outline,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          if (state.isLoading)
+            const Center(
+              child: SizedBox(
+                height: 32,
+                width: 32,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+            )
+          else if (question != null) ...[
+            Text(
+              question.text,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                fontWeight: FontWeight.w500,
+                height: 1.5,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              question.category,
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: theme.colorScheme.outline,
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+          ] else
+            Text(
+              'Tap Next to draw a question.',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.outline,
+              ),
+            ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.tonal(
+              onPressed: state.isLoading ? null : onDraw,
+              child: const Text('Next Card'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DepthBadge extends StatelessWidget {
+  final String depth;
+  const _DepthBadge({required this.depth});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(
+        color: _color(depth).withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: _color(depth).withValues(alpha: 0.5)),
+      ),
+      child: Text(
+        depth,
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+          color: _color(depth),
+        ),
+      ),
+    );
+  }
+
+  static Color _color(String depth) => switch (depth) {
+    'light' => const Color(0xFF4CAF50),
+    'medium' => const Color(0xFFFF9800),
+    'deep' => const Color(0xFFBA5F3A),
+    _ => const Color(0xFF4CAF50),
+  };
 }
 
 // ── Disconnected screen ───────────────────────────────────────────────────────

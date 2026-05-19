@@ -93,6 +93,7 @@ Test counts: see `PROJECT_CONTEXT.md`.
 | `avatar` | `avatarDecorationNotifierProvider` | `AvatarDecorationStatus`: idle\|loading\|saving\|error | Complete |
 | `home` | — | Thin nav hub, no domain/data | Complete |
 | `friends` | `friendsNotifierProvider` · `friendChatNotifierProvider` | `FriendsState`: allUsers\|friends\|incomingRequests · `FriendChatState`: messages\|chatRoomId | Prototype (dev screens only) |
+| `card_shuffle` | `cardShuffleNotifierProvider` | `CardShuffleState`: currentQuestion?, isLoading, error? | Prototype (icebreaker panel in chat dev screen) |
 
 **State pattern (all features):** Nullable fields in `FooState.copyWith` use `_sentinel` so callers can explicitly pass `null` to clear them. Never use `??` for clearable fields.
 

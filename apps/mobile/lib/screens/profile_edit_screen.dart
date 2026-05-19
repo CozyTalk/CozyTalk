@@ -1,6 +1,7 @@
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../shared/info_dialog.dart';
 import '../theme/app_colors.dart';
 import '../shared/avatar_overlay.dart';
 import '../shared/layered_avatar.dart';
@@ -225,12 +226,27 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
                           onTap: () {
                             if (_usernameCtrl.text.trim().isEmpty) {
                               setState(() => _usernameError = true);
+                              showInfoDialog(
+                                context,
+                                type: InfoDialogType.error,
+                                title: 'Username Required',
+                                message:
+                                    'Please enter a username before saving your profile.',
+                              );
                               return;
                             }
-                            Navigator.pop(context, {
+                            final result = {
                               'name': _usernameCtrl.text.trim(),
                               'interest': _interestCtrl.text.trim(),
-                            });
+                            };
+                            showInfoDialog(
+                              context,
+                              type: InfoDialogType.success,
+                              title: 'Profile Saved',
+                              message:
+                                  'Your profile has been updated successfully.',
+                              onConfirm: () => Navigator.pop(context, result),
+                            );
                           },
                           child: Container(
                             padding: const EdgeInsets.symmetric(

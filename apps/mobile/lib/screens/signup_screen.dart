@@ -1,17 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
+import '../features/auth/presentation/providers/auth_provider.dart';
 import '../theme/app_colors.dart';
-import 'home_screen.dart';
 
-class SignupScreen extends StatefulWidget {
+class SignupScreen extends ConsumerStatefulWidget {
   const SignupScreen({super.key});
 
   @override
-  State<SignupScreen> createState() => _SignupScreenState();
+  ConsumerState<SignupScreen> createState() => _SignupScreenState();
 }
 
-class _SignupScreenState extends State<SignupScreen> {
+class _SignupScreenState extends ConsumerState<SignupScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -28,6 +29,16 @@ class _SignupScreenState extends State<SignupScreen> {
 
   @override
   Widget build(BuildContext context) {
+    ref.listen<AuthState>(authNotifierProvider, (previous, next) {
+      if (next.error != null && next.error != previous?.error) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(next.error!),
+            backgroundColor: Colors.red.shade700,
+          ),
+        );
+      }
+    });
     return Scaffold(
       backgroundColor: AppColors.scaffoldBg,
       body: SafeArea(
@@ -170,7 +181,8 @@ class _SignupScreenState extends State<SignupScreen> {
           ),
           const SizedBox(height: 14),
           GestureDetector(
-            onTap: _goToHome,
+            onTap: () =>
+                ref.read(authNotifierProvider.notifier).signInAnonymously(),
             child: const Text(
               'Login as a guest',
               textAlign: TextAlign.center,
@@ -309,44 +321,54 @@ class _SignupScreenState extends State<SignupScreen> {
     ],
   );
 
-  Widget _googleButton() => SizedBox(
-    height: 48,
-    child: ElevatedButton(
-      onPressed: _signUpWithGoogle,
-      style: ElevatedButton.styleFrom(
-        backgroundColor: Colors.white,
-        foregroundColor: const Color(0xFF4A3228),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        elevation: 0,
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          SvgPicture.asset(
-            'assets/images/icons/google_logo.svg',
-            width: 22,
-            height: 22,
+  Widget _googleButton() {
+    final isLoading = ref.watch(
+      authNotifierProvider.select((s) => s.status == AuthStatus.loading),
+    );
+    return SizedBox(
+      height: 48,
+      child: ElevatedButton(
+        onPressed: isLoading ? null : _signUpWithGoogle,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.white,
+          foregroundColor: const Color(0xFF4A3228),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
           ),
-          const SizedBox(width: 10),
-          const Text(
-            'Sign up with Google',
-            style: TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w600,
-              color: Color(0xFF4A3228),
+          elevation: 0,
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            SvgPicture.asset(
+              'assets/images/icons/google_logo.svg',
+              width: 22,
+              height: 22,
             ),
-          ),
-        ],
+            const SizedBox(width: 10),
+            const Text(
+              'Sign up with Google',
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF4A3228),
+              ),
+            ),
+          ],
+        ),
       ),
-    ),
-  );
+    );
+  }
 
-  void _signUpWithGoogle() {
-    _goToHome();
+  Future<void> _signUpWithGoogle() async {
+    await ref.read(authNotifierProvider.notifier).signInWithGoogle();
   }
 
   Widget _signUpButton() {
-    final canSubmit = _agreedToTerms && _agreedToPrivacy;
+    final isLoading = ref.watch(
+      authNotifierProvider.select((s) => s.status == AuthStatus.loading),
+    );
+    final canSubmit = _agreedToTerms && _agreedToPrivacy && !isLoading;
     return SizedBox(
       height: 48,
       child: ElevatedButton(
@@ -361,24 +383,28 @@ class _SignupScreenState extends State<SignupScreen> {
           ),
           elevation: 0,
         ),
-        child: const Text(
-          'Sign Up',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-        ),
+        child: isLoading
+            ? const SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : const Text(
+                'Sign Up',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
       ),
     );
   }
 
-  void _submit() {
-    _goToHome();
-  }
-
-  void _goToHome() {
-    Navigator.pushAndRemoveUntil(
-      context,
-      MaterialPageRoute<void>(builder: (_) => const HomeScreen()),
-      (_) => false,
-    );
+  Future<void> _submit() async {
+    if (!(_formKey.currentState?.validate() ?? false)) return;
+    await ref
+        .read(authNotifierProvider.notifier)
+        .signUp(
+          email: _emailController.text.trim(),
+          password: _passwordController.text,
+        );
   }
 
   void _showPolicy(BuildContext context, _PolicyContent content) {

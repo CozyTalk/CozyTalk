@@ -43,7 +43,7 @@ class FriendsDatasourceImpl implements FriendsDatasource {
 
   @override
   Stream<List<AppUserModel>> watchAllUsers() {
-    return _firestore.collection('users').snapshots().map((snap) {
+    return _firestore.collection('users').limit(100).snapshots().map((snap) {
       return snap.docs.where((doc) => doc.id != currentUid).map((doc) {
         final data = Map<String, dynamic>.from(doc.data());
         data['uid'] = doc.id;
