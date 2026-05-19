@@ -26,7 +26,7 @@ class _JukeboxPlayerState extends ConsumerState<JukeboxPlayer> {
 
   @override
   void dispose() {
-    Future(() => _notifier.leaveRoom());
+    WidgetsBinding.instance.addPostFrameCallback((_) => _notifier.leaveRoom());
     super.dispose();
   }
 
