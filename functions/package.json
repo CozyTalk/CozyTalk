@@ -10,8 +10,7 @@
     "deploy": "firebase deploy --only functions",
     "logs": "firebase functions:log",
     "test": "jest",
-    "test:embedding": "GCLOUD_PROJECT=cozytalk-5d984 jest --config jest.integration.config.js",
-    "seed:admin": "node ../tools/seed-admin-data.js"
+    "test:embedding": "GCLOUD_PROJECT=cozytalk-5d984 jest --config jest.integration.config.js"
   },
   "engines": {
     "node": "24"

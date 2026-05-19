@@ -11,7 +11,6 @@ Quick reference for finding code. Each file maps a domain to exact paths and cla
 - [home](features/home.md) — navigation hub (no domain/data layers)
 - [hello](features/hello.md) — smoke-test CF echo; canonical CA reference implementation
 - [friends](features/friends.md) — friend requests, friend list, permanent direct chat
-- [admin](features/admin.md) — report moderation, ban/unban, dashboard stats, chat log viewer
 
 ## Frontend
 - [screens](frontend/screens.md) — all production screens with class names, routes, integration status
