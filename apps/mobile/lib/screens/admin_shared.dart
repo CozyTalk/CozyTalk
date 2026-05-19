@@ -91,14 +91,11 @@ class AdminReport {
   final String context;
   final String time;
   final int evidence;
-  final List<String> contextImageUrls;
-  final String? chatLogStoragePath;
   final String severity;
   final String room;
   final String roomId;
   final String reportedUserId;
   final String reportedInterest;
-  final String reporterId;
   AdminReportOutcome? outcome;
 
   AdminReport({
@@ -110,15 +107,11 @@ class AdminReport {
     required this.context,
     required this.time,
     required this.evidence,
-    this.contextImageUrls = const [],
-    this.chatLogStoragePath,
     required this.severity,
     required this.room,
     required this.roomId,
     required this.reportedUserId,
     required this.reportedInterest,
-    this.reporterId = '',
-    this.outcome,
   });
 }
 

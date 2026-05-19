@@ -1,4 +1,4 @@
-﻿# CozyTalk â€” Project Context
+# CozyTalk — Project Context
 
 > Full project reference. Read before answering any questions about this project.
 
@@ -6,15 +6,15 @@
 
 ## What is CozyTalk?
 
-CozyTalk is a **cross-platform stranger chat app** targeting **Android and Web**. Users are matched anonymously with a random stranger for a one-on-one text conversation. The goal is to provide a low-pressure space for authentic interactions â€” combating social media performance fatigue.
+CozyTalk is a **cross-platform stranger chat app** targeting **Android and Web**. Users are matched anonymously with a random stranger for a one-on-one text conversation. The goal is to provide a low-pressure space for authentic interactions — combating social media performance fatigue.
 
-**Core Privacy Principle:** Chats are ephemeral. When a user leaves or presses Skip, the room and all messages are immediately destroyed by a Cloud Function. The only exception is when a user files a report â€” in that case the chat log is retained for moderation.
+**Core Privacy Principle:** Chats are ephemeral. When a user leaves or presses Skip, the room and all messages are immediately destroyed by a Cloud Function. The only exception is when a user files a report — in that case the chat log is retained for moderation.
 
 ---
 
 ## Tech Stack
 
-### Flutter App (`apps/mobile/`) â€” Android + Web
+### Flutter App (`apps/mobile/`) — Android + Web
 | Concern | Package |
 |---|---|
 | State management | `flutter_riverpod` 3.3.1 + `riverpod_annotation` (code-gen) |
@@ -30,7 +30,7 @@ CozyTalk is a **cross-platform stranger chat app** targeting **Android and Web**
 - TypeScript, Firebase Functions v2
 - 16 functions exported across two regions (see Cloud Functions table in Firebase Configuration)
 - Max 10 instances (cost control)
-- Matchmaking and chat logic **must** live here â€” never on client
+- Matchmaking and chat logic **must** live here — never on client
 
 ### Firebase Project
 - **Project ID:** `cozytalk-5d984`
@@ -42,17 +42,17 @@ CozyTalk is a **cross-platform stranger chat app** targeting **Android and Web**
 
 ```
 features/<feature>/
-â”œâ”€â”€ domain/           â† Pure Dart. No Flutter, no Firebase.
-â”‚   â”œâ”€â”€ entities/     â† Plain data types
-â”‚   â”œâ”€â”€ repositories/ â† Abstract interfaces
-â”‚   â””â”€â”€ usecases/     â† One class per operation
-â”œâ”€â”€ data/             â† Firebase/HTTP/serialization
-â”‚   â”œâ”€â”€ models/       â† @freezed DTOs + toEntity()
-â”‚   â”œâ”€â”€ datasources/  â† Raw SDK calls only
-â”‚   â””â”€â”€ repositories/ â† Interface impl + DTOâ†’Entity
-â””â”€â”€ presentation/     â† UI
-    â”œâ”€â”€ providers/     â† Riverpod DI + Notifier + State
-    â””â”€â”€ screens/       â† ConsumerStatefulWidget pages
+├── domain/           ← Pure Dart. No Flutter, no Firebase.
+│   ├── entities/     ← Plain data types
+│   ├── repositories/ ← Abstract interfaces
+│   └── usecases/     ← One class per operation
+├── data/             ← Firebase/HTTP/serialization
+│   ├── models/       ← @freezed DTOs + toEntity()
+│   ├── datasources/  ← Raw SDK calls only
+│   └── repositories/ ← Interface impl + DTO→Entity
+└── presentation/     ← UI
+    ├── providers/     ← Riverpod DI + Notifier + State
+    └── screens/       ← ConsumerStatefulWidget pages
 ```
 
 See `CLAUDE.md` for full conventions and code patterns.
@@ -63,43 +63,43 @@ See `CLAUDE.md` for full conventions and code patterns.
 
 ```
 Login Screen
-    â”œâ”€â”€ [Email + Password] â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-    â”œâ”€â”€ [Sign in with Google] â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¤
-    â”œâ”€â”€ [Continue as Guest] â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ authenticated
-    â””â”€â”€ [Don't have an account?] â†’ Sign Up Screen â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
-            â†“
-Waiting / Searching  â†â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-    â†“  [matched by Cloud Function]               â”‚
-Chat Room                                        â”‚
-    â”œâ”€â”€ [Skip / Next Person] â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
-    â”œâ”€â”€ [Leave] â†’ session destroyed
-    â””â”€â”€ [Report] â†’ chat log retained, session destroyed
+    ├── [Email + Password] ──────────────────────────────────┐
+    ├── [Sign in with Google] ───────────────────────────────┤
+    ├── [Continue as Guest] ───────────────────────────────── authenticated
+    └── [Don't have an account?] → Sign Up Screen ───────────┘
+            ↓
+Waiting / Searching  ←──────────────────────────┐
+    ↓  [matched by Cloud Function]               │
+Chat Room                                        │
+    ├── [Skip / Next Person] ────────────────────┘
+    ├── [Leave] → session destroyed
+    └── [Report] → chat log retained, session destroyed
 Profile / Settings (planned)
-    â”œâ”€â”€ Edit display name
-    â”œâ”€â”€ Upgrade from anonymous â†’ Google / Email
-    â””â”€â”€ Sign out
+    ├── Edit display name
+    ├── Upgrade from anonymous → Google / Email
+    └── Sign out
 ```
 
 ### Chat Room UI Components
 - Message bubbles (sent / received)
 - Typing indicator
-- **Moods / Drinks SVG icebreakers** â€” tappable stickers
-- **Skip / Next Person** button (prominent â€” core UX)
+- **Moods / Drinks SVG icebreakers** — tappable stickers
+- **Skip / Next Person** button (prominent — core UX)
 - Connection status indicator
 
 ### Session State Machine
 ```
-Idle â†’ Searching â†’ Matched/Chatting â†’ Disconnected
-                                    â†˜ (Skip) â†’ Searching
+Idle → Searching → Matched/Chatting → Disconnected
+                                    ↘ (Skip) → Searching
 ```
-The chat Notifier must model all four states explicitly as an enum â€” never infer from nullable fields.
+The chat Notifier must model all four states explicitly as an enum — never infer from nullable fields.
 
 ---
 
 ## What Is Already Built
 
 ### `hello` feature (proof-of-concept, complete)
-End-to-end clean arch example: `HelloScreen` â†’ `HelloNotifier` â†’ `CallHello` usecase â†’ `HelloRepositoryImpl` â†’ `HelloDatasourceImpl` â†’ `helloWorld` Cloud Function â†’ response flows back. This is the **primary template** for all future features.
+End-to-end clean arch example: `HelloScreen` → `HelloNotifier` → `CallHello` usecase → `HelloRepositoryImpl` → `HelloDatasourceImpl` → `helloWorld` Cloud Function → response flows back. This is the **primary template** for all future features.
 
 ### `auth` feature (complete)
 Full authentication flow following the same Clean Architecture pattern.
@@ -112,8 +112,8 @@ Full authentication flow following the same Clean Architecture pattern.
 - `AuthStatus` enum: `idle | loading | authenticated | unauthenticated`
 - `AuthState` with sentinel `copyWith` for `user` and `error`
 - `AuthNotifier` watching `FirebaseAuth.authStateChanges()` via the repository stream
-- `LoginScreen` â€” email/password form + "Sign in with Google" + "Continue as Guest"
-- `SignupScreen` â€” email/password/confirm form; pops to root on success
+- `LoginScreen` — email/password form + "Sign in with Google" + "Continue as Guest"
+- `SignupScreen` — email/password/confirm form; pops to root on success
 
 **Firestore user doc** is created by the datasource on `signUp` and on first-time Google sign-in (`additionalUserInfo.isNewUser == true`). Anonymous users get a minimal doc on first sign-in (uid, role, createdAt, lastSeen).
 
@@ -135,10 +135,10 @@ Icebreaker question deck for conversation starters in chat rooms. Reads 100 ques
 **Prototype UI:** A `_TopicPanel` widget is embedded in `features/chat/presentation/screens/chat_screen.dart` — toggled by an "Icebreaker Topic" AppBar button. Not wired to server-side messaging.
 
 ### `home` feature (stub)
-Navigation hub `HomeScreen`. Used only when `_useMainUI = true`. No domain/data layers â€” intentionally thin.
+Navigation hub `HomeScreen`. Used only when `_useMainUI = true`. No domain/data layers — intentionally thin.
 
 ### App bootstrap (`lib/main.dart`)
-Initialises Firebase, points to emulators (Auth `9099`, Functions `5001`, Firestore `8080`) when `USE_EMULATOR=true`. No automatic sign-in â€” `_AuthRouter` widget watches `authNotifierProvider` and routes to `LoginScreen` or `HelloScreen`.
+Initialises Firebase, points to emulators (Auth `9099`, Functions `5001`, Firestore `8080`) when `USE_EMULATOR=true`. No automatic sign-in — `_AuthRouter` widget watches `authNotifierProvider` and routes to `LoginScreen` or `HelloScreen`.
 
 ### Tests
 698 Flutter unit + widget tests across auth, chat, matchmaking, profile, hello, friends, and card_shuffle features. See [Test Coverage](#quality-gates-definition-of-done) for the full breakdown.
@@ -147,25 +147,25 @@ Initialises Firebase, points to emulators (Auth `9099`, Functions `5001`, Firest
 
 ## Firebase Configuration
 
-### Authentication â€” enabled providers
+### Authentication — enabled providers
 | Provider | Status |
 |---|---|
-| **Anonymous** | On. Wired in Flutter â€” "Continue as Guest" button on `LoginScreen`. |
-| **Google Sign-In** | On. Wired in Flutter â€” web uses `signInWithPopup`, native uses `google_sign_in` SDK. |
-| **Email / Password** | On. Passwordless OFF. Wired in Flutter â€” `LoginScreen` + `SignupScreen`. |
-| **Biometric / Passkey** | Planned â€” Android Keystore + WebAuthn. Not yet implemented. |
+| **Anonymous** | On. Wired in Flutter — "Continue as Guest" button on `LoginScreen`. |
+| **Google Sign-In** | On. Wired in Flutter — web uses `signInWithPopup`, native uses `google_sign_in` SDK. |
+| **Email / Password** | On. Passwordless OFF. Wired in Flutter — `LoginScreen` + `SignupScreen`. |
+| **Biometric / Passkey** | Planned — Android Keystore + WebAuthn. Not yet implemented. |
 
-### Firestore Security Rules â€” `firestore.rules` (deployed âœ“)
+### Firestore Security Rules — `firestore.rules` (deployed ✓)
 
 See `firestore.rules` for the canonical source. Key helper functions and per-collection rules:
 
 **Helper functions:**
-- `isSignedIn()` â€” `request.auth != null`
-- `isOwner(uid)` â€” signed in and `request.auth.uid == uid`
-- `isAdmin()` â€” signed in + `users/{uid}.role == 'admin'`
-- `_isRoomsParticipant(sessionId)` â€” uid in `rooms/{sessionId}.users`
-- `_isActiveSessionParticipant(sessionId)` â€” uid in `active_sessions/{sessionId}.users`
-- `isChatRoomParticipant(sessionId)` â€” either of the above (spans new rooms + legacy sessions)
+- `isSignedIn()` — `request.auth != null`
+- `isOwner(uid)` — signed in and `request.auth.uid == uid`
+- `isAdmin()` — signed in + `users/{uid}.role == 'admin'`
+- `_isRoomsParticipant(sessionId)` — uid in `rooms/{sessionId}.users`
+- `_isActiveSessionParticipant(sessionId)` — uid in `active_sessions/{sessionId}.users`
+- `isChatRoomParticipant(sessionId)` — either of the above (spans new rooms + legacy sessions)
 
 **Per-collection rules summary:**
 
@@ -176,9 +176,9 @@ See `firestore.rules` for the canonical source. Key helper functions and per-col
 | `rooms/{roomId}` | member or expired tombstone (any signed-in) | false (CF only) | member on custom room; only `isLocked` field | false |
 | `active_sessions/{sessionId}` | member or `proto-*` prefix (any signed-in) | false | false | false |
 | `reports/{reportId}` | admin only | signed-in; `reporterId==uid`, `status=='pending'`, required fields | admin only | admin only |
-| `chat_rooms/{sessionId}/messages/{messageId}` | participant or `proto-*` | participant; required encrypted fields, `senderId==uid`, text â‰¤12 KB | false | false |
+| `chat_rooms/{sessionId}/messages/{messageId}` | participant or `proto-*` | participant; required encrypted fields, `senderId==uid`, text ≤12 KB | false | false |
 
-### Realtime Database â€” `database.rules.json` (deployed âœ“)
+### Realtime Database — `database.rules.json` (deployed ✓)
 
 **URL:** `https://cozytalk-5d984-default-rtdb.asia-southeast1.firebasedatabase.app`
 
@@ -193,7 +193,7 @@ See `database.rules.json` for the canonical source. All nodes require `auth != n
 | `user_status/{uid}` | `{ status, roomId?, roomMode? }` | Read/Write: owner only | `status`: `'online'`\|`'in_room'`; `roomId` 5 chars; `roomMode` `'1v1'`\|`'group'` |
 | `pool_presence/{uid}` | boolean | Read/Write: owner | Tracks whether user is actively in the waiting pool |
 
-### Firestore Indexes â€” `firestore.indexes.json` (deployed âœ“)
+### Firestore Indexes — `firestore.indexes.json` (deployed ✓)
 
 | Collection | Fields | Query |
 |---|---|---|
@@ -208,7 +208,7 @@ See `database.rules.json` for the canonical source. All nodes require `auth != n
 
 | Function | Trigger | Region | Module |
 |---|---|---|---|
-| `helloWorld` | callable | us-central1 | â€” |
+| `helloWorld` | callable | us-central1 | — |
 | `joinGroupRoom` | callable | us-central1 | matchmaking |
 | `createCustomRoom` | callable | us-central1 | matchmaking |
 | `joinRoomById` | callable | us-central1 | matchmaking |
@@ -230,9 +230,9 @@ No CF needed for typing — clients write `typing/{roomId}/{uid}` directly via R
 
 `onProtoPresenceDeleted` (`functions/src/chat/`) is an RTDB trigger for proto-session presence cleanup; internal, not exported.
 
-### Feature Flags â€” Firebase Remote Config
+### Feature Flags — Firebase Remote Config
 
-`icebreakers_enabled` (boolean, default `true`) â€” gates the Moods/Drinks SVG sticker panel.
+`icebreakers_enabled` (boolean, default `true`) — gates the Moods/Drinks SVG sticker panel.
 Rollback: set to `false` in Remote Config console; clients pick it up within 12 hours.
 
 ---
@@ -259,12 +259,12 @@ Anonymous users get a minimal doc on first sign-in (`uid`, `role: 'user'`, `crea
 | Field | Type | Notes |
 |---|---|---|
 | `createdAt` | timestamp | must be `request.time` (rules enforced) |
-| `status` | string | `'waiting'` â†’ `'matching'` â†’ `'matched'` (CF-managed) |
+| `status` | string | `'waiting'` → `'matching'` → `'matched'` (CF-managed) |
 | `updatedAt` | timestamp | client-updatable only |
 | `mode` | string | `'1v1'` \| `'group'` |
 | `roomId` | string? | set by CF when matched (1v1 only) |
 
-### `rooms/{roomId}` (Firestore) â€” Primary Room Collection
+### `rooms/{roomId}` (Firestore) — Primary Room Collection
 All new rooms (1v1 + group). Doc ID is the 5-char user-facing room ID. CF-only writer except `isLocked` on custom rooms. Expired rooms keep a tombstone forever to prevent ID reuse.
 
 | Field | Type | Notes |
@@ -274,7 +274,7 @@ All new rooms (1v1 + group). Doc ID is the 5-char user-facing room ID. CF-only w
 | `mode` | string | `'1v1'` \| `'group'` |
 | `status` | string | `'active'` \| `'padding'` \| `'expired'` |
 | `maxUsers` | number | `2` for 1v1, `5` for group |
-| `memberCount` | number | 0â€“maxUsers |
+| `memberCount` | number | 0–maxUsers |
 | `users` | string[] | current member UIDs |
 | `isLocked` | boolean | custom rooms only; participants update directly via rules |
 | `createdAt` | timestamp | server timestamp |
@@ -283,12 +283,12 @@ All new rooms (1v1 + group). Doc ID is the 5-char user-facing room ID. CF-only w
 
 Expired tombstone shape: `{ status: 'expired', expiredAt: Timestamp, users: [] }`
 
-### `active_sessions/{sessionId}` (Firestore) â€” Legacy
+### `active_sessions/{sessionId}` (Firestore) — Legacy
 **Proto-session backward compat only.** New sessions use `rooms/{roomId}`.
 
 | Field | Type | Notes |
 |---|---|---|
-| `users` | string[] | `[uid1, uid2]` â€” used by Firestore rules |
+| `users` | string[] | `[uid1, uid2]` — used by Firestore rules |
 | `roomId` | string | equals `sessionId` |
 | `createdAt` | timestamp | |
 | `endedAt` | timestamp? | set on session end |
@@ -317,7 +317,7 @@ Encrypted message store. Written by the `sendMessage` CF. TTL policy on `expires
 | `iv` | string | base64 GCM IV; max 24 chars |
 | `authTag` | string | base64 GCM auth tag; max 32 chars |
 | `timestamp` | timestamp | server timestamp |
-| `expiresAt` | timestamp | TTL field â€” Firestore auto-deletes after this |
+| `expiresAt` | timestamp | TTL field — Firestore auto-deletes after this |
 | `flagged` | boolean | always `false` at creation; set by `reportSession` CF |
 
 ### `session_keys/{sessionId}` (Firestore)
@@ -376,15 +376,15 @@ Presence, typing, and nameQueue data are removed by `leaveRoom` CF on explicit l
 | Cloud Functions Jest (integration) | 7 live tests | `functions/src/matchmaking/__tests__/embeddingService.integration.test.ts` | Vertex AI credentials + `npm run test:embedding` |
 | Flutter integration | 43 tests | `apps/mobile/integration_test/matchmaking_advanced_test.dart` | Emulators + Android device |
 
-**CF Jest unit test breakdown:** `matchmaking.test.ts` (60 tests, 14 describe groups â€” priority selection, distribution, padding lifecycle, RTDB cleanup, 1v1/group flows, interest matching), `embeddingService.test.ts` (21 tests â€” cosine similarity, mean vector, mocked Vertex AI), `chat.test.ts` (12 tests â€” sendMessage, message destruction, TTL, rooms/ path, reportSession). Plus 7 integration tests in `embeddingService.integration.test.ts` (live Vertex AI, requires `npm run test:embedding`). Grand total: 100.
+**CF Jest unit test breakdown:** `matchmaking.test.ts` (60 tests, 14 describe groups — priority selection, distribution, padding lifecycle, RTDB cleanup, 1v1/group flows, interest matching), `embeddingService.test.ts` (21 tests — cosine similarity, mean vector, mocked Vertex AI), `chat.test.ts` (12 tests — sendMessage, message destruction, TTL, rooms/ path, reportSession). Plus 7 integration tests in `embeddingService.integration.test.ts` (live Vertex AI, requires `npm run test:embedding`). Grand total: 100.
 
-**Jest vs Flutter integration:** Jest tests run on the host (no Android clock skew) so timing bounds are tight (â‰¤35s padding). Flutter integration tests use â‰¤60s bounds to account for Android emulator clock offset.
+**Jest vs Flutter integration:** Jest tests run on the host (no Android clock skew) so timing bounds are tight (≤35s padding). Flutter integration tests use ≤60s bounds to account for Android emulator clock offset.
 
 ---
 
 ## The Do-Not-Do List
 
-| âŒ Never | Reason |
+| ❌ Never | Reason |
 |---|---|
 | Import Flutter/Firebase into domain layer | Clean arch violation |
 | Matchmaking on client | Race conditions |
@@ -429,5 +429,3 @@ CozyTalk/
 ├── CLAUDE.md                         ← auto-loaded by Claude Code every session
 └── PROJECT_CONTEXT.md                ← this file
 ```
-
-
