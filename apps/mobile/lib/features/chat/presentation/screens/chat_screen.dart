@@ -6,6 +6,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../domain/entities/session_status.dart';
 import '../../domain/entities/typing_user.dart';
 import '../providers/chat_provider.dart';
+import '../../../jukebox/presentation/widgets/jukebox_chat_player.dart';
+import '../../../jukebox/presentation/widgets/jukebox_sheet.dart';
 import '../../../report/presentation/screens/report_sheet.dart';
 import '../../../card_shuffle/presentation/providers/card_shuffle_provider.dart';
 import '../../../card_shuffle/domain/entities/icebreaker_question.dart';
@@ -78,6 +80,17 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         title: const Text('CozyTalk'),
         actions: [
           Semantics(
+            label: 'Open Jukebox',
+            button: true,
+            child: IconButton(
+              icon: const Icon(Icons.queue_music_rounded),
+              tooltip: 'Jukebox',
+              onPressed: state.status == SessionStatus.chatting
+                  ? _openJukeboxSheet
+                  : null,
+            ),
+          ),
+          Semantics(
             label: 'Draw an icebreaker topic card',
             button: true,
             child: IconButton(
@@ -95,29 +108,16 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               child: IconButton(
                 icon: const Icon(Icons.flag_outlined),
                 tooltip: 'Report',
-                color: Colors.white,
                 onPressed: state.status == SessionStatus.chatting
                     ? _showReportSheet
                     : null,
               ),
             ),
-          Semantics(
-            label: 'Skip to next person',
-            button: true,
-            child: TextButton(
-              onPressed: state.status == SessionStatus.chatting
-                  ? _endSession
-                  : null,
-              child: const Text(
-                'Skip',
-                style: TextStyle(color: Colors.white, fontSize: 16),
-              ),
-            ),
-          ),
         ],
       ),
       body: Column(
         children: [
+          JukeboxChatPlayer(roomId: widget.sessionId),
           Expanded(
             child: state.messages.isEmpty
                 ? const Center(
@@ -193,8 +193,13 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     ref.read(chatNotifierProvider.notifier).sendMessage(text);
   }
 
-  void _endSession() {
-    ref.read(chatNotifierProvider.notifier).endSession();
+  void _openJukeboxSheet() {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (_) => JukeboxSheet(roomId: widget.sessionId),
+    );
   }
 
   void _toggleTopicPanel() {

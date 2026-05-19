@@ -1,4 +1,4 @@
-# CozyTalk — Project Context
+﻿# CozyTalk — Project Context
 
 > Full project reference. Read before answering any questions about this project.
 
@@ -24,10 +24,13 @@ CozyTalk is a **cross-platform stranger chat app** targeting **Android and Web**
 | Models | `freezed` + `json_serializable` (code-gen) |
 | Auth | `google_sign_in` |
 | Local caching | `flutter_secure_storage` |
+| HTTP | `http` ^1.6.0 |
+| Jukebox embed player | `webview_flutter` ^4.0.0 — Audiomack iframe on Android + Web |
+| URL launching | `url_launcher` |
 
 ### Cloud Functions (`functions/`)
 - TypeScript, Firebase Functions v2
-- 16 functions exported across two regions (see Cloud Functions table in Firebase Configuration)
+- 21 functions exported across two regions (see Cloud Functions table in Firebase Configuration)
 - Max 10 instances (cost control)
 - Matchmaking and chat logic **must** live here — never on client
 
@@ -140,7 +143,7 @@ Navigation hub `HomeScreen`. Used only when `_useMainUI = true`. No domain/data 
 Initialises Firebase, points to emulators (Auth `9099`, Functions `5001`, Firestore `8080`) when `USE_EMULATOR=true`. No automatic sign-in — `_AuthRouter` widget watches `authNotifierProvider` and routes to `LoginScreen` or `HelloScreen`.
 
 ### Tests
-589 Flutter unit + widget tests across auth, chat, matchmaking, profile, hello, friends, card_shuffle, and notification screens. See [Test Coverage](#quality-gates-definition-of-done) for the full breakdown.
+698 Flutter unit + widget tests across auth, chat, matchmaking, profile, hello, friends, and card_shuffle features. See [Test Coverage](#quality-gates-definition-of-done) for the full breakdown.
 
 ---
 
@@ -191,6 +194,7 @@ See `database.rules.json` for the canonical source. All nodes require `auth != n
 | `nameQueue/{roomId}` | any | Read/Write: room member only | Transient display name exchange on room join |
 | `user_status/{uid}` | `{ status, roomId?, roomMode? }` | Read/Write: owner only | `status`: `'online'`\|`'in_room'`; `roomId` 5 chars; `roomMode` `'1v1'`\|`'group'` |
 | `pool_presence/{uid}` | boolean | Read/Write: owner | Tracks whether user is actively in the waiting pool |
+| `jukebox/{roomId}` | `{ isPlaying, currentIndex, startedAt, queue[] }` | Read/Write: room member | Synced music queue; cleared by `endSession` CF |
 
 ### Firestore Indexes — `firestore.indexes.json` (deployed ✓)
 
@@ -370,7 +374,7 @@ Presence, typing, and nameQueue data are removed by `leaveRoom` CF on explicit l
 
 | Suite | Count | Location | Requires |
 |---|---|---|---|
-| Flutter unit + widget | 589 tests | `apps/mobile/test/` | Nothing |
+| Flutter unit + widget | 698 tests | `apps/mobile/test/` | Nothing |
 | Cloud Functions Jest | 93 unit tests | `functions/src/**/__tests__/*.test.ts` | `./dev.sh --emulator-only` |
 | Cloud Functions Jest (integration) | 7 live tests | `functions/src/matchmaking/__tests__/embeddingService.integration.test.ts` | Vertex AI credentials + `npm run test:embedding` |
 | Flutter integration | 43 tests | `apps/mobile/integration_test/matchmaking_advanced_test.dart` | Emulators + Android device |
@@ -412,7 +416,7 @@ CozyTalk/
 │   │   │   ├── home/                 ← navigation hub stub (presentation only)
 │   │   │   └── friends/              ← friend requests, friend list, permanent direct chat (prototype)
 │   │   └── screens/                  ← legacy design-preview UI (not wired to features layer)
-│   ├── test/                         ← 589 unit + widget tests
+│   ├── test/                         ← 582 unit + widget tests
 │   └── .env.example                  ← committed; USE_EMULATOR=true by default
 ├── functions/src/
 │   ├── index.ts                      ← exports all 15 functions
@@ -428,3 +432,5 @@ CozyTalk/
 ├── CLAUDE.md                         ← auto-loaded by Claude Code every session
 └── PROJECT_CONTEXT.md                ← this file
 ```
+
+

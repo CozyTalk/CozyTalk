@@ -1,0 +1,18 @@
+# Generated Dart files — never edit directly, regenerate with build_runner
+**/*.g.dart
+**/*.freezed.dart
+
+# Build artifacts
+apps/mobile/android/build/
+apps/mobile/build/
+apps/mobile/coverage/
+functions/lib/
+
+# Dependencies
+functions/node_modules/
+
+# Claude internal worktrees
+.claude/worktrees/
+
+# Temp planning/scratch files
+plan-*.md

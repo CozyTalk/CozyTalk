@@ -6,6 +6,7 @@ import 'package:mobile/features/chat/domain/entities/session_status.dart';
 import 'package:mobile/features/chat/domain/entities/typing_user.dart';
 import 'package:mobile/features/chat/presentation/providers/chat_provider.dart';
 import 'package:mobile/features/chat/presentation/screens/chat_screen.dart';
+import 'package:mobile/features/jukebox/presentation/providers/jukebox_provider.dart';
 
 class _FakeChatNotifier extends ChatNotifier {
   final ChatState _initial;
@@ -45,9 +46,21 @@ class _FakeChatNotifier extends ChatNotifier {
   Future<void> endSession() async => endSessionCount++;
 }
 
+class _FakeJukeboxNotifier extends JukeboxNotifier {
+  @override
+  JukeboxUiState build() => const JukeboxUiState();
+  @override
+  void enterRoom(String roomId) {}
+  @override
+  void leaveRoom() {}
+}
+
 Widget _buildChatScreen(_FakeChatNotifier fake) {
   return ProviderScope(
-    overrides: [chatNotifierProvider.overrideWith(() => fake)],
+    overrides: [
+      chatNotifierProvider.overrideWith(() => fake),
+      jukeboxNotifierProvider.overrideWith(() => _FakeJukeboxNotifier()),
+    ],
     child: const MaterialApp(
       home: ChatScreen(
         sessionId: 'test-session',

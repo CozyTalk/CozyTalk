@@ -5,8 +5,10 @@ module.exports = {
   globals: {
     "ts-jest": {
       tsconfig: "tsconfig.test.json",
+      isolatedModules: true,
     },
   },
+  setupFilesAfterEnv: ["<rootDir>/jest.setup.ts"],
   testMatch: ["**/__tests__/**/*.test.ts"],
   testPathIgnorePatterns: ["/node_modules/", "\\.integration\\.test\\.ts$"],
   testTimeout: 60_000,

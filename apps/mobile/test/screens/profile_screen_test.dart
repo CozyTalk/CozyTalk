@@ -5,7 +5,14 @@ import 'package:mobile/features/auth/domain/entities/auth_user.dart';
 import 'package:mobile/features/auth/presentation/providers/auth_provider.dart';
 import 'package:mobile/features/profile/domain/entities/profile_user.dart';
 import 'package:mobile/features/profile/presentation/providers/profile_provider.dart';
+import 'package:mobile/screens/profile_edit_screen.dart';
 import 'package:mobile/screens/profile_screen.dart';
+import 'package:mobile/shared/avatar_overlay.dart';
+
+class _FakeAvatarNotifier extends AvatarNotifier {
+  @override
+  AvatarState build() => const AvatarState();
+}
 
 class _FakeAuthNotifier extends AuthNotifier {
   final AuthState _initial;
@@ -64,6 +71,7 @@ Widget _build({
   overrides: [
     authNotifierProvider.overrideWith(() => authFake),
     profileNotifierProvider.overrideWith(() => profileFake),
+    avatarProvider.overrideWith(() => _FakeAvatarNotifier()),
   ],
   child: const MaterialApp(home: ProfileScreen()),
 );
@@ -173,6 +181,31 @@ void main() {
       await tester.tap(find.text('Log out'));
       await tester.pump();
       expect(signOutCount, 1);
+    });
+
+    testWidgets('edit button pushes ProfileEditScreen', (tester) async {
+      await tester.pumpWidget(
+        _build(
+          authFake: _FakeAuthNotifier(
+            initial: AuthState(
+              status: AuthStatus.authenticated,
+              user: _authenticatedUser,
+            ),
+          ),
+          profileFake: _FakeProfileNotifier(),
+        ),
+      );
+      await tester.pump();
+
+      // Non-null onTap GestureDetectors in tree order:
+      // 0 = back button, 1 = edit icon, 2 = Blocked card, 3 = Contact us, 4 = Log out
+      final editButton = find
+          .byWidgetPredicate((w) => w is GestureDetector && w.onTap != null)
+          .at(1);
+      await tester.tap(editButton);
+      await tester.pumpAndSettle();
+
+      expect(find.byType(ProfileEditScreen), findsOneWidget);
     });
   });
 }

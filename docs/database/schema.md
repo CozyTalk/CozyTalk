@@ -11,7 +11,6 @@ Full reference: `PROJECT_CONTEXT.md` (Firestore rules) and `MATCHMAKING_CONTEXT_
 | Field | Type | Notes |
 |---|---|---|
 | `uid` | string | same as document ID |
-| `email` | string | |
 | `role` | string | `'user'` or `'admin'` — immutable after creation |
 | `createdAt` | timestamp | |
 | `lastSeen` | timestamp | |
@@ -21,8 +20,17 @@ Full reference: `PROJECT_CONTEXT.md` (Firestore rules) and `MATCHMAKING_CONTEXT_
 | `moodKey` | string? | avatar mood |
 | `interest` | string? | free-text interest for matching |
 | `thoughts` | string? | |
+| `banned` | boolean? | present and `true` only while actively banned |
+| `banReason` | string? | e.g. "Harassment or Bullying" |
+| `banDuration` | string? | `"1 Day"` \| `"7 Days"` \| `"30 Days"` \| `"Permanent"` |
+| `bannedAt` | timestamp? | |
+| `banExpiresAt` | timestamp? | `null` for permanent ban |
+| `bannedBy` | string? | admin uid |
+| `bannedByName` | string? | admin displayName at time of ban |
+| `banNote` | string? | optional moderator note |
+| `banHistory` | array? | append-only log; each entry: `{ reason, duration, bannedAt, expiresAt, bannedBy, bannedByName, note, unbannedAt, unbannedBy }` |
 
-Rules: read by any signed-in user (broadened from owner-only to support friends user-search). Create allowed for authenticated users (must include uid, email, role, createdAt, lastSeen). Update allowed for own doc; `role` field immutable.
+Rules: read by any signed-in user (broadened from owner-only to support friends user-search). Create allowed for authenticated users (must include uid, role, createdAt, lastSeen — email is never stored in Firestore). Update allowed for own doc; `role`, `uid`, `createdAt` fields immutable.
 
 ### `waiting_pool/{uid}`
 
@@ -146,7 +154,8 @@ Rules: read/create by friendship participants (`_isFriendshipParticipant` helper
 | `contextImageUrls` | string[] | Storage URLs of up to 5 screenshots uploaded by reporter |
 | `chatLogStoragePath` | string? | path to `reports/{reportId}/chat_log.json` in Cloud Storage; null if Storage write failed |
 | `createdAt` | timestamp | |
-| `status` | string | `pending` on creation; updated by admin |
+| `status` | string | `pending` on creation; `reviewed` or `dismissed` after admin action |
+| `outcome` | map? | written by admin CFs: `{ kind: "banned"\|"reviewed"\|"dismissed", by: uid, byName: string, at: timestamp, note: string? }` |
 
 Note: `encryptionKey` is NOT stored here — it lives exclusively in `session_keys/{sessionId}`. The decrypted chat log is in Cloud Storage at `chatLogStoragePath`.
 
@@ -165,8 +174,9 @@ RTDB instance: `cozytalk-5d984-default-rtdb.asia-southeast1.firebasedatabase.app
 | `presence/{roomId}/{uid}` | room members | own UID | online presence (onDisconnect removes) |
 | `nameQueue/{roomId}` | room members | room members | anonymous name assignment |
 | `pool_presence/{uid}` | own UID | own UID | pool presence (removed on disconnect) |
+| `jukebox/{roomId}` | room members | room members | synced music queue state (see jukebox feature) |
 
-Note: `cleanupMember` CF triggers on `rooms/{roomId}/members/{uid}` deletion. `cleanupPoolMember` triggers on `pool_presence/{uid}` deletion.
+Note: `cleanupMember` CF triggers on `rooms/{roomId}/members/{uid}` deletion. `cleanupPoolMember` triggers on `pool_presence/{uid}` deletion. `jukebox/{roomId}` is cleared by `endSession` CF when a session ends.
 
 ---
 

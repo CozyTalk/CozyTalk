@@ -52,7 +52,7 @@ features/chat/
 
 ## Production Screens
 
-- `screens/chat_screen.dart` — `ChatScreen` (ConsumerStatefulWidget, ⚠️ partial — uses `shared/` providers only, not wired to `chatNotifierProvider`)
+- `screens/chat_screen.dart` — `ChatScreen` (ConsumerStatefulWidget, ⚠️ partial — uses `shared/` providers only, not wired to `chatNotifierProvider`). AppBar has Jukebox music button (`Icons.queue_music_rounded`) and `JukeboxPlayer` is mounted in the Column body for audio lifecycle management.
 - `screens/group_chat_screen.dart` — `GroupChatScreen` (not yet integrated)
 
 ## Privacy

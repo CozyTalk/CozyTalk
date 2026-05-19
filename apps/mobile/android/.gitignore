@@ -1,4 +1,5 @@
 gradle-wrapper.jar
+/build/
 /.gradle
 /captures/
 /gradlew
@@ -6,6 +7,7 @@ gradle-wrapper.jar
 /local.properties
 GeneratedPluginRegistrant.java
 .cxx/
+/build/
 
 # Remember to never publicly share your keystore.
 # See https://flutter.dev/to/reference-keystore

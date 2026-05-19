@@ -4,6 +4,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mobile/features/auth/domain/entities/auth_user.dart';
 import 'package:mobile/features/auth/presentation/providers/auth_provider.dart';
 import 'package:mobile/features/avatar/presentation/providers/avatar_decoration_provider.dart';
+import 'package:mobile/features/friends/domain/entities/friend_request.dart';
+import 'package:mobile/features/friends/presentation/providers/friends_provider.dart';
 import 'package:mobile/features/profile/domain/entities/profile_user.dart';
 import 'package:mobile/features/profile/presentation/providers/profile_provider.dart';
 import 'package:mobile/screens/home_screen.dart';
@@ -73,6 +75,15 @@ class _FakeProfileNotifier extends ProfileNotifier {
   }
 }
 
+class _FakeFriendsNotifier extends FriendsNotifier {
+  final FriendsState _initial;
+  _FakeFriendsNotifier({FriendsState initial = const FriendsState()})
+    : _initial = initial;
+
+  @override
+  FriendsState build() => _initial;
+}
+
 class _FakeAvatarDecorationNotifier extends AvatarDecorationNotifier {
   final AvatarDecorationState _initial;
   int loadCount = 0;
@@ -115,12 +126,16 @@ Widget _buildScreen(
   _FakeProfileNotifier profileFake,
   _FakeAvatarDecorationNotifier avatarFake, {
   AuthState auth = _authenticatedAuth,
+  FriendsState friends = const FriendsState(),
 }) {
   return ProviderScope(
     overrides: [
       authNotifierProvider.overrideWith(() => _FakeAuthNotifier(initial: auth)),
       profileNotifierProvider.overrideWith(() => profileFake),
       avatarDecorationNotifierProvider.overrideWith(() => avatarFake),
+      friendsNotifierProvider.overrideWith(
+        () => _FakeFriendsNotifier(initial: friends),
+      ),
     ],
     child: const MaterialApp(home: HomeScreen()),
   );
@@ -228,6 +243,54 @@ void main() {
       expect(profile.lastThoughts, 'New thought');
       expect(profile.lastUid, 'test-uid');
     });
+
+    testWidgets('shows notification badge when there are incoming requests', (
+      tester,
+    ) async {
+      final request = FriendRequest(
+        id: 'r1',
+        fromUid: 'uid-a',
+        fromDisplayName: 'Alice',
+        toUid: 'test-uid',
+        toDisplayName: 'Me',
+        status: FriendRequestStatus.pending,
+        createdAt: DateTime(2025),
+      );
+      await tester.pumpWidget(
+        _buildScreen(
+          _FakeProfileNotifier(),
+          _FakeAvatarDecorationNotifier(),
+          friends: FriendsState(incomingRequests: [request]),
+        ),
+      );
+
+      final badge = find.byWidgetPredicate(
+        (w) =>
+            w is Container &&
+            w.decoration is BoxDecoration &&
+            (w.decoration as BoxDecoration).shape == BoxShape.circle &&
+            (w.decoration as BoxDecoration).color == const Color(0xFFCF5733),
+      );
+      expect(badge, findsOneWidget);
+    });
+
+    testWidgets(
+      'hides notification badge when there are no incoming requests',
+      (tester) async {
+        await tester.pumpWidget(
+          _buildScreen(_FakeProfileNotifier(), _FakeAvatarDecorationNotifier()),
+        );
+
+        final badge = find.byWidgetPredicate(
+          (w) =>
+              w is Container &&
+              w.decoration is BoxDecoration &&
+              (w.decoration as BoxDecoration).shape == BoxShape.circle &&
+              (w.decoration as BoxDecoration).color == const Color(0xFFCF5733),
+        );
+        expect(badge, findsNothing);
+      },
+    );
 
     testWidgets('does not call updateThoughts when dialog Cancel is tapped', (
       tester,
