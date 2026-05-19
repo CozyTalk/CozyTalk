@@ -67,8 +67,11 @@ Future<void> _pump(
           AppRoutes.chooseRoomType: (_) => Scaffold(
             body: Builder(
               builder: (ctx) => TextButton(
-                onPressed: () =>
-                    Navigator.pushNamed(ctx, AppRoutes.findingRoom, arguments: args),
+                onPressed: () => Navigator.pushNamed(
+                  ctx,
+                  AppRoutes.findingRoom,
+                  arguments: args,
+                ),
                 child: const Text('choose-room-type'),
               ),
             ),
@@ -148,42 +151,42 @@ void main() {
     });
 
     testWidgets(
-        'navigates to groupChatScreen when matched with roomType group', (
-      tester,
-    ) async {
-      final fake = _FakeMatchmakingNotifier();
-      await _pump(tester, fake, roomType: 'group');
+      'navigates to groupChatScreen when matched with roomType group',
+      (tester) async {
+        final fake = _FakeMatchmakingNotifier();
+        await _pump(tester, fake, roomType: 'group');
 
-      fake.setStateForTest(
-        const MatchmakingState(
-          status: MatchmakingStatus.matched,
-          roomId: 'XYZ99',
-        ),
-      );
-      await tester.pump();
-      await tester.pump();
+        fake.setStateForTest(
+          const MatchmakingState(
+            status: MatchmakingStatus.matched,
+            roomId: 'XYZ99',
+          ),
+        );
+        await tester.pump();
+        await tester.pump();
 
-      expect(find.text('group-chat-screen'), findsOneWidget);
-    });
+        expect(find.text('group-chat-screen'), findsOneWidget);
+      },
+    );
 
     testWidgets(
-        'navigates to groupChatScreen when matched with roomType create', (
-      tester,
-    ) async {
-      final fake = _FakeMatchmakingNotifier();
-      await _pump(tester, fake, roomType: 'create');
+      'navigates to groupChatScreen when matched with roomType create',
+      (tester) async {
+        final fake = _FakeMatchmakingNotifier();
+        await _pump(tester, fake, roomType: 'create');
 
-      fake.setStateForTest(
-        const MatchmakingState(
-          status: MatchmakingStatus.matched,
-          roomId: 'CRT01',
-        ),
-      );
-      await tester.pump();
-      await tester.pump();
+        fake.setStateForTest(
+          const MatchmakingState(
+            status: MatchmakingStatus.matched,
+            roomId: 'CRT01',
+          ),
+        );
+        await tester.pump();
+        await tester.pump();
 
-      expect(find.text('group-chat-screen'), findsOneWidget);
-    });
+        expect(find.text('group-chat-screen'), findsOneWidget);
+      },
+    );
 
     // ── error state ───────────────────────────────────────────────────────────
 
