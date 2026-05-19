@@ -1,7 +1,4 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import 'admin_shared.dart';
 import 'admin_users_tab.dart';
 import 'admin_ban_detail_screen.dart';
@@ -28,7 +25,6 @@ class AdminReportDetailScreen extends StatefulWidget {
   final void Function(String reason, String duration, String note)
   onBanConfirmed;
   final AdminUser? reporterUser;
-  final Future<String?> Function()? onGetChatLog;
 
   const AdminReportDetailScreen({
     super.key,
@@ -36,7 +32,6 @@ class AdminReportDetailScreen extends StatefulWidget {
     required this.onDismiss,
     required this.onBanConfirmed,
     this.reporterUser,
-    this.onGetChatLog,
   });
 
   @override
@@ -46,7 +41,6 @@ class AdminReportDetailScreen extends StatefulWidget {
 
 class _AdminReportDetailScreenState extends State<AdminReportDetailScreen> {
   bool _showBanModal = false;
-  bool _chatLoading = false;
   final Set<String> _banReasons = {};
   String _banDuration = 'Permanent';
   String _banNote = '';
@@ -73,68 +67,6 @@ class _AdminReportDetailScreenState extends State<AdminReportDetailScreen> {
   void _dismiss() {
     widget.onDismiss();
     Navigator.pop(context);
-  }
-
-  Future<void> _fetchAndShowChatLog() async {
-    if (_chatLoading || widget.onGetChatLog == null) return;
-    setState(() => _chatLoading = true);
-    try {
-      final url = await widget.onGetChatLog!();
-      if (url == null || !mounted) return;
-      final response = await http.get(Uri.parse(url));
-      if (!mounted) return;
-      final data = Map<String, dynamic>.from(jsonDecode(response.body) as Map);
-      showModalBottomSheet(
-        context: context,
-        isScrollControlled: true,
-        backgroundColor: Colors.transparent,
-        builder: (_) => _ChatTranscriptSheet(data: data),
-      );
-    } catch (_) {
-    } finally {
-      if (mounted) setState(() => _chatLoading = false);
-    }
-  }
-
-  void _showImageFullscreen(String url) {
-    showDialog(
-      context: context,
-      builder: (_) => Dialog(
-        backgroundColor: Colors.black,
-        insetPadding: EdgeInsets.zero,
-        child: SizedBox.expand(
-          child: Stack(
-            children: [
-              Center(
-                child: InteractiveViewer(
-                  child: Image.network(url, fit: BoxFit.contain),
-                ),
-              ),
-              Positioned(
-                top: MediaQuery.of(context).padding.top + 8,
-                right: 12,
-                child: GestureDetector(
-                  onTap: () => Navigator.pop(context),
-                  child: Container(
-                    width: 36,
-                    height: 36,
-                    decoration: BoxDecoration(
-                      color: Colors.black54,
-                      borderRadius: BorderRadius.circular(18),
-                    ),
-                    child: const Icon(
-                      Icons.close_rounded,
-                      color: Colors.white,
-                      size: 20,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
   }
 
   @override
@@ -170,10 +102,6 @@ class _AdminReportDetailScreenState extends State<AdminReportDetailScreen> {
                         subWidget: _buildReporterLabel(ctx),
                       ),
                     ),
-                    if (widget.onGetChatLog != null) ...[
-                      const SizedBox(height: 12),
-                      _buildSection('Chat transcript', _buildChatLogButton()),
-                    ],
                     if (widget.report.evidence > 0) ...[
                       const SizedBox(height: 12),
                       _buildSection(
@@ -584,65 +512,7 @@ class _AdminReportDetailScreenState extends State<AdminReportDetailScreen> {
     );
   }
 
-  // ─── Chat log button ───
-  Widget _buildChatLogButton() {
-    return GestureDetector(
-      onTap: _fetchAndShowChatLog,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
-        decoration: BoxDecoration(
-          color: const Color(0xFFF6EAD0),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: _C.border, width: 1.5),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 32,
-              height: 32,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(9),
-              ),
-              child: const Icon(
-                Icons.chat_bubble_outline_rounded,
-                size: 16,
-                color: _C.brownDarker,
-              ),
-            ),
-            const SizedBox(width: 12),
-            const Expanded(
-              child: Text(
-                'View session transcript',
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  color: _C.ink,
-                ),
-              ),
-            ),
-            if (_chatLoading)
-              const SizedBox(
-                width: 16,
-                height: 16,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: _C.brownDarker,
-                ),
-              )
-            else
-              const Icon(
-                Icons.chevron_right_rounded,
-                color: _C.inkSoft,
-                size: 20,
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // ─── Evidence images ───
+  // ─── Evidence placeholders ───
   Widget _buildEvidence() {
     return SizedBox(
       height: 110,
@@ -650,49 +520,49 @@ class _AdminReportDetailScreenState extends State<AdminReportDetailScreen> {
         scrollDirection: Axis.horizontal,
         itemCount: widget.report.evidence,
         separatorBuilder: (_, _) => const SizedBox(width: 8),
-        itemBuilder: (_, i) {
-          final urls = widget.report.contextImageUrls;
-          final url = i < urls.length ? urls[i] : null;
-          if (url == null) {
-            return Container(
-              width: 110,
-              decoration: BoxDecoration(
-                color: const Color(0xFFF6EAD0),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: _C.border, width: 1.5),
-              ),
-              child: const Icon(
-                Icons.image_not_supported_rounded,
-                color: _C.inkSoft,
-              ),
-            );
-          }
-          return GestureDetector(
-            onTap: () => _showImageFullscreen(url),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(14),
-              child: Image.network(
-                url,
-                width: 110,
-                height: 110,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) => Container(
-                  width: 110,
-                  height: 110,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF6EAD0),
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: _C.border, width: 1.5),
-                  ),
-                  child: const Icon(
-                    Icons.broken_image_rounded,
-                    color: _C.inkSoft,
-                  ),
+        itemBuilder: (_, i) => Container(
+          width: 110,
+          decoration: BoxDecoration(
+            color: const Color(0xFFF6EAD0),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: _C.border, width: 1.5),
+          ),
+          padding: const EdgeInsets.all(8),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                height: 7,
+                width: double.infinity * .7,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEDE3CE),
+                  borderRadius: BorderRadius.circular(4),
                 ),
               ),
-            ),
-          );
-        },
+              const SizedBox(height: 4),
+              Container(
+                height: 7,
+                color: _C.redSoft,
+                margin: const EdgeInsets.only(right: 10),
+              ),
+              const SizedBox(height: 4),
+              Container(
+                height: 7,
+                width: double.infinity * .4,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEDE3CE),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+              ),
+              const Spacer(),
+              Container(
+                height: 7,
+                color: _C.redSoft,
+                margin: const EdgeInsets.only(left: 20),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -1357,212 +1227,6 @@ class _ModalBtn extends StatelessWidget {
               ),
             ],
           ),
-        ),
-      ),
-    );
-  }
-}
-
-// ─── Chat transcript bottom sheet ───
-class _ChatTranscriptSheet extends StatelessWidget {
-  final Map<String, dynamic> data;
-  const _ChatTranscriptSheet({required this.data});
-
-  @override
-  Widget build(BuildContext context) {
-    final messages =
-        (data['messages'] as List?)
-            ?.map((e) => Map<String, dynamic>.from(e as Map))
-            .toList() ??
-        const <Map<String, dynamic>>[];
-    final exportedAt = data['exportedAt'] as String? ?? '';
-    final sessionId = data['sessionId'] as String? ?? '';
-
-    return DraggableScrollableSheet(
-      initialChildSize: 0.75,
-      minChildSize: 0.4,
-      maxChildSize: 0.95,
-      builder: (_, controller) => Container(
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-        ),
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-              child: Column(
-                children: [
-                  Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFD8D2C8),
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-                  Row(
-                    children: [
-                      Container(
-                        width: 32,
-                        height: 32,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF6EAD0),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: const Icon(
-                          Icons.chat_bubble_outline_rounded,
-                          size: 16,
-                          color: Color(0xFF3F3230),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'Chat Transcript',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w800,
-                                color: Color(0xFF1F1A18),
-                              ),
-                            ),
-                            Text(
-                              'Session $sessionId',
-                              style: const TextStyle(
-                                fontSize: 11,
-                                color: Color(0xFF6B5F5A),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      GestureDetector(
-                        onTap: () => Navigator.pop(context),
-                        child: const Icon(
-                          Icons.close_rounded,
-                          color: Color(0xFF6B5F5A),
-                          size: 22,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  const Divider(height: 1),
-                ],
-              ),
-            ),
-            Expanded(
-              child: messages.isEmpty
-                  ? const Center(
-                      child: Text(
-                        'No messages in this session',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: Color(0xFF6B5F5A),
-                        ),
-                      ),
-                    )
-                  : ListView.builder(
-                      controller: controller,
-                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-                      itemCount: messages.length,
-                      itemBuilder: (_, i) {
-                        final msg = messages[i];
-                        final name = msg['displayName'] as String? ?? 'Unknown';
-                        final text =
-                            msg['text'] as String? ?? '[message unavailable]';
-                        final ts = msg['timestamp'] as String? ?? '';
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 10),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Container(
-                                width: 28,
-                                height: 28,
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFEDE3CE),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Center(
-                                  child: Text(
-                                    name.isNotEmpty
-                                        ? name[0].toUpperCase()
-                                        : '?',
-                                    style: const TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w800,
-                                      color: Color(0xFF3F3230),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
-                                      children: [
-                                        Text(
-                                          name,
-                                          style: const TextStyle(
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w800,
-                                            color: Color(0xFF1F1A18),
-                                          ),
-                                        ),
-                                        const SizedBox(width: 6),
-                                        Text(
-                                          ts,
-                                          style: const TextStyle(
-                                            fontSize: 10,
-                                            color: Color(0xFF6B5F5A),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 2),
-                                    Text(
-                                      text,
-                                      style: const TextStyle(
-                                        fontSize: 13,
-                                        color: Color(0xFF1F1A18),
-                                        height: 1.5,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        );
-                      },
-                    ),
-            ),
-            Container(
-              padding: EdgeInsets.fromLTRB(
-                16,
-                12,
-                16,
-                MediaQuery.of(context).padding.bottom + 12,
-              ),
-              decoration: const BoxDecoration(
-                border: Border(top: BorderSide(color: Color(0xFFEDE3CE))),
-              ),
-              child: Text(
-                messages.isEmpty
-                    ? 'No messages recorded'
-                    : 'Exported: $exportedAt · ${messages.length} messages',
-                textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 11, color: Color(0xFF6B5F5A)),
-              ),
-            ),
-          ],
         ),
       ),
     );
