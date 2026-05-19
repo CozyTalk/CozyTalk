@@ -1,4 +1,4 @@
-# CozyTalk — Project Context
+﻿# CozyTalk — Project Context
 
 > Full project reference. Read before answering any questions about this project.
 
@@ -27,7 +27,7 @@ CozyTalk is a **cross-platform stranger chat app** targeting **Android and Web**
 
 ### Cloud Functions (`functions/`)
 - TypeScript, Firebase Functions v2
-- 16 functions exported across two regions (see Cloud Functions table in Firebase Configuration)
+- 21 functions exported across two regions (see Cloud Functions table in Firebase Configuration)
 - Max 10 instances (cost control)
 - Matchmaking and chat logic **must** live here — never on client
 
@@ -428,3 +428,5 @@ CozyTalk/
 ├── CLAUDE.md                         ← auto-loaded by Claude Code every session
 └── PROJECT_CONTEXT.md                ← this file
 ```
+
+
