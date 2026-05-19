@@ -147,7 +147,7 @@ RTDB paths: `rooms/{id}/members/{uid}`, `typing/{id}/{uid}` (read: room member),
 
 **`_useMainUI` toggle (main.dart line 35):**
 - `false` (default) → chatroom/backend testing: `_AuthRouter` → `LoginScreen` (features/auth) → `HelloScreen`. Registers `findingRoom` route.
-- `true` → legacy UI / design preview: `HomeScreen` (screens/) + `AppRoutes` named routes. Note: `findingRoom` route is absent from this branch.
+- `true` → production UI: `HomeScreen` (screens/) + `AppRoutes` named routes including `findingRoom`.
 
 `_AuthRouter` routes: `authenticated → HelloScreen` · `idle → spinner` · others → `LoginScreen`.
 
