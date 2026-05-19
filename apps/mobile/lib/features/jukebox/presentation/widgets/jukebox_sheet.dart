@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -139,6 +141,19 @@ class _JukeboxSheetState extends ConsumerState<JukeboxSheet> {
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Row(
+                      children: [
+                        _PlaybackPosition(
+                          startedAt: roomState.startedAt,
+                          pausedAt: roomState.pausedAt,
+                          isPlaying: roomState.isPlaying,
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 4),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
@@ -275,6 +290,76 @@ class _JukeboxSheetState extends ConsumerState<JukeboxSheet> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// ── Live playback position display ────────────────────────────────────────────
+
+class _PlaybackPosition extends StatefulWidget {
+  final int startedAt;
+  final int pausedAt;
+  final bool isPlaying;
+
+  const _PlaybackPosition({
+    required this.startedAt,
+    required this.pausedAt,
+    required this.isPlaying,
+  });
+
+  @override
+  State<_PlaybackPosition> createState() => _PlaybackPositionState();
+}
+
+class _PlaybackPositionState extends State<_PlaybackPosition> {
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _startTimer();
+  }
+
+  @override
+  void didUpdateWidget(_PlaybackPosition old) {
+    super.didUpdateWidget(old);
+    if (old.isPlaying != widget.isPlaying ||
+        old.startedAt != widget.startedAt) {
+      _startTimer();
+    }
+  }
+
+  void _startTimer() {
+    _timer?.cancel();
+    _timer = null;
+    if (widget.isPlaying) {
+      _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+        if (mounted) setState(() {});
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final rawSeconds = widget.isPlaying
+        ? (DateTime.now().millisecondsSinceEpoch - widget.startedAt) ~/ 1000
+        : widget.pausedAt ~/ 1000;
+    final seconds = rawSeconds.clamp(0, 86400);
+    final m = seconds ~/ 60;
+    final s = seconds % 60;
+    return Text(
+      '${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}',
+      style: TextStyle(
+        fontSize: 12,
+        color: Theme.of(context).colorScheme.outline,
+        fontFeatures: const [FontFeature.tabularFigures()],
       ),
     );
   }

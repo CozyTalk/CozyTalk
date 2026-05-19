@@ -38,8 +38,11 @@ class _JukeboxPlayerState extends ConsumerState<JukeboxPlayer> {
 
     // Keep the embed mounted in the chat body so it is never destroyed when
     // the sheet opens/closes.
+    // ValueKey on currentIndex ensures Flutter recreates the player on every
+    // skip — even when the same videoId appears again in the queue.
     return JukeboxWebPlayer(
-      videoId: roomState!.currentTrack!.videoId,
+      key: ValueKey(roomState!.currentIndex),
+      videoId: roomState.currentTrack!.videoId,
       startedAt: roomState.startedAt,
       pausedAt: roomState.pausedAt,
       isPlaying: roomState.isPlaying,
