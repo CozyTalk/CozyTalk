@@ -40,7 +40,6 @@ dependencies:
   cryptography: ^2.7.0
   flutter_svg: ^2.0.17
   google_fonts: ^6.2.1
-  url_launcher: ^6.3.2
 
 dev_dependencies:
   flutter_test:

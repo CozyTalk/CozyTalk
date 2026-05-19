@@ -1,7 +1,6 @@
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../theme/app_colors.dart';
 import '../shared/avatar_overlay.dart';
 import '../shared/layered_avatar.dart';
@@ -154,12 +153,47 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                 top: 0,
                                 right: 0,
                                 child: GestureDetector(
-                                  onTap: () => Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) => const ProfileEditScreen(),
-                                    ),
-                                  ),
+                                  onTap: () async {
+                                    final uid = ref
+                                        .read(authNotifierProvider)
+                                        .user
+                                        ?.uid;
+                                    if (uid == null) return;
+                                    final profile = ref
+                                        .read(profileNotifierProvider)
+                                        .profile;
+                                    final result = await Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => ProfileEditScreen(
+                                          currentName:
+                                              profile?.displayName ?? '',
+                                          currentInterest:
+                                              profile?.interest ?? '',
+                                        ),
+                                      ),
+                                    );
+                                    if (result is Map && mounted) {
+                                      final notifier = ref.read(
+                                        profileNotifierProvider.notifier,
+                                      );
+                                      final newName = result['name'] as String?;
+                                      final newInterest =
+                                          result['interest'] as String?;
+                                      if (newName != null) {
+                                        await notifier.updateDisplayName(
+                                          uid,
+                                          newName,
+                                        );
+                                      }
+                                      if (newInterest != null) {
+                                        await notifier.updateInterest(
+                                          uid,
+                                          newInterest,
+                                        );
+                                      }
+                                    }
+                                  },
                                   child: SvgPicture.asset(
                                     'assets/images/icons/Edit.svg',
                                     width: 24,
@@ -226,10 +260,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
                         // ── Contact us Card ──
                         _buildCard(
-                          onTap: () => launchUrl(
-                            Uri.parse('https://discord.gg/yThTkZYSHe'),
-                            mode: LaunchMode.externalApplication,
-                          ),
+                          onTap: () {},
                           child: Row(
                             children: [
                               SvgPicture.asset(
