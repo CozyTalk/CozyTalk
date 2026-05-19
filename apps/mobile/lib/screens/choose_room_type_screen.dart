@@ -230,7 +230,7 @@ class _ChooseRoomTypeScreenState extends State<ChooseRoomTypeScreen> {
 
   Widget _backBtn(BuildContext context) {
     return GestureDetector(
-      onTap: () => Navigator.pop(context),
+      onTap: () => Navigator.popUntil(context, (r) => r.isFirst),
       child: Container(
         width: 52,
         height: 52,
