@@ -40,13 +40,13 @@ dependencies:
   cryptography: ^2.7.0
   flutter_svg: ^2.0.17
   google_fonts: ^6.2.1
+  http: ^1.6.0
   url_launcher: ^6.3.2
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
 
-  http: ^1.6.0
   flutter_lints: ^6.0.0
   riverpod_generator: ^4.0.3
   build_runner: ^2.15.0
@@ -70,3 +70,4 @@ flutter:
     - assets/images/dressup/
     - assets/images/cards/
     - assets/images/tuktuk/
+    - assets/icebreaker-questions.json

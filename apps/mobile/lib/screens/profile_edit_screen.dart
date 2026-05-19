@@ -1,9 +1,9 @@
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../shared/info_dialog.dart';
 import '../theme/app_colors.dart';
 import '../shared/avatar_overlay.dart';
+import '../shared/info_dialog.dart';
 import '../shared/layered_avatar.dart';
 import '../features/auth/presentation/providers/auth_provider.dart';
 import '../features/profile/presentation/providers/profile_provider.dart';
@@ -254,10 +254,17 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
                                     uid,
                                     _interestCtrl.text.trim(),
                                   );
-                                  if (mounted &&
-                                      ref.read(profileNotifierProvider).error ==
-                                          null) {
-                                    navigator.pop();
+                                  if (!context.mounted) return;
+                                  if (ref.read(profileNotifierProvider).error ==
+                                      null) {
+                                    showInfoDialog(
+                                      context,
+                                      type: InfoDialogType.success,
+                                      title: 'Profile Saved',
+                                      message:
+                                          'Your profile has been updated successfully.',
+                                      onConfirm: () => navigator.pop(),
+                                    );
                                   }
                                 },
                           child: Container(
