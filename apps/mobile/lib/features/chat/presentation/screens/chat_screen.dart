@@ -72,94 +72,93 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       return const _DisconnectedScreen();
     }
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('CozyTalk'),
-        actions: [
-          Semantics(
-            label: 'Open Jukebox',
-            button: true,
-            child: IconButton(
-              icon: const Icon(Icons.queue_music_rounded),
-              tooltip: 'Jukebox',
-              onPressed: state.status == SessionStatus.chatting
-                  ? _openJukeboxSheet
-                  : null,
-            ),
-          ),
-          if (widget.reportedUserId != null)
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _endSession();
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('CozyTalk'),
+          actions: [
             Semantics(
-              label: 'Report this user',
+              label: 'Open Jukebox',
               button: true,
               child: IconButton(
-                icon: const Icon(Icons.flag_outlined),
-                tooltip: 'Report',
+                icon: const Icon(Icons.queue_music_rounded),
+                tooltip: 'Jukebox',
                 onPressed: state.status == SessionStatus.chatting
-                    ? _showReportSheet
+                    ? _openJukeboxSheet
                     : null,
               ),
             ),
-          Semantics(
-            label: 'Skip to next person',
-            button: true,
-            child: TextButton(
-              onPressed: state.status == SessionStatus.chatting
-                  ? _endSession
-                  : null,
-              child: const Text('Skip', style: TextStyle(fontSize: 16)),
-            ),
-          ),
-        ],
-      ),
-      body: Column(
-        children: [
-          JukeboxPlayer(roomId: widget.sessionId),
-          Expanded(
-            child: state.messages.isEmpty
-                ? const Center(
-                    child: Text(
-                      'Say hello!',
-                      style: TextStyle(color: Colors.grey),
-                    ),
-                  )
-                : ListView.builder(
-                    controller: _scrollController,
-                    padding: const EdgeInsets.symmetric(
-                      vertical: 8,
-                      horizontal: 12,
-                    ),
-                    itemCount: state.messages.length,
-                    itemBuilder: (context, index) {
-                      final message = state.messages[index];
-                      final isMine = message.senderId == state.currentUserId;
-                      return _MessageBubble(
-                        text: message.text,
-                        displayName: message.displayName,
-                        isMine: isMine,
-                      );
-                    },
-                  ),
-          ),
-          if (state.typingUsers.isNotEmpty)
-            _TypingIndicator(typingUsers: state.typingUsers),
-          if (state.error != null)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-              child: Text(
-                state.error!,
-                style: const TextStyle(color: Colors.red, fontSize: 12),
-                textAlign: TextAlign.center,
+            if (widget.reportedUserId != null)
+              Semantics(
+                label: 'Report this user',
+                button: true,
+                child: IconButton(
+                  icon: const Icon(Icons.flag_outlined),
+                  tooltip: 'Report',
+                  onPressed: state.status == SessionStatus.chatting
+                      ? _showReportSheet
+                      : null,
+                ),
               ),
+          ],
+        ),
+        body: Column(
+          children: [
+            JukeboxPlayer(roomId: widget.sessionId),
+            Expanded(
+              child: state.messages.isEmpty
+                  ? const Center(
+                      child: Text(
+                        'Say hello!',
+                        style: TextStyle(color: Colors.grey),
+                      ),
+                    )
+                  : ListView.builder(
+                      controller: _scrollController,
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 8,
+                        horizontal: 12,
+                      ),
+                      itemCount: state.messages.length,
+                      itemBuilder: (context, index) {
+                        final message = state.messages[index];
+                        final isMine = message.senderId == state.currentUserId;
+                        return _MessageBubble(
+                          text: message.text,
+                          displayName: message.displayName,
+                          isMine: isMine,
+                        );
+                      },
+                    ),
             ),
-          _InputBar(
-            controller: _controller,
-            isSending: state.isSending,
-            onChanged: _onTypingChanged,
-            onSend: _send,
-          ),
-        ],
-      ),
-    );
+            if (state.typingUsers.isNotEmpty)
+              _TypingIndicator(typingUsers: state.typingUsers),
+            if (state.error != null)
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 4,
+                ),
+                child: Text(
+                  state.error!,
+                  style: const TextStyle(color: Colors.red, fontSize: 12),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            _InputBar(
+              controller: _controller,
+              isSending: state.isSending,
+              onChanged: _onTypingChanged,
+              onSend: _send,
+            ),
+          ],
+        ),
+      ), // Scaffold
+    ); // PopScope
   }
 
   void _onTypingChanged(String value) {
