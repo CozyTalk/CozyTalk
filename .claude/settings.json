@@ -24,8 +24,7 @@
           },
           {
             "type": "command",
-            "if": "Bash(git *)",
-            "command": "root=$(git rev-parse --show-toplevel 2>/dev/null) && rm -f \"$root/.git/index.lock\" 2>/dev/null || true"
+            "command": "root=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0; lock=\"$root/.git/index.lock\"; [ -f \"$lock\" ] && ! lsof \"$lock\" >/dev/null 2>&1 && rm -f \"$lock\"; exit 0"
           }
         ]
       }
