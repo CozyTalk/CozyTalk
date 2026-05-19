@@ -226,10 +226,19 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
                         // ── Contact us Card ──
                         _buildCard(
-                          onTap: () => launchUrl(
-                            Uri.parse('https://discord.gg/yThTkZYSHe'),
-                            mode: LaunchMode.externalApplication,
-                          ),
+                          onTap: () async {
+                            final ok = await launchUrl(
+                              Uri.parse('https://discord.gg/yThTkZYSHe'),
+                              mode: LaunchMode.externalApplication,
+                            );
+                            if (!ok && context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Could not open link'),
+                                ),
+                              );
+                            }
+                          },
                           child: Row(
                             children: [
                               SvgPicture.asset(

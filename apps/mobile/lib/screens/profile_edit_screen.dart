@@ -53,6 +53,14 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
           context,
         ).showSnackBar(SnackBar(content: Text(next.error!)));
       }
+      if (prev?.profile == null && next.profile != null) {
+        if (_usernameCtrl.text.isEmpty) {
+          _usernameCtrl.text = next.profile?.displayName ?? '';
+        }
+        if (_interestCtrl.text.isEmpty) {
+          _interestCtrl.text = next.profile?.interest ?? '';
+        }
+      }
     });
 
     return Scaffold(
@@ -250,6 +258,10 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
                                     _usernameCtrl.text.trim(),
                                   );
                                   if (!mounted) return;
+                                  if (ref.read(profileNotifierProvider).error !=
+                                      null) {
+                                    return;
+                                  }
                                   await notifier.updateInterest(
                                     uid,
                                     _interestCtrl.text.trim(),
