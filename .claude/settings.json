@@ -15,6 +15,11 @@
           {
             "type": "command",
             "command": "sh -c 'root=$(git rev-parse --show-toplevel 2>/dev/null || pwd); exec \"$root/.claude/hooks/enforce-pr-template.sh\"'"
+          },
+          {
+            "type": "command",
+            "if": "Bash(git *)",
+            "command": "root=$(git rev-parse --show-toplevel 2>/dev/null) && rm -f \"$root/.git/index.lock\" 2>/dev/null || true"
           }
         ]
       }
