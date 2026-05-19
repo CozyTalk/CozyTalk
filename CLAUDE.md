@@ -314,3 +314,21 @@ Every code change that affects a documented behaviour **must** be accompanied by
 - Never document a file, field, or behaviour that does not exist in the current codebase.
 - If you are unsure what a doc should say, read the source file first — the code is the ground truth.
 - Doc updates are part of the task, not optional cleanup after. A PR that changes code without updating docs is incomplete.
+
+---
+
+## 17. Never Guess — Ask Instead (non-negotiable)
+
+If you are not certain about something, **stop and ask**. Do not invent, assume, or fill in gaps with plausible-sounding answers.
+
+This is especially critical during:
+- Security reviews and audits — a wrong claim is worse than no claim.
+- Schema or data model questions — assume nothing about fields or rules that aren't read from source.
+- Behaviour of code you haven't read — read it first, then answer.
+- Any destructive or irreversible operation — confirm intent before acting.
+
+**Hard rules:**
+- Only state something as fact if you have verified it by reading the current source, docs, or running a command.
+- If you have a question, ask it — one clear question is better than a confident wrong answer.
+- "I think" or "probably" is not good enough. Either verify and state the truth, or say you don't know and ask.
+- Never fabricate file paths, function names, field names, or behaviours. If unsure, `grep` or `Read` first.
