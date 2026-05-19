@@ -91,7 +91,8 @@ class _AdminConsoleScreenState extends ConsumerState<AdminConsoleScreen> {
     if (lower == '1 day') return '1 Day';
     if (lower == '7 days') return '7 Days';
     if (lower == '30 days') return '30 Days';
-    return 'Permanent';
+    if (lower == 'permanent') return 'Permanent';
+    throw ArgumentError('Unknown ban duration: $raw');
   }
 
   static String _reportTypeLabel(String type) {

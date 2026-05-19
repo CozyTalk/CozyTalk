@@ -19,17 +19,21 @@
 
 ---
 
-## Firestore Rule Change Required
+## Firestore Rule Applied
 
 **File:** `firestore.rules`  
-**Change:** Add `|| isAdmin()` to the `users/{userId}` read rule so admin screens can read any user document.
+**Applied rule:** `allow read: if isSignedIn();`
+
+The rule was broadened to `isSignedIn()` (any authenticated user, including anonymous) rather than the narrower `isOwner(userId) || isAdmin()` originally specced. This is required for the friends feature, which must query and stream other users' profiles for the friends search UI. Admin screens benefit from this rule as a side effect — they need to read arbitrary user documents.
 
 ```
-// Before
+// Before (owner-only)
 allow read: if isOwner(userId);
-// After
-allow read: if isOwner(userId) || isAdmin();
+// After (any authenticated user — required for friends search)
+allow read: if isSignedIn();
 ```
+
+Note: `email` is never stored in Firestore, so exposure is limited to `displayName`, `photoUrl`, `interest`, `hatKey`, `moodKey`, `thoughts`, ban fields, and `role`.
 
 ---
 

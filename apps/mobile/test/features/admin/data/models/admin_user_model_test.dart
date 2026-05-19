@@ -81,7 +81,6 @@ void main() {
         });
         expect(model.uid, 'u1');
         expect(model.displayName, 'Alice');
-        expect(model.email, isNull);
         expect(model.interest, '');
         expect(model.banned, isFalse);
         expect(model.online, isFalse);
@@ -92,7 +91,6 @@ void main() {
         final model = AdminUserModel.fromJson({
           'uid': 'u2',
           'displayName': 'Bob',
-          'email': 'bob@example.com',
           'interest': 'music',
           'banned': true,
           'createdAt': '2024-06-01T00:00:00.000Z',
@@ -148,7 +146,6 @@ void main() {
         final model = AdminUserModel.fromJson({
           'uid': 'u1',
           'displayName': 'Alice',
-          'email': 'alice@example.com',
           'interest': 'gaming',
           'banned': false,
           'online': true,
@@ -157,7 +154,6 @@ void main() {
         final entity = model.toEntity();
         expect(entity.uid, 'u1');
         expect(entity.displayName, 'Alice');
-        expect(entity.email, 'alice@example.com');
         expect(entity.interest, 'gaming');
         expect(entity.banned, isFalse);
         expect(entity.online, isTrue);

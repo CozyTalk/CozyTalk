@@ -17,7 +17,6 @@ void main() {
       );
       expect(user.uid, 'u1');
       expect(user.displayName, 'Alice');
-      expect(user.email, isNull);
       expect(user.interest, 'gaming');
       expect(user.banned, isFalse);
       expect(user.online, isTrue);
@@ -37,7 +36,6 @@ void main() {
       final user = AdminUser(
         uid: 'u2',
         displayName: 'Bob',
-        email: 'bob@example.com',
         interest: '',
         banned: true,
         online: false,

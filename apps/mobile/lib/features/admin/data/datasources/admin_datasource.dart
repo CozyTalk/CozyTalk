@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 
@@ -23,13 +25,30 @@ abstract class AdminDatasource {
     String? reportId,
   });
   Future<void> unbanUser(String uid);
+  void dispose();
 }
 
 class AdminDatasourceImpl implements AdminDatasource {
   final FirebaseFirestore _firestore;
   final FirebaseFunctions _functions;
+  Set<String> _onlineUids = {};
+  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _roomsSub;
 
-  AdminDatasourceImpl(this._firestore, this._functions);
+  AdminDatasourceImpl(this._firestore, this._functions) {
+    _roomsSub = _firestore
+        .collection('rooms')
+        .where('status', isEqualTo: 'active')
+        .snapshots()
+        .listen((snap) {
+          _onlineUids = {
+            for (final doc in snap.docs)
+              ...(doc.data()['users'] as List? ?? []).cast<String>(),
+          };
+        });
+  }
+
+  @override
+  void dispose() => _roomsSub?.cancel();
 
   @override
   Future<AdminDashboardStats> getDashboardStats() async {
@@ -116,16 +135,7 @@ class AdminDatasourceImpl implements AdminDatasource {
         .collection('users')
         .orderBy('createdAt', descending: true)
         .snapshots()
-        .asyncMap((snap) async {
-          final activeRooms = await _firestore
-              .collection('rooms')
-              .where('status', isEqualTo: 'active')
-              .get();
-          final onlineUids = <String>{};
-          for (final r in activeRooms.docs) {
-            final users = List<String>.from(r.data()['users'] as List? ?? []);
-            onlineUids.addAll(users);
-          }
+        .map((snap) {
           return snap.docs.map((doc) {
             final data = Map<String, dynamic>.from(doc.data());
             if (data['banHistory'] is List) {
@@ -135,7 +145,7 @@ class AdminDatasourceImpl implements AdminDatasource {
             }
             return AdminUserModel.fromJson(
               data,
-            ).copyWith(uid: doc.id, online: onlineUids.contains(doc.id));
+            ).copyWith(uid: doc.id, online: _onlineUids.contains(doc.id));
           }).toList();
         });
   }

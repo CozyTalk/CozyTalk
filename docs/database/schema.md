@@ -11,7 +11,6 @@ Full reference: `PROJECT_CONTEXT.md` (Firestore rules) and `MATCHMAKING_CONTEXT_
 | Field | Type | Notes |
 |---|---|---|
 | `uid` | string | same as document ID |
-| `email` | string | |
 | `role` | string | `'user'` or `'admin'` — immutable after creation |
 | `createdAt` | timestamp | |
 | `lastSeen` | timestamp | |
@@ -31,7 +30,7 @@ Full reference: `PROJECT_CONTEXT.md` (Firestore rules) and `MATCHMAKING_CONTEXT_
 | `banNote` | string? | optional moderator note |
 | `banHistory` | array? | append-only log; each entry: `{ reason, duration, bannedAt, expiresAt, bannedBy, bannedByName, note, unbannedAt, unbannedBy }` |
 
-Rules: read by any signed-in user (broadened from owner-only to support friends user-search). Create allowed for authenticated users (must include uid, email, role, createdAt, lastSeen). Update allowed for own doc; `role` field immutable.
+Rules: read by any signed-in user (broadened from owner-only to support friends user-search). Create allowed for authenticated users (must include uid, role, createdAt, lastSeen — email is never stored in Firestore). Update allowed for own doc; `role`, `uid`, `createdAt` fields immutable.
 
 ### `waiting_pool/{uid}`
 

@@ -43,7 +43,6 @@ abstract class AdminUserModel with _$AdminUserModel {
   const factory AdminUserModel({
     required String uid,
     required String displayName,
-    String? email,
     @Default('') String interest,
     @Default(false) bool banned,
     @Default(false) bool online,
@@ -65,7 +64,6 @@ extension AdminUserModelX on AdminUserModel {
   AdminUser toEntity() => AdminUser(
     uid: uid,
     displayName: displayName,
-    email: email,
     interest: interest,
     banned: banned,
     online: online,

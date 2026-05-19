@@ -3,7 +3,6 @@ import 'admin_ban_record.dart';
 class AdminUser {
   final String uid;
   final String displayName;
-  final String? email;
   final String interest;
   final bool banned;
   final bool online;
@@ -19,7 +18,6 @@ class AdminUser {
   const AdminUser({
     required this.uid,
     required this.displayName,
-    this.email,
     required this.interest,
     required this.banned,
     required this.online,

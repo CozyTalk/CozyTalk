@@ -22,43 +22,45 @@ const _sentinel = Object();
 
 // ── DI wiring ──────────────────────────────────────────────────────────────
 
-final _adminDatasourceProvider = Provider<AdminDatasource>(
-  (ref) => AdminDatasourceImpl(
+final _adminDatasourceProvider = Provider<AdminDatasource>((ref) {
+  final ds = AdminDatasourceImpl(
     FirebaseFirestore.instance,
     FirebaseFunctions.instanceFor(region: 'us-central1'),
-  ),
-);
+  );
+  ref.onDispose(ds.dispose);
+  return ds;
+});
 
-final _adminRepositoryProvider = Provider<AdminRepository>(
+final adminRepositoryProvider = Provider<AdminRepository>(
   (ref) => AdminRepositoryImpl(ref.watch(_adminDatasourceProvider)),
 );
 
 final _getDashboardStatsProvider = Provider<GetDashboardStats>(
-  (ref) => GetDashboardStats(ref.watch(_adminRepositoryProvider)),
+  (ref) => GetDashboardStats(ref.watch(adminRepositoryProvider)),
 );
 
 final _watchReportsProvider = Provider<WatchReports>(
-  (ref) => WatchReports(ref.watch(_adminRepositoryProvider)),
+  (ref) => WatchReports(ref.watch(adminRepositoryProvider)),
 );
 
 final _resolveReportProvider = Provider<ResolveReport>(
-  (ref) => ResolveReport(ref.watch(_adminRepositoryProvider)),
+  (ref) => ResolveReport(ref.watch(adminRepositoryProvider)),
 );
 
 final _getChatLogUrlProvider = Provider<GetChatLogUrl>(
-  (ref) => GetChatLogUrl(ref.watch(_adminRepositoryProvider)),
+  (ref) => GetChatLogUrl(ref.watch(adminRepositoryProvider)),
 );
 
 final _watchUsersProvider = Provider<WatchUsers>(
-  (ref) => WatchUsers(ref.watch(_adminRepositoryProvider)),
+  (ref) => WatchUsers(ref.watch(adminRepositoryProvider)),
 );
 
 final _banUserProvider = Provider<BanUser>(
-  (ref) => BanUser(ref.watch(_adminRepositoryProvider)),
+  (ref) => BanUser(ref.watch(adminRepositoryProvider)),
 );
 
 final _unbanUserProvider = Provider<UnbanUser>(
-  (ref) => UnbanUser(ref.watch(_adminRepositoryProvider)),
+  (ref) => UnbanUser(ref.watch(adminRepositoryProvider)),
 );
 
 // ── Public providers ───────────────────────────────────────────────────────

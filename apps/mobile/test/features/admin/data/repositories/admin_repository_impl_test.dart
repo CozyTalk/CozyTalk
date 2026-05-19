@@ -94,6 +94,9 @@ class _FakeAdminDatasource implements AdminDatasource {
     lastUid = uid;
     if (error != null) throw error!;
   }
+
+  @override
+  void dispose() {}
 }
 
 AdminReportModel _makeReportModel(String id) => AdminReportModel.fromJson({

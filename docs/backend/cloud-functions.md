@@ -1,10 +1,6 @@
 # Cloud Functions
 
-<<<<<<< HEAD
-16 exported functions total. All in `functions/src/`. Deployed via Firebase CLI.
-=======
-20 exported functions total. All in `functions/src/`. Deployed via Firebase CLI.
->>>>>>> e9f5390112e0636277c916db593620278e8ffadf
+21 exported functions total. All in `functions/src/`. Deployed via Firebase CLI.
 
 Firebase project: `cozytalk-5d984`
 Default region: `us-central1` (unless noted)
