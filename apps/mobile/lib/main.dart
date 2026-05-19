@@ -80,7 +80,6 @@ class MyApp extends StatelessWidget {
           AppRoutes.findingRoom: (_) => const FindingRoomScreen(),
           AppRoutes.chatScreen: (_) => const ChatScreen(),
           AppRoutes.groupChatScreen: (_) => const GroupChatScreen(),
-          AppRoutes.findingRoom: (_) => const FindingRoomScreen(),
         },
       );
     }
