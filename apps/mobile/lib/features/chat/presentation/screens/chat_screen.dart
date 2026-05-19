@@ -103,40 +103,32 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       ),
       body: Column(
         children: [
+          JukeboxChatPlayer(roomId: widget.sessionId),
           Expanded(
-            child: Stack(
-              clipBehavior: Clip.hardEdge,
-              children: [
-                Positioned.fill(
-                  child: state.messages.isEmpty
-                      ? const Center(
-                          child: Text(
-                            'Say hello!',
-                            style: TextStyle(color: Colors.grey),
-                          ),
-                        )
-                      : ListView.builder(
-                          controller: _scrollController,
-                          padding: const EdgeInsets.symmetric(
-                            vertical: 8,
-                            horizontal: 12,
-                          ),
-                          itemCount: state.messages.length,
-                          itemBuilder: (context, index) {
-                            final message = state.messages[index];
-                            final isMine =
-                                message.senderId == state.currentUserId;
-                            return _MessageBubble(
-                              text: message.text,
-                              displayName: message.displayName,
-                              isMine: isMine,
-                            );
-                          },
-                        ),
-                ),
-                JukeboxChatPlayer(roomId: widget.sessionId),
-              ],
-            ),
+            child: state.messages.isEmpty
+                ? const Center(
+                    child: Text(
+                      'Say hello!',
+                      style: TextStyle(color: Colors.grey),
+                    ),
+                  )
+                : ListView.builder(
+                    controller: _scrollController,
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 8,
+                      horizontal: 12,
+                    ),
+                    itemCount: state.messages.length,
+                    itemBuilder: (context, index) {
+                      final message = state.messages[index];
+                      final isMine = message.senderId == state.currentUserId;
+                      return _MessageBubble(
+                        text: message.text,
+                        displayName: message.displayName,
+                        isMine: isMine,
+                      );
+                    },
+                  ),
           ),
           if (state.typingUsers.isNotEmpty)
             _TypingIndicator(typingUsers: state.typingUsers),

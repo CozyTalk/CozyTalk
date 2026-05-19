@@ -14,6 +14,7 @@ class JukeboxChatPlayer extends ConsumerStatefulWidget {
 
 class _JukeboxChatPlayerState extends ConsumerState<JukeboxChatPlayer> {
   late final JukeboxNotifier _notifier;
+  final _overlayController = OverlayPortalController();
   Offset _position = const Offset(8, 80);
 
   static const double _width = 200;
@@ -25,13 +26,16 @@ class _JukeboxChatPlayerState extends ConsumerState<JukeboxChatPlayer> {
     super.initState();
     _notifier = ref.read(jukeboxNotifierProvider.notifier);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _notifier.enterRoom(widget.roomId);
+      if (mounted) {
+        _notifier.enterRoom(widget.roomId);
+        _overlayController.show();
+      }
     });
   }
 
   @override
   void dispose() {
-    _notifier.leaveRoom();
+    Future(() => _notifier.leaveRoom());
     super.dispose();
   }
 
@@ -50,64 +54,72 @@ class _JukeboxChatPlayerState extends ConsumerState<JukeboxChatPlayer> {
 
   @override
   Widget build(BuildContext context) {
-    final roomState = ref.watch(jukeboxNotifierProvider).roomState;
-    if (roomState?.currentTrack == null) return const SizedBox.shrink();
-
-    return Positioned(
-      left: _position.dx,
-      top: _position.dy,
-      width: _width,
-      child: Material(
-        elevation: 8,
-        borderRadius: BorderRadius.circular(10),
-        clipBehavior: Clip.hardEdge,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onPanUpdate: _onPanUpdate,
-              child: Container(
-                height: _barHeight,
-                color: Colors.black87,
-                padding: const EdgeInsets.symmetric(horizontal: 8),
-                child: Row(
-                  children: [
-                    const Icon(
-                      Icons.drag_indicator,
-                      color: Colors.white54,
-                      size: 16,
-                    ),
-                    const SizedBox(width: 4),
-                    Expanded(
-                      child: Text(
-                        roomState!.currentTrack!.title,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 11,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                        maxLines: 1,
+    return OverlayPortal(
+      controller: _overlayController,
+      overlayChildBuilder: (_) => Consumer(
+        builder: (context, ref, _) {
+          final rs = ref.watch(jukeboxNotifierProvider).roomState;
+          final track = rs?.currentTrack;
+          if (rs == null || track == null) return const SizedBox.shrink();
+          return Positioned(
+            left: _position.dx,
+            top: _position.dy,
+            width: _width,
+            child: Material(
+              elevation: 8,
+              borderRadius: BorderRadius.circular(10),
+              clipBehavior: Clip.hardEdge,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onPanUpdate: _onPanUpdate,
+                    child: Container(
+                      height: _barHeight,
+                      color: Colors.black87,
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.drag_indicator,
+                            color: Colors.white54,
+                            size: 16,
+                          ),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              track.title,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 11,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 1,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                  ],
-                ),
+                  ),
+                  SizedBox(
+                    height: _videoHeight,
+                    child: JukeboxWebPlayer(
+                      key: ValueKey(rs.currentIndex),
+                      videoId: track.videoId,
+                      startedAt: rs.startedAt,
+                      pausedAt: rs.pausedAt,
+                      isPlaying: rs.isPlaying,
+                      onTrackEnded: _notifier.skip,
+                    ),
+                  ),
+                ],
               ),
             ),
-            SizedBox(
-              height: _videoHeight,
-              child: JukeboxWebPlayer(
-                key: ValueKey(roomState.currentIndex),
-                videoId: roomState.currentTrack!.videoId,
-                startedAt: roomState.startedAt,
-                pausedAt: roomState.pausedAt,
-                isPlaying: roomState.isPlaying,
-                onTrackEnded: _notifier.skip,
-              ),
-            ),
-          ],
-        ),
+          );
+        },
       ),
+      child: const SizedBox.shrink(),
     );
   }
 }
