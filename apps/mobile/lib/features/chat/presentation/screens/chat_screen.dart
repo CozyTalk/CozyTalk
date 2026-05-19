@@ -6,7 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../domain/entities/session_status.dart';
 import '../../domain/entities/typing_user.dart';
 import '../providers/chat_provider.dart';
-import '../../../jukebox/presentation/widgets/jukebox_player.dart';
+import '../../../jukebox/presentation/widgets/jukebox_chat_player.dart';
 import '../../../jukebox/presentation/widgets/jukebox_sheet.dart';
 import '../../../report/presentation/screens/report_sheet.dart';
 
@@ -103,32 +103,40 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       ),
       body: Column(
         children: [
-          JukeboxPlayer(roomId: widget.sessionId),
           Expanded(
-            child: state.messages.isEmpty
-                ? const Center(
-                    child: Text(
-                      'Say hello!',
-                      style: TextStyle(color: Colors.grey),
-                    ),
-                  )
-                : ListView.builder(
-                    controller: _scrollController,
-                    padding: const EdgeInsets.symmetric(
-                      vertical: 8,
-                      horizontal: 12,
-                    ),
-                    itemCount: state.messages.length,
-                    itemBuilder: (context, index) {
-                      final message = state.messages[index];
-                      final isMine = message.senderId == state.currentUserId;
-                      return _MessageBubble(
-                        text: message.text,
-                        displayName: message.displayName,
-                        isMine: isMine,
-                      );
-                    },
-                  ),
+            child: Stack(
+              clipBehavior: Clip.hardEdge,
+              children: [
+                Positioned.fill(
+                  child: state.messages.isEmpty
+                      ? const Center(
+                          child: Text(
+                            'Say hello!',
+                            style: TextStyle(color: Colors.grey),
+                          ),
+                        )
+                      : ListView.builder(
+                          controller: _scrollController,
+                          padding: const EdgeInsets.symmetric(
+                            vertical: 8,
+                            horizontal: 12,
+                          ),
+                          itemCount: state.messages.length,
+                          itemBuilder: (context, index) {
+                            final message = state.messages[index];
+                            final isMine =
+                                message.senderId == state.currentUserId;
+                            return _MessageBubble(
+                              text: message.text,
+                              displayName: message.displayName,
+                              isMine: isMine,
+                            );
+                          },
+                        ),
+                ),
+                JukeboxChatPlayer(roomId: widget.sessionId),
+              ],
+            ),
           ),
           if (state.typingUsers.isNotEmpty)
             _TypingIndicator(typingUsers: state.typingUsers),
