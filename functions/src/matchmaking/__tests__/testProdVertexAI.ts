@@ -8,14 +8,14 @@
  *   cd functions
  *   npx ts-node -P tsconfig.test.json src/matchmaking/__tests__/testProdVertexAI.ts
  *
- * Requires FIREBASE_WEB_API_KEY in functions/.env (see .env.example).
+ * Requires COZYTALK_WEB_API_KEY in functions/.env (see .env.example).
  */
 import * as dotenv from "dotenv";
 dotenv.config();
 
 const PROJECT = "cozytalk-5d984";
 const REGION = "us-central1";
-const API_KEY = process.env.FIREBASE_WEB_API_KEY as string;
+const API_KEY = process.env.COZYTALK_WEB_API_KEY as string;
 const FUNCTIONS_BASE = `https://${REGION}-${PROJECT}.cloudfunctions.net`;
 const FIRESTORE_BASE = `https://firestore.googleapis.com/v1/projects/${PROJECT}/databases/(default)/documents`;
 

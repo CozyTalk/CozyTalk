@@ -35,14 +35,14 @@ else
   printf "ok\n"
 fi
 
-# ── 2. dart format — entire project (mirrors: dart format --set-exit-if-changed .) ──
+# ── 2. dart format — source only (build/ excluded: contains SPM SourcePackages) ──
 printf "  dart format check...     "
-if (cd "$REPO/apps/mobile" && dart format --set-exit-if-changed . > /dev/null 2>&1); then
+if (cd "$REPO/apps/mobile" && dart format --set-exit-if-changed lib/ test/ > /dev/null 2>&1); then
   printf "ok\n"
 else
   printf "FAILED\n\n"
   printf "  Unformatted Dart files detected. Run from apps/mobile:\n\n"
-  printf "    dart format .\n\n"
+  printf "    dart format lib/ test/\n\n"
   FAIL=1
 fi
 
@@ -115,8 +115,50 @@ _emulators_up() {
     _port_open 5001
 }
 
+# Returns 0 if the Functions emulator responds with valid JSON (functions loaded).
+# Returns 1 if the port is open but returns plain text (stale / not yet compiled).
+_functions_loaded() {
+  curl -s --max-time 5 -X POST \
+    -H "Content-Type: application/json" \
+    -d '{"data":{}}' \
+    "http://127.0.0.1:5001/cozytalk-5d984/us-central1/joinGroupRoom" 2>/dev/null \
+    | grep -q '^{' 2>/dev/null
+}
+
+# Kill any processes listening on emulator ports so a fresh start is possible.
+# Works on Windows (Git Bash: netstat + taskkill) and Linux/macOS (lsof + kill).
+_kill_emulator_ports() {
+  for port in 4000 5001 9099 8080 9000 8085; do
+    local pid
+    # Windows: strip CRLF so the PID field parses cleanly, then match the exact
+    # port suffix (":PORT " with trailing space) to avoid false-positive matches
+    # on ports that share a prefix (e.g. :5001 vs :50010).
+    pid=$(netstat -ano 2>/dev/null | tr -d '\r' \
+      | grep "LISTENING" | grep ":${port} " \
+      | awk '{print $NF}' | head -1)
+    if [ -n "$pid" ] && [ "$pid" != "0" ]; then
+      taskkill //F //T //PID "$pid" > /dev/null 2>&1 || true
+    fi
+    # Linux / macOS
+    pid=$(lsof -ti tcp:"$port" 2>/dev/null | head -1)
+    if [ -n "$pid" ]; then
+      kill -9 "$pid" 2>/dev/null || true
+    fi
+  done
+  sleep 2
+}
+
 EMULATORS_STARTED=0
 EMULATOR_PID=""
+
+# If ports are open but functions are not responding with valid JSON, the prior
+# emulator process group was not fully cleaned up.  Kill the stale processes so
+# a fresh start below gets functions loaded correctly.
+if _emulators_up && ! _functions_loaded; then
+  printf "  Stale emulators found — restarting...  "
+  _kill_emulator_ports
+  printf "ok\n"
+fi
 
 if ! _emulators_up; then
   printf "  Starting emulators...    "
@@ -145,7 +187,25 @@ if ! _emulators_up; then
     FAIL=1
   else
     printf "ok\n"
-    sleep 10  # ports open before functions finish loading; give them time
+    # Ports open before the Functions Node process finishes loading index.js.
+    # Poll until joinGroupRoom returns valid JSON (functions are registered).
+    printf "  Waiting for functions... "
+    FUNCS_READY=0
+    for i in $(seq 1 90); do
+      if _functions_loaded; then
+        FUNCS_READY=1
+        break
+      fi
+      sleep 1
+    done
+    if [ "$FUNCS_READY" -eq 0 ]; then
+      printf "TIMEOUT\n\n"
+      printf "  Functions emulator did not load within 90s. Emulator log:\n\n"
+      cat "$EMULATOR_LOG"
+      FAIL=1
+    else
+      printf "ok\n"
+    fi
   fi
 fi
 
@@ -158,7 +218,9 @@ if _emulators_up && [ "$FAIL" -eq 0 ]; then
 fi
 
 if [ "$EMULATORS_STARTED" -eq 1 ] && [ -n "$EMULATOR_PID" ]; then
-  kill "$EMULATOR_PID" 2>/dev/null || true
+  # Kill the process group so Java/Node child emulator processes are also stopped.
+  taskkill //F //T //PID "$EMULATOR_PID" > /dev/null 2>&1 || true
+  kill -- -"$EMULATOR_PID" 2>/dev/null || true
 fi
 
 printf "\n"

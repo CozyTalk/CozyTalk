@@ -15,6 +15,9 @@ import '../shared/user_profile.dart';
 import '../shared/friend_message_popup.dart';
 import '../theme/app_routes.dart';
 import '../models/friend.dart';
+import '../shared/gif_picker.dart';
+import '../shared/friend_request_popup.dart';
+import '../shared/info_dialog.dart';
 
 // ── Card assets ────────────────────────────────────────────────────────────
 const _cardAssets = [
@@ -36,7 +39,7 @@ String _nowTime() {
 }
 
 // ── Message model ──────────────────────────────────────────────────────────
-enum _MsgType { warning, system, me, other, card }
+enum _MsgType { warning, system, me, other, card, gif }
 
 class _GroupMsg {
   final _MsgType type;
@@ -100,6 +103,8 @@ class GroupChatScreen extends ConsumerStatefulWidget {
 class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
     with TickerProviderStateMixin {
   bool isLocked = false;
+  final Map<String, bool> _friendRequestSent = {};
+  final Map<String, bool> _friendAccepted = {};
   final TextEditingController _msgController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final FocusNode _focusNode = FocusNode();
@@ -267,6 +272,70 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
       messages.add(_GroupMsg(type: _MsgType.card, text: _pickCard()));
     });
     _scrollToBottom();
+  }
+
+  void _sendGif(String label) {
+    setState(() {
+      messages.add(
+        _GroupMsg(
+          type: _MsgType.gif,
+          sender: 'Me',
+          text: label,
+          time: _nowTime(),
+        ),
+      );
+    });
+    _scrollToBottom();
+  }
+
+  void _sendFriendRequest(String targetName) {
+    if (_friendRequestSent[targetName] == true) return;
+    setState(() => _friendRequestSent[targetName] = true);
+    showInfoDialog(
+      context,
+      type: InfoDialogType.info,
+      title: 'Friend Request Sent',
+      message:
+          'Your friend request has been sent to $targetName.\nWaiting for them to accept.',
+    );
+    Future.delayed(const Duration(milliseconds: 1500), () {
+      if (!mounted) return;
+      showFriendRequestPopup(
+        context,
+        requesterName: targetName,
+        onAccept: () {
+          setState(() => _friendAccepted[targetName] = true);
+          showInfoDialog(
+            context,
+            type: InfoDialogType.success,
+            title: "You're now friends! 🎉",
+            message:
+                'You and $targetName are now friends.\nYou can find them in your friends list.',
+          );
+        },
+        onDecline: () => setState(() => _friendRequestSent[targetName] = false),
+      );
+    });
+  }
+
+  void _cancelFriendRequest(String targetName) {
+    if (_friendAccepted[targetName] == true) {
+      showInfoDialog(
+        context,
+        type: InfoDialogType.warning,
+        title: 'Cannot Cancel Request',
+        message:
+            '$targetName has already accepted your friend request.\nYou are now friends!',
+      );
+      return;
+    }
+    setState(() => _friendRequestSent[targetName] = false);
+    showInfoDialog(
+      context,
+      type: InfoDialogType.info,
+      title: 'Request Cancelled',
+      message: 'Your friend request to $targetName has been cancelled.',
+    );
   }
 
   void _shuffleTopic() {
@@ -485,6 +554,9 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
                           members: members,
                           onClose: _closePanel,
                           avatarState: avatarState,
+                          friendRequestSent: _friendRequestSent,
+                          onAddFriend: _sendFriendRequest,
+                          onCancelRequest: _cancelFriendRequest,
                         ),
                       ),
                     ),
@@ -717,14 +789,14 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
                     : 'Hello!';
                 final rawScale = pos.size / 90;
                 final scale = rawScale.clamp(0.78, 1.0);
-                final bubbleW = 80 * scale;
-                final bubbleH = 90 * scale;
+                final bubbleW = 84 * scale;
+                final bubbleH = 94 * scale;
                 return Positioned(
                   left: w * pos.x,
                   bottom: pos.bottom,
                   child: SizedBox(
                     width: pos.size,
-                    height: pos.size + bubbleH * 0.65,
+                    height: pos.size + bubbleH * 0.75,
                     child: Stack(
                       clipBehavior: Clip.none,
                       children: [
@@ -738,6 +810,15 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
                               builder: (_) => UserProfileDialog(
                                 username: displayName,
                                 isMe: isMe,
+                                initialAdded:
+                                    !isMe &&
+                                    (_friendRequestSent[displayName] == true),
+                                onAddFriend: isMe
+                                    ? null
+                                    : () => _sendFriendRequest(displayName),
+                                onCancelRequest: isMe
+                                    ? null
+                                    : () => _cancelFriendRequest(displayName),
                               ),
                             ),
                             child: LayeredAvatar(
@@ -750,34 +831,30 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
                           ),
                         ),
                         Positioned(
-                          bottom: pos.size * 0.75,
-                          left: 0,
+                          bottom: pos.size * 0.94,
+                          left: (pos.size - bubbleW) / 2,
                           child: Container(
                             width: bubbleW,
                             height: bubbleH,
                             decoration: const BoxDecoration(
                               image: DecorationImage(
                                 image: AssetImage(
-                                  'assets/images/ThinkBubble.png',
+                                  'assets/images/chat_t_bubble.png',
                                 ),
                                 fit: BoxFit.contain,
                               ),
                             ),
-                            padding: EdgeInsets.only(
-                              bottom: 10 * scale,
-                              left: 10 * scale,
-                              right: 8 * scale,
-                            ),
+                            padding: EdgeInsets.all(9 * scale),
                             alignment: Alignment.center,
                             child: Text(
                               thought,
                               style: TextStyle(
-                                fontSize: (9 * scale).clamp(7.0, 11.0),
+                                fontSize: (10 * scale).clamp(8.0, 11.0),
                                 fontWeight: FontWeight.bold,
                                 color: Colors.black87,
                               ),
                               textAlign: TextAlign.center,
-                              maxLines: 2,
+                              maxLines: 3,
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
@@ -860,6 +937,7 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
           _MsgType.warning => _buildWarning(msg.text),
           _MsgType.system => _buildSystem(msg),
           _MsgType.card => _buildCard(msg.text),
+          _MsgType.gif => _buildGifBubble(msg, avatarState),
           _ => _buildChatBubble(msg, avatarState),
         };
       },
@@ -933,7 +1011,12 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
             GestureDetector(
               onTap: () => showDialog(
                 context: context,
-                builder: (_) => UserProfileDialog(username: msg.sender ?? ''),
+                builder: (_) => UserProfileDialog(
+                  username: msg.sender ?? '',
+                  initialAdded: _friendRequestSent[msg.sender ?? ''] == true,
+                  onAddFriend: () => _sendFriendRequest(msg.sender ?? ''),
+                  onCancelRequest: () => _cancelFriendRequest(msg.sender ?? ''),
+                ),
               ),
               child: LayeredAvatar(boxSize: 40),
             ),
@@ -1020,6 +1103,71 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
     return _TopicCard(assetPath: assetPath, onShuffle: _shuffleTopic);
   }
 
+  Widget _buildGifBubble(_GroupMsg msg, AvatarState avatarState) {
+    final maxW = MediaQuery.of(context).size.width * 0.55;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.end,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Text(
+            msg.time ?? '',
+            style: const TextStyle(fontSize: 10, color: Colors.black45),
+          ),
+          const SizedBox(width: 6),
+          Container(
+            constraints: BoxConstraints(maxWidth: maxW),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF1CEE4),
+              borderRadius: BorderRadius.circular(18),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  msg.text,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 15,
+                    color: Color(0xFF4A3228),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.yellowWarm,
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: const Text(
+                    'GIF',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF4A3228),
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          LayeredAvatar(
+            boxSize: 40,
+            moodOverlay: avatarState.mood,
+            accessoryOverlay: avatarState.accessory,
+          ),
+        ],
+      ),
+    );
+  }
+
   // ── Input bar ─────────────────────────────────────────────────────────────
   Widget _buildInputBar() {
     return Container(
@@ -1056,6 +1204,38 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
                   contentPadding: const EdgeInsets.symmetric(
                     horizontal: 18,
                     vertical: 16,
+                  ),
+                  suffixIcon: GestureDetector(
+                    onTap: () async {
+                      final gif = await showGifPicker(context);
+                      if (!mounted) return;
+                      if (gif != null) _sendGif(gif);
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 12,
+                      ),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 7,
+                          vertical: 3,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.yellowWarm,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: const Text(
+                          'GIF',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w900,
+                            fontSize: 11,
+                            color: Color(0xFF4A3228),
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ),
+                    ),
                   ),
                 ),
               ),

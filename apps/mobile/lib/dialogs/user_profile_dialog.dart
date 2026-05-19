@@ -9,10 +9,16 @@ import 'report_dialog.dart';
 class UserProfileDialog extends ConsumerStatefulWidget {
   final String username;
   final bool isMe;
+  final bool initialAdded;
+  final VoidCallback? onAddFriend;
+  final VoidCallback? onCancelRequest;
   const UserProfileDialog({
     super.key,
     required this.username,
     this.isMe = false,
+    this.initialAdded = false,
+    this.onAddFriend,
+    this.onCancelRequest,
   });
 
   @override
@@ -20,7 +26,13 @@ class UserProfileDialog extends ConsumerStatefulWidget {
 }
 
 class _UserProfileDialogState extends ConsumerState<UserProfileDialog> {
-  bool _friendAdded = false;
+  late bool _friendAdded;
+
+  @override
+  void initState() {
+    super.initState();
+    _friendAdded = widget.initialAdded;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -87,9 +99,18 @@ class _UserProfileDialogState extends ConsumerState<UserProfileDialog> {
                         Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            // Add friend
+                            // Add friend / cancel request
                             GestureDetector(
-                              onTap: () => setState(() => _friendAdded = true),
+                              onTap: _friendAdded
+                                  ? () {
+                                      Navigator.pop(context);
+                                      widget.onCancelRequest?.call();
+                                    }
+                                  : () {
+                                      setState(() => _friendAdded = true);
+                                      Navigator.pop(context);
+                                      widget.onAddFriend?.call();
+                                    },
                               child: AnimatedContainer(
                                 duration: const Duration(milliseconds: 200),
                                 width: 44,

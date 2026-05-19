@@ -1,5 +1,6 @@
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter/material.dart';
+import '../shared/info_dialog.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_routes.dart';
 import '../models/friend.dart';
@@ -416,20 +417,46 @@ class _FriendsScreenState extends State<FriendsScreen> {
             showConfirmBlockDialog(
               context: context,
               username: friend.displayName,
-              onConfirm: () => setState(() => _friends[index].isBlocked = true),
+              onConfirm: () {
+                setState(() => _friends[index].isBlocked = true);
+                showInfoDialog(
+                  context,
+                  type: InfoDialogType.success,
+                  title: 'User Blocked',
+                  message:
+                      '${friend.displayName} has been blocked.\nThey will no longer be able to contact you.',
+                );
+              },
             );
           case 'Unblock':
             showConfirmUnblockDialog(
               context: context,
               username: friend.displayName,
-              onConfirm: () =>
-                  setState(() => _friends[index].isBlocked = false),
+              onConfirm: () {
+                setState(() => _friends[index].isBlocked = false);
+                showInfoDialog(
+                  context,
+                  type: InfoDialogType.info,
+                  title: 'User Unblocked',
+                  message:
+                      '${friend.displayName} has been unblocked.\nThey can now contact you again.',
+                );
+              },
             );
           case 'Unfriend':
             showRemoveConfirmDialog(
               context: context,
               friend: friend,
-              onConfirm: () => setState(() => _friends.removeAt(index)),
+              onConfirm: () {
+                setState(() => _friends.removeAt(index));
+                showInfoDialog(
+                  context,
+                  type: InfoDialogType.info,
+                  title: 'Friend Removed',
+                  message:
+                      '${friend.displayName} has been removed from your friends list.',
+                );
+              },
             );
         }
       },
