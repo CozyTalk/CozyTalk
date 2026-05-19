@@ -79,6 +79,7 @@ class MyApp extends StatelessWidget {
           AppRoutes.joinRoomId: (_) => const JoinRoomIdScreen(),
           AppRoutes.chatScreen: (_) => const ChatScreen(),
           AppRoutes.groupChatScreen: (_) => const GroupChatScreen(),
+          AppRoutes.findingRoom: (_) => const FindingRoomScreen(),
         },
       );
     }

@@ -4,6 +4,7 @@ import '../theme/app_colors.dart';
 import '../theme/app_routes.dart';
 import '../models/friend.dart';
 import '../dialogs/report_dialog.dart';
+import '../shared/gif_picker.dart';
 import '../shared/layered_avatar.dart';
 import 'friend_profile_dialog.dart';
 import 'widgets.dart';
@@ -76,6 +77,23 @@ class _FriendChatScreenState extends State<FriendChatScreen> {
     setState(() {
       _messages.add(ChatMessage(text: text, isMe: true, time: _formatNow()));
       _inputCtrl.clear();
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollCtrl.hasClients) {
+        _scrollCtrl.animateTo(
+          _scrollCtrl.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
+    });
+  }
+
+  void _sendGif(String label) {
+    setState(() {
+      _messages.add(
+        ChatMessage(text: label, isMe: true, time: _formatNow(), isGif: true),
+      );
     });
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scrollCtrl.hasClients) {
@@ -409,10 +427,44 @@ class _FriendChatScreenState extends State<FriendChatScreen> {
                 width: 1.5,
               ),
             ),
-            child: Text(
-              message.text,
-              style: const TextStyle(fontSize: 15, color: Colors.black87),
-            ),
+            child: message.isGif
+                ? Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        message.text,
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF4A3228),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.yellowWarm,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: const Text(
+                          'GIF',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF4A3228),
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ),
+                    ],
+                  )
+                : Text(
+                    message.text,
+                    style: const TextStyle(fontSize: 15, color: Colors.black87),
+                  ),
           ),
           const SizedBox(height: 4),
           Text(
@@ -468,7 +520,7 @@ class _FriendChatScreenState extends State<FriendChatScreen> {
           Expanded(
             child: Container(
               height: 58,
-              padding: const EdgeInsets.symmetric(horizontal: 20),
+              padding: const EdgeInsets.only(left: 20),
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(20),
@@ -483,15 +535,47 @@ class _FriendChatScreenState extends State<FriendChatScreen> {
               ),
               child: TextField(
                 controller: _inputCtrl,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   hintText: 'Type here ...',
-                  hintStyle: TextStyle(
+                  hintStyle: const TextStyle(
                     color: Colors.grey,
                     fontSize: 15,
                     fontWeight: FontWeight.w500,
                   ),
                   border: InputBorder.none,
-                  contentPadding: EdgeInsets.symmetric(vertical: 18),
+                  contentPadding: const EdgeInsets.symmetric(vertical: 18),
+                  suffixIcon: GestureDetector(
+                    onTap: () async {
+                      final gif = await showGifPicker(context);
+                      if (!mounted) return;
+                      if (gif != null) _sendGif(gif);
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 14,
+                      ),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 7,
+                          vertical: 3,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.yellowWarm,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: const Text(
+                          'GIF',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w900,
+                            fontSize: 11,
+                            color: Color(0xFF4A3228),
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
                 style: const TextStyle(
                   fontSize: 16,

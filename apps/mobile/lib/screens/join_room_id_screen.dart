@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import '../shared/info_dialog.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_routes.dart';
 
@@ -43,8 +44,12 @@ class _JoinRoomIdScreenState extends State<JoinRoomIdScreen> {
         },
       );
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter a valid 5-digit Room ID')),
+      showInfoDialog(
+        context,
+        type: InfoDialogType.error,
+        title: 'Invalid Room ID',
+        message:
+            'Please enter all 5 characters of the Room ID.\nMake sure you have the correct code from the host.',
       );
     }
   }
