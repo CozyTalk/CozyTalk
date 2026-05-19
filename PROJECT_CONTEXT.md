@@ -416,7 +416,7 @@ CozyTalk/
 │   │   │   ├── home/                 ← navigation hub stub (presentation only)
 │   │   │   └── friends/              ← friend requests, friend list, permanent direct chat (prototype)
 │   │   └── screens/                  ← legacy design-preview UI (not wired to features layer)
-│   ├── test/                         ← 580 unit + widget tests
+│   ├── test/                         ← 582 unit + widget tests
 │   └── .env.example                  ← committed; USE_EMULATOR=true by default
 ├── functions/src/
 │   ├── index.ts                      ← exports all 15 functions

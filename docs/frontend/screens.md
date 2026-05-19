@@ -6,7 +6,7 @@ All screens in `apps/mobile/lib/screens/`. These are the production frontend —
 
 | Class | File | Route | Extends | Integration |
 |---|---|---|---|---|
-| `HomeScreen` | `screens/home_screen.dart` | `/` | ConsumerStatefulWidget | ✅ integrated |
+| `HomeScreen` | `screens/home_screen.dart` | `/` | ConsumerStatefulWidget | ✅ integrated — notification badge wired to `friendsNotifierProvider.incomingRequests` |
 | `ChatScreen` | `screens/chat_screen.dart` | `/chat` | ConsumerStatefulWidget | ⚠️ partial — uses `shared/` providers only, not wired to `chatNotifierProvider` |
 | `GroupChatScreen` | `screens/group_chat_screen.dart` | `/group-chat` | ConsumerStatefulWidget | ⚠️ partial — uses `shared/` providers only, not wired to `chatNotifierProvider` |
 | `FindingRoomScreen` | `screens/finding_room_screen.dart` | `/finding-room` | ConsumerStatefulWidget | ✅ integrated — calls `join1v1Pool()` / `joinGroupRoom()` / `createCustomRoom()` based on `roomType` arg; navigates to `chatScreen` (1v1) or `groupChatScreen` (group/create) on `matched`; `cancelSearch()` on Cancel or dispose |

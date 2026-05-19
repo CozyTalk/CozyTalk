@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../features/auth/presentation/providers/auth_provider.dart';
 import '../features/avatar/presentation/providers/avatar_decoration_provider.dart';
+import '../features/friends/presentation/providers/friends_provider.dart';
 import '../features/profile/presentation/providers/profile_provider.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_routes.dart';
@@ -17,8 +18,6 @@ class HomeScreen extends ConsumerStatefulWidget {
 }
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
-  bool _hasNotification = true;
-
   @override
   void initState() {
     super.initState();
@@ -69,11 +68,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       body: Column(
         children: [
           _TopBar(
-            hasNotification: _hasNotification,
-            onBellTap: () {
-              setState(() => _hasNotification = false);
-              Navigator.pushNamed(context, AppRoutes.notification);
-            },
+            hasNotification: ref
+                .watch(friendsNotifierProvider)
+                .incomingRequests
+                .isNotEmpty,
+            onBellTap: () =>
+                Navigator.pushNamed(context, AppRoutes.notification),
             onUserTap: () => Navigator.pushNamed(context, AppRoutes.profile),
           ),
           Expanded(
