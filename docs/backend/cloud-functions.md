@@ -1,9 +1,50 @@
 # Cloud Functions
 
-16 exported functions total. All in `functions/src/`. Deployed via Firebase CLI.
+21 exported functions total. All in `functions/src/`. Deployed via Firebase CLI.
 
 Firebase project: `cozytalk-5d984`
 Default region: `us-central1` (unless noted)
+
+---
+
+## Admin (5 functions)
+
+All admin functions are callable, deployed to `us-central1`. Every function verifies the caller has `role == "admin"` in `users/{uid}` via admin SDK.
+
+### `adminGetDashboard`
+`functions/src/admin/adminGetDashboard.ts`
+- **Trigger:** callable (admin only)
+- **Input:** none
+- **Process:** Parallel queries: (1) Firestore count on `reports/` where `status == "pending"`, (2) count unique UIDs across RTDB `pool_presence/` keys and `rooms/` with `status == "active"`, (3) Firestore count on `users/` where `banned == true`.
+- **Output:** `{ pendingReports: number, onlineUsers: number, bannedUsers: number }`
+
+### `adminResolveReport`
+`functions/src/admin/adminResolveReport.ts`
+- **Trigger:** callable (admin only)
+- **Input:** `{ reportId: string, action: "dismiss" | "reviewed", note?: string }`
+- **Process:** Reads report; rejects if `status != "pending"`. Updates `status` and writes `outcome` object with `kind`, `by`, `byName`, `at`, `note`.
+- **Output:** `{ success: true }` or `{ success: false, reason: "not_found" | "already_resolved" }`
+
+### `adminGetChatLog`
+`functions/src/admin/adminGetChatLog.ts`
+- **Trigger:** callable (admin only)
+- **Input:** `{ reportId: string }`
+- **Process:** Reads `reports/{reportId}`. If `chatLogStoragePath` is present, generates a 15-minute signed URL from Cloud Storage. In emulator mode returns a direct download URL.
+- **Output:** `{ signedUrl: string, expiresAt: string }` or `{ success: false, reason: "not_found" | "no_chat_log" }`
+
+### `adminBanUser`
+`functions/src/admin/adminBanUser.ts`
+- **Trigger:** callable (admin only)
+- **Input:** `{ uid: string, reason: string, duration: "1 Day" | "7 Days" | "30 Days" | "Permanent", note?: string, reportId?: string }`
+- **Process:** Verifies user exists and is not already banned. Writes ban fields to `users/{uid}` (`banned`, `banReason`, `banDuration`, `bannedAt`, `banExpiresAt`, `bannedBy`, `bannedByName`, `banNote`). If `reportId` provided, atomically sets `reports/{reportId}.status = "reviewed"` and writes `outcome.kind = "banned"` in the same batch.
+- **Output:** `{ success: true }` or `{ success: false, reason: "user_not_found" | "already_banned" }`
+
+### `adminUnbanUser`
+`functions/src/admin/adminUnbanUser.ts`
+- **Trigger:** callable (admin only)
+- **Input:** `{ uid: string, note?: string }`
+- **Process:** Reads user; rejects if not banned. Builds a history record from current ban fields (including `unbannedAt: Timestamp.now()`, `unbannedBy: callerUid`). Deletes all active ban fields from `users/{uid}`. Appends history record to `users/{uid}.banHistory` via `FieldValue.arrayUnion`.
+- **Output:** `{ success: true }` or `{ success: false, reason: "user_not_found" | "not_banned" }`
 
 ---
 
