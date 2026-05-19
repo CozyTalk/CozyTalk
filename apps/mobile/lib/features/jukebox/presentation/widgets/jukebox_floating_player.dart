@@ -35,7 +35,7 @@ class _JukeboxChatPlayerState extends ConsumerState<JukeboxChatPlayer> {
 
   @override
   void dispose() {
-    Future(() => _notifier.leaveRoom());
+    _notifier.leaveRoom();
     super.dispose();
   }
 

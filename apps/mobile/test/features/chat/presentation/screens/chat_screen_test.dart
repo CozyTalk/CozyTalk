@@ -51,6 +51,8 @@ class _FakeJukeboxNotifier extends JukeboxNotifier {
   JukeboxUiState build() => const JukeboxUiState();
   @override
   void enterRoom(String roomId) {}
+  @override
+  void leaveRoom() {}
 }
 
 Widget _buildChatScreen(_FakeChatNotifier fake) {
