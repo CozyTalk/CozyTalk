@@ -52,8 +52,16 @@ if ($nodeMajor -lt 24) {
 Require-Cmd npm "npm"
 
 if (Get-Command java -ErrorAction SilentlyContinue) {
-    # java -version writes to stderr; index [0] + ToString() works on PS 5.1 and PS 7.
-    $javaVerLine = (& java -version 2>&1)[0].ToString()
+    # java -version writes to stderr; use ProcessStartInfo to avoid NativeCommandError.
+    $psi = [System.Diagnostics.ProcessStartInfo]@{
+        FileName              = 'java'
+        Arguments             = '-version'
+        RedirectStandardError = $true
+        UseShellExecute       = $false
+    }
+    $proc = [System.Diagnostics.Process]::Start($psi)
+    $javaVerLine = $proc.StandardError.ReadLine()
+    $proc.WaitForExit()
     ok "java  $javaVerLine"
     $javaMatch = [regex]::Match($javaVerLine, '"(\d+)(?:\.(\d+))?')
     if ($javaMatch.Success) {
