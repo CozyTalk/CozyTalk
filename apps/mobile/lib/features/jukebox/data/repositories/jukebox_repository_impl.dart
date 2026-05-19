@@ -15,31 +15,23 @@ class JukeboxRepositoryImpl implements JukeboxRepository {
 
   @override
   Future<JukeboxTrack> resolveTrack({
-    required String audiomackUrl,
+    required String youtubeUrl,
     required String addedBy,
     required String addedByName,
   }) async {
-    final uri = Uri.parse(audiomackUrl);
-    final segments = uri.pathSegments;
-    if (uri.host != 'audiomack.com' ||
-        segments.length < 3 ||
-        segments[1] != 'song') {
+    final videoId = _extractVideoId(youtubeUrl);
+    if (videoId == null || videoId.isEmpty) {
       throw Exception(
-        'Invalid Audiomack URL. Expected: audiomack.com/{artist}/song/{slug}',
+        'Invalid YouTube URL. Paste a youtube.com/watch?v=... or youtu.be/... link.',
       );
     }
     final model = await _datasource.fetchTrackMetadata(
-      artist: segments[0],
-      slug: segments[2],
+      videoId: videoId,
       addedBy: addedBy,
       addedByName: addedByName,
     );
     return model.toEntity();
   }
-
-  @override
-  Future<String> refreshStreamingUrl(String trackId) =>
-      _datasource.fetchFreshStreamingUrl(trackId);
 
   @override
   Future<void> writeJukeboxState({
@@ -50,14 +42,13 @@ class JukeboxRepositoryImpl implements JukeboxRepository {
       isPlaying: roomState.isPlaying,
       currentIndex: roomState.currentIndex,
       startedAt: roomState.startedAt,
+      pausedAt: roomState.pausedAt,
       queue: roomState.queue
           .map(
             (t) => JukeboxTrackModel(
               id: t.id,
-              audiomackUrl: t.audiomackUrl,
-              embedUrl: t.embedUrl,
-              streamingUrl: t.streamingUrl,
-              streamingUrlTimeout: t.streamingUrlTimeout,
+              youtubeUrl: t.youtubeUrl,
+              videoId: t.videoId,
               title: t.title,
               artist: t.artist,
               artworkUrl: t.artworkUrl,
@@ -72,4 +63,21 @@ class JukeboxRepositoryImpl implements JukeboxRepository {
 
   @override
   Future<void> clearJukebox(String roomId) => _datasource.clearState(roomId);
+
+  static String? _extractVideoId(String url) {
+    final uri = Uri.tryParse(url.trim());
+    if (uri == null) return null;
+    final host = uri.host.replaceFirst('www.', '');
+    if (host == 'youtu.be') return uri.pathSegments.firstOrNull;
+    if (host == 'youtube.com') {
+      if (uri.queryParameters.containsKey('v')) {
+        return uri.queryParameters['v'];
+      }
+      if (uri.pathSegments.length >= 2 &&
+          (uri.pathSegments[0] == 'embed' || uri.pathSegments[0] == 'shorts')) {
+        return uri.pathSegments[1];
+      }
+    }
+    return null;
+  }
 }

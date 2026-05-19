@@ -3,14 +3,12 @@ import 'package:mobile/features/jukebox/data/models/jukebox_track_model.dart';
 
 void main() {
   const json = {
-    'id': '42',
-    'audiomackUrl': 'https://audiomack.com/a/song/s',
-    'embedUrl': 'https://audiomack.com/embed/a/song/s',
-    'streamingUrl': 'https://cdn.example.com/a.mp3',
-    'streamingUrlTimeout': 1748500600,
+    'id': 'dQw4w9WgXcQ',
+    'youtubeUrl': 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+    'videoId': 'dQw4w9WgXcQ',
     'title': 'Test Song',
     'artist': 'Test Artist',
-    'artworkUrl': 'https://cdn.example.com/art.jpg',
+    'artworkUrl': 'https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg',
     'addedBy': 'uid123',
     'addedByName': 'Alice',
   };
@@ -18,14 +16,15 @@ void main() {
   test('fromJson parses all fields', () {
     final model = JukeboxTrackModel.fromJson(json);
 
-    expect(model.id, '42');
-    expect(model.audiomackUrl, 'https://audiomack.com/a/song/s');
-    expect(model.embedUrl, 'https://audiomack.com/embed/a/song/s');
-    expect(model.streamingUrl, 'https://cdn.example.com/a.mp3');
-    expect(model.streamingUrlTimeout, 1748500600);
+    expect(model.id, 'dQw4w9WgXcQ');
+    expect(model.youtubeUrl, 'https://www.youtube.com/watch?v=dQw4w9WgXcQ');
+    expect(model.videoId, 'dQw4w9WgXcQ');
     expect(model.title, 'Test Song');
     expect(model.artist, 'Test Artist');
-    expect(model.artworkUrl, 'https://cdn.example.com/art.jpg');
+    expect(
+      model.artworkUrl,
+      'https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg',
+    );
     expect(model.addedBy, 'uid123');
     expect(model.addedByName, 'Alice');
   });
@@ -35,10 +34,8 @@ void main() {
     final entity = model.toEntity();
 
     expect(entity.id, model.id);
-    expect(entity.audiomackUrl, model.audiomackUrl);
-    expect(entity.embedUrl, model.embedUrl);
-    expect(entity.streamingUrl, model.streamingUrl);
-    expect(entity.streamingUrlTimeout, model.streamingUrlTimeout);
+    expect(entity.youtubeUrl, model.youtubeUrl);
+    expect(entity.videoId, model.videoId);
     expect(entity.title, model.title);
     expect(entity.artist, model.artist);
     expect(entity.artworkUrl, model.artworkUrl);

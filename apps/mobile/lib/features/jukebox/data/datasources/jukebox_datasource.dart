@@ -10,13 +10,10 @@ abstract class JukeboxDatasource {
   Stream<JukeboxRoomStateModel?> watchJukebox(String roomId);
 
   Future<JukeboxTrackModel> fetchTrackMetadata({
-    required String artist,
-    required String slug,
+    required String videoId,
     required String addedBy,
     required String addedByName,
   });
-
-  Future<String> fetchFreshStreamingUrl(String trackId);
 
   Future<void> writeState({
     required String roomId,
@@ -24,8 +21,6 @@ abstract class JukeboxDatasource {
   });
 
   Future<void> clearState(String roomId);
-
-  Future<void> reportPlayStats(String trackId);
 }
 
 class JukeboxDatasourceImpl implements JukeboxDatasource {
@@ -38,8 +33,11 @@ class JukeboxDatasourceImpl implements JukeboxDatasource {
     return _rtdb.ref('jukebox/$roomId').onValue.map((event) {
       if (!event.snapshot.exists || event.snapshot.value == null) return null;
       final raw = Map<String, dynamic>.from(event.snapshot.value as Map);
-      // RTDB may return a sparse Map keyed by numeric strings instead of a List
-      // when the array has been mutated — normalize it before passing to fromJson.
+      // RTDB may return the queue as a sparse Map (numeric string keys) or a
+      // List depending on the platform / how the array was mutated.  On Flutter
+      // Web the JS SDK returns it as a List<dynamic> where each element is a
+      // Map<dynamic,dynamic> — normalize every path to List<Map<String,dynamic>>
+      // before passing to Freezed fromJson which expects Map<String,dynamic>.
       final queueRaw = raw['queue'];
       if (queueRaw is Map) {
         final entries = queueRaw.entries.toList()
@@ -51,7 +49,12 @@ class JukeboxDatasourceImpl implements JukeboxDatasource {
         raw['queue'] = entries
             .map((e) => Map<String, dynamic>.from(e.value as Map))
             .toList();
-      } else if (queueRaw == null) {
+      } else if (queueRaw is List) {
+        // Flutter Web returns plain JS arrays; each item may be Map<dynamic,dynamic>.
+        raw['queue'] = queueRaw
+            .map((item) => Map<String, dynamic>.from(item as Map))
+            .toList();
+      } else {
         raw['queue'] = <dynamic>[];
       }
       return JukeboxRoomStateModel.fromJson(raw);
@@ -60,37 +63,34 @@ class JukeboxDatasourceImpl implements JukeboxDatasource {
 
   @override
   Future<JukeboxTrackModel> fetchTrackMetadata({
-    required String artist,
-    required String slug,
+    required String videoId,
     required String addedBy,
     required String addedByName,
   }) async {
-    final originalUrl = 'https://audiomack.com/$artist/song/$slug';
-    final encoded = Uri.encodeComponent(originalUrl);
+    final watchUrl = 'https://www.youtube.com/watch?v=$videoId';
+    final encoded = Uri.encodeComponent(watchUrl);
     final uri = Uri.parse(
-      'https://creators.audiomack.com/oembed?url=$encoded&format=json',
+      'https://www.youtube.com/oembed?url=$encoded&format=json',
     );
     final response = await http.get(uri);
     if (response.statusCode != 200) {
-      throw Exception('oEmbed ${response.statusCode}');
+      throw Exception('YouTube oEmbed ${response.statusCode}');
     }
     final data = Map<String, dynamic>.from(jsonDecode(response.body) as Map);
+    final thumbnailUrl =
+        (data['thumbnail_url'] as String?) ??
+        'https://i.ytimg.com/vi/$videoId/hqdefault.jpg';
     return JukeboxTrackModel(
-      id: '$artist/$slug',
-      audiomackUrl: originalUrl,
-      embedUrl: 'https://audiomack.com/embed/song/$artist/$slug',
-      streamingUrl: '',
-      streamingUrlTimeout: 9999999999,
+      id: videoId,
+      youtubeUrl: watchUrl,
+      videoId: videoId,
       title: data['title'] as String,
       artist: data['author_name'] as String,
-      artworkUrl: data['thumbnail_url'] as String,
+      artworkUrl: thumbnailUrl,
       addedBy: addedBy,
       addedByName: addedByName,
     );
   }
-
-  @override
-  Future<String> fetchFreshStreamingUrl(String trackId) async => '';
 
   @override
   Future<void> writeState({
@@ -101,7 +101,4 @@ class JukeboxDatasourceImpl implements JukeboxDatasource {
   @override
   Future<void> clearState(String roomId) =>
       _rtdb.ref('jukebox/$roomId').remove();
-
-  @override
-  Future<void> reportPlayStats(String trackId) async => {};
 }

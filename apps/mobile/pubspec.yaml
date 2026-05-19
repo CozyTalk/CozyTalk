@@ -43,6 +43,7 @@ dependencies:
 
   # Jukebox
   http: ^1.6.0
+  web: ^1.0.0
   webview_flutter: ^4.0.0
   webview_flutter_web: ^0.2.0
 

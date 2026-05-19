@@ -169,10 +169,22 @@ class ChatNotifier extends Notifier<ChatState> {
           },
         );
 
-    _typingSub = ref.read(_watchTypingUsersProvider)(sessionId).listen((users) {
-      final others = users.where((u) => u.uid != state.currentUserId).toList();
-      state = state.copyWith(typingUsers: others);
-    });
+    _typingSub = ref
+        .read(_watchTypingUsersProvider)(sessionId)
+        .listen(
+          (users) {
+            final others = users
+                .where((u) => u.uid != state.currentUserId)
+                .toList();
+            state = state.copyWith(typingUsers: others);
+          },
+          onError: (Object _) {
+            // permission-denied fires when the session ends and rules revoke access.
+            // Cancel silently — the session is already over.
+            _typingSub?.cancel();
+            _typingSub = null;
+          },
+        );
   }
 
   Future<void> sendMessage(String text) async {

@@ -13,11 +13,12 @@ void main() {
   });
 
   test(
-    'advances currentIndex and sets isPlaying true with new startedAt',
+    'advances currentIndex, sets isPlaying true, resets startedAt and pausedAt',
     () async {
       final current = makeRoomState(
         currentIndex: 0,
         startedAt: 1000,
+        pausedAt: 5000,
         queue: [
           makeTrack(id: '1'),
           makeTrack(id: '2'),
@@ -30,6 +31,7 @@ void main() {
       expect(repo.lastWrittenState?.currentIndex, 1);
       expect(repo.lastWrittenState?.isPlaying, isTrue);
       expect(repo.lastWrittenState?.startedAt, isNot(1000));
+      expect(repo.lastWrittenState?.pausedAt, 0);
     },
   );
 

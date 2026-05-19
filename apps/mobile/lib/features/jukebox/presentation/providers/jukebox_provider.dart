@@ -114,6 +114,13 @@ class JukeboxNotifier extends Notifier<JukeboxUiState> {
     _subscribeToJukebox(roomId);
   }
 
+  void leaveRoom() {
+    _rtdbSub?.cancel();
+    _rtdbSub = null;
+    _subActive = false;
+    state = const JukeboxUiState();
+  }
+
   void _subscribeToJukebox(String roomId) {
     _rtdbSub = ref
         .read(_watchJukeboxProvider)(roomId)
@@ -122,19 +129,25 @@ class JukeboxNotifier extends Notifier<JukeboxUiState> {
             _subActive = true;
             _onRtdbState(s);
           },
-          onError: (Object e) {
+          onError: (Object _) {
             _subActive = false;
-            // presence/{roomId}/{uid} is written async by joinProtoSession.
-            // Retry after a short delay so the subscription reconnects once the
-            // permission rule passes.
-            Future.delayed(const Duration(seconds: 2), () {
-              if (state.roomId == roomId && !_subActive) {
-                _subscribeToJukebox(roomId);
-              }
-            });
+            _scheduleRetry(roomId);
           },
-          onDone: () => _subActive = false,
+          // Flutter Web Firebase RTDB fires onDone (not onError) for permission
+          // denied — retry here too so the subscription heals once rules pass.
+          onDone: () {
+            _subActive = false;
+            _scheduleRetry(roomId);
+          },
         );
+  }
+
+  void _scheduleRetry(String roomId) {
+    Future.delayed(const Duration(seconds: 1), () {
+      if (state.roomId == roomId && !_subActive) {
+        _subscribeToJukebox(roomId);
+      }
+    });
   }
 
   // URL is passed directly from the text field — no state sync required.
@@ -155,7 +168,7 @@ class JukeboxNotifier extends Notifier<JukeboxUiState> {
     try {
       final user = FirebaseAuth.instance.currentUser;
       final track = await ref.read(_resolveTrackProvider)(
-        audiomackUrl: url,
+        youtubeUrl: url,
         addedBy: user?.uid ?? '',
         addedByName: user?.displayName ?? 'Anonymous',
       );
@@ -167,12 +180,12 @@ class JukeboxNotifier extends Notifier<JukeboxUiState> {
             startedAt: 0,
             queue: [],
           );
-      await ref.read(_addToQueueProvider)(
+      final newRoomState = await ref.read(_addToQueueProvider)(
         roomId: roomId,
         current: current,
         track: track,
       );
-      state = state.copyWith(isResolving: false);
+      state = state.copyWith(isResolving: false, roomState: newRoomState);
     } catch (e) {
       state = state.copyWith(
         isResolving: false,
@@ -192,10 +205,13 @@ class JukeboxNotifier extends Notifier<JukeboxUiState> {
     final roomId = state.roomId;
     final roomState = state.roomState;
     if (roomId == null || roomState == null) return;
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final pausedAt = isPlaying ? 0 : (now - roomState.startedAt);
     await ref.read(_setPlayingProvider)(
       roomId: roomId,
       current: roomState,
       isPlaying: isPlaying,
+      pausedAt: pausedAt,
     );
   }
 
@@ -222,11 +238,11 @@ class JukeboxNotifier extends Notifier<JukeboxUiState> {
 
   static String _friendlyError(Object e) {
     final msg = e.toString();
-    if (msg.contains('Invalid Audiomack URL')) {
-      return 'Paste a valid audiomack.com/artist/song/slug link.';
+    if (msg.contains('Invalid YouTube URL')) {
+      return 'Paste a valid youtube.com/watch?v=... or youtu.be/... link.';
     }
     if (msg.contains('404') || msg.contains('not found')) {
-      return 'Song not found on Audiomack.';
+      return 'Video not found on YouTube.';
     }
     if (msg.contains('Queue is full')) return 'Queue is full (max 4 tracks).';
     return 'Could not add track. Try again.';

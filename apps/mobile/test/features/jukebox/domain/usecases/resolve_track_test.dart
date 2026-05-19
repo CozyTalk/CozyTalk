@@ -16,7 +16,7 @@ void main() {
     repo.resolveResult = makeTrack(id: '99');
 
     final result = await usecase(
-      audiomackUrl: 'https://audiomack.com/a/song/s',
+      youtubeUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
       addedBy: 'uid1',
       addedByName: 'Alice',
     );
@@ -30,7 +30,7 @@ void main() {
 
     expect(
       () => usecase(
-        audiomackUrl: 'https://audiomack.com/a/song/s',
+        youtubeUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
         addedBy: 'uid1',
         addedByName: 'Alice',
       ),

@@ -4,14 +4,12 @@ import 'package:mobile/features/jukebox/data/models/jukebox_track_model.dart';
 
 void main() {
   final trackJson = {
-    'id': '1',
-    'audiomackUrl': 'https://audiomack.com/a/song/s',
-    'embedUrl': 'https://audiomack.com/embed/a/song/s',
-    'streamingUrl': 'https://cdn.example.com/a.mp3',
-    'streamingUrlTimeout': 9999999999,
+    'id': 'dQw4w9WgXcQ',
+    'youtubeUrl': 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+    'videoId': 'dQw4w9WgXcQ',
     'title': 'Song',
     'artist': 'Artist',
-    'artworkUrl': 'https://cdn.example.com/art.jpg',
+    'artworkUrl': 'https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg',
     'addedBy': 'uid',
     'addedByName': 'User',
   };
@@ -21,6 +19,7 @@ void main() {
       'isPlaying': true,
       'currentIndex': 0,
       'startedAt': 1748500000000,
+      'pausedAt': 0,
       'queue': [trackJson],
     };
 
@@ -29,8 +28,21 @@ void main() {
     expect(model.isPlaying, isTrue);
     expect(model.currentIndex, 0);
     expect(model.startedAt, 1748500000000);
+    expect(model.pausedAt, 0);
     expect(model.queue.length, 1);
-    expect(model.queue.first.id, '1');
+    expect(model.queue.first.id, 'dQw4w9WgXcQ');
+  });
+
+  test('fromJson defaults pausedAt to 0 when absent', () {
+    final json = {
+      'isPlaying': false,
+      'currentIndex': 0,
+      'startedAt': 0,
+      'queue': <Map<String, dynamic>>[],
+    };
+
+    final model = JukeboxRoomStateModel.fromJson(json);
+    expect(model.pausedAt, 0);
   });
 
   test('fromJson handles empty queue', () {
@@ -45,11 +57,12 @@ void main() {
     expect(model.queue, isEmpty);
   });
 
-  test('toEntity maps all tracks correctly', () {
+  test('toEntity maps all tracks and pausedAt correctly', () {
     final model = JukeboxRoomStateModel(
       isPlaying: true,
       currentIndex: 0,
       startedAt: 123456,
+      pausedAt: 5000,
       queue: [JukeboxTrackModel.fromJson(trackJson)],
     );
 
@@ -58,7 +71,8 @@ void main() {
     expect(entity.isPlaying, isTrue);
     expect(entity.currentIndex, 0);
     expect(entity.startedAt, 123456);
+    expect(entity.pausedAt, 5000);
     expect(entity.queue.length, 1);
-    expect(entity.queue.first.id, '1');
+    expect(entity.queue.first.id, 'dQw4w9WgXcQ');
   });
 }

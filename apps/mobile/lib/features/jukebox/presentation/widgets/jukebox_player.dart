@@ -2,16 +2,48 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../providers/jukebox_provider.dart';
+import 'jukebox_web_player.dart';
 
-class JukeboxPlayer extends ConsumerWidget {
+class JukeboxPlayer extends ConsumerStatefulWidget {
   final String roomId;
   const JukeboxPlayer({super.key, required this.roomId});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<JukeboxPlayer> createState() => _JukeboxPlayerState();
+}
+
+class _JukeboxPlayerState extends ConsumerState<JukeboxPlayer> {
+  late final JukeboxNotifier _notifier;
+
+  @override
+  void initState() {
+    super.initState();
+    _notifier = ref.read(jukeboxNotifierProvider.notifier);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(jukeboxNotifierProvider.notifier).enterRoom(roomId);
+      if (mounted) _notifier.enterRoom(widget.roomId);
     });
-    return const SizedBox.shrink();
+  }
+
+  @override
+  void dispose() {
+    _notifier.leaveRoom();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final roomState = ref.watch(jukeboxNotifierProvider).roomState;
+
+    if (roomState?.currentTrack == null) return const SizedBox.shrink();
+
+    // Keep the embed mounted in the chat body so it is never destroyed when
+    // the sheet opens/closes.
+    return JukeboxWebPlayer(
+      videoId: roomState!.currentTrack!.videoId,
+      startedAt: roomState.startedAt,
+      pausedAt: roomState.pausedAt,
+      isPlaying: roomState.isPlaying,
+      onTrackEnded: _notifier.skip,
+    );
   }
 }

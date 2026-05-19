@@ -7,16 +7,13 @@ JukeboxTrack makeTrack({
   String title = 'Song',
   String artist = 'Artist',
   String addedBy = 'uid',
-  int streamingUrlTimeout = 9999999999,
 }) => JukeboxTrack(
   id: id,
-  audiomackUrl: 'https://audiomack.com/a/song/s',
-  embedUrl: 'https://audiomack.com/embed/a/song/s',
-  streamingUrl: 'https://cdn.example.com/a.mp3',
-  streamingUrlTimeout: streamingUrlTimeout,
+  youtubeUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+  videoId: 'dQw4w9WgXcQ',
   title: title,
   artist: artist,
-  artworkUrl: 'https://cdn.example.com/art.jpg',
+  artworkUrl: 'https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg',
   addedBy: addedBy,
   addedByName: 'User',
 );
@@ -25,11 +22,13 @@ JukeboxRoomState makeRoomState({
   bool isPlaying = false,
   int currentIndex = 0,
   int startedAt = 0,
+  int pausedAt = 0,
   List<JukeboxTrack>? queue,
 }) => JukeboxRoomState(
   isPlaying: isPlaying,
   currentIndex: currentIndex,
   startedAt: startedAt,
+  pausedAt: pausedAt,
   queue: queue ?? [],
 );
 
@@ -52,7 +51,7 @@ class FakeJukeboxRepository implements JukeboxRepository {
 
   @override
   Future<JukeboxTrack> resolveTrack({
-    required String audiomackUrl,
+    required String youtubeUrl,
     required String addedBy,
     required String addedByName,
   }) async {
@@ -60,10 +59,6 @@ class FakeJukeboxRepository implements JukeboxRepository {
     if (error != null) throw error!;
     return resolveResult!;
   }
-
-  @override
-  Future<String> refreshStreamingUrl(String trackId) async =>
-      'https://fresh.mp3';
 
   @override
   Future<void> writeJukeboxState({

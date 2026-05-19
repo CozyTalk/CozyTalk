@@ -52,14 +52,12 @@ Widget _buildSheet(_FakeJukeboxNotifier fake) {
 }
 
 const _track = JukeboxTrack(
-  id: '1',
-  audiomackUrl: 'https://audiomack.com/a/song/s',
-  embedUrl: 'https://audiomack.com/embed/a/song/s',
-  streamingUrl: 'https://cdn.example.com/a.mp3',
-  streamingUrlTimeout: 9999999999,
+  id: 'dQw4w9WgXcQ',
+  youtubeUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+  videoId: 'dQw4w9WgXcQ',
   title: 'My Song',
   artist: 'My Artist',
-  artworkUrl: 'https://cdn.example.com/art.jpg',
+  artworkUrl: 'https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg',
   addedBy: 'uid',
   addedByName: 'User',
 );
@@ -104,18 +102,32 @@ void main() {
     expect(fake.skipCount, 1);
   });
 
+  testWidgets('play/pause button calls setPlaying', (tester) async {
+    final roomState = JukeboxRoomState(
+      isPlaying: true,
+      currentIndex: 0,
+      startedAt: 0,
+      queue: [_track],
+    );
+    final fake = _FakeJukeboxNotifier(
+      initial: JukeboxUiState(roomId: 'room1', roomState: roomState),
+    );
+    await tester.pumpWidget(_buildSheet(fake));
+
+    await tester.tap(find.byIcon(Icons.pause_rounded));
+    expect(fake.lastSetPlaying, isFalse);
+  });
+
   testWidgets('remove button calls removeFromQueue with correct index', (
     tester,
   ) async {
     const queueTrack = JukeboxTrack(
-      id: '2',
-      audiomackUrl: 'https://audiomack.com/a/song/s2',
-      embedUrl: 'https://audiomack.com/embed/a/song/s2',
-      streamingUrl: 'https://cdn.example.com/b.mp3',
-      streamingUrlTimeout: 9999999999,
+      id: 'abc123',
+      youtubeUrl: 'https://www.youtube.com/watch?v=abc123',
+      videoId: 'abc123',
       title: 'Queued Track',
       artist: 'Artist 2',
-      artworkUrl: 'https://cdn.example.com/art2.jpg',
+      artworkUrl: 'https://i.ytimg.com/vi/abc123/hqdefault.jpg',
       addedBy: 'uid',
       addedByName: 'User',
     );

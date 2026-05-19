@@ -5,12 +5,10 @@ abstract class JukeboxRepository {
   Stream<JukeboxRoomState?> watchJukebox(String roomId);
 
   Future<JukeboxTrack> resolveTrack({
-    required String audiomackUrl,
+    required String youtubeUrl,
     required String addedBy,
     required String addedByName,
   });
-
-  Future<String> refreshStreamingUrl(String trackId);
 
   Future<void> writeJukeboxState({
     required String roomId,

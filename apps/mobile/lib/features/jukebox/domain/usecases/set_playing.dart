@@ -9,13 +9,16 @@ class SetPlaying {
     required String roomId,
     required JukeboxRoomState current,
     required bool isPlaying,
+    required int pausedAt,
   }) {
+    final now = DateTime.now().millisecondsSinceEpoch;
     final updated = JukeboxRoomState(
       isPlaying: isPlaying,
       currentIndex: current.currentIndex,
-      startedAt: (isPlaying && !current.isPlaying)
-          ? DateTime.now().millisecondsSinceEpoch
-          : current.startedAt,
+      // When resuming: shift startedAt so seekSeconds = now - startedAt = pausedAt/1000.
+      // When pausing: keep startedAt unchanged.
+      startedAt: isPlaying ? (now - current.pausedAt) : current.startedAt,
+      pausedAt: isPlaying ? 0 : pausedAt,
       queue: current.queue,
     );
     return _repository.writeJukeboxState(roomId: roomId, roomState: updated);

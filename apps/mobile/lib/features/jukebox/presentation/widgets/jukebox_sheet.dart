@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../providers/jukebox_provider.dart';
-import 'jukebox_web_player.dart';
 import 'queue_slot_tile.dart';
 
 class JukeboxSheet extends ConsumerStatefulWidget {
@@ -140,10 +139,24 @@ class _JukeboxSheetState extends ConsumerState<JukeboxSheet> {
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  JukeboxWebPlayer(embedUrl: roomState.currentTrack!.embedUrl),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
+                      Semantics(
+                        label: roomState.isPlaying ? 'Pause' : 'Play',
+                        button: true,
+                        child: IconButton(
+                          iconSize: 36,
+                          icon: Icon(
+                            roomState.isPlaying
+                                ? Icons.pause_rounded
+                                : Icons.play_arrow_rounded,
+                            color: Theme.of(context).colorScheme.onSurface,
+                          ),
+                          onPressed: () =>
+                              notifier.setPlaying(!roomState.isPlaying),
+                        ),
+                      ),
                       Semantics(
                         label: 'Skip track',
                         button: true,
@@ -217,7 +230,7 @@ class _JukeboxSheetState extends ConsumerState<JukeboxSheet> {
                 TextField(
                   controller: _urlController,
                   decoration: const InputDecoration(
-                    hintText: 'audiomack.com/artist/song/slug',
+                    hintText: 'youtube.com/watch?v=...',
                     border: OutlineInputBorder(),
                     contentPadding: EdgeInsets.symmetric(
                       horizontal: 12,

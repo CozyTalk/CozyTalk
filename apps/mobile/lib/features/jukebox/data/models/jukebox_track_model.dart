@@ -9,10 +9,8 @@ part 'jukebox_track_model.g.dart';
 abstract class JukeboxTrackModel with _$JukeboxTrackModel {
   const factory JukeboxTrackModel({
     required String id,
-    required String audiomackUrl,
-    required String embedUrl,
-    required String streamingUrl,
-    required int streamingUrlTimeout,
+    required String youtubeUrl,
+    required String videoId,
     required String title,
     required String artist,
     required String artworkUrl,
@@ -27,10 +25,8 @@ abstract class JukeboxTrackModel with _$JukeboxTrackModel {
 extension JukeboxTrackModelX on JukeboxTrackModel {
   JukeboxTrack toEntity() => JukeboxTrack(
     id: id,
-    audiomackUrl: audiomackUrl,
-    embedUrl: embedUrl,
-    streamingUrl: streamingUrl,
-    streamingUrlTimeout: streamingUrlTimeout,
+    youtubeUrl: youtubeUrl,
+    videoId: videoId,
     title: title,
     artist: artist,
     artworkUrl: artworkUrl,

@@ -12,6 +12,7 @@ abstract class JukeboxRoomStateModel with _$JukeboxRoomStateModel {
     required bool isPlaying,
     required int currentIndex,
     required int startedAt,
+    @Default(0) int pausedAt,
     required List<JukeboxTrackModel> queue,
   }) = _JukeboxRoomStateModel;
 
@@ -24,6 +25,7 @@ extension JukeboxRoomStateModelX on JukeboxRoomStateModel {
     isPlaying: isPlaying,
     currentIndex: currentIndex,
     startedAt: startedAt,
+    pausedAt: pausedAt,
     queue: queue.map((t) => t.toEntity()).toList(),
   );
 }

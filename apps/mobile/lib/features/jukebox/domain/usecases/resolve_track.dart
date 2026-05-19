@@ -6,11 +6,11 @@ class ResolveTrack {
   const ResolveTrack(this._repository);
 
   Future<JukeboxTrack> call({
-    required String audiomackUrl,
+    required String youtubeUrl,
     required String addedBy,
     required String addedByName,
   }) => _repository.resolveTrack(
-    audiomackUrl: audiomackUrl,
+    youtubeUrl: youtubeUrl,
     addedBy: addedBy,
     addedByName: addedByName,
   );

@@ -1,9 +1,7 @@
 class JukeboxTrack {
   final String id;
-  final String audiomackUrl;
-  final String embedUrl;
-  final String streamingUrl;
-  final int streamingUrlTimeout; // Unix seconds
+  final String youtubeUrl;
+  final String videoId;
   final String title;
   final String artist;
   final String artworkUrl;
@@ -12,10 +10,8 @@ class JukeboxTrack {
 
   const JukeboxTrack({
     required this.id,
-    required this.audiomackUrl,
-    required this.embedUrl,
-    required this.streamingUrl,
-    required this.streamingUrlTimeout,
+    required this.youtubeUrl,
+    required this.videoId,
     required this.title,
     required this.artist,
     required this.artworkUrl,

@@ -15,24 +15,35 @@ void main() {
   });
 
   group('resolveTrack', () {
-    test('extracts artist and slug from audiomack URL', () async {
+    test('extracts videoId from youtube.com watch URL', () async {
       datasource.trackResult = _makeTrackModel();
 
       await repo.resolveTrack(
-        audiomackUrl: 'https://audiomack.com/myartist/song/myslug',
+        youtubeUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
         addedBy: 'uid',
         addedByName: 'Alice',
       );
 
-      expect(datasource.lastArtist, 'myartist');
-      expect(datasource.lastSlug, 'myslug');
+      expect(datasource.lastVideoId, 'dQw4w9WgXcQ');
+    });
+
+    test('extracts videoId from youtu.be short URL', () async {
+      datasource.trackResult = _makeTrackModel();
+
+      await repo.resolveTrack(
+        youtubeUrl: 'https://youtu.be/dQw4w9WgXcQ',
+        addedBy: 'uid',
+        addedByName: 'Alice',
+      );
+
+      expect(datasource.lastVideoId, 'dQw4w9WgXcQ');
     });
 
     test('returns entity from model', () async {
       datasource.trackResult = _makeTrackModel(id: '99');
 
       final track = await repo.resolveTrack(
-        audiomackUrl: 'https://audiomack.com/a/song/s',
+        youtubeUrl: 'https://www.youtube.com/watch?v=99',
         addedBy: 'uid',
         addedByName: 'User',
       );
@@ -40,10 +51,10 @@ void main() {
       expect(track.id, '99');
     });
 
-    test('throws on invalid host', () async {
+    test('throws on non-YouTube URL', () async {
       expect(
         () => repo.resolveTrack(
-          audiomackUrl: 'https://example.com/a/song/s',
+          youtubeUrl: 'https://audiomack.com/artist/song/slug',
           addedBy: 'uid',
           addedByName: 'User',
         ),
@@ -51,21 +62,10 @@ void main() {
       );
     });
 
-    test('throws when path is not /artist/song/slug', () async {
+    test('throws when URL has no video ID', () async {
       expect(
         () => repo.resolveTrack(
-          audiomackUrl: 'https://audiomack.com/a/album/s',
-          addedBy: 'uid',
-          addedByName: 'User',
-        ),
-        throwsException,
-      );
-    });
-
-    test('throws when URL has fewer than 3 path segments', () async {
-      expect(
-        () => repo.resolveTrack(
-          audiomackUrl: 'https://audiomack.com/a/song',
+          youtubeUrl: 'https://www.youtube.com/',
           addedBy: 'uid',
           addedByName: 'User',
         ),
@@ -80,6 +80,7 @@ void main() {
         isPlaying: true,
         currentIndex: 0,
         startedAt: 12345,
+        pausedAt: 0,
         queue: [],
       );
 
@@ -88,6 +89,7 @@ void main() {
       expect(datasource.writeCount, 1);
       expect(datasource.lastWrittenState?['isPlaying'], isTrue);
       expect(datasource.lastWrittenState?['currentIndex'], 0);
+      expect(datasource.lastWrittenState?['pausedAt'], 0);
     });
   });
 
@@ -119,18 +121,17 @@ void main() {
   });
 }
 
-JukeboxTrackModel _makeTrackModel({String id = '1'}) => JukeboxTrackModel(
-  id: id,
-  audiomackUrl: 'https://audiomack.com/a/song/s',
-  embedUrl: 'https://audiomack.com/embed/a/song/s',
-  streamingUrl: 'https://cdn.example.com/a.mp3',
-  streamingUrlTimeout: 9999999999,
-  title: 'Song',
-  artist: 'Artist',
-  artworkUrl: 'https://cdn.example.com/art.jpg',
-  addedBy: 'uid',
-  addedByName: 'User',
-);
+JukeboxTrackModel _makeTrackModel({String id = 'dQw4w9WgXcQ'}) =>
+    JukeboxTrackModel(
+      id: id,
+      youtubeUrl: 'https://www.youtube.com/watch?v=$id',
+      videoId: id,
+      title: 'Song',
+      artist: 'Artist',
+      artworkUrl: 'https://i.ytimg.com/vi/$id/hqdefault.jpg',
+      addedBy: 'uid',
+      addedByName: 'User',
+    );
 
 class _FakeDatasource implements JukeboxDatasource {
   JukeboxRoomStateModel? watchModel;
@@ -138,8 +139,7 @@ class _FakeDatasource implements JukeboxDatasource {
   int writeCount = 0;
   int clearCount = 0;
   Map<String, dynamic>? lastWrittenState;
-  String? lastArtist;
-  String? lastSlug;
+  String? lastVideoId;
 
   @override
   Stream<JukeboxRoomStateModel?> watchJukebox(String roomId) =>
@@ -147,19 +147,13 @@ class _FakeDatasource implements JukeboxDatasource {
 
   @override
   Future<JukeboxTrackModel> fetchTrackMetadata({
-    required String artist,
-    required String slug,
+    required String videoId,
     required String addedBy,
     required String addedByName,
   }) async {
-    lastArtist = artist;
-    lastSlug = slug;
+    lastVideoId = videoId;
     return trackResult!;
   }
-
-  @override
-  Future<String> fetchFreshStreamingUrl(String trackId) async =>
-      'https://fresh.mp3';
 
   @override
   Future<void> writeState({
@@ -172,7 +166,4 @@ class _FakeDatasource implements JukeboxDatasource {
 
   @override
   Future<void> clearState(String roomId) async => clearCount++;
-
-  @override
-  Future<void> reportPlayStats(String trackId) async {}
 }

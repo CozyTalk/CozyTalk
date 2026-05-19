@@ -17,21 +17,31 @@ void main() {
     final current = makeRoomState(isPlaying: true, queue: [existing]);
     final newTrack = makeTrack(id: '2');
 
-    await usecase(roomId: 'room1', current: current, track: newTrack);
+    final result = await usecase(
+      roomId: 'room1',
+      current: current,
+      track: newTrack,
+    );
 
     expect(repo.writeCount, 1);
+    expect(result.queue.length, 2);
+    expect(result.queue.last.id, '2');
     expect(repo.lastWrittenState?.queue.length, 2);
-    expect(repo.lastWrittenState?.queue.last.id, '2');
   });
 
   test('first track sets isPlaying true and non-zero startedAt', () async {
     final current = makeRoomState();
     final track = makeTrack();
 
-    await usecase(roomId: 'room1', current: current, track: track);
+    final result = await usecase(
+      roomId: 'room1',
+      current: current,
+      track: track,
+    );
 
+    expect(result.isPlaying, isTrue);
+    expect(result.startedAt, isNot(0));
     expect(repo.lastWrittenState?.isPlaying, isTrue);
-    expect(repo.lastWrittenState?.startedAt, isNot(0));
   });
 
   test(
@@ -45,10 +55,15 @@ void main() {
       );
       final newTrack = makeTrack(id: '2');
 
-      await usecase(roomId: 'room1', current: current, track: newTrack);
+      final result = await usecase(
+        roomId: 'room1',
+        current: current,
+        track: newTrack,
+      );
 
+      expect(result.isPlaying, isFalse);
+      expect(result.startedAt, 12345);
       expect(repo.lastWrittenState?.isPlaying, isFalse);
-      expect(repo.lastWrittenState?.startedAt, 12345);
     },
   );
 

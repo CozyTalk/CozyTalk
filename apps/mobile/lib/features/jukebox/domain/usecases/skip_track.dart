@@ -15,6 +15,7 @@ class SkipTrack {
       isPlaying: true,
       currentIndex: next,
       startedAt: DateTime.now().millisecondsSinceEpoch,
+      pausedAt: 0,
       queue: current.queue,
     );
     return _repository.writeJukeboxState(roomId: roomId, roomState: updated);
