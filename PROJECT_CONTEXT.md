@@ -19,8 +19,8 @@ CozyTalk is a **cross-platform stranger chat app** targeting **Android and Web**
 |---|---|
 | State management | `flutter_riverpod` 3.3.1 + `riverpod_annotation` (code-gen) |
 | Navigation | `MaterialApp.routes` + `AppRoutes` constants (`theme/app_routes.dart`). `go_router` is in `pubspec.yaml` but never imported or used. |
-| Firebase | `firebase_core`, `firebase_auth`, `cloud_functions`, `cloud_firestore`, `firebase_database` |
-| Observability | Structured CF logging (`firebase-functions/logger`) |
+| Firebase | `firebase_core`, `firebase_auth`, `cloud_functions`, `cloud_firestore`, `firebase_database`, `firebase_crashlytics` |
+| Observability | Structured CF logging (`firebase-functions/logger`); Crashlytics for Flutter fatal/non-fatal errors (disabled in emulator mode) |
 | Models | `freezed` + `json_serializable` (code-gen) |
 | Auth | `google_sign_in` |
 | Local caching | `flutter_secure_storage` |
