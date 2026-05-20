@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -119,12 +120,12 @@ class _JukeboxSheetState extends ConsumerState<JukeboxSheet> {
                   ListTile(
                     leading: ClipRRect(
                       borderRadius: BorderRadius.circular(4),
-                      child: Image.network(
-                        roomState!.currentTrack!.artworkUrl,
+                      child: CachedNetworkImage(
+                        imageUrl: roomState!.currentTrack!.artworkUrl,
                         width: 48,
                         height: 48,
                         fit: BoxFit.cover,
-                        errorBuilder: (_, _, _) => Icon(
+                        errorWidget: (_, _, _) => Icon(
                           Icons.music_note,
                           color: Theme.of(context).colorScheme.onSurface,
                         ),
