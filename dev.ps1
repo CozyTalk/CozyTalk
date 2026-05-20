@@ -117,6 +117,7 @@ function Stop-Emulators {
     }
     if ($null -ne $LogFile) {
         Write-Host "  Session log saved -> $LogFile" -ForegroundColor DarkGray
+        Write-Host "  Run .\logs.sh to view." -ForegroundColor DarkGray
     }
     Write-Host "  Done." -ForegroundColor DarkGray
     Write-Host ""
@@ -188,7 +189,8 @@ try {
 
             log "Starting Firebase emulators..."
             info "Session log -> $LogFile"
-            info "Emulator UI -> http://127.0.0.1:4000"
+            info "Emulator UI -> http://127.0.0.1:4000  (Logs tab = real-time function output)"
+            info "Tip         -> .\logs.sh -f  to follow logs in another terminal"
             Write-Host ""
 
             # cmd.exe runs synchronously (no & / start), so it stays alive until
