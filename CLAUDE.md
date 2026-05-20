@@ -21,7 +21,7 @@ Anonymous stranger chat — 1v1 and group rooms (up to 5 users) — Flutter (And
 |---|---|
 | Framework | Flutter 3.41+ · Dart 3.x |
 | State | Riverpod 3.x + `Notifier` pattern |
-| Backend | Firebase Auth, Firestore, RTDB, Cloud Functions v2 (TypeScript) |
+| Backend | Firebase Auth, Firestore, RTDB, Cloud Functions v2 (TypeScript), Firebase Crashlytics |
 | Models | Freezed + json_serializable |
 | Navigation | `MaterialApp.routes` + `AppRoutes` constants (`theme/app_routes.dart`) |
 | Observability | Structured CF logging (`firebase-functions/logger`) |

@@ -1,5 +1,8 @@
 // ignore_for_file: unused_import
+import 'dart:ui' show PlatformDispatcher;
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -48,6 +51,15 @@ void main() async {
     ).useFunctionsEmulator('127.0.0.1', 5001);
     FirebaseFirestore.instance.useFirestoreEmulator('127.0.0.1', 8080);
     FirebaseDatabase.instance.useDatabaseEmulator('127.0.0.1', 9000);
+    if (!kIsWeb) {
+      await FirebaseCrashlytics.instance.setCrashlyticsCollectionEnabled(false);
+    }
+  } else if (!kIsWeb) {
+    FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
+    PlatformDispatcher.instance.onError = (error, stack) {
+      FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
+      return true;
+    };
   }
 
   runApp(const ProviderScope(child: MyApp()));
