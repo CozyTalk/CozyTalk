@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
 import '../../domain/entities/jukebox_track.dart';
@@ -12,12 +13,12 @@ class QueueSlotTile extends StatelessWidget {
     return ListTile(
       leading: ClipRRect(
         borderRadius: BorderRadius.circular(4),
-        child: Image.network(
-          track.artworkUrl,
+        child: CachedNetworkImage(
+          imageUrl: track.artworkUrl,
           width: 48,
           height: 48,
           fit: BoxFit.cover,
-          errorBuilder: (_, _, _) => const Icon(Icons.music_note),
+          errorWidget: (_, _, _) => const Icon(Icons.music_note),
         ),
       ),
       title: Text(track.title, maxLines: 1, overflow: TextOverflow.ellipsis),

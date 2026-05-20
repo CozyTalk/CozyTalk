@@ -44,6 +44,12 @@ jobs:
 
       - run: flutter pub get
 
+      - name: Dependency audit
+        uses: google/osv-scanner-action/osv-scanner-action@v2.3.8
+        with:
+          scan-args: |-
+            --lockfile=apps/mobile/pubspec.lock
+
       - run: dart run build_runner build
 
       - name: Check generated files are up to date
@@ -60,6 +66,13 @@ jobs:
         with:
           files: apps/mobile/coverage/lcov.info
           fail_ci_if_error: false
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: coverage-report
+          path: apps/mobile/coverage/lcov.info
+          retention-days: 30
 
   functions-quality:
     runs-on: ubuntu-latest
@@ -82,6 +95,9 @@ jobs:
           cache-dependency-path: functions/package-lock.json
 
       - run: npm ci
+
+      - name: Dependency audit
+        run: npm audit --audit-level=high
 
       - run: npm run lint
 
