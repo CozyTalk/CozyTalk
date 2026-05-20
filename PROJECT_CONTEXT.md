@@ -19,7 +19,8 @@ CozyTalk is a **cross-platform stranger chat app** targeting **Android and Web**
 |---|---|
 | State management | `flutter_riverpod` 3.3.1 + `riverpod_annotation` (code-gen) |
 | Navigation | `MaterialApp.routes` + `AppRoutes` constants (`theme/app_routes.dart`). `go_router` is in `pubspec.yaml` but never imported or used. |
-| Firebase | `firebase_core`, `firebase_auth`, `cloud_functions`, `cloud_firestore`, `firebase_database`, `firebase_crashlytics` |
+| Firebase | `firebase_core`, `firebase_auth`, `cloud_functions`, `cloud_firestore`, `firebase_database`, `firebase_crashlytics`, `firebase_remote_config` |
+| Local database | `sqflite` (Android only; web loads from bundled JSON) |
 | Observability | Structured CF logging (`firebase-functions/logger`); Crashlytics for Flutter fatal/non-fatal errors (disabled in emulator mode) |
 | Models | `freezed` + `json_serializable` (code-gen) |
 | Auth | `google_sign_in` |
@@ -374,12 +375,14 @@ Presence, typing, and nameQueue data are removed by `leaveRoom` CF on explicit l
 
 | Suite | Count | Location | Requires |
 |---|---|---|---|
-| Flutter unit + widget | 824 tests | `apps/mobile/test/` | Nothing |
+| Flutter unit + widget | 838 tests | `apps/mobile/test/` | Nothing |
 | Cloud Functions Jest | 93 unit tests | `functions/src/**/__tests__/*.test.ts` | `./dev.sh --emulator-only` |
 | Cloud Functions Jest (integration) | 7 live tests | `functions/src/matchmaking/__tests__/embeddingService.integration.test.ts` | Vertex AI credentials + `npm run test:embedding` |
 | Flutter integration | 43 tests | `apps/mobile/integration_test/matchmaking_advanced_test.dart` | Emulators + Android device |
 
 **CF Jest unit test breakdown:** `matchmaking.test.ts` (60 tests, 14 describe groups — priority selection, distribution, padding lifecycle, RTDB cleanup, 1v1/group flows, interest matching), `embeddingService.test.ts` (21 tests — cosine similarity, mean vector, mocked Vertex AI), `chat.test.ts` (12 tests — sendMessage, message destruction, TTL, rooms/ path, reportSession). Plus 7 integration tests in `embeddingService.integration.test.ts` (live Vertex AI, requires `npm run test:embedding`). Grand total: 100.
+
+**Flutter word_filter tests (14):** `banned_word_test.dart` (2), `censor_text_test.dart` (3), `banned_word_model_test.dart` (5), `word_filter_repository_impl_test.dart` (2), `word_filter_provider_test.dart` (2).
 
 **Jest vs Flutter integration:** Jest tests run on the host (no Android clock skew) so timing bounds are tight (≤35s padding). Flutter integration tests use ≤60s bounds to account for Android emulator clock offset.
 

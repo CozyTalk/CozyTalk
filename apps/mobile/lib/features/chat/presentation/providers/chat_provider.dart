@@ -17,6 +17,7 @@ import '../../domain/usecases/send_message.dart';
 import '../../domain/usecases/set_typing.dart';
 import '../../domain/usecases/watch_messages.dart';
 import '../../domain/usecases/watch_partner_typing.dart';
+import '../../../word_filter/presentation/providers/word_filter_provider.dart';
 
 final _chatDatasourceProvider = Provider<ChatDatasource>(
   (ref) => ChatDatasourceImpl(
@@ -50,6 +51,8 @@ final _setTypingProvider = Provider<SetTyping>(
 final _endSessionProvider = Provider<EndSession>(
   (ref) => EndSession(ref.watch(_chatRepositoryProvider)),
 );
+
+final _censorTextProvider = Provider((ref) => ref.watch(censorTextProvider));
 
 final chatNotifierProvider = NotifierProvider<ChatNotifier, ChatState>(
   ChatNotifier.new,
@@ -192,7 +195,11 @@ class ChatNotifier extends Notifier<ChatState> {
     if (sessionId == null || state.isSending) return;
     state = state.copyWith(isSending: true, error: null);
     try {
-      await ref.read(_sendMessageProvider)(sessionId: sessionId, text: text);
+      final censored = await ref.read(_censorTextProvider).call(text);
+      await ref.read(_sendMessageProvider)(
+        sessionId: sessionId,
+        text: censored,
+      );
       state = state.copyWith(isSending: false);
     } catch (e) {
       state = state.copyWith(isSending: false, error: e.toString());

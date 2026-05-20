@@ -77,7 +77,8 @@ npm install && npm run build && npm test   # npm test requires emulators first
 .\dev.ps1 [...]                           # Windows
 ```
 
-Test counts: see `PROJECT_CONTEXT.md`.
+Jest: 93 unit (matchmaking 60, embeddingService 21, chat 12). The 7 Vertex AI integration tests run separately via `jest.integration.config.js` — excluded from `npm test`.
+Flutter: 838 unit + widget tests.
 
 ---
 
@@ -94,6 +95,7 @@ Test counts: see `PROJECT_CONTEXT.md`.
 | `home` | — | Thin nav hub, no domain/data | Complete |
 | `friends` | `friendsNotifierProvider` · `friendChatNotifierProvider` | `FriendsState`: allUsers\|friends\|incomingRequests · `FriendChatState`: messages\|chatRoomId | Prototype (dev screens only) |
 | `card_shuffle` | `cardShuffleNotifierProvider` | `CardShuffleState`: currentQuestion?, isLoading, error? | Prototype (icebreaker panel in chat dev screen) |
+| `word_filter` | `censorTextProvider` | Stateless service — no Notifier | Complete · gates on `content_filtering_enabled` Remote Config flag |
 
 **State pattern (all features):** Nullable fields in `FooState.copyWith` use `_sentinel` so callers can explicitly pass `null` to clear them. Never use `??` for clearable fields.
 
