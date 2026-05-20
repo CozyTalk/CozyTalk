@@ -23,7 +23,8 @@ CozyTalk is a **cross-platform stranger chat app** targeting **Android and Web**
 | Observability | Structured CF logging (`firebase-functions/logger`); Crashlytics for Flutter fatal/non-fatal errors (disabled in emulator mode) |
 | Models | `freezed` + `json_serializable` (code-gen) |
 | Auth | `google_sign_in` |
-| Local caching | `flutter_secure_storage` |
+| Local caching | `flutter_secure_storage` · `shared_preferences` (profile + avatar offline cache via `ProfileCacheDatasource` / `AvatarCacheDatasource`) |
+| Connectivity | `connectivity_plus ^6.x` (online/offline state detection via `NetworkInfo` abstraction + `isOnlineProvider`) |
 | HTTP | `http` ^1.6.0 |
 | Jukebox embed player | `webview_flutter` ^4.0.0 — Audiomack iframe on Android + Web |
 | URL launching | `url_launcher` |
@@ -143,7 +144,7 @@ Navigation hub `HomeScreen`. Used only when `_useMainUI = true`. No domain/data 
 Initialises Firebase, points to emulators (Auth `9099`, Functions `5001`, Firestore `8080`) when `USE_EMULATOR=true`. No automatic sign-in — `_AuthRouter` widget watches `authNotifierProvider` and routes to `LoginScreen` or `HelloScreen`.
 
 ### Tests
-824 Flutter unit + widget tests across auth, chat, matchmaking, profile, hello, friends, card_shuffle, and screens features. See [Test Coverage](#quality-gates-definition-of-done) for the full breakdown.
+890 Flutter unit + widget tests across auth, chat, matchmaking, profile, hello, friends, card_shuffle, and screens features. See [Test Coverage](#quality-gates-definition-of-done) for the full breakdown.
 
 ---
 
@@ -374,7 +375,7 @@ Presence, typing, and nameQueue data are removed by `leaveRoom` CF on explicit l
 
 | Suite | Count | Location | Requires |
 |---|---|---|---|
-| Flutter unit + widget | 824 tests | `apps/mobile/test/` | Nothing |
+| Flutter unit + widget | 890 tests | `apps/mobile/test/` | Nothing |
 | Cloud Functions Jest | 93 unit tests | `functions/src/**/__tests__/*.test.ts` | `./dev.sh --emulator-only` |
 | Cloud Functions Jest (integration) | 7 live tests | `functions/src/matchmaking/__tests__/embeddingService.integration.test.ts` | Vertex AI credentials + `npm run test:embedding` |
 | Flutter integration | 43 tests | `apps/mobile/integration_test/matchmaking_advanced_test.dart` | Emulators + Android device |

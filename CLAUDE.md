@@ -333,3 +333,39 @@ This is especially critical during:
 - If you have a question, ask it — one clear question is better than a confident wrong answer.
 - "I think" or "probably" is not good enough. Either verify and state the truth, or say you don't know and ask.
 - Never fabricate file paths, function names, field names, or behaviours. If unsure, `grep` or `Read` first.
+
+---
+
+## 18. Commit Message Convention (non-negotiable)
+
+All commits must follow [Conventional Commits v1.0.0](https://www.conventionalcommits.org/en/v1.0.0/).
+
+**Format:** `<type>(<optional scope>): <short imperative description>`
+
+| Type | When to use |
+|---|---|
+| `feat` | New feature or capability added |
+| `fix` | Bug fix |
+| `docs` | Documentation-only changes |
+| `test` | Adding or updating tests, no production code change |
+| `refactor` | Code change that neither fixes a bug nor adds a feature |
+| `chore` | Maintenance — dependency bumps, build config, auto-generated files |
+| `ci` | CI/CD pipeline changes |
+| `perf` | Performance improvement |
+| `revert` | Reverting a previous commit |
+
+**Hard rules:**
+- Always include the type prefix — `feat: ...`, `fix: ...`, etc.
+- Scope is optional but encouraged for multi-feature repos: `feat(profile):`, `fix(auth):`, `docs(screens):`
+- Description is imperative present tense: "add", not "added" or "adds"
+- No trailing period
+- No AI signatures, co-author tags, or boilerplate (see §15)
+
+**Examples:**
+```
+feat(shared): add connectivity infrastructure and offline UI primitives
+fix(screens): defer cancelSearch in dispose to prevent Riverpod build crash
+docs: update screens.md and PROJECT_CONTEXT.md for offline-first feature
+test(avatar): add offline cache datasource and notifier offline tests
+chore: bump connectivity_plus to 6.x
+```

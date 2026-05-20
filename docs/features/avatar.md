@@ -43,3 +43,15 @@ features/avatar/
 - Auth UID sourced from `ref.read(authNotifierProvider).user?.uid` — never `FirebaseAuth.instance.currentUser`
 - `avatarProvider` (`NotifierProvider<AvatarNotifier, AvatarState>`) lives in `apps/mobile/lib/shared/avatar_overlay.dart` — shared across screens. The avatar feature syncs into it via `_syncToSharedProvider()` after save.
 - Production screen is `screens/dress_up_screen.dart` + `screens/mood_screen.dart` (not yet fully integrated)
+
+## Offline Behavior (added PR 8)
+
+- `load(uid)`: on successful Firestore read, writes to `AvatarCacheDatasource` (SharedPreferences, key `avatar_cache_{uid}`). On Firestore exception, returns the cached decoration — or `null` if also missing (avatar null is a valid "no decoration" state; never surfaces as an error).
+- Write methods (`updateHat`, `updateMood`, `updateDecoration`): call `_resetErrorIfAny()` first (clears any lingering error so `HomeScreen`'s `ref.listen` re-fires on every repeated offline attempt), then check `networkInfoProvider.isConnected`. If offline, set `state.status = AvatarDecorationStatus.error` with the offline message — repository not called.
+- Cache cleared on `signOut()` via `auth_provider.dart`.
+
+| New file | Description |
+|---|---|
+| `data/datasources/avatar_cache_datasource.dart` | Abstract `AvatarCacheDatasource` + `AvatarCacheDatasourceImpl(SharedPreferences)` |
+| `domain/usecases/get_cached_decoration.dart` | `GetCachedDecoration` — reads from cache only, returns `null` on miss |
+| `avatarRepositoryProvider` (now public) | Previously `_avatarRepositoryProvider`; made non-private for test overriding |
