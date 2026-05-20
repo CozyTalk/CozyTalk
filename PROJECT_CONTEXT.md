@@ -143,7 +143,7 @@ Navigation hub `HomeScreen`. Used only when `_useMainUI = true`. No domain/data 
 Initialises Firebase, points to emulators (Auth `9099`, Functions `5001`, Firestore `8080`) when `USE_EMULATOR=true`. No automatic sign-in — `_AuthRouter` widget watches `authNotifierProvider` and routes to `LoginScreen` or `HelloScreen`.
 
 ### Tests
-698 Flutter unit + widget tests across auth, chat, matchmaking, profile, hello, friends, and card_shuffle features. See [Test Coverage](#quality-gates-definition-of-done) for the full breakdown.
+824 Flutter unit + widget tests across auth, chat, matchmaking, profile, hello, friends, card_shuffle, and screens features. See [Test Coverage](#quality-gates-definition-of-done) for the full breakdown.
 
 ---
 
@@ -374,7 +374,7 @@ Presence, typing, and nameQueue data are removed by `leaveRoom` CF on explicit l
 
 | Suite | Count | Location | Requires |
 |---|---|---|---|
-| Flutter unit + widget | 698 tests | `apps/mobile/test/` | Nothing |
+| Flutter unit + widget | 824 tests | `apps/mobile/test/` | Nothing |
 | Cloud Functions Jest | 93 unit tests | `functions/src/**/__tests__/*.test.ts` | `./dev.sh --emulator-only` |
 | Cloud Functions Jest (integration) | 7 live tests | `functions/src/matchmaking/__tests__/embeddingService.integration.test.ts` | Vertex AI credentials + `npm run test:embedding` |
 | Flutter integration | 43 tests | `apps/mobile/integration_test/matchmaking_advanced_test.dart` | Emulators + Android device |
@@ -416,7 +416,7 @@ CozyTalk/
 │   │   │   ├── home/                 ← navigation hub stub (presentation only)
 │   │   │   └── friends/              ← friend requests, friend list, permanent direct chat (prototype)
 │   │   └── screens/                  ← legacy design-preview UI (not wired to features layer)
-│   ├── test/                         ← 582 unit + widget tests
+│   ├── test/                         ← 824 unit + widget tests
 │   └── .env.example                  ← committed; USE_EMULATOR=true by default
 ├── functions/src/
 │   ├── index.ts                      ← exports all 15 functions
