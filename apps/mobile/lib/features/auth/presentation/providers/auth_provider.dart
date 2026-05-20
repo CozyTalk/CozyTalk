@@ -4,6 +4,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../shared/cache_keys.dart';
+import '../../../../shared/prefs_provider.dart';
+
 import '../../data/datasources/auth_datasource.dart';
 import '../../data/repositories/auth_repository_impl.dart';
 import '../../domain/entities/auth_user.dart';
@@ -152,6 +155,14 @@ class AuthNotifier extends Notifier<AuthState> {
   }
 
   Future<void> signOut() async {
+    final uid = state.user?.uid;
+    if (uid != null) {
+      final prefs = ref.read(sharedPreferencesProvider);
+      await Future.wait([
+        prefs.remove(CacheKeys.profile(uid)),
+        prefs.remove(CacheKeys.avatar(uid)),
+      ]);
+    }
     await ref.read(_signOutProvider)();
     state = state.copyWith(
       status: AuthStatus.unauthenticated,
