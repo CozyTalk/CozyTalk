@@ -108,7 +108,15 @@ class _AdminReportDetailScreenState extends State<AdminReportDetailScreen> {
             children: [
               Center(
                 child: InteractiveViewer(
-                  child: CachedNetworkImage(imageUrl: url, fit: BoxFit.contain),
+                  child: CachedNetworkImage(
+                    imageUrl: url,
+                    fit: BoxFit.contain,
+                    errorWidget: (_, _, _) => const Icon(
+                      Icons.broken_image_rounded,
+                      color: Colors.white54,
+                      size: 48,
+                    ),
+                  ),
                 ),
               ),
               Positioned(
