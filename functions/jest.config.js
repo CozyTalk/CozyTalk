@@ -1,12 +1,11 @@
 /** @type {import('jest').Config} */
 module.exports = {
-  preset: "ts-jest",
   testEnvironment: "node",
-  globals: {
-    "ts-jest": {
+  transform: {
+    "^.+\\.tsx?$": ["ts-jest", {
       tsconfig: "tsconfig.test.json",
       isolatedModules: true,
-    },
+    }],
   },
   setupFilesAfterEnv: ["<rootDir>/jest.setup.ts"],
   testMatch: ["**/__tests__/**/*.test.ts"],
