@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mobile/features/auth/presentation/providers/auth_provider.dart';
 import 'package:mobile/screens/login_screen.dart';
+import 'package:mobile/shared/connectivity_provider.dart';
+import 'package:mobile/shared/network_info.dart';
 
 class _FakeAuthNotifier extends AuthNotifier {
   int signInCount = 0;
@@ -38,10 +40,27 @@ class _FakeAuthNotifier extends AuthNotifier {
   Future<void> signOut() async {}
 }
 
-Widget _build(_FakeAuthNotifier fake) => ProviderScope(
-  overrides: [authNotifierProvider.overrideWith(() => fake)],
-  child: const MaterialApp(home: LoginScreen()),
-);
+class _FakeNetworkInfo implements NetworkInfo {
+  final bool _isOnline;
+  _FakeNetworkInfo({bool isOnline = true}) : _isOnline = isOnline;
+
+  @override
+  Stream<bool> get onConnectivityChanged => Stream.value(_isOnline);
+
+  @override
+  Future<bool> get isConnected async => _isOnline;
+}
+
+Widget _build(_FakeAuthNotifier fake, {NetworkInfo? networkInfo}) =>
+    ProviderScope(
+      overrides: [
+        authNotifierProvider.overrideWith(() => fake),
+        networkInfoProvider.overrideWithValue(
+          networkInfo ?? _FakeNetworkInfo(isOnline: true),
+        ),
+      ],
+      child: const MaterialApp(home: LoginScreen()),
+    );
 
 void main() {
   group('LoginScreen (production)', () {

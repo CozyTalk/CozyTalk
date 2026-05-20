@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../features/matchmaking/domain/entities/matchmaking_status.dart';
 import '../features/matchmaking/presentation/providers/matchmaking_provider.dart';
+import '../shared/connectivity_provider.dart';
+import '../shared/offline_card.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_routes.dart';
 
@@ -71,12 +73,17 @@ class _FindingRoomScreenState extends ConsumerState<FindingRoomScreen> {
     _frameTimer.cancel();
     _clockTimer.cancel();
     if (!_didMatch) {
-      _notifier?.cancelSearch();
+      // Defer cancelSearch to avoid modifying Riverpod state during
+      // widget tree unmount, which triggers a "provider modified during
+      // build" assertion in debug mode.
+      Future.microtask(() => _notifier?.cancelSearch());
     }
     super.dispose();
   }
 
-  void _startMatchmaking() {
+  Future<void> _startMatchmaking() async {
+    final isOnline = await ref.read(networkInfoProvider).isConnected;
+    if (!isOnline || !mounted) return;
     final roomType = _args?['roomType'] as String? ?? '1v1';
     switch (roomType) {
       case 'group':
@@ -124,9 +131,17 @@ class _FindingRoomScreenState extends ConsumerState<FindingRoomScreen> {
           },
         );
       } else if (next.status == MatchmakingStatus.error) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(next.error ?? 'Something went wrong')),
-        );
+        // Don't navigate away when offline — the OfflineCard already handles
+        // the UI. Only pop if we're actually online and the error is real.
+        final isOffline = !ref
+            .read(isOnlineProvider)
+            .when(data: (v) => v, loading: () => true, error: (_, _) => true);
+        if (isOffline) return;
+        ScaffoldMessenger.of(context)
+          ..clearSnackBars()
+          ..showSnackBar(
+            SnackBar(content: Text(next.error ?? 'Something went wrong')),
+          );
         _notifier?.cancelSearch();
         Navigator.popUntil(
           context,
@@ -136,6 +151,9 @@ class _FindingRoomScreenState extends ConsumerState<FindingRoomScreen> {
     });
 
     final badge = _roomTypeBadge;
+    final isOffline = !ref
+        .watch(isOnlineProvider)
+        .when(data: (v) => v, loading: () => true, error: (_, _) => true);
 
     return Scaffold(
       backgroundColor: AppColors.scaffoldBg,
@@ -214,101 +232,106 @@ class _FindingRoomScreenState extends ConsumerState<FindingRoomScreen> {
 
               const SizedBox(height: 24),
 
-              Container(
-                width: double.infinity,
-                height: 230,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(24),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.07),
-                      blurRadius: 16,
-                      offset: const Offset(0, 6),
-                    ),
-                  ],
-                ),
-                clipBehavior: Clip.hardEdge,
-                child: Image.asset(
-                  _frames[_frameIndex],
-                  fit: BoxFit.contain,
-                  errorBuilder: (_, _, _) => const Center(
-                    child: Icon(
-                      Icons.directions_car_rounded,
-                      size: 80,
-                      color: Colors.black12,
+              if (isOffline) ...[
+                const OfflineCard(),
+                const Spacer(flex: 3),
+              ] else ...[
+                Container(
+                  width: double.infinity,
+                  height: 230,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(24),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.07),
+                        blurRadius: 16,
+                        offset: const Offset(0, 6),
+                      ),
+                    ],
+                  ),
+                  clipBehavior: Clip.hardEdge,
+                  child: Image.asset(
+                    _frames[_frameIndex],
+                    fit: BoxFit.contain,
+                    errorBuilder: (_, _, _) => const Center(
+                      child: Icon(
+                        Icons.directions_car_rounded,
+                        size: 80,
+                        color: Colors.black12,
+                      ),
                     ),
                   ),
                 ),
-              ),
 
-              const SizedBox(height: 28),
+                const SizedBox(height: 28),
 
-              LayoutBuilder(
-                builder: (context, constraints) {
-                  final pct = (_progress * 100).round();
-                  final fillW = constraints.maxWidth * _progress;
-                  return Stack(
-                    children: [
-                      Container(
-                        height: 44,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFE4E4E4),
-                          borderRadius: BorderRadius.circular(22),
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    final pct = (_progress * 100).round();
+                    final fillW = constraints.maxWidth * _progress;
+                    return Stack(
+                      children: [
+                        Container(
+                          height: 44,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFE4E4E4),
+                            borderRadius: BorderRadius.circular(22),
+                          ),
                         ),
-                      ),
-                      AnimatedContainer(
-                        duration: const Duration(milliseconds: 600),
-                        curve: Curves.easeOut,
-                        height: 44,
-                        width: fillW.clamp(44.0, constraints.maxWidth),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFB5D4A5),
-                          borderRadius: BorderRadius.circular(22),
+                        AnimatedContainer(
+                          duration: const Duration(milliseconds: 600),
+                          curve: Curves.easeOut,
+                          height: 44,
+                          width: fillW.clamp(44.0, constraints.maxWidth),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFB5D4A5),
+                            borderRadius: BorderRadius.circular(22),
+                          ),
                         ),
-                      ),
-                      SizedBox(
-                        height: 44,
-                        width: constraints.maxWidth,
-                        child: Center(
-                          child: Text(
-                            '$pct%',
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.black54,
+                        SizedBox(
+                          height: 44,
+                          width: constraints.maxWidth,
+                          child: Center(
+                            child: Text(
+                              '$pct%',
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black54,
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                    ],
-                  );
-                },
-              ),
+                      ],
+                    );
+                  },
+                ),
 
-              const SizedBox(height: 14),
+                const SizedBox(height: 14),
 
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(
-                    Icons.timer_outlined,
-                    size: 16,
-                    color: Colors.black38,
-                  ),
-                  const SizedBox(width: 6),
-                  Text(
-                    'Searching for $_timeLabel',
-                    style: const TextStyle(
-                      fontFamily: 'Poppins',
-                      fontSize: 13,
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(
+                      Icons.timer_outlined,
+                      size: 16,
                       color: Colors.black38,
                     ),
-                  ),
-                ],
-              ),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Searching for $_timeLabel',
+                      style: const TextStyle(
+                        fontFamily: 'Poppins',
+                        fontSize: 13,
+                        color: Colors.black38,
+                      ),
+                    ),
+                  ],
+                ),
 
-              const Spacer(flex: 3),
+                const Spacer(flex: 3),
+              ],
 
               SizedBox(
                 width: double.infinity,

@@ -1,10 +1,12 @@
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../theme/app_colors.dart';
 import '../shared/avatar_overlay.dart';
+import '../shared/connectivity_provider.dart';
 import '../shared/info_dialog.dart';
 import '../shared/layered_avatar.dart';
+import '../shared/offline_chip.dart';
+import '../theme/app_colors.dart';
 import '../features/auth/presentation/providers/auth_provider.dart';
 import '../features/profile/presentation/providers/profile_provider.dart';
 
@@ -48,10 +50,10 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
     final state = ref.watch(profileNotifierProvider);
 
     ref.listen<ProfileState>(profileNotifierProvider, (prev, next) {
-      if (next.error != null && prev?.error == null) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(next.error!)));
+      if (next.error != null && next.error != prev?.error) {
+        ScaffoldMessenger.of(context)
+          ..clearSnackBars()
+          ..showSnackBar(SnackBar(content: Text(next.error!)));
       }
       if (prev?.profile == null && next.profile != null) {
         if (_usernameCtrl.text.isEmpty) {
@@ -63,11 +65,16 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
       }
     });
 
+    final isOffline = !ref
+        .watch(isOnlineProvider)
+        .when(data: (v) => v, loading: () => true, error: (_, _) => true);
+
     return Scaffold(
       backgroundColor: AppColors.scaffoldBg,
       body: Column(
         children: [
           _buildCustomAppBar(context),
+          const OfflineChip(),
           Expanded(
             child: CustomScrollView(
               slivers: [
@@ -240,6 +247,19 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
                           onTap: state.isLoading
                               ? null
                               : () async {
+                                  if (isOffline) {
+                                    ScaffoldMessenger.of(context)
+                                      ..clearSnackBars()
+                                      ..showSnackBar(
+                                        const SnackBar(
+                                          content: Text(
+                                            "You're offline — changes can't be saved",
+                                          ),
+                                          behavior: SnackBarBehavior.floating,
+                                        ),
+                                      );
+                                    return;
+                                  }
                                   if (_usernameCtrl.text.trim().isEmpty) {
                                     setState(() => _usernameError = true);
                                     return;
@@ -285,10 +305,14 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
                               vertical: 12,
                             ),
                             decoration: BoxDecoration(
-                              color: const Color(0xFFDEF1C2),
+                              color: isOffline
+                                  ? Colors.grey.shade200
+                                  : const Color(0xFFDEF1C2),
                               borderRadius: BorderRadius.circular(20),
                               border: Border.all(
-                                color: const Color(0xFFC7D2B5),
+                                color: isOffline
+                                    ? Colors.grey.shade300
+                                    : const Color(0xFFC7D2B5),
                                 width: 1.5,
                               ),
                               boxShadow: [
@@ -308,10 +332,12 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
                                       color: Colors.black,
                                     ),
                                   )
-                                : const Text(
+                                : Text(
                                     'Save',
                                     style: TextStyle(
-                                      color: Colors.black,
+                                      color: isOffline
+                                          ? Colors.grey.shade500
+                                          : Colors.black,
                                       fontSize: 16,
                                       fontWeight: FontWeight.w900,
                                     ),

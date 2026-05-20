@@ -4,7 +4,21 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mobile/features/matchmaking/domain/entities/matchmaking_status.dart';
 import 'package:mobile/features/matchmaking/presentation/providers/matchmaking_provider.dart';
 import 'package:mobile/screens/finding_room_screen.dart';
+import 'package:mobile/shared/connectivity_provider.dart';
+import 'package:mobile/shared/network_info.dart';
+import 'package:mobile/shared/offline_card.dart';
 import 'package:mobile/theme/app_routes.dart';
+
+class _FakeNetworkInfo implements NetworkInfo {
+  final bool _isOnline;
+  _FakeNetworkInfo({required bool isOnline}) : _isOnline = isOnline;
+
+  @override
+  Stream<bool> get onConnectivityChanged => Stream.value(_isOnline);
+
+  @override
+  Future<bool> get isConnected async => _isOnline;
+}
 
 class _FakeMatchmakingNotifier extends MatchmakingNotifier {
   final MatchmakingState _initial;
@@ -44,6 +58,8 @@ Future<void> _pump(
   String roomType = '1v1',
   String roomName = 'Kao Tapu',
   String bgImage = 'assets/images/backgrounds/kao_tapu.png',
+  // Defaults to online so existing tests continue working without change.
+  NetworkInfo? networkInfo,
 }) async {
   final args = {
     'roomType': roomType,
@@ -52,9 +68,16 @@ Future<void> _pump(
     'isGroup': roomType == 'group' || roomType == 'create',
   };
 
+  // Always override networkInfoProvider — _startMatchmaking calls isConnected
+  // which uses platform channels that are not available in the test environment.
+  final resolvedNetworkInfo = networkInfo ?? _FakeNetworkInfo(isOnline: true);
+
   await tester.pumpWidget(
     ProviderScope(
-      overrides: [matchmakingNotifierProvider.overrideWith(() => fake)],
+      overrides: [
+        matchmakingNotifierProvider.overrideWith(() => fake),
+        networkInfoProvider.overrideWithValue(resolvedNetworkInfo),
+      ],
       child: MaterialApp(
         routes: {
           '/': (_) => Builder(
@@ -244,6 +267,42 @@ void main() {
 
       // cancelSearch must have been called at least once (Cancel tap + dispose)
       expect(fake.cancelSearchCount, greaterThanOrEqualTo(1));
+    });
+
+    // ── offline ───────────────────────────────────────────────────────────────
+
+    testWidgets('shows OfflineCard when offline', (tester) async {
+      final fake = _FakeMatchmakingNotifier();
+      await _pump(tester, fake, networkInfo: _FakeNetworkInfo(isOnline: false));
+      await tester.pump();
+      expect(find.byType(OfflineCard), findsOneWidget);
+    });
+
+    testWidgets('does not show OfflineCard when online', (tester) async {
+      final fake = _FakeMatchmakingNotifier();
+      await _pump(tester, fake, networkInfo: _FakeNetworkInfo(isOnline: true));
+      await tester.pump();
+      expect(find.byType(OfflineCard), findsNothing);
+    });
+
+    testWidgets('tuk-tuk asset absent when offline', (tester) async {
+      final fake = _FakeMatchmakingNotifier();
+      await _pump(tester, fake, networkInfo: _FakeNetworkInfo(isOnline: false));
+      await tester.pump();
+      final tuktukImages = find.byWidgetPredicate(
+        (w) =>
+            w is Image &&
+            w.image is AssetImage &&
+            (w.image as AssetImage).assetName.contains('tuk_tuk'),
+      );
+      expect(tuktukImages, findsNothing);
+    });
+
+    testWidgets('Cancel button always visible when offline', (tester) async {
+      final fake = _FakeMatchmakingNotifier();
+      await _pump(tester, fake, networkInfo: _FakeNetworkInfo(isOnline: false));
+      await tester.pump();
+      expect(find.text('Cancel'), findsOneWidget);
     });
   });
 }
