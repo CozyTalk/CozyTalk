@@ -8,17 +8,7 @@ import 'package:mobile/features/profile/presentation/providers/profile_provider.
 import 'package:mobile/screens/profile_edit_screen.dart';
 import 'package:mobile/shared/connectivity_provider.dart';
 import 'package:mobile/shared/network_info.dart';
-
-class _FakeNetworkInfo implements NetworkInfo {
-  final bool _isOnline;
-  _FakeNetworkInfo({required bool isOnline}) : _isOnline = isOnline;
-
-  @override
-  Stream<bool> get onConnectivityChanged => Stream.value(_isOnline);
-
-  @override
-  Future<bool> get isConnected async => _isOnline;
-}
+import '../shared/fake_network_info.dart';
 
 class _FakeProfileNotifier extends ProfileNotifier {
   final ProfileState _initial;
@@ -267,7 +257,7 @@ void main() {
       await tester.pumpWidget(
         _buildScreen(
           _FakeProfileNotifier(),
-          networkInfo: _FakeNetworkInfo(isOnline: false),
+          networkInfo: FakeNetworkInfo(isOnline: false),
         ),
       );
       await tester.pump();
@@ -286,7 +276,7 @@ void main() {
       addTearDown(tester.view.reset);
       final fake = _FakeProfileNotifier();
       await tester.pumpWidget(
-        _buildScreen(fake, networkInfo: _FakeNetworkInfo(isOnline: false)),
+        _buildScreen(fake, networkInfo: FakeNetworkInfo(isOnline: false)),
       );
       await tester.pump();
 
@@ -294,7 +284,7 @@ void main() {
       await _tapSave(tester);
 
       expect(
-        find.text("You're offline — changes can't be saved"),
+        find.text("You're offline. Changes require a connection."),
         findsOneWidget,
       );
       expect(fake.updateDisplayNameCount, 0);
@@ -305,7 +295,7 @@ void main() {
       addTearDown(tester.view.reset);
       final fake = _FakeProfileNotifier();
       await tester.pumpWidget(
-        _buildScreen(fake, networkInfo: _FakeNetworkInfo(isOnline: true)),
+        _buildScreen(fake, networkInfo: FakeNetworkInfo(isOnline: true)),
       );
       await tester.pump();
 
@@ -319,7 +309,7 @@ void main() {
       await tester.pumpWidget(
         _buildScreen(
           _FakeProfileNotifier(),
-          networkInfo: _FakeNetworkInfo(isOnline: false),
+          networkInfo: FakeNetworkInfo(isOnline: false),
         ),
       );
       await tester.pump();

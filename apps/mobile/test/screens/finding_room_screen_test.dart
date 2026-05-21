@@ -8,17 +8,7 @@ import 'package:mobile/shared/connectivity_provider.dart';
 import 'package:mobile/shared/network_info.dart';
 import 'package:mobile/shared/offline_card.dart';
 import 'package:mobile/theme/app_routes.dart';
-
-class _FakeNetworkInfo implements NetworkInfo {
-  final bool _isOnline;
-  _FakeNetworkInfo({required bool isOnline}) : _isOnline = isOnline;
-
-  @override
-  Stream<bool> get onConnectivityChanged => Stream.value(_isOnline);
-
-  @override
-  Future<bool> get isConnected async => _isOnline;
-}
+import '../shared/fake_network_info.dart';
 
 class _FakeMatchmakingNotifier extends MatchmakingNotifier {
   final MatchmakingState _initial;
@@ -70,7 +60,7 @@ Future<void> _pump(
 
   // Always override networkInfoProvider — _startMatchmaking calls isConnected
   // which uses platform channels that are not available in the test environment.
-  final resolvedNetworkInfo = networkInfo ?? _FakeNetworkInfo(isOnline: true);
+  final resolvedNetworkInfo = networkInfo ?? FakeNetworkInfo(isOnline: true);
 
   await tester.pumpWidget(
     ProviderScope(
@@ -273,21 +263,21 @@ void main() {
 
     testWidgets('shows OfflineCard when offline', (tester) async {
       final fake = _FakeMatchmakingNotifier();
-      await _pump(tester, fake, networkInfo: _FakeNetworkInfo(isOnline: false));
+      await _pump(tester, fake, networkInfo: FakeNetworkInfo(isOnline: false));
       await tester.pump();
       expect(find.byType(OfflineCard), findsOneWidget);
     });
 
     testWidgets('does not show OfflineCard when online', (tester) async {
       final fake = _FakeMatchmakingNotifier();
-      await _pump(tester, fake, networkInfo: _FakeNetworkInfo(isOnline: true));
+      await _pump(tester, fake, networkInfo: FakeNetworkInfo(isOnline: true));
       await tester.pump();
       expect(find.byType(OfflineCard), findsNothing);
     });
 
     testWidgets('tuk-tuk asset absent when offline', (tester) async {
       final fake = _FakeMatchmakingNotifier();
-      await _pump(tester, fake, networkInfo: _FakeNetworkInfo(isOnline: false));
+      await _pump(tester, fake, networkInfo: FakeNetworkInfo(isOnline: false));
       await tester.pump();
       final tuktukImages = find.byWidgetPredicate(
         (w) =>
@@ -300,7 +290,7 @@ void main() {
 
     testWidgets('Cancel button always visible when offline', (tester) async {
       final fake = _FakeMatchmakingNotifier();
-      await _pump(tester, fake, networkInfo: _FakeNetworkInfo(isOnline: false));
+      await _pump(tester, fake, networkInfo: FakeNetworkInfo(isOnline: false));
       await tester.pump();
       expect(find.text('Cancel'), findsOneWidget);
     });

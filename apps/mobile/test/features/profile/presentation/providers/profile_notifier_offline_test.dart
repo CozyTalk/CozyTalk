@@ -3,22 +3,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mobile/features/profile/domain/entities/profile_user.dart';
 import 'package:mobile/features/profile/presentation/providers/profile_provider.dart';
 import 'package:mobile/shared/connectivity_provider.dart';
-import 'package:mobile/shared/network_info.dart';
 import 'package:mobile/shared/prefs_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../domain/shared_fakes.dart';
-
-class _FakeNetworkInfo implements NetworkInfo {
-  final bool _isOnline;
-  _FakeNetworkInfo({required bool isOnline}) : _isOnline = isOnline;
-
-  @override
-  Stream<bool> get onConnectivityChanged => Stream.value(_isOnline);
-
-  @override
-  Future<bool> get isConnected async => _isOnline;
-}
+import '../../../../shared/fake_network_info.dart';
 
 ProviderContainer _buildContainer({
   required FakeProfileRepository repo,
@@ -29,7 +18,7 @@ ProviderContainer _buildContainer({
     overrides: [
       sharedPreferencesProvider.overrideWithValue(prefs),
       networkInfoProvider.overrideWithValue(
-        _FakeNetworkInfo(isOnline: isOnline),
+        FakeNetworkInfo(isOnline: isOnline),
       ),
       profileRepositoryProvider.overrideWithValue(repo),
     ],

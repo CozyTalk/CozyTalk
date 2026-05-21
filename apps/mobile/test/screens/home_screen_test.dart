@@ -11,19 +11,7 @@ import 'package:mobile/features/profile/presentation/providers/profile_provider.
 import 'package:mobile/screens/home_screen.dart';
 import 'package:mobile/shared/connectivity_provider.dart';
 import 'package:mobile/shared/network_info.dart';
-
-// ── Network fake ──────────────────────────────────────────────────────────────
-
-class _FakeNetworkInfo implements NetworkInfo {
-  final bool _isOnline;
-  _FakeNetworkInfo({required bool isOnline}) : _isOnline = isOnline;
-
-  @override
-  Stream<bool> get onConnectivityChanged => Stream.value(_isOnline);
-
-  @override
-  Future<bool> get isConnected async => _isOnline;
-}
+import '../shared/fake_network_info.dart';
 
 // ── Fakes ─────────────────────────────────────────────────────────────────────
 
@@ -344,7 +332,7 @@ void main() {
         _buildScreen(
           _FakeProfileNotifier(),
           _FakeAvatarDecorationNotifier(),
-          networkInfo: _FakeNetworkInfo(isOnline: false),
+          networkInfo: FakeNetworkInfo(isOnline: false),
         ),
       );
       await tester.pump(); // let stream emit
@@ -356,7 +344,7 @@ void main() {
         _buildScreen(
           _FakeProfileNotifier(),
           _FakeAvatarDecorationNotifier(),
-          networkInfo: _FakeNetworkInfo(isOnline: true),
+          networkInfo: FakeNetworkInfo(isOnline: true),
         ),
       );
       await tester.pump();
