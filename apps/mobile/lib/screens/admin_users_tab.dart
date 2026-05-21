@@ -159,6 +159,15 @@ class _AdminUserCardState extends State<AdminUserCard> {
                 const SizedBox(width: 6),
                 Expanded(
                   child: AdminActionBtn(
+                    label: 'Blocked',
+                    icon: Icons.person_off_outlined,
+                    tone: 'neutral',
+                    onTap: () => widget.onAction('viewBlocked', u),
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: AdminActionBtn(
                     label: 'Ban',
                     icon: Icons.block_rounded,
                     tone: 'danger',

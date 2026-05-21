@@ -133,6 +133,7 @@ class _MainUIAuthRouter extends ConsumerWidget {
   }
 }
 
+// ignore: unused_element
 class _AuthRouter extends ConsumerWidget {
   const _AuthRouter();
 

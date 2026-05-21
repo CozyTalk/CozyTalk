@@ -1,41 +1,32 @@
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../features/auth/presentation/providers/auth_provider.dart';
+import '../features/block/presentation/providers/block_provider.dart';
 import '../theme/app_colors.dart';
 import '../models/friend.dart';
 import '../shared/layered_avatar.dart';
 import 'friend_profile_dialog.dart';
 import 'block_dialogs.dart';
 
-class BlockedScreen extends StatefulWidget {
+class BlockedScreen extends ConsumerStatefulWidget {
   const BlockedScreen({super.key});
 
   @override
-  State<BlockedScreen> createState() => _BlockedScreenState();
+  ConsumerState<BlockedScreen> createState() => _BlockedScreenState();
 }
 
-class _BlockedScreenState extends State<BlockedScreen> {
+class _BlockedScreenState extends ConsumerState<BlockedScreen> {
   static const int _maxBlocked = 5;
-  final List<Friend> _blocked = [
-    Friend(
-      name: 'Somchai',
-      username: 'somchai99',
-      lastMessage: '',
-      isOnline: false,
-      avatar: 'assets/images/UserAvatar.png',
-      interest: '',
-    ),
-    Friend(
-      name: 'Somying',
-      username: 'somying55',
-      lastMessage: '',
-      isOnline: false,
-      avatar: 'assets/images/UserAvatar.png',
-      interest: '',
-    ),
-  ];
+  final Map<String, String?> _notes = {};
 
   @override
   Widget build(BuildContext context) {
+    final blockState = ref.watch(blockNotifierProvider);
+    final uid = ref.watch(authNotifierProvider).user?.uid ?? '';
+    final blocked = blockState.blockedUsers;
+
     return Scaffold(
       backgroundColor: AppColors.scaffoldBg,
       body: Column(
@@ -46,7 +37,7 @@ class _BlockedScreenState extends State<BlockedScreen> {
             child: Align(
               alignment: Alignment.centerRight,
               child: Text(
-                '${_blocked.length}/$_maxBlocked',
+                '${blocked.length}/$_maxBlocked',
                 style: const TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w700,
@@ -56,7 +47,7 @@ class _BlockedScreenState extends State<BlockedScreen> {
             ),
           ),
           Expanded(
-            child: _blocked.isEmpty
+            child: blocked.isEmpty
                 ? const Center(
                     child: Text(
                       'No blocked users',
@@ -65,10 +56,26 @@ class _BlockedScreenState extends State<BlockedScreen> {
                   )
                 : ListView.separated(
                     padding: const EdgeInsets.symmetric(horizontal: 20),
-                    itemCount: _blocked.length,
+                    itemCount: blocked.length,
                     separatorBuilder: (_, _) => const SizedBox(height: 16),
-                    itemBuilder: (context, i) =>
-                        _buildBlockedCard(context, _blocked[i], i),
+                    itemBuilder: (context, i) {
+                      final user = blocked[i];
+                      final note = _notes[user.uid];
+                      final friend = Friend(
+                        name: user.displayName ?? user.uid,
+                        username: user.uid,
+                        note: note,
+                        lastMessage: '',
+                        isOnline: false,
+                        interest: '',
+                      );
+                      return _buildBlockedCard(
+                        context,
+                        friend,
+                        user.uid,
+                        uid,
+                      );
+                    },
                   ),
           ),
         ],
@@ -133,7 +140,12 @@ class _BlockedScreenState extends State<BlockedScreen> {
   }
 
   // ─── Blocked User Card ───
-  Widget _buildBlockedCard(BuildContext context, Friend friend, int index) {
+  Widget _buildBlockedCard(
+    BuildContext context,
+    Friend friend,
+    String targetUid,
+    String ownerUid,
+  ) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -155,8 +167,9 @@ class _BlockedScreenState extends State<BlockedScreen> {
             onTap: () => showFriendProfileDialog(
               context: context,
               friend: friend,
-              onNoteSaved: (note) =>
-                  setState(() => friend.note = note.isNotEmpty ? note : null),
+              onNoteSaved: (note) => setState(
+                () => _notes[targetUid] = note.isNotEmpty ? note : null,
+              ),
             ),
             child: Container(
               width: 60,
@@ -183,7 +196,7 @@ class _BlockedScreenState extends State<BlockedScreen> {
             ),
           ),
           const SizedBox(width: 16),
-          // ── Username ──
+          // ── Display name ──
           Expanded(
             child: Text(
               friend.displayName,
@@ -199,7 +212,9 @@ class _BlockedScreenState extends State<BlockedScreen> {
             onTap: () => showConfirmUnblockDialog(
               context: context,
               username: friend.displayName,
-              onConfirm: () => setState(() => _blocked.removeAt(index)),
+              onConfirm: () => ref
+                  .read(blockNotifierProvider.notifier)
+                  .unblock(ownerUid, targetUid),
             ),
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
