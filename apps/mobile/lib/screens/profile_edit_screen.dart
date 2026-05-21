@@ -253,7 +253,7 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
                                       ..showSnackBar(
                                         const SnackBar(
                                           content: Text(
-                                            "You're offline — changes can't be saved",
+                                            "You're offline. Changes require a connection.",
                                           ),
                                           behavior: SnackBarBehavior.floating,
                                         ),
