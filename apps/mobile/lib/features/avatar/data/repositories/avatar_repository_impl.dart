@@ -34,14 +34,42 @@ class AvatarRepositoryImpl implements AvatarRepository {
   }
 
   @override
-  Future<void> updateHat(String uid, String? hatKey) =>
-      _datasource.updateHat(uid, hatKey);
+  Future<void> updateHat(String uid, String? hatKey) async {
+    await _datasource.updateHat(uid, hatKey);
+    try {
+      final cached = await _cache.read(uid);
+      if (cached != null) {
+        await _cache.write(uid, cached.copyWith(hatKey: hatKey));
+      }
+    } catch (_) {}
+  }
 
   @override
-  Future<void> updateMood(String uid, String? moodKey) =>
-      _datasource.updateMood(uid, moodKey);
+  Future<void> updateMood(String uid, String? moodKey) async {
+    await _datasource.updateMood(uid, moodKey);
+    try {
+      final cached = await _cache.read(uid);
+      if (cached != null) {
+        await _cache.write(uid, cached.copyWith(moodKey: moodKey));
+      }
+    } catch (_) {}
+  }
 
   @override
-  Future<void> updateDecoration(String uid, String? hatKey, String? moodKey) =>
-      _datasource.updateDecoration(uid, hatKey, moodKey);
+  Future<void> updateDecoration(
+    String uid,
+    String? hatKey,
+    String? moodKey,
+  ) async {
+    await _datasource.updateDecoration(uid, hatKey, moodKey);
+    try {
+      final cached = await _cache.read(uid);
+      if (cached != null) {
+        await _cache.write(
+          uid,
+          cached.copyWith(hatKey: hatKey, moodKey: moodKey),
+        );
+      }
+    } catch (_) {}
+  }
 }

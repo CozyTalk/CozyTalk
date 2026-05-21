@@ -178,9 +178,22 @@ void main() {
         expect(datasource.lastDisplayName, 'Bob');
       });
 
-      test('does NOT call cache', () async {
+      test('does not write cache when no entry exists', () async {
         await repository.updateDisplayName('uid-1', 'Bob');
         expect(cacheDs.writeCount, 0);
+      });
+
+      test('updates cached displayName when entry exists', () async {
+        cacheDs.stored = const ProfileUserModel(
+          uid: 'uid-1',
+          displayName: 'OldBob',
+          interest: 'coding',
+          thoughts: 'happy',
+        );
+        await repository.updateDisplayName('uid-1', 'NewBob');
+        expect(cacheDs.writeCount, 1);
+        expect(cacheDs.stored?.displayName, 'NewBob');
+        expect(cacheDs.stored?.interest, 'coding');
       });
 
       test('propagates datasource exception', () {
@@ -200,9 +213,21 @@ void main() {
         expect(datasource.lastInterest, 'music');
       });
 
-      test('does NOT call cache', () async {
+      test('does not write cache when no entry exists', () async {
         await repository.updateInterest('uid-1', 'music');
         expect(cacheDs.writeCount, 0);
+      });
+
+      test('updates cached interest when entry exists', () async {
+        cacheDs.stored = const ProfileUserModel(
+          uid: 'uid-1',
+          displayName: 'Alice',
+          interest: 'oldInterest',
+        );
+        await repository.updateInterest('uid-1', 'newInterest');
+        expect(cacheDs.writeCount, 1);
+        expect(cacheDs.stored?.interest, 'newInterest');
+        expect(cacheDs.stored?.displayName, 'Alice');
       });
 
       test('propagates datasource exception', () {
@@ -222,9 +247,21 @@ void main() {
         expect(datasource.lastThoughts, 'inspired');
       });
 
-      test('does NOT call cache', () async {
+      test('does not write cache when no entry exists', () async {
         await repository.updateThoughts('uid-1', 'inspired');
         expect(cacheDs.writeCount, 0);
+      });
+
+      test('updates cached thoughts when entry exists', () async {
+        cacheDs.stored = const ProfileUserModel(
+          uid: 'uid-1',
+          displayName: 'Alice',
+          thoughts: 'oldThought',
+        );
+        await repository.updateThoughts('uid-1', 'newThought');
+        expect(cacheDs.writeCount, 1);
+        expect(cacheDs.stored?.thoughts, 'newThought');
+        expect(cacheDs.stored?.displayName, 'Alice');
       });
 
       test('propagates datasource exception', () {

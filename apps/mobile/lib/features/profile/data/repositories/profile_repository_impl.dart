@@ -32,14 +32,35 @@ class ProfileRepositoryImpl implements ProfileRepository {
   }
 
   @override
-  Future<void> updateDisplayName(String uid, String displayName) =>
-      _datasource.updateDisplayName(uid, displayName);
+  Future<void> updateDisplayName(String uid, String displayName) async {
+    await _datasource.updateDisplayName(uid, displayName);
+    try {
+      final cached = await _cache.read(uid);
+      if (cached != null) {
+        await _cache.write(uid, cached.copyWith(displayName: displayName));
+      }
+    } catch (_) {}
+  }
 
   @override
-  Future<void> updateInterest(String uid, String interest) =>
-      _datasource.updateInterest(uid, interest);
+  Future<void> updateInterest(String uid, String interest) async {
+    await _datasource.updateInterest(uid, interest);
+    try {
+      final cached = await _cache.read(uid);
+      if (cached != null) {
+        await _cache.write(uid, cached.copyWith(interest: interest));
+      }
+    } catch (_) {}
+  }
 
   @override
-  Future<void> updateThoughts(String uid, String thoughts) =>
-      _datasource.updateThoughts(uid, thoughts);
+  Future<void> updateThoughts(String uid, String thoughts) async {
+    await _datasource.updateThoughts(uid, thoughts);
+    try {
+      final cached = await _cache.read(uid);
+      if (cached != null) {
+        await _cache.write(uid, cached.copyWith(thoughts: thoughts));
+      }
+    } catch (_) {}
+  }
 }

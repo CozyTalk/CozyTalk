@@ -185,9 +185,27 @@ void main() {
         expect(datasource.lastHatKey, 'Beanie');
       });
 
-      test('does NOT call cache', () async {
+      test('does not write cache when no entry exists', () async {
         await repository.updateHat('uid-1', 'Beanie');
         expect(cacheDs.writeCount, 0);
+      });
+
+      test('updates cached hatKey when entry exists', () async {
+        cacheDs.stored = const AvatarDecorationModel(
+          hatKey: 'OldCap',
+          moodKey: 'Happy',
+        );
+        await repository.updateHat('uid-1', 'NewCap');
+        expect(cacheDs.writeCount, 1);
+        expect(cacheDs.stored?.hatKey, 'NewCap');
+        expect(cacheDs.stored?.moodKey, 'Happy');
+      });
+
+      test('clears cached hatKey when null', () async {
+        cacheDs.stored = const AvatarDecorationModel(hatKey: 'OldCap');
+        await repository.updateHat('uid-1', null);
+        expect(cacheDs.writeCount, 1);
+        expect(cacheDs.stored?.hatKey, isNull);
       });
 
       test('propagates datasource exception', () {
@@ -207,9 +225,27 @@ void main() {
         expect(datasource.lastMoodKey, 'Grumpy');
       });
 
-      test('does NOT call cache', () async {
+      test('does not write cache when no entry exists', () async {
         await repository.updateMood('uid-1', 'Grumpy');
         expect(cacheDs.writeCount, 0);
+      });
+
+      test('updates cached moodKey when entry exists', () async {
+        cacheDs.stored = const AvatarDecorationModel(
+          hatKey: 'Crown',
+          moodKey: 'OldMood',
+        );
+        await repository.updateMood('uid-1', 'NewMood');
+        expect(cacheDs.writeCount, 1);
+        expect(cacheDs.stored?.moodKey, 'NewMood');
+        expect(cacheDs.stored?.hatKey, 'Crown');
+      });
+
+      test('clears cached moodKey when null', () async {
+        cacheDs.stored = const AvatarDecorationModel(moodKey: 'OldMood');
+        await repository.updateMood('uid-1', null);
+        expect(cacheDs.writeCount, 1);
+        expect(cacheDs.stored?.moodKey, isNull);
       });
 
       test('propagates datasource exception', () {
@@ -230,9 +266,31 @@ void main() {
         expect(datasource.lastMoodKey, 'Happy');
       });
 
-      test('does NOT call cache', () async {
+      test('does not write cache when no entry exists', () async {
         await repository.updateDecoration('uid-1', 'Crown', 'Happy');
         expect(cacheDs.writeCount, 0);
+      });
+
+      test('updates both cached fields when entry exists', () async {
+        cacheDs.stored = const AvatarDecorationModel(
+          hatKey: 'OldHat',
+          moodKey: 'OldMood',
+        );
+        await repository.updateDecoration('uid-1', 'NewHat', 'NewMood');
+        expect(cacheDs.writeCount, 1);
+        expect(cacheDs.stored?.hatKey, 'NewHat');
+        expect(cacheDs.stored?.moodKey, 'NewMood');
+      });
+
+      test('clears both cached fields when null', () async {
+        cacheDs.stored = const AvatarDecorationModel(
+          hatKey: 'Crown',
+          moodKey: 'Happy',
+        );
+        await repository.updateDecoration('uid-1', null, null);
+        expect(cacheDs.writeCount, 1);
+        expect(cacheDs.stored?.hatKey, isNull);
+        expect(cacheDs.stored?.moodKey, isNull);
       });
 
       test('propagates datasource exception', () {
