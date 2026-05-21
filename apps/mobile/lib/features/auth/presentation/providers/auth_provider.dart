@@ -22,28 +22,28 @@ final _authDatasourceProvider = Provider<AuthDatasource>(
       AuthDatasourceImpl(FirebaseAuth.instance, FirebaseFirestore.instance),
 );
 
-final _authRepositoryProvider = Provider<AuthRepository>(
+final authRepositoryProvider = Provider<AuthRepository>(
   (ref) => AuthRepositoryImpl(ref.watch(_authDatasourceProvider)),
 );
 
 final _signUpProvider = Provider<SignUp>(
-  (ref) => SignUp(ref.watch(_authRepositoryProvider)),
+  (ref) => SignUp(ref.watch(authRepositoryProvider)),
 );
 
 final _signInAnonymouslyProvider = Provider<SignInAnonymously>(
-  (ref) => SignInAnonymously(ref.watch(_authRepositoryProvider)),
+  (ref) => SignInAnonymously(ref.watch(authRepositoryProvider)),
 );
 
 final _signInWithGoogleProvider = Provider<SignInWithGoogle>(
-  (ref) => SignInWithGoogle(ref.watch(_authRepositoryProvider)),
+  (ref) => SignInWithGoogle(ref.watch(authRepositoryProvider)),
 );
 
 final _signInProvider = Provider<SignIn>(
-  (ref) => SignIn(ref.watch(_authRepositoryProvider)),
+  (ref) => SignIn(ref.watch(authRepositoryProvider)),
 );
 
 final _signOutProvider = Provider<SignOut>(
-  (ref) => SignOut(ref.watch(_authRepositoryProvider)),
+  (ref) => SignOut(ref.watch(authRepositoryProvider)),
 );
 
 final authNotifierProvider = NotifierProvider<AuthNotifier, AuthState>(
@@ -78,7 +78,7 @@ class AuthNotifier extends Notifier<AuthState> {
   @override
   AuthState build() {
     _sub?.cancel();
-    _sub = ref.read(_authRepositoryProvider).watchAuthState().listen((user) {
+    _sub = ref.read(authRepositoryProvider).watchAuthState().listen((user) {
       if (state.status == AuthStatus.loading) return;
       state = state.copyWith(
         status: user != null
