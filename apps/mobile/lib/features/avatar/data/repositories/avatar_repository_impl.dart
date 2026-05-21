@@ -1,27 +1,75 @@
 import '../../domain/entities/avatar_decoration.dart';
 import '../../domain/repositories/avatar_repository.dart';
+import '../datasources/avatar_cache_datasource.dart';
 import '../datasources/avatar_datasource.dart';
 import '../models/avatar_decoration_model.dart';
 
 class AvatarRepositoryImpl implements AvatarRepository {
   final AvatarDatasource _datasource;
-  AvatarRepositoryImpl(this._datasource);
+  final AvatarCacheDatasource _cache;
+
+  AvatarRepositoryImpl(this._datasource, this._cache);
 
   @override
   Future<AvatarDecoration?> getDecoration(String uid) async {
-    final model = await _datasource.getDecoration(uid);
+    try {
+      final model = await _datasource.getDecoration(uid);
+      if (model != null) {
+        try {
+          await _cache.write(uid, model);
+        } catch (_) {}
+      }
+      return model?.toEntity();
+    } catch (_) {
+      // Avatar null is a valid "no decoration" state — return null rather than
+      // rethrow so the notifier never shows an error just because the cache missed.
+      return (await _cache.read(uid))?.toEntity();
+    }
+  }
+
+  @override
+  Future<AvatarDecoration?> getCachedDecoration(String uid) async {
+    final model = await _cache.read(uid);
     return model?.toEntity();
   }
 
   @override
-  Future<void> updateHat(String uid, String? hatKey) =>
-      _datasource.updateHat(uid, hatKey);
+  Future<void> updateHat(String uid, String? hatKey) async {
+    await _datasource.updateHat(uid, hatKey);
+    try {
+      final cached = await _cache.read(uid);
+      if (cached != null) {
+        await _cache.write(uid, cached.copyWith(hatKey: hatKey));
+      }
+    } catch (_) {}
+  }
 
   @override
-  Future<void> updateMood(String uid, String? moodKey) =>
-      _datasource.updateMood(uid, moodKey);
+  Future<void> updateMood(String uid, String? moodKey) async {
+    await _datasource.updateMood(uid, moodKey);
+    try {
+      final cached = await _cache.read(uid);
+      if (cached != null) {
+        await _cache.write(uid, cached.copyWith(moodKey: moodKey));
+      }
+    } catch (_) {}
+  }
 
   @override
-  Future<void> updateDecoration(String uid, String? hatKey, String? moodKey) =>
-      _datasource.updateDecoration(uid, hatKey, moodKey);
+  Future<void> updateDecoration(
+    String uid,
+    String? hatKey,
+    String? moodKey,
+  ) async {
+    await _datasource.updateDecoration(uid, hatKey, moodKey);
+    try {
+      final cached = await _cache.read(uid);
+      if (cached != null) {
+        await _cache.write(
+          uid,
+          cached.copyWith(hatKey: hatKey, moodKey: moodKey),
+        );
+      }
+    } catch (_) {}
+  }
 }

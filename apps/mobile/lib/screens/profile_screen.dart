@@ -2,9 +2,10 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
-import '../theme/app_colors.dart';
 import '../shared/avatar_overlay.dart';
 import '../shared/layered_avatar.dart';
+import '../shared/offline_chip.dart';
+import '../theme/app_colors.dart';
 import '../features/auth/presentation/providers/auth_provider.dart';
 import '../features/profile/presentation/providers/profile_provider.dart';
 import 'profile_edit_screen.dart';
@@ -36,6 +37,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       body: Column(
         children: [
           _buildCustomAppBar(context),
+          const OfflineChip(),
           Expanded(
             child: CustomScrollView(
               slivers: [

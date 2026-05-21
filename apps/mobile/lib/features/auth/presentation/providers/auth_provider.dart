@@ -4,6 +4,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../shared/cache_keys.dart';
+import '../../../../shared/prefs_provider.dart';
+
 import '../../data/datasources/auth_datasource.dart';
 import '../../data/repositories/auth_repository_impl.dart';
 import '../../domain/entities/auth_user.dart';
@@ -19,28 +22,28 @@ final _authDatasourceProvider = Provider<AuthDatasource>(
       AuthDatasourceImpl(FirebaseAuth.instance, FirebaseFirestore.instance),
 );
 
-final _authRepositoryProvider = Provider<AuthRepository>(
+final authRepositoryProvider = Provider<AuthRepository>(
   (ref) => AuthRepositoryImpl(ref.watch(_authDatasourceProvider)),
 );
 
 final _signUpProvider = Provider<SignUp>(
-  (ref) => SignUp(ref.watch(_authRepositoryProvider)),
+  (ref) => SignUp(ref.watch(authRepositoryProvider)),
 );
 
 final _signInAnonymouslyProvider = Provider<SignInAnonymously>(
-  (ref) => SignInAnonymously(ref.watch(_authRepositoryProvider)),
+  (ref) => SignInAnonymously(ref.watch(authRepositoryProvider)),
 );
 
 final _signInWithGoogleProvider = Provider<SignInWithGoogle>(
-  (ref) => SignInWithGoogle(ref.watch(_authRepositoryProvider)),
+  (ref) => SignInWithGoogle(ref.watch(authRepositoryProvider)),
 );
 
 final _signInProvider = Provider<SignIn>(
-  (ref) => SignIn(ref.watch(_authRepositoryProvider)),
+  (ref) => SignIn(ref.watch(authRepositoryProvider)),
 );
 
 final _signOutProvider = Provider<SignOut>(
-  (ref) => SignOut(ref.watch(_authRepositoryProvider)),
+  (ref) => SignOut(ref.watch(authRepositoryProvider)),
 );
 
 final authNotifierProvider = NotifierProvider<AuthNotifier, AuthState>(
@@ -75,7 +78,7 @@ class AuthNotifier extends Notifier<AuthState> {
   @override
   AuthState build() {
     _sub?.cancel();
-    _sub = ref.read(_authRepositoryProvider).watchAuthState().listen((user) {
+    _sub = ref.read(authRepositoryProvider).watchAuthState().listen((user) {
       if (state.status == AuthStatus.loading) return;
       state = state.copyWith(
         status: user != null
@@ -152,6 +155,14 @@ class AuthNotifier extends Notifier<AuthState> {
   }
 
   Future<void> signOut() async {
+    final uid = state.user?.uid;
+    if (uid != null) {
+      final prefs = ref.read(sharedPreferencesProvider);
+      await Future.wait([
+        prefs.remove(CacheKeys.profile(uid)),
+        prefs.remove(CacheKeys.avatar(uid)),
+      ]);
+    }
     await ref.read(_signOutProvider)();
     state = state.copyWith(
       status: AuthStatus.unauthenticated,

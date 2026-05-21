@@ -6,22 +6,22 @@ All screens in `apps/mobile/lib/screens/`. These are the production frontend —
 
 | Class | File | Route | Extends | Integration |
 |---|---|---|---|---|
-| `HomeScreen` | `screens/home_screen.dart` | `/` | ConsumerStatefulWidget | ✅ integrated — notification badge wired to `friendsNotifierProvider.incomingRequests` |
+| `HomeScreen` | `screens/home_screen.dart` | `/` | ConsumerStatefulWidget | ✅ integrated — notification badge wired to `friendsNotifierProvider.incomingRequests`; shows `OfflineChip` when offline; avatar write errors (mood/dress) surface as SnackBar via `ref.listen` on `avatarDecorationNotifierProvider` |
 | `ChatScreen` | `screens/chat_screen.dart` | `/chat` | ConsumerStatefulWidget | ⚠️ partial — uses `shared/` providers only, not wired to `chatNotifierProvider` |
 | `GroupChatScreen` | `screens/group_chat_screen.dart` | `/group-chat` | ConsumerStatefulWidget | ⚠️ partial — uses `shared/` providers only, not wired to `chatNotifierProvider` |
-| `FindingRoomScreen` | `screens/finding_room_screen.dart` | `/finding-room` | ConsumerStatefulWidget | ✅ integrated — calls `join1v1Pool()` / `joinGroupRoom()` / `createCustomRoom()` based on `roomType` arg; navigates to `chatScreen` (1v1) or `groupChatScreen` (group/create) on `matched`; `cancelSearch()` on Cancel or dispose |
+| `FindingRoomScreen` | `screens/finding_room_screen.dart` | `/finding-room` | ConsumerStatefulWidget | ✅ integrated — calls `join1v1Pool()` / `joinGroupRoom()` / `createCustomRoom()` based on `roomType` arg; navigates to `chatScreen` (1v1) or `groupChatScreen` (group/create) on `matched`; `cancelSearch()` on Cancel or dispose; shows `OfflineCard` instead of tuk-tuk animation when offline; `_startMatchmaking` checks `isConnected` and returns early if offline; `cancelSearch` in `dispose` deferred via `Future.microtask` (prevents Riverpod provider-modified-during-build crash) |
 | `ChooseRoomTypeScreen` | `screens/choose_room_type_screen.dart` | `/choose-room-type` | StatefulWidget | ✅ integrated — back button uses `popUntil(isFirst)` to return home |
 | `JoinRoomIdScreen` | `screens/join_room_id_screen.dart` | `/join-room` | StatefulWidget | ⬜ pending |
-| `ProfileScreen` | `screens/profile_screen.dart` | `/profile` | ConsumerStatefulWidget | ✅ integrated — wired to `profileNotifierProvider` + `authNotifierProvider` + `avatarProvider` |
-| `ProfileEditScreen` | `screens/profile_edit_screen.dart` | `/profile/edit` | ConsumerStatefulWidget | ✅ integrated — pre-fills from `profileNotifierProvider`, saves via `updateDisplayName`/`updateInterest`, error via snackbar, success via `showInfoDialog`, navigated directly from `ProfileScreen` |
+| `ProfileScreen` | `screens/profile_screen.dart` | `/profile` | ConsumerStatefulWidget | ✅ integrated — wired to `profileNotifierProvider` + `authNotifierProvider` + `avatarProvider`; shows `OfflineChip` when offline |
+| `ProfileEditScreen` | `screens/profile_edit_screen.dart` | `/profile/edit` | ConsumerStatefulWidget | ✅ integrated — pre-fills from `profileNotifierProvider`, saves via `updateDisplayName`/`updateInterest`, error via snackbar, success via `showInfoDialog`, navigated directly from `ProfileScreen`; shows `OfflineChip`; Save button grayed and blocked when offline; SnackBar shown on offline tap without calling notifier |
 | `DressUpScreen` | `screens/dress_up_screen.dart` | `/dressup` | ConsumerStatefulWidget | ⚠️ partial — uses shared `avatarProvider` (`StateProvider`), not `avatarDecorationNotifierProvider` |
 | `MoodScreen` | `screens/mood_screen.dart` | `/mood` | ConsumerStatefulWidget | ⚠️ partial — uses shared `avatarProvider` (`StateProvider`), not `avatarDecorationNotifierProvider` |
-| `FriendsScreen` | `screens/friends_screen.dart` | `/friends` | StatefulWidget | ⬜ pending |
+| `FriendsScreen` | `screens/friends_screen.dart` | `/friends` | ConsumerStatefulWidget | ⬜ pending; shows `OfflineCard` when offline (prototype — mock data) |
 | `FriendChatScreen` | `screens/friend_chat_screen.dart` | `/friends/chat` | StatefulWidget | ⬜ pending |
 | `BlockedScreen` | `screens/blocked_screen.dart` | `/blocked` | StatefulWidget | ⬜ pending |
 | `NotificationScreen` | `screens/notification_screen.dart` | `/notification` | ConsumerStatefulWidget | ✅ integrated — `friendsNotifierProvider.incomingRequests`; accept/decline wired; App Update static card |
 | `SelectBackgroundScreen` | `screens/select_background_screen.dart` | `/select-background` | StatefulWidget | ✅ integrated — no Riverpod needed; passes `{ roomType, roomName, bgImage, isGroup }` to `findingRoom` route; back button pops to `chooseRoomType` |
-| `LoginScreen` | `screens/login_screen.dart` | — | ConsumerStatefulWidget | ⬜ design preview — never imported in `main.dart`; CA version (`features/auth/`) is used |
+| `LoginScreen` | `screens/login_screen.dart` | — | ConsumerStatefulWidget | ✅ used in production mode (`_useMainUI = true`) by `_MainUIAuthRouter` in `main.dart`; wired to `authNotifierProvider`; shows `OfflineChip` + blocks all sign-in actions when offline |
 | `SignupScreen` | `screens/signup_screen.dart` | — | ConsumerStatefulWidget | ⬜ design preview — never imported in `main.dart`; CA version (`features/auth/`) is used |
 
 ## Admin Screens (admin role only)

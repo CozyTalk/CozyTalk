@@ -9,6 +9,9 @@ import 'package:mobile/features/friends/presentation/providers/friends_provider.
 import 'package:mobile/features/profile/domain/entities/profile_user.dart';
 import 'package:mobile/features/profile/presentation/providers/profile_provider.dart';
 import 'package:mobile/screens/home_screen.dart';
+import 'package:mobile/shared/connectivity_provider.dart';
+import 'package:mobile/shared/network_info.dart';
+import '../shared/fake_network_info.dart';
 
 // ── Fakes ─────────────────────────────────────────────────────────────────────
 
@@ -113,6 +116,10 @@ class _FakeAvatarDecorationNotifier extends AvatarDecorationNotifier {
     String? hatKey,
     String? moodKey,
   ) async {}
+
+  void triggerError(String msg) {
+    state = state.copyWith(status: AvatarDecorationStatus.error, error: msg);
+  }
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -127,6 +134,7 @@ Widget _buildScreen(
   _FakeAvatarDecorationNotifier avatarFake, {
   AuthState auth = _authenticatedAuth,
   FriendsState friends = const FriendsState(),
+  NetworkInfo? networkInfo,
 }) {
   return ProviderScope(
     overrides: [
@@ -136,6 +144,8 @@ Widget _buildScreen(
       friendsNotifierProvider.overrideWith(
         () => _FakeFriendsNotifier(initial: friends),
       ),
+      if (networkInfo != null)
+        networkInfoProvider.overrideWithValue(networkInfo),
     ],
     child: const MaterialApp(home: HomeScreen()),
   );
@@ -315,6 +325,63 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(profile.updateThoughtsCount, 0);
+    });
+
+    testWidgets('OfflineChip visible when offline', (tester) async {
+      await tester.pumpWidget(
+        _buildScreen(
+          _FakeProfileNotifier(),
+          _FakeAvatarDecorationNotifier(),
+          networkInfo: FakeNetworkInfo(isOnline: false),
+        ),
+      );
+      await tester.pump(); // let stream emit
+      expect(find.text('Offline'), findsOneWidget);
+    });
+
+    testWidgets('OfflineChip not visible when online', (tester) async {
+      await tester.pumpWidget(
+        _buildScreen(
+          _FakeProfileNotifier(),
+          _FakeAvatarDecorationNotifier(),
+          networkInfo: FakeNetworkInfo(isOnline: true),
+        ),
+      );
+      await tester.pump();
+      expect(find.text('Offline'), findsNothing);
+    });
+
+    testWidgets('avatar error SnackBar shown when error state is set', (
+      tester,
+    ) async {
+      final avatarFake = _FakeAvatarDecorationNotifier();
+      final container = ProviderContainer(
+        overrides: [
+          authNotifierProvider.overrideWith(
+            () => _FakeAuthNotifier(initial: _authenticatedAuth),
+          ),
+          profileNotifierProvider.overrideWith(() => _FakeProfileNotifier()),
+          avatarDecorationNotifierProvider.overrideWith(() => avatarFake),
+          friendsNotifierProvider.overrideWith(() => _FakeFriendsNotifier()),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: const MaterialApp(home: HomeScreen()),
+        ),
+      );
+      await tester.pump();
+
+      // Trigger a state change from null → error, which fires the ref.listen.
+      (container.read(avatarDecorationNotifierProvider.notifier)
+              as _FakeAvatarDecorationNotifier)
+          .triggerError('test avatar error');
+      await tester.pump();
+
+      expect(find.text('test avatar error'), findsOneWidget);
     });
   });
 }
