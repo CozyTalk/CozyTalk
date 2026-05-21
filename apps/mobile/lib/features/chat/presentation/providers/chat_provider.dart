@@ -17,6 +17,7 @@ import '../../domain/usecases/send_message.dart';
 import '../../domain/usecases/set_typing.dart';
 import '../../domain/usecases/watch_messages.dart';
 import '../../domain/usecases/watch_partner_typing.dart';
+import '../../../word_filter/domain/usecases/censor_text.dart';
 import '../../../word_filter/presentation/providers/word_filter_provider.dart';
 
 final _chatDatasourceProvider = Provider<ChatDatasource>(
@@ -52,7 +53,9 @@ final _endSessionProvider = Provider<EndSession>(
   (ref) => EndSession(ref.watch(_chatRepositoryProvider)),
 );
 
-final _censorTextProvider = Provider((ref) => ref.watch(censorTextProvider));
+final _censorTextProvider = Provider<CensorText>(
+  (ref) => ref.watch(censorTextProvider),
+);
 
 final chatNotifierProvider = NotifierProvider<ChatNotifier, ChatState>(
   ChatNotifier.new,
@@ -195,10 +198,15 @@ class ChatNotifier extends Notifier<ChatState> {
     if (sessionId == null || state.isSending) return;
     state = state.copyWith(isSending: true, error: null);
     try {
-      final censored = await ref.read(_censorTextProvider).call(text);
+      var messageText = text;
+      try {
+        messageText = await ref.read(_censorTextProvider).call(text);
+      } catch (_) {
+        // word filter is optional — if it fails, send the original text
+      }
       await ref.read(_sendMessageProvider)(
         sessionId: sessionId,
-        text: censored,
+        text: messageText,
       );
       state = state.copyWith(isSending: false);
     } catch (e) {

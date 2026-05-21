@@ -17,7 +17,7 @@ Remote Config is fetched at app startup with a **1-hour minimum fetch interval**
 If content filtering causes false positives or performance issues:
 1. Go to Firebase Remote Config console
 2. Set `content_filtering_enabled = false`
-3. Publish — change propagates to all active clients within ~60 seconds
+3. Publish — change takes effect on the next app launch (up to 1 hour after the previous fetch, per `minimumFetchInterval`)
 4. No app store release required
 
 ---
@@ -33,7 +33,7 @@ features/word_filter/
 ├── data/
 │   ├── models/banned_word_model.dart      ← @freezed DTO, toEntity()
 │   ├── datasources/
-│   │   ├── word_filter_database_helper.dart  ← sqflite wrapper (Android + Web)
+│   │   ├── word_filter_database_helper.dart  ← sqflite wrapper (non-web platforms)
 │   │   └── word_filter_datasource.dart    ← ContentModerationService logic
 │   └── repositories/word_filter_repository_impl.dart
 └── presentation/
@@ -48,7 +48,8 @@ features/word_filter/
 CREATE TABLE banned_words (
   id       INTEGER PRIMARY KEY AUTOINCREMENT,
   word     TEXT NOT NULL,
-  language TEXT NOT NULL
+  language TEXT NOT NULL,
+  UNIQUE(word, language)
 );
 CREATE INDEX idx_language ON banned_words(language);
 ```

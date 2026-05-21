@@ -1,10 +1,3 @@
-// ROLLBACK PLAN:
-// If content filtering causes false positives or performance issues:
-// 1. Go to Firebase Remote Config console
-// 2. Set content_filtering_enabled = false
-// 3. Publish — change propagates to all active clients within ~60 seconds
-// 4. No app store release required
-
 import 'dart:convert';
 
 import 'package:firebase_remote_config/firebase_remote_config.dart';
@@ -28,7 +21,7 @@ class WordFilterDatasourceImpl implements WordFilterDatasource {
   static const _keyDbSeeded = 'db_seeded';
   static const _flagName = 'content_filtering_enabled';
 
-  List<String>? _enWords;
+  Set<String>? _enWords;
   List<String>? _thWords;
   bool _initialized = false;
 
@@ -61,13 +54,16 @@ class WordFilterDatasourceImpl implements WordFilterDatasource {
       // Web: load directly from bundled JSON — SQLite not available on web
       final jsonStr = await rootBundle.loadString('assets/banned_words.json');
       final data = Map<String, dynamic>.from(json.decode(jsonStr) as Map);
-      _enWords = (data['en'] as List<dynamic>).cast<String>();
+      _enWords = {
+        for (final w in (data['en'] as List<dynamic>))
+          (w as String).toLowerCase(),
+      };
       _thWords = (data['th'] as List<dynamic>).cast<String>();
     } else {
       await seedIfNeeded();
       final enRows = await _dbHelper.getWordsByLanguage('en');
       final thRows = await _dbHelper.getWordsByLanguage('th');
-      _enWords = enRows.map((r) => r['word'] as String).toList();
+      _enWords = {for (final r in enRows) (r['word'] as String).toLowerCase()};
       _thWords = thRows.map((r) => r['word'] as String).toList();
     }
 
@@ -82,7 +78,7 @@ class WordFilterDatasourceImpl implements WordFilterDatasource {
 
     final tokens = text.split(' ');
     final censoredTokens = tokens.map((token) {
-      if ((_enWords ?? []).any((w) => w.toLowerCase() == token.toLowerCase())) {
+      if ((_enWords ?? {}).contains(token.toLowerCase())) {
         return '*' * token.length;
       }
       return token;
