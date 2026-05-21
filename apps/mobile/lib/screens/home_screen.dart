@@ -5,6 +5,7 @@ import '../features/auth/presentation/providers/auth_provider.dart';
 import '../features/avatar/presentation/providers/avatar_decoration_provider.dart';
 import '../features/friends/presentation/providers/friends_provider.dart';
 import '../features/profile/presentation/providers/profile_provider.dart';
+import '../shared/offline_chip.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_routes.dart';
 import '../shared/avatar_overlay.dart';
@@ -63,6 +64,26 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    ref.listen<AvatarDecorationState>(avatarDecorationNotifierProvider, (
+      prev,
+      next,
+    ) {
+      // Fire on every transition into an error state (prev.error may be
+      // non-null too because _resetErrorIfAny clears and re-sets on each
+      // repeated offline attempt — we just need error to be present now).
+      if (next.error != null && next.error != prev?.error && context.mounted) {
+        ScaffoldMessenger.of(context)
+          ..clearSnackBars()
+          ..showSnackBar(
+            SnackBar(
+              content: Text(next.error!),
+              backgroundColor: AppColors.brownDeep,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+      }
+    });
+
     return Scaffold(
       backgroundColor: AppColors.scaffoldBg,
       body: Column(
@@ -76,6 +97,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 Navigator.pushNamed(context, AppRoutes.notification),
             onUserTap: () => Navigator.pushNamed(context, AppRoutes.profile),
           ),
+          const OfflineChip(),
           Expanded(
             child: SafeArea(
               top: false,

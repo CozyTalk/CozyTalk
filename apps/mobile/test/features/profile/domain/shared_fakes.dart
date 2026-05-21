@@ -3,9 +3,11 @@ import 'package:mobile/features/profile/domain/repositories/profile_repository.d
 
 class FakeProfileRepository implements ProfileRepository {
   ProfileUser? returnProfile;
+  ProfileUser? returnCachedProfile;
   Exception? error;
 
   int getProfileCount = 0;
+  int getCachedProfileCount = 0;
   int updateDisplayNameCount = 0;
   int updateInterestCount = 0;
   int updateThoughtsCount = 0;
@@ -21,6 +23,13 @@ class FakeProfileRepository implements ProfileRepository {
     lastUid = uid;
     if (error != null) throw error!;
     return returnProfile!;
+  }
+
+  @override
+  Future<ProfileUser?> getCachedProfile(String uid) async {
+    getCachedProfileCount++;
+    lastUid = uid;
+    return returnCachedProfile;
   }
 
   @override

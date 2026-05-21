@@ -352,6 +352,7 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
   }
 
   void _showLeaveForFriendChat() {
+    if (!mounted) return;
     final mockFriend = Friend(
       name: 'Nong Prae',
       username: 'kaitom',
