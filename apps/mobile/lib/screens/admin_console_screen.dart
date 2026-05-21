@@ -631,15 +631,12 @@ class _AdminConsoleScreenState extends ConsumerState<AdminConsoleScreen> {
   Future<void> _viewBlockedUsers(String uid, String displayName) async {
     await ref.read(feat.adminUsersProvider.notifier).loadBlockedUsers(uid);
     if (!mounted) return;
-    final entries =
-        ref.read(feat.adminUsersProvider).blockedUsersForUid ?? [];
+    final entries = ref.read(feat.adminUsersProvider).blockedUsersForUid ?? [];
     showDialog(
       context: context,
       barrierColor: Colors.black.withValues(alpha: 0.35),
-      builder: (_) => _AdminBlockedUsersDialog(
-        userName: displayName,
-        entries: entries,
-      ),
+      builder: (_) =>
+          _AdminBlockedUsersDialog(userName: displayName, entries: entries),
     );
   }
 

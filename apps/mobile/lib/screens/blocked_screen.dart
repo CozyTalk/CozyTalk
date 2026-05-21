@@ -69,12 +69,7 @@ class _BlockedScreenState extends ConsumerState<BlockedScreen> {
                         isOnline: false,
                         interest: '',
                       );
-                      return _buildBlockedCard(
-                        context,
-                        friend,
-                        user.uid,
-                        uid,
-                      );
+                      return _buildBlockedCard(context, friend, user.uid, uid);
                     },
                   ),
           ),

@@ -14,7 +14,8 @@ class _FakeBlockRepository implements BlockRepository {
   Exception? error;
 
   @override
-  Stream<List<BlockedUser>> watchBlockedUsers(String uid) => const Stream.empty();
+  Stream<List<BlockedUser>> watchBlockedUsers(String uid) =>
+      const Stream.empty();
 
   @override
   Future<void> blockUser(
@@ -78,13 +79,16 @@ void main() {
   });
 
   group('BlockState', () {
-    test('initial state has idle status, empty list, not submitting, no error', () {
-      const state = BlockState();
-      expect(state.status, BlockStatus.idle);
-      expect(state.blockedUsers, isEmpty);
-      expect(state.isSubmitting, isFalse);
-      expect(state.error, isNull);
-    });
+    test(
+      'initial state has idle status, empty list, not submitting, no error',
+      () {
+        const state = BlockState();
+        expect(state.status, BlockStatus.idle);
+        expect(state.blockedUsers, isEmpty);
+        expect(state.isSubmitting, isFalse);
+        expect(state.error, isNull);
+      },
+    );
 
     test('copyWith updates status', () {
       const state = BlockState();
@@ -94,9 +98,7 @@ void main() {
 
     test('copyWith updates blockedUsers', () {
       const state = BlockState();
-      final users = [
-        BlockedUser(uid: 'u1', blockedAt: DateTime(2024, 1, 1)),
-      ];
+      final users = [BlockedUser(uid: 'u1', blockedAt: DateTime(2024, 1, 1))];
       final updated = state.copyWith(blockedUsers: users);
       expect(updated.blockedUsers.length, 1);
       expect(updated.blockedUsers.first.uid, 'u1');
@@ -115,10 +117,7 @@ void main() {
     });
 
     test('copyWith clears error with explicit null (sentinel)', () {
-      final state = BlockState(
-        status: BlockStatus.error,
-        error: 'old error',
-      );
+      final state = BlockState(status: BlockStatus.error, error: 'old error');
       final cleared = state.copyWith(error: null);
       expect(cleared.error, isNull);
     });
@@ -199,41 +198,47 @@ void main() {
       expect(repo.unblockCount, 0);
     });
 
-    test('block sets isSubmitting false and captures error on exception', () async {
-      final repo = _FakeBlockRepository();
-      repo.error = Exception('block failed');
-      String? capturedError;
-      bool isSubmitting = true;
+    test(
+      'block sets isSubmitting false and captures error on exception',
+      () async {
+        final repo = _FakeBlockRepository();
+        repo.error = Exception('block failed');
+        String? capturedError;
+        bool isSubmitting = true;
 
-      try {
-        await repo.blockUser('owner', 'target');
-        isSubmitting = false;
-      } catch (e) {
-        isSubmitting = false;
-        capturedError = e.toString();
-      }
+        try {
+          await repo.blockUser('owner', 'target');
+          isSubmitting = false;
+        } catch (e) {
+          isSubmitting = false;
+          capturedError = e.toString();
+        }
 
-      expect(isSubmitting, isFalse);
-      expect(capturedError, isNotNull);
-    });
+        expect(isSubmitting, isFalse);
+        expect(capturedError, isNotNull);
+      },
+    );
 
-    test('unblock sets isSubmitting false and captures error on exception', () async {
-      final repo = _FakeBlockRepository();
-      repo.error = Exception('unblock failed');
-      String? capturedError;
-      bool isSubmitting = true;
+    test(
+      'unblock sets isSubmitting false and captures error on exception',
+      () async {
+        final repo = _FakeBlockRepository();
+        repo.error = Exception('unblock failed');
+        String? capturedError;
+        bool isSubmitting = true;
 
-      try {
-        await repo.unblockUser('owner', 'target');
-        isSubmitting = false;
-      } catch (e) {
-        isSubmitting = false;
-        capturedError = e.toString();
-      }
+        try {
+          await repo.unblockUser('owner', 'target');
+          isSubmitting = false;
+        } catch (e) {
+          isSubmitting = false;
+          capturedError = e.toString();
+        }
 
-      expect(isSubmitting, isFalse);
-      expect(capturedError, isNotNull);
-    });
+        expect(isSubmitting, isFalse);
+        expect(capturedError, isNotNull);
+      },
+    );
   });
 
   group('_FakeBlockNotifier — via ProviderContainer', () {
@@ -254,10 +259,7 @@ void main() {
     test('initial state reflects custom initial value', () {
       final users = [BlockedUser(uid: 'u1', blockedAt: DateTime(2024))];
       final fake = _FakeBlockNotifier(
-        initial: BlockState(
-          status: BlockStatus.loaded,
-          blockedUsers: users,
-        ),
+        initial: BlockState(status: BlockStatus.loaded, blockedUsers: users),
       );
       final container = ProviderContainer(
         overrides: [blockNotifierProvider.overrideWith(() => fake)],

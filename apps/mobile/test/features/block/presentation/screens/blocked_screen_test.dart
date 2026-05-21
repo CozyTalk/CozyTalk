@@ -45,10 +45,16 @@ class _FakeAuthNotifier extends AuthNotifier {
   AuthState build() => _initial;
 
   @override
-  Future<void> signIn({required String email, required String password}) async {}
+  Future<void> signIn({
+    required String email,
+    required String password,
+  }) async {}
 
   @override
-  Future<void> signUp({required String email, required String password}) async {}
+  Future<void> signUp({
+    required String email,
+    required String password,
+  }) async {}
 
   @override
   Future<void> signInAnonymously() async {}
@@ -97,18 +103,15 @@ void main() {
         ),
       );
 
-      await tester.pumpWidget(_buildScreen(
-        blockFake: blockFake,
-        authFake: authFake,
-      ));
+      await tester.pumpWidget(
+        _buildScreen(blockFake: blockFake, authFake: authFake),
+      );
       await tester.pump();
 
       expect(find.text('No blocked users'), findsOneWidget);
     });
 
-    testWidgets('shows "0/5" count when blocked list is empty', (
-      tester,
-    ) async {
+    testWidgets('shows "0/5" count when blocked list is empty', (tester) async {
       final blockFake = _FakeBlockNotifier();
       final authFake = _FakeAuthNotifier(
         initial: const AuthState(
@@ -117,10 +120,9 @@ void main() {
         ),
       );
 
-      await tester.pumpWidget(_buildScreen(
-        blockFake: blockFake,
-        authFake: authFake,
-      ));
+      await tester.pumpWidget(
+        _buildScreen(blockFake: blockFake, authFake: authFake),
+      );
       await tester.pump();
 
       expect(find.text('0/5'), findsOneWidget);
@@ -140,10 +142,9 @@ void main() {
         ),
       );
 
-      await tester.pumpWidget(_buildScreen(
-        blockFake: blockFake,
-        authFake: authFake,
-      ));
+      await tester.pumpWidget(
+        _buildScreen(blockFake: blockFake, authFake: authFake),
+      );
       await tester.pump();
 
       expect(find.text('uid-abc'), findsOneWidget);
@@ -168,10 +169,9 @@ void main() {
         ),
       );
 
-      await tester.pumpWidget(_buildScreen(
-        blockFake: blockFake,
-        authFake: authFake,
-      ));
+      await tester.pumpWidget(
+        _buildScreen(blockFake: blockFake, authFake: authFake),
+      );
       await tester.pump();
 
       // Friend.displayName returns username (= uid) when note is absent;
@@ -194,10 +194,9 @@ void main() {
         ),
       );
 
-      await tester.pumpWidget(_buildScreen(
-        blockFake: blockFake,
-        authFake: authFake,
-      ));
+      await tester.pumpWidget(
+        _buildScreen(blockFake: blockFake, authFake: authFake),
+      );
       await tester.pump();
 
       expect(find.text('2/5'), findsOneWidget);
@@ -217,18 +216,15 @@ void main() {
         ),
       );
 
-      await tester.pumpWidget(_buildScreen(
-        blockFake: blockFake,
-        authFake: authFake,
-      ));
+      await tester.pumpWidget(
+        _buildScreen(blockFake: blockFake, authFake: authFake),
+      );
       await tester.pump();
 
       expect(find.text('1/5'), findsOneWidget);
     });
 
-    testWidgets('renders Unblock button for each blocked user', (
-      tester,
-    ) async {
+    testWidgets('renders Unblock button for each blocked user', (tester) async {
       final blockFake = _FakeBlockNotifier(
         initial: BlockState(
           status: BlockStatus.loaded,
@@ -242,10 +238,9 @@ void main() {
         ),
       );
 
-      await tester.pumpWidget(_buildScreen(
-        blockFake: blockFake,
-        authFake: authFake,
-      ));
+      await tester.pumpWidget(
+        _buildScreen(blockFake: blockFake, authFake: authFake),
+      );
       await tester.pump();
 
       expect(find.text('Unblock'), findsNWidgets(2));
@@ -267,10 +262,9 @@ void main() {
           ),
         );
 
-        await tester.pumpWidget(_buildScreen(
-          blockFake: blockFake,
-          authFake: authFake,
-        ));
+        await tester.pumpWidget(
+          _buildScreen(blockFake: blockFake, authFake: authFake),
+        );
         await tester.pump();
 
         // Tap the Unblock GestureDetector
@@ -290,36 +284,34 @@ void main() {
       },
     );
 
-    testWidgets(
-      'tapping Cancel in unblock dialog does not call unblock',
-      (tester) async {
-        final blockFake = _FakeBlockNotifier(
-          initial: BlockState(
-            status: BlockStatus.loaded,
-            blockedUsers: [_makeUser('uid-1')],
-          ),
-        );
-        final authFake = _FakeAuthNotifier(
-          initial: const AuthState(
-            status: AuthStatus.authenticated,
-            user: AuthUser(uid: 'owner-1'),
-          ),
-        );
+    testWidgets('tapping Cancel in unblock dialog does not call unblock', (
+      tester,
+    ) async {
+      final blockFake = _FakeBlockNotifier(
+        initial: BlockState(
+          status: BlockStatus.loaded,
+          blockedUsers: [_makeUser('uid-1')],
+        ),
+      );
+      final authFake = _FakeAuthNotifier(
+        initial: const AuthState(
+          status: AuthStatus.authenticated,
+          user: AuthUser(uid: 'owner-1'),
+        ),
+      );
 
-        await tester.pumpWidget(_buildScreen(
-          blockFake: blockFake,
-          authFake: authFake,
-        ));
-        await tester.pump();
+      await tester.pumpWidget(
+        _buildScreen(blockFake: blockFake, authFake: authFake),
+      );
+      await tester.pump();
 
-        await tester.tap(find.text('Unblock'));
-        await tester.pumpAndSettle();
+      await tester.tap(find.text('Unblock'));
+      await tester.pumpAndSettle();
 
-        await tester.tap(find.text('Cancel'));
-        await tester.pumpAndSettle();
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
 
-        expect(blockFake.unblockCallCount, 0);
-      },
-    );
+      expect(blockFake.unblockCallCount, 0);
+    });
   });
 }

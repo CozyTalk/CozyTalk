@@ -5,7 +5,11 @@ import '../models/blocked_user_model.dart';
 
 abstract class BlockDatasource {
   Stream<List<BlockedUserModel>> watchBlockedUsers(String uid);
-  Future<void> blockUser(String ownerUid, String targetUid, {String? displayName});
+  Future<void> blockUser(
+    String ownerUid,
+    String targetUid, {
+    String? displayName,
+  });
   Future<void> unblockUser(String ownerUid, String targetUid);
 }
 

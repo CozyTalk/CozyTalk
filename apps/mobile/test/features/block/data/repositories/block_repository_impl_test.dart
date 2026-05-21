@@ -85,8 +85,7 @@ void main() {
       });
 
       test('maps blockedAt field correctly', () async {
-        datasource.watchFactory = (_) =>
-            Stream.value([_makeModel('uid-3')]);
+        datasource.watchFactory = (_) => Stream.value([_makeModel('uid-3')]);
         final entities = await repository.watchBlockedUsers('owner').first;
         expect(entities.first.blockedAt, _ts);
       });
@@ -112,10 +111,7 @@ void main() {
 
       test('propagates datasource exception', () {
         datasource.error = Exception('block failed');
-        expect(
-          () => repository.blockUser('o', 't'),
-          throwsA(isA<Exception>()),
-        );
+        expect(() => repository.blockUser('o', 't'), throwsA(isA<Exception>()));
       });
     });
 

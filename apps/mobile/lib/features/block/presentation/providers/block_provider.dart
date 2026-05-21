@@ -85,17 +85,20 @@ class BlockNotifier extends Notifier<BlockState> {
     final uid = ref.watch(authNotifierProvider).user?.uid;
     if (uid == null) return const BlockState();
 
-    _sub = ref.read(_watchBlockedUsersProvider).call(uid).listen(
-      (users) => state = state.copyWith(
-        status: BlockStatus.loaded,
-        blockedUsers: users,
-        error: null,
-      ),
-      onError: (Object e) => state = state.copyWith(
-        status: BlockStatus.error,
-        error: e.toString(),
-      ),
-    );
+    _sub = ref
+        .read(_watchBlockedUsersProvider)
+        .call(uid)
+        .listen(
+          (users) => state = state.copyWith(
+            status: BlockStatus.loaded,
+            blockedUsers: users,
+            error: null,
+          ),
+          onError: (Object e) => state = state.copyWith(
+            status: BlockStatus.error,
+            error: e.toString(),
+          ),
+        );
     return const BlockState(status: BlockStatus.loading);
   }
 

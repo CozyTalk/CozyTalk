@@ -25,7 +25,8 @@ class _FakeBlockRepository implements BlockRepository {
   }) async {}
 
   @override
-  Stream<List<BlockedUser>> watchBlockedUsers(String uid) => const Stream.empty();
+  Stream<List<BlockedUser>> watchBlockedUsers(String uid) =>
+      const Stream.empty();
 }
 
 void main() {
