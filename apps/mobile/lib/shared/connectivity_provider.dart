@@ -12,27 +12,32 @@ final networkInfoProvider = Provider<NetworkInfo>(
 /// Emits the current online state, seeded with the actual connectivity state
 /// on startup so the OfflineChip shows immediately without waiting for a
 /// connectivity change event.
+///
+/// Subscribes to [NetworkInfo.onConnectivityChanged] before the async
+/// [NetworkInfo.isConnected] seed so no events are dropped during the startup
+/// gap. If a change event arrives before the seed, the seed is skipped (the
+/// change is more recent).
 final isOnlineProvider = StreamProvider<bool>((ref) {
   final networkInfo = ref.watch(networkInfoProvider);
-  StreamSubscription<bool>? changeSub;
   final ctrl = StreamController<bool>();
+  var seeded = false;
 
-  // Emit current state first, then pipe all future changes.
+  final changeSub = networkInfo.onConnectivityChanged.listen(
+    (v) {
+      seeded = true;
+      if (!ctrl.isClosed) ctrl.add(v);
+    },
+    onDone: () {
+      if (!ctrl.isClosed) ctrl.close();
+    },
+  );
+
   networkInfo.isConnected.then((initial) {
-    if (ctrl.isClosed) return;
-    ctrl.add(initial);
-    changeSub = networkInfo.onConnectivityChanged.listen(
-      (v) {
-        if (!ctrl.isClosed) ctrl.add(v);
-      },
-      onDone: () {
-        if (!ctrl.isClosed) ctrl.close();
-      },
-    );
+    if (!ctrl.isClosed && !seeded) ctrl.add(initial);
   });
 
   ref.onDispose(() {
-    changeSub?.cancel();
+    changeSub.cancel();
     ctrl.close();
   });
 
