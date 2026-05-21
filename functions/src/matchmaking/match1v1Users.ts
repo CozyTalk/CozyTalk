@@ -8,6 +8,7 @@ import {
   INTEREST_SIMILARITY_THRESHOLD,
   meanVector,
 } from "./embeddingService";
+import {getBlockedUids} from "../user/_blockUtils";
 
 export const match1v1Users = onDocumentCreated(
   {document: "waiting_pool/{uid}", region: "asia-southeast1", minInstances: 1},
@@ -35,6 +36,21 @@ export const match1v1Users = onDocumentCreated(
       .get();
 
     let candidates = candidatesSnap.docs.filter((d) => d.id !== triggerUid);
+
+    // Filter out pairs where either party has blocked the other.
+    const triggerBlockedUids = await getBlockedUids(db, triggerUid);
+    const blockChecks = await Promise.all(
+      candidates.map(async (c) => {
+        const cBlockedUids = await getBlockedUids(db, c.id);
+        return {
+          doc: c,
+          blocked:
+            triggerBlockedUids.includes(c.id) || cBlockedUids.includes(triggerUid),
+        };
+      }),
+    );
+    candidates = blockChecks.filter((r) => !r.blocked).map((r) => r.doc);
+
     if (candidates.length === 0) {
       logger.debug("No 1v1 partner found yet", {triggerUid});
       return;

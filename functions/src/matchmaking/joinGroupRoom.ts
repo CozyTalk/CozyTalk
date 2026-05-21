@@ -9,6 +9,12 @@ import {
   meanVector,
   INTEREST_SIMILARITY_THRESHOLD,
 } from "./embeddingService";
+import {
+  getBlockedUids,
+  isBlockedByRoom,
+  mergeIntoBlockList,
+  type BlockListEntry,
+} from "../user/_blockUtils";
 
 export const joinGroupRoom = onCall(
   {invoker: "public", cors: true, memory: "512MiB"},
@@ -36,15 +42,18 @@ export const joinGroupRoom = onCall(
     /**
      * Shuffles candidates and attempts to join each one atomically.
      * Updates roomInterestVector and memberInterests in the join transaction
-     * when the user has an interest vector.
+     * when the user has an interest vector. Skips rooms where the joiner is
+     * blocked or where a room member is on the joiner's block list.
      * Returns the joined roomId on success, or null if all candidates fail.
      * @param {FirebaseFirestore.QueryDocumentSnapshot[]} docs - Candidate room docs.
-     * @param {number[] | null} [vector] - Joining user's interest vector, if any.
+     * @param {number[] | null} vector - Joining user's interest vector, if any.
+     * @param {string[]} joinerBlockedUids - UIDs the joining user has blocked.
      * @return {Promise<string | null>} The joined roomId, or null.
      */
     async function _tryJoinCandidates(
       docs: FirebaseFirestore.QueryDocumentSnapshot[],
       vector: number[] | null,
+      joinerBlockedUids: string[],
     ): Promise<string | null> {
       const shuffled = [...docs].sort(() => Math.random() - 0.5);
       for (const doc of shuffled) {
@@ -67,11 +76,16 @@ export const joinGroupRoom = onCall(
               return;
             }
 
+            const blockList = (d.blockList as BlockListEntry[]) ?? [];
+            if (isBlockedByRoom(blockList, uid)) return;
+            if ((d.users as string[]).some((u) => joinerBlockedUids.includes(u))) return;
+
             const update: Record<string, unknown> = {
               users: FieldValue.arrayUnion(uid),
               memberCount: FieldValue.increment(1),
               status: "active",
               paddingUntil: null,
+              blockList: mergeIntoBlockList(blockList, uid, joinerBlockedUids),
             };
 
             // Add user's interest to room aggregate when they have a vector.
@@ -106,6 +120,8 @@ export const joinGroupRoom = onCall(
       }
       return null;
     }
+
+    const joinerBlockedUids = await getBlockedUids(db, uid);
 
     // Fetch Phase 1 (lone-user) and Phase 2 (2-4 member) candidates in parallel.
     // When the user has interest, we also use these results for Phase 0.
@@ -144,7 +160,7 @@ export const joinGroupRoom = onCall(
       });
 
       if (matchingRooms.length > 0) {
-        const matched = await _tryJoinCandidates(matchingRooms, userVector);
+        const matched = await _tryJoinCandidates(matchingRooms, userVector, joinerBlockedUids);
         if (matched) {
           return {roomId: matched, isNewRoom: false};
         }
@@ -156,6 +172,7 @@ export const joinGroupRoom = onCall(
     const priorityRoomId = await _tryJoinCandidates(
       prioritySnap.docs,
       userVector,
+      joinerBlockedUids,
     );
     if (priorityRoomId) {
       return {roomId: priorityRoomId, isNewRoom: false};
@@ -163,7 +180,7 @@ export const joinGroupRoom = onCall(
 
     // Phase 2 — Random: no lone-user rooms found; join any available room with
     // 2–4 members, chosen at random.
-    const otherRoomId = await _tryJoinCandidates(otherSnap.docs, userVector);
+    const otherRoomId = await _tryJoinCandidates(otherSnap.docs, userVector, joinerBlockedUids);
     if (otherRoomId) {
       return {roomId: otherRoomId, isNewRoom: false};
     }
@@ -180,6 +197,7 @@ export const joinGroupRoom = onCall(
       createdAt: FieldValue.serverTimestamp(),
       paddingUntil: null,
       encryptionKey: generateKey(),
+      blockList: joinerBlockedUids.map((userId) => ({blockedBy: uid, userId, amount: 1})),
       ...(userVector
         ? {
             memberInterests: {[uid]: userVector},
@@ -231,9 +249,14 @@ export const joinGroupRoom = onCall(
             return;
           }
 
+          const mergeBlockList = (td.blockList as BlockListEntry[] | undefined) ?? [];
+          if (isBlockedByRoom(mergeBlockList, uid)) return;
+          if ((td.users as string[]).some((u) => joinerBlockedUids.includes(u))) return;
+
           const mergeUpdate: Record<string, unknown> = {
             users: FieldValue.arrayUnion(uid),
             memberCount: FieldValue.increment(1),
+            blockList: mergeIntoBlockList(mergeBlockList, uid, joinerBlockedUids),
           };
           if (userVector) {
             const existing =
