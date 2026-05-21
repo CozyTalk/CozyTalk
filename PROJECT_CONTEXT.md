@@ -27,7 +27,7 @@ CozyTalk is a **cross-platform stranger chat app** targeting **Android and Web**
 
 ### Cloud Functions (`functions/`)
 - TypeScript, Firebase Functions v2
-- 21 functions exported across two regions (see Cloud Functions table in Firebase Configuration)
+- 19 functions exported across two regions (see Cloud Functions table in Firebase Configuration)
 - Max 10 instances (cost control)
 - Matchmaking and chat logic **must** live here — never on client
 
@@ -140,7 +140,7 @@ Navigation hub `HomeScreen`. Used only when `_useMainUI = true`. No domain/data 
 Initialises Firebase, points to emulators (Auth `9099`, Functions `5001`, Firestore `8080`) when `USE_EMULATOR=true`. No automatic sign-in — `_AuthRouter` widget watches `authNotifierProvider` and routes to `LoginScreen` or `HelloScreen`.
 
 ### Tests
-580 Flutter unit + widget tests across auth, chat, matchmaking, profile, hello, friends, and card_shuffle features. See [Test Coverage](#quality-gates-definition-of-done) for the full breakdown.
+580 Flutter unit + widget tests across auth, chat, matchmaking, profile, hello, admin, block, friends, and card_shuffle features. See [Test Coverage](#quality-gates-definition-of-done) for the full breakdown.
 
 ---
 
@@ -203,7 +203,7 @@ See `database.rules.json` for the canonical source. All nodes require `auth != n
 | `rooms` | `mode ASC, status ASC, isLocked ASC, memberCount ASC` | Group room picker: available unlocked rooms by fill level |
 | `rooms` | `status ASC, paddingUntil ASC` | `expireRooms` cron: find rooms past their padding window |
 
-### Cloud Functions — deployed (16 total)
+### Cloud Functions — deployed (19 total)
 
 | Function | Trigger | Region | Module |
 |---|---|---|---|
@@ -223,6 +223,9 @@ See `database.rules.json` for the canonical source. All nodes require `auth != n
 | `endSession` | callable | us-central1 | chat |
 | `reportSession` | callable | us-central1 | chat |
 | `onFriendshipDeleted` | Firestore onDelete `friendships/{friendshipId}` | us-central1 | friends |
+| `blockUser` | callable | us-central1 | user |
+| `unblockUser` | callable | us-central1 | user |
+| `adminGetBlockedUsers` | callable | us-central1 | admin |
 No CF needed for typing — clients write `typing/{roomId}/{uid}` directly via RTDB SDK.
 
 `seedTtlCollections` (`functions/src/dev/`) is a one-time dev HTTP helper; not included in the exported count above.
@@ -371,11 +374,11 @@ Presence, typing, and nameQueue data are removed by `leaveRoom` CF on explicit l
 | Suite | Count | Location | Requires |
 |---|---|---|---|
 | Flutter unit + widget | 580 tests | `apps/mobile/test/` | Nothing |
-| Cloud Functions Jest | 93 unit tests | `functions/src/**/__tests__/*.test.ts` | `./dev.sh --emulator-only` |
+| Cloud Functions Jest | 108 unit tests | `functions/src/**/__tests__/*.test.ts` | `./dev.sh --emulator-only` |
 | Cloud Functions Jest (integration) | 7 live tests | `functions/src/matchmaking/__tests__/embeddingService.integration.test.ts` | Vertex AI credentials + `npm run test:embedding` |
 | Flutter integration | 43 tests | `apps/mobile/integration_test/matchmaking_advanced_test.dart` | Emulators + Android device |
 
-**CF Jest unit test breakdown:** `matchmaking.test.ts` (60 tests, 14 describe groups — priority selection, distribution, padding lifecycle, RTDB cleanup, 1v1/group flows, interest matching), `embeddingService.test.ts` (21 tests — cosine similarity, mean vector, mocked Vertex AI), `chat.test.ts` (12 tests — sendMessage, message destruction, TTL, rooms/ path, reportSession). Plus 7 integration tests in `embeddingService.integration.test.ts` (live Vertex AI, requires `npm run test:embedding`). Grand total: 100.
+**CF Jest unit test breakdown:** `matchmaking.test.ts` (60 tests, 14 describe groups — priority selection, distribution, padding lifecycle, RTDB cleanup, 1v1/group flows, interest matching), `embeddingService.test.ts` (21 tests — cosine similarity, mean vector, mocked Vertex AI), `chat.test.ts` (12 tests — sendMessage, message destruction, TTL, rooms/ path, reportSession), `block.test.ts` (15 tests — blockUser, unblockUser, adminGetBlockedUsers, max-5 enforcement, idempotency). Plus 7 integration tests in `embeddingService.integration.test.ts` (live Vertex AI, requires `npm run test:embedding`). Grand total: 115.
 
 **Jest vs Flutter integration:** Jest tests run on the host (no Android clock skew) so timing bounds are tight (≤35s padding). Flutter integration tests use ≤60s bounds to account for Android emulator clock offset.
 

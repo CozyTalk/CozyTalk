@@ -77,7 +77,7 @@ npm install && npm run build && npm test   # npm test requires emulators first
 .\dev.ps1 [...]                           # Windows
 ```
 
-Jest: 93 unit (matchmaking 60, embeddingService 21, chat 12). The 7 Vertex AI integration tests run separately via `jest.integration.config.js` — excluded from `npm test`.
+Jest: 108 unit (matchmaking 60, embeddingService 21, chat 12, block 15). The 7 Vertex AI integration tests run separately via `jest.integration.config.js` — excluded from `npm test`.
 Flutter: 580 unit + widget tests.
 
 ---
@@ -93,6 +93,7 @@ Flutter: 580 unit + widget tests.
 | `profile` | `profileNotifierProvider` | `successField`: 'username'\|'interest'\|'thoughts' | Complete |
 | `avatar` | `avatarDecorationNotifierProvider` | `AvatarDecorationStatus`: idle\|loading\|saving\|error | Complete |
 | `home` | — | Thin nav hub, no domain/data | Complete |
+| `block` | `blockNotifierProvider` | `BlockStatus`: idle\|loading\|loaded\|error | Complete |
 | `friends` | `friendsNotifierProvider` · `friendChatNotifierProvider` | `FriendsState`: allUsers\|friends\|incomingRequests · `FriendChatState`: messages\|chatRoomId | Prototype (dev screens only) |
 | `card_shuffle` | `cardShuffleNotifierProvider` | `CardShuffleState`: currentQuestion?, isLoading, error? | Prototype (icebreaker panel in chat dev screen) |
 
@@ -129,7 +130,8 @@ In screens: `ref.watch(fooNotifierProvider)` for state · `ref.read(fooNotifierP
 |---|---|
 | `users/{uid}` | uid, role (user\|admin), createdAt, lastSeen, displayName?, photoUrl?, hatKey?, moodKey?, interest?, thoughts? — email is never stored in Firestore |
 | `waiting_pool/{uid}` | status, mode, createdAt, updatedAt, interestText?, interestVector? (256-dim), roomId? |
-| `rooms/{roomId}` | 5-char ID; mode (1v1\|group), roomType (public\|custom), status (active\|padding\|expired), users[], maxUsers, memberCount, isLocked, encryptionKey, createdAt, paddingUntil? |
+| `rooms/{roomId}` | 5-char ID; mode (1v1\|group), roomType (public\|custom), status (active\|padding\|expired), users[], maxUsers, memberCount, isLocked, encryptionKey, createdAt, paddingUntil?, blockList? |
+| `users/{uid}/blocked/{uid}` | blockedUid, displayName?, blockedAt; max 5 per user; owner-only |
 | `active_sessions/{id}` | Legacy proto-sessions only — new code uses `rooms/` |
 | `chat_rooms/{id}/messages/{id}` | senderId, displayName, encryptedText, iv, authTag (AES-256-GCM), timestamp, expiresAt TTL (3 days), flagged? |
 | `session_keys/{id}` | sessionId, encryptionKey, users[], createdAt, expiresAt TTL (cleared when flagged by `reportSession`), flagged? |

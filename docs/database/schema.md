@@ -63,6 +63,7 @@ Rules: update restricted to `updatedAt` field only (prevents client status manip
 | `isLocked` | boolean | |
 | `paddingUntil` | timestamp? | set when status transitions to `padding` |
 | `createdAt` | timestamp | |
+| `blockList` | array? | merged block list — each entry: `{ blockedBy: uid, userId: uid, amount: number }`. Updated on every join/leave; `amount` = count of current members blocking `userId` |
 
 Rules: `users` membership checked for read/write access.
 
@@ -160,6 +161,18 @@ Rules: read/create by friendship participants (`_isFriendshipParticipant` helper
 Note: `encryptionKey` is NOT stored here — it lives exclusively in `session_keys/{sessionId}`. The decrypted chat log is in Cloud Storage at `chatLogStoragePath`.
 
 Rules: any authenticated user may create (restricted: `reporterId == uid`, `status == 'pending'`, `reportType` validated, required fields only). Read, update, delete are admin-only.
+
+### `users/{uid}/blocked/{blockedUid}`
+
+Subcollection on each user document storing their explicit block list.
+
+| Field | Type | Notes |
+|---|---|---|
+| `blockedUid` | string | = document ID — UID of the blocked user |
+| `displayName` | string? | display name captured at time of blocking |
+| `blockedAt` | timestamp | server timestamp |
+
+Max 5 entries per user (enforced by `blockUser` CF). Owner read/write only.
 
 ---
 

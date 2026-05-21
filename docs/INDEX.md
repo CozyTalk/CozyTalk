@@ -12,12 +12,13 @@ Quick reference for finding code. Each file maps a domain to exact paths and cla
 - [hello](features/hello.md) — smoke-test CF echo; canonical CA reference implementation
 - [friends](features/friends.md) — friend requests, friend list, permanent direct chat
 - [admin](features/admin.md) — report moderation, ban/unban, dashboard stats, chat log viewer
+- [block](features/block.md) — user-level blocking, block list management, room enforcement
 
 ## Frontend
 - [screens](frontend/screens.md) — all production screens with class names, routes, integration status
 
 ## Backend
-- [cloud-functions](backend/cloud-functions.md) — all 15 exported CFs with inputs/outputs
+- [cloud-functions](backend/cloud-functions.md) — all 23 exported CFs with inputs/outputs
 
 ## Database
 - [schema](database/schema.md) — Firestore collections + RTDB paths + security rule summary

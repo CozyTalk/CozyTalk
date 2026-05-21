@@ -1,13 +1,31 @@
 # Cloud Functions
 
-21 exported functions total. All in `functions/src/`. Deployed via Firebase CLI.
+24 exported functions total. All in `functions/src/`. Deployed via Firebase CLI.
 
 Firebase project: `cozytalk-5d984`
 Default region: `us-central1` (unless noted)
 
 ---
 
-## Admin (5 functions)
+## User (2 functions)
+
+### `blockUser`
+`functions/src/user/blockUser.ts`
+- **Trigger:** callable (authenticated)
+- **Input:** `{ targetUid: string, displayName?: string }`
+- **Process:** Validates caller ≠ target. Reads `users/{callerUid}/blocked/` to enforce max 5 blocked users. If target is already blocked, idempotently updates `displayName`. Otherwise writes `{ blockedUid, displayName, blockedAt }` to `users/{callerUid}/blocked/{targetUid}`.
+- **Output:** `{ success: true }` or `{ success: false, reason: "max_blocked_reached" }`
+
+### `unblockUser`
+`functions/src/user/unblockUser.ts`
+- **Trigger:** callable (authenticated)
+- **Input:** `{ targetUid: string }`
+- **Process:** Deletes `users/{callerUid}/blocked/{targetUid}`. Idempotent — no error if not blocked.
+- **Output:** `{ success: true }`
+
+---
+
+## Admin (6 functions)
 
 All admin functions are callable, deployed to `us-central1`. Every function verifies the caller has `role == "admin"` in `users/{uid}` via admin SDK.
 
@@ -45,6 +63,13 @@ All admin functions are callable, deployed to `us-central1`. Every function veri
 - **Input:** `{ uid: string, note?: string }`
 - **Process:** Reads user; rejects if not banned. Builds a history record from current ban fields (including `unbannedAt: Timestamp.now()`, `unbannedBy: callerUid`). Deletes all active ban fields from `users/{uid}`. Appends history record to `users/{uid}.banHistory` via `FieldValue.arrayUnion`.
 - **Output:** `{ success: true }` or `{ success: false, reason: "user_not_found" | "not_banned" }`
+
+### `adminGetBlockedUsers`
+`functions/src/admin/adminGetBlockedUsers.ts`
+- **Trigger:** callable (admin only)
+- **Input:** `{ uid: string }`
+- **Process:** Reads `users/{uid}/blocked/` subcollection ordered by `blockedAt` descending. Returns serialized list with `blockedAt` as ISO string.
+- **Output:** `{ blockedUsers: Array<{ uid, displayName, blockedAt }> }`
 
 ---
 
@@ -92,14 +117,14 @@ All admin functions are callable, deployed to `us-central1`. Every function veri
 ### `match1v1Users`
 `functions/src/matchmaking/match1v1Users.ts`
 - **Trigger:** Firestore `onDocumentCreated` — `waiting_pool/{uid}` — **region: `asia-southeast1`**
-- **Process:** 2-phase atomic Firestore transaction. Finds best candidate by cosine similarity of interest vectors (threshold 0.65). Creates `rooms/{roomId}` with `mode: 1v1`, `status: active`. Removes both users from pool. Writes match result to RTDB.
+- **Process:** 2-phase atomic Firestore transaction. Finds best candidate by cosine similarity of interest vectors (threshold 0.65). Filters out candidate pairs where either user has blocked the other before attempting a match. Creates `rooms/{roomId}` with `mode: 1v1`, `status: active`. Removes both users from pool. Writes match result to RTDB.
 - **Output:** void (trigger)
 
 ### `joinGroupRoom`
 `functions/src/matchmaking/joinGroupRoom.ts`
 - **Trigger:** callable (authenticated)
 - **Input:** `{ interestText?: string }`
-- **Process:** 3-phase match: find candidate group rooms → compute cosine similarity → join best match or create new group room. Room capacity 2–5 users.
+- **Process:** 3-phase match: find candidate group rooms → compute cosine similarity → join best match or create new group room. Room capacity 2–5 users. Before joining, fetches the caller's blocked list. Rejects the join if the caller's UID appears in the room's `blockList` (blocked by an existing member) or if any room member is in the caller's blocked list. On successful join, merges the caller's blocked UIDs into `rooms/{roomId}.blockList`.
 - **Output:** `{ roomId: string, mode: string, roomType: string }`
 
 ### `createCustomRoom`
@@ -113,14 +138,14 @@ All admin functions are callable, deployed to `us-central1`. Every function veri
 `functions/src/matchmaking/joinRoomById.ts`
 - **Trigger:** callable (authenticated)
 - **Input:** `{ roomId: string }`
-- **Process:** Validates room exists, is not expired/padding, not locked, not full. Adds caller to `rooms/{roomId}.users` and RTDB members. Returns room info.
+- **Process:** Validates room exists, is not expired/padding, not locked, not full. Before joining, fetches the caller's blocked list. Rejects the join if the caller's UID appears in the room's `blockList` (blocked by an existing member) or if any room member is in the caller's blocked list. On successful join, merges the caller's blocked UIDs into `rooms/{roomId}.blockList`. Adds caller to `rooms/{roomId}.users` and RTDB members. Returns room info.
 - **Output:** `{ roomId: string, mode: string, roomType: string }`
 
 ### `leaveRoom`
 `functions/src/matchmaking/leaveRoom.ts`
 - **Trigger:** callable (authenticated)
 - **Input:** `{ roomId: string }`
-- **Process:** Removes caller from `rooms/{roomId}.users`. If room empty, tombstones it. Clears RTDB member node.
+- **Process:** Removes caller from `rooms/{roomId}.users`. On leave, decrements the leaver's entries in `rooms/{roomId}.blockList`; removes entries with `amount = 0`. If room empty, tombstones it. Clears RTDB member node.
 - **Output:** void
 
 ### `setRoomLock`
