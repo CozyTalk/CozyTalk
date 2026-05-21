@@ -2,6 +2,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../shared/avatar_overlay.dart';
+import '../../../../shared/connectivity_provider.dart';
+import '../../../../shared/prefs_provider.dart';
+import '../../data/datasources/avatar_cache_datasource.dart';
 import '../../data/datasources/avatar_datasource.dart';
 import '../../data/repositories/avatar_repository_impl.dart';
 import '../../domain/entities/avatar_decoration.dart';
@@ -15,24 +18,31 @@ final _avatarDatasourceProvider = Provider<AvatarDatasource>(
   (ref) => AvatarDatasourceImpl(FirebaseFirestore.instance),
 );
 
-final _avatarRepositoryProvider = Provider<AvatarRepository>(
-  (ref) => AvatarRepositoryImpl(ref.watch(_avatarDatasourceProvider)),
+final _avatarCacheDatasourceProvider = Provider<AvatarCacheDatasource>(
+  (ref) => AvatarCacheDatasourceImpl(ref.watch(sharedPreferencesProvider)),
+);
+
+final avatarRepositoryProvider = Provider<AvatarRepository>(
+  (ref) => AvatarRepositoryImpl(
+    ref.watch(_avatarDatasourceProvider),
+    ref.watch(_avatarCacheDatasourceProvider),
+  ),
 );
 
 final _getAvatarDecorationProvider = Provider<GetAvatarDecoration>(
-  (ref) => GetAvatarDecoration(ref.watch(_avatarRepositoryProvider)),
+  (ref) => GetAvatarDecoration(ref.watch(avatarRepositoryProvider)),
 );
 
 final _updateHatProvider = Provider<UpdateHat>(
-  (ref) => UpdateHat(ref.watch(_avatarRepositoryProvider)),
+  (ref) => UpdateHat(ref.watch(avatarRepositoryProvider)),
 );
 
 final _updateMoodProvider = Provider<UpdateMood>(
-  (ref) => UpdateMood(ref.watch(_avatarRepositoryProvider)),
+  (ref) => UpdateMood(ref.watch(avatarRepositoryProvider)),
 );
 
 final _updateDecorationProvider = Provider<UpdateDecoration>(
-  (ref) => UpdateDecoration(ref.watch(_avatarRepositoryProvider)),
+  (ref) => UpdateDecoration(ref.watch(avatarRepositoryProvider)),
 );
 
 final avatarDecorationNotifierProvider =
@@ -92,6 +102,14 @@ class AvatarDecorationNotifier extends Notifier<AvatarDecorationState> {
 
   Future<void> updateHat(String uid, String? hatKey) async {
     if (state.status == AvatarDecorationStatus.saving) return;
+    _resetErrorIfAny();
+    if (!await ref.read(networkInfoProvider).isConnected) {
+      state = state.copyWith(
+        status: AvatarDecorationStatus.error,
+        error: "You're offline. Changes require a connection.",
+      );
+      return;
+    }
     state = state.copyWith(status: AvatarDecorationStatus.saving, error: null);
     try {
       await ref.read(_updateHatProvider)(uid, hatKey);
@@ -114,6 +132,14 @@ class AvatarDecorationNotifier extends Notifier<AvatarDecorationState> {
 
   Future<void> updateMood(String uid, String? moodKey) async {
     if (state.status == AvatarDecorationStatus.saving) return;
+    _resetErrorIfAny();
+    if (!await ref.read(networkInfoProvider).isConnected) {
+      state = state.copyWith(
+        status: AvatarDecorationStatus.error,
+        error: "You're offline. Changes require a connection.",
+      );
+      return;
+    }
     state = state.copyWith(status: AvatarDecorationStatus.saving, error: null);
     try {
       await ref.read(_updateMoodProvider)(uid, moodKey);
@@ -140,6 +166,14 @@ class AvatarDecorationNotifier extends Notifier<AvatarDecorationState> {
     String? moodKey,
   ) async {
     if (state.status == AvatarDecorationStatus.saving) return;
+    _resetErrorIfAny();
+    if (!await ref.read(networkInfoProvider).isConnected) {
+      state = state.copyWith(
+        status: AvatarDecorationStatus.error,
+        error: "You're offline. Changes require a connection.",
+      );
+      return;
+    }
     state = state.copyWith(status: AvatarDecorationStatus.saving, error: null);
     try {
       await ref.read(_updateDecorationProvider)(uid, hatKey, moodKey);
@@ -157,8 +191,14 @@ class AvatarDecorationNotifier extends Notifier<AvatarDecorationState> {
     }
   }
 
-  // Keeps the shared in-memory avatarProvider in sync so LayeredAvatar
-  // reflects the persisted selection without a full reload.
+  // Clears error state so the HomeScreen ref.listen fires a fresh
+  // null→error transition on every repeated offline write attempt.
+  void _resetErrorIfAny() {
+    if (state.error != null) {
+      state = state.copyWith(status: AvatarDecorationStatus.idle, error: null);
+    }
+  }
+
   void _syncToSharedProvider(AvatarDecoration? decoration) {
     final local = ref.read(avatarProvider.notifier);
     local.setAccessory(

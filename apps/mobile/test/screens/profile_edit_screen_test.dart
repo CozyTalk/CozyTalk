@@ -6,6 +6,9 @@ import 'package:mobile/features/auth/presentation/providers/auth_provider.dart';
 import 'package:mobile/features/profile/domain/entities/profile_user.dart';
 import 'package:mobile/features/profile/presentation/providers/profile_provider.dart';
 import 'package:mobile/screens/profile_edit_screen.dart';
+import 'package:mobile/shared/connectivity_provider.dart';
+import 'package:mobile/shared/network_info.dart';
+import '../shared/fake_network_info.dart';
 
 class _FakeProfileNotifier extends ProfileNotifier {
   final ProfileState _initial;
@@ -97,11 +100,17 @@ const _auth = AuthState(
   user: AuthUser(uid: 'test-uid'),
 );
 
-Widget _buildScreen(ProfileNotifier profileFake, {AuthState auth = _auth}) {
+Widget _buildScreen(
+  ProfileNotifier profileFake, {
+  AuthState auth = _auth,
+  NetworkInfo? networkInfo,
+}) {
   return ProviderScope(
     overrides: [
       profileNotifierProvider.overrideWith(() => profileFake),
       authNotifierProvider.overrideWith(() => _FakeAuthNotifier(initial: auth)),
+      if (networkInfo != null)
+        networkInfoProvider.overrideWithValue(networkInfo),
     ],
     child: const MaterialApp(home: ProfileEditScreen()),
   );
@@ -236,6 +245,75 @@ void main() {
       await tester.pump();
 
       expect(find.text('Something went wrong'), findsOneWidget);
+    });
+
+    // ── offline ───────────────────────────────────────────────────────────────
+
+    testWidgets('Save button shows grey background when offline', (
+      tester,
+    ) async {
+      _useTallSurface(tester);
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(
+        _buildScreen(
+          _FakeProfileNotifier(),
+          networkInfo: FakeNetworkInfo(isOnline: false),
+        ),
+      );
+      await tester.pump();
+      final greyButton = find.byWidgetPredicate(
+        (w) =>
+            w is Container &&
+            (w.decoration as BoxDecoration?)?.color == Colors.grey.shade200,
+      );
+      expect(greyButton, findsOneWidget);
+    });
+
+    testWidgets('tapping Save offline shows SnackBar, does not call notifier', (
+      tester,
+    ) async {
+      _useTallSurface(tester);
+      addTearDown(tester.view.reset);
+      final fake = _FakeProfileNotifier();
+      await tester.pumpWidget(
+        _buildScreen(fake, networkInfo: FakeNetworkInfo(isOnline: false)),
+      );
+      await tester.pump();
+
+      await tester.enterText(find.byType(TextField).first, 'Alice');
+      await _tapSave(tester);
+
+      expect(
+        find.text("You're offline. Changes require a connection."),
+        findsOneWidget,
+      );
+      expect(fake.updateDisplayNameCount, 0);
+    });
+
+    testWidgets('tapping Save online calls notifier', (tester) async {
+      _useTallSurface(tester);
+      addTearDown(tester.view.reset);
+      final fake = _FakeProfileNotifier();
+      await tester.pumpWidget(
+        _buildScreen(fake, networkInfo: FakeNetworkInfo(isOnline: true)),
+      );
+      await tester.pump();
+
+      await tester.enterText(find.byType(TextField).first, 'Alice');
+      await _tapSave(tester);
+
+      expect(fake.updateDisplayNameCount, 1);
+    });
+
+    testWidgets('OfflineChip visible when offline', (tester) async {
+      await tester.pumpWidget(
+        _buildScreen(
+          _FakeProfileNotifier(),
+          networkInfo: FakeNetworkInfo(isOnline: false),
+        ),
+      );
+      await tester.pump();
+      expect(find.text('Offline'), findsOneWidget);
     });
   });
 }

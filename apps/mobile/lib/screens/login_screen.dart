@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
+import '../dialogs/account_suspended_dialog.dart';
 import '../features/auth/presentation/providers/auth_provider.dart';
+import '../shared/connectivity_provider.dart';
+import '../shared/offline_chip.dart';
 import '../theme/app_colors.dart';
 import 'signup_screen.dart';
-import '../dialogs/account_suspended_dialog.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -31,12 +33,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Widget build(BuildContext context) {
     ref.listen<AuthState>(authNotifierProvider, (previous, next) {
       if (next.error != null && next.error != previous?.error) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(next.error!),
-            backgroundColor: Colors.red.shade700,
-          ),
-        );
+        ScaffoldMessenger.of(context)
+          ..clearSnackBars()
+          ..showSnackBar(
+            SnackBar(
+              content: Text(next.error!),
+              backgroundColor: Colors.red.shade700,
+            ),
+          );
       }
     });
     return Scaffold(
@@ -52,6 +56,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     const SizedBox(height: 24),
+                    const OfflineChip(),
                     _buildCard(),
                     const SizedBox(height: 24),
                   ],
@@ -165,8 +170,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           ),
           const SizedBox(height: 14),
           GestureDetector(
-            onTap: () =>
-                ref.read(authNotifierProvider.notifier).signInAnonymously(),
+            onTap: () async {
+              if (!await _checkOnline()) return;
+              ref.read(authNotifierProvider.notifier).signInAnonymously();
+            },
             child: const Text(
               'Login as a guest',
               textAlign: TextAlign.center,
@@ -315,7 +322,23 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     );
   }
 
+  Future<bool> _checkOnline() async {
+    final online = await ref.read(networkInfoProvider).isConnected;
+    if (!online && mounted) {
+      ScaffoldMessenger.of(context)
+        ..clearSnackBars()
+        ..showSnackBar(
+          const SnackBar(
+            content: Text("You're offline — can't sign in right now"),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+    }
+    return online;
+  }
+
   Future<void> _signInWithGoogle() async {
+    if (!await _checkOnline()) return;
     await ref.read(authNotifierProvider.notifier).signInWithGoogle();
   }
 
@@ -351,6 +374,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   Future<void> _submit() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
+    if (!await _checkOnline()) return;
     await ref
         .read(authNotifierProvider.notifier)
         .signIn(

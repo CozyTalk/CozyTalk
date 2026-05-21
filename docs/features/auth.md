@@ -44,9 +44,11 @@ features/auth/
 - Google auth: web → `signInWithPopup`; native → `GoogleSignIn.instance.authenticate()`
 - Firestore user doc written only on account creation / first sign-in: `signUp`, `signInAnonymously` (new user), `signInWithGoogle` (new user — `additionalUserInfo.isNewUser == true`). Returning `signIn` (email+password for existing users) does **not** write or overwrite the doc. Profile updates use `set(merge: true)`.
 - Anonymous display name: `_anonymousName(uid)` in `auth_datasource.dart` — djb2 hash of UID → adjective+animal (225 combos). Also duplicated in `chat_datasource.dart` — extract if a third caller appears.
+- `signOut()`: before delegating to the `SignOut` use case, captures the current uid and calls `prefs.remove(CacheKeys.profile(uid))` + `prefs.remove(CacheKeys.avatar(uid))` in parallel. Prevents the previous user's cached profile/avatar from appearing to the next user on the same device.
 
 ## Notes
 
-- `screens/login_screen.dart` and `screens/signup_screen.dart` are design-preview files. `main.dart` imports the `features/auth/presentation/screens/` versions. The production `screens/` versions are never used in navigation.
+- `screens/login_screen.dart` IS imported in `main.dart` as `ui.LoginScreen()` — used in production mode (`_useMainUI = true`) by `_MainUIAuthRouter`. It is fully wired to `authNotifierProvider` and includes offline handling (OfflineChip + all sign-in actions blocked when offline).
+- `screens/signup_screen.dart` is a design-preview file not currently used in navigation.
 - Production app routes (`_useMainUI = true`) do not include `/login` or `/signup` in the named routes — auth is handled by `_AuthRouter` widget
 - `ref impl #2` — used as second canonical CA example after hello
