@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'admin_shared.dart';
@@ -107,7 +108,15 @@ class _AdminReportDetailScreenState extends State<AdminReportDetailScreen> {
             children: [
               Center(
                 child: InteractiveViewer(
-                  child: Image.network(url, fit: BoxFit.contain),
+                  child: CachedNetworkImage(
+                    imageUrl: url,
+                    fit: BoxFit.contain,
+                    errorWidget: (_, _, _) => const Icon(
+                      Icons.broken_image_rounded,
+                      color: Colors.white54,
+                      size: 48,
+                    ),
+                  ),
                 ),
               ),
               Positioned(
@@ -671,12 +680,12 @@ class _AdminReportDetailScreenState extends State<AdminReportDetailScreen> {
             onTap: () => _showImageFullscreen(url),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(14),
-              child: Image.network(
-                url,
+              child: CachedNetworkImage(
+                imageUrl: url,
                 width: 110,
                 height: 110,
                 fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) => Container(
+                errorWidget: (context, url, error) => Container(
                   width: 110,
                   height: 110,
                   decoration: BoxDecoration(

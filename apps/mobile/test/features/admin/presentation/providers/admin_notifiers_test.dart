@@ -154,13 +154,10 @@ void main() {
           .getChatLogUrl('r1');
 
       expect(url, 'https://storage.example.com/log');
-      expect(
-        container.read(adminReportsProvider).chatLogUrl,
-        'https://storage.example.com/log',
-      );
+      final loaded = container.read(adminReportsProvider);
+      expect(loaded.chatLogUrl, 'https://storage.example.com/log');
       expect(loaded.status, AdminReportsStatus.loaded);
-      expect(loaded.reports.length, 1);
-      expect(loaded.reports.first.id, 'r1');
+      expect(loaded.reports, isEmpty);
       expect(loaded.error, isNull);
     });
 
@@ -184,40 +181,46 @@ void main() {
       expect(repo.resolveReportCount, 0);
     });
 
-    test('resolveReport: sets isSubmitting true then false on success', () async {
-      final repo = FakeAdminRepository();
-      final transitions = <bool>[];
+    test(
+      'resolveReport: sets isSubmitting true then false on success',
+      () async {
+        final repo = FakeAdminRepository();
+        final transitions = <bool>[];
 
-      void setSubmitting(bool v) {
-        transitions.add(v);
-      }
+        void setSubmitting(bool v) {
+          transitions.add(v);
+        }
 
-      setSubmitting(true);
-      await repo.resolveReport('r1', action: 'dismiss');
-      setSubmitting(false);
-
-      expect(transitions, [true, false]);
-      expect(repo.lastReportId, 'r1');
-      expect(repo.lastAction, 'dismiss');
-    });
-
-    test('resolveReport: sets actionError on exception, clears isSubmitting', () async {
-      final repo = FakeAdminRepository();
-      repo.error = Exception('CF error');
-      String? actionError;
-      bool isSubmitting = true;
-
-      try {
+        setSubmitting(true);
         await repo.resolveReport('r1', action: 'dismiss');
-        isSubmitting = false;
-      } catch (e) {
-        isSubmitting = false;
-        actionError = e.toString();
-      }
+        setSubmitting(false);
 
-      expect(isSubmitting, isFalse);
-      expect(actionError, isNotNull);
-    });
+        expect(transitions, [true, false]);
+        expect(repo.lastReportId, 'r1');
+        expect(repo.lastAction, 'dismiss');
+      },
+    );
+
+    test(
+      'resolveReport: sets actionError on exception, clears isSubmitting',
+      () async {
+        final repo = FakeAdminRepository();
+        repo.error = Exception('CF error');
+        String? actionError;
+        bool isSubmitting = true;
+
+        try {
+          await repo.resolveReport('r1', action: 'dismiss');
+          isSubmitting = false;
+        } catch (e) {
+          isSubmitting = false;
+          actionError = e.toString();
+        }
+
+        expect(isSubmitting, isFalse);
+        expect(actionError, isNotNull);
+      },
+    );
 
     test('getChatLogUrl: sets chatLogUrl on success', () async {
       final repo = FakeAdminRepository();

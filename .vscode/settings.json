@@ -20,5 +20,9 @@
       "source.fixAll.eslint": "always"
     }
   },
-  "files.eol": "\n"
+  "files.eol": "\n",
+  "java.configuration.updateBuildConfiguration": "interactive",
+  "git.autofetch": false,
+  "git.detectSubmodules": false,
+  "git.detectSubmodulesLimit": 0
 }

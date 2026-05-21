@@ -1,12 +1,17 @@
 // ignore_for_file: unused_import
+import 'dart:ui' show PlatformDispatcher;
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'firebase_options.dart';
+import 'shared/prefs_provider.dart';
 // chatroom imports
 import 'features/auth/presentation/providers/auth_provider.dart';
 import 'features/auth/presentation/screens/login_screen.dart';
@@ -35,7 +40,7 @@ import 'screens/admin_console_screen.dart';
 const _useEmulator = bool.fromEnvironment('USE_EMULATOR', defaultValue: true);
 
 // TOGGLE: flip to true for legacy UI home (design preview), false for chatroom backend testing
-const _useMainUI = false;
+const _useMainUI = true;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -48,9 +53,24 @@ void main() async {
     ).useFunctionsEmulator('127.0.0.1', 5001);
     FirebaseFirestore.instance.useFirestoreEmulator('127.0.0.1', 8080);
     FirebaseDatabase.instance.useDatabaseEmulator('127.0.0.1', 9000);
+    if (!kIsWeb) {
+      await FirebaseCrashlytics.instance.setCrashlyticsCollectionEnabled(false);
+    }
+  } else if (!kIsWeb) {
+    FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
+    PlatformDispatcher.instance.onError = (error, stack) {
+      FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
+      return true;
+    };
   }
 
-  runApp(const ProviderScope(child: MyApp()));
+  final prefs = await SharedPreferences.getInstance();
+  runApp(
+    ProviderScope(
+      overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+      child: const MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
@@ -78,14 +98,15 @@ class MyApp extends StatelessWidget {
             return SelectBackgroundScreen(roomType: args);
           },
           AppRoutes.joinRoomId: (_) => const JoinRoomIdScreen(),
+          AppRoutes.findingRoom: (_) => const FindingRoomScreen(),
           AppRoutes.chatScreen: (_) => const ChatScreen(),
           AppRoutes.groupChatScreen: (_) => const GroupChatScreen(),
-          AppRoutes.findingRoom: (_) => const FindingRoomScreen(),
         },
       );
     }
     return MaterialApp(
       title: 'CozyTalk',
+      debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
       ),

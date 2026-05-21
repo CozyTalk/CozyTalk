@@ -1,10 +1,13 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../features/matchmaking/domain/entities/matchmaking_status.dart';
+import '../features/matchmaking/presentation/providers/matchmaking_provider.dart';
+import '../shared/connectivity_provider.dart';
+import '../shared/offline_card.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_routes.dart';
 
-// ── Tuk-tuk frame assets ───────────────────────────────────────────────────
-// Place frame images in assets/images/tuktuk/ named frame1.png, frame2.png, ...
 const _frames = [
   'assets/images/tuktuk/tuk_tuk_0.png',
   'assets/images/tuktuk/tuk_tuk_1.png',
@@ -15,56 +18,43 @@ const _frames = [
   'assets/images/tuktuk/tuk_tuk_6.png',
 ];
 
-class FindingRoomScreen extends StatefulWidget {
+class FindingRoomScreen extends ConsumerStatefulWidget {
   const FindingRoomScreen({super.key});
 
   @override
-  State<FindingRoomScreen> createState() => _FindingRoomScreenState();
+  ConsumerState<FindingRoomScreen> createState() => _FindingRoomScreenState();
 }
 
-class _FindingRoomScreenState extends State<FindingRoomScreen>
-    with SingleTickerProviderStateMixin {
+class _FindingRoomScreenState extends ConsumerState<FindingRoomScreen> {
   int _frameIndex = 0;
   int _elapsedSeconds = 0;
+  bool _didMatch = false;
 
-  late final AnimationController _progressCtrl;
-  late final Animation<double> _progressAnim;
+  Map<String, dynamic>? _args;
+  MatchmakingNotifier? _notifier;
+
   late final Timer _frameTimer;
   late final Timer _clockTimer;
-  late final Timer _matchTimer;
-
-  // Args passed from select_background_screen
-  Map<String, dynamic>? _args;
 
   @override
   void initState() {
     super.initState();
 
-    // Tuk-tuk frame animation — cycle every 180 ms
     _frameTimer = Timer.periodic(const Duration(milliseconds: 180), (_) {
       if (mounted) {
         setState(() => _frameIndex = (_frameIndex + 1) % _frames.length);
       }
     });
 
-    // Elapsed time — tick every second
     _clockTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (mounted) setState(() => _elapsedSeconds++);
     });
 
-    // Progress bar — fills to 100% over 4 s then navigates
-    _progressCtrl = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 4),
-    )..forward();
-
-    _progressAnim = CurvedAnimation(
-      parent: _progressCtrl,
-      curve: Curves.easeInOut,
-    );
-
-    // Navigate to chat when progress completes
-    _matchTimer = Timer(const Duration(seconds: 4), _goToChat);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _notifier = ref.read(matchmakingNotifierProvider.notifier);
+      _startMatchmaking();
+    });
   }
 
   @override
@@ -74,32 +64,37 @@ class _FindingRoomScreenState extends State<FindingRoomScreen>
         ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
   }
 
+  // 0→90% over 60 s while searching; jumps to 100% on match.
+  double get _progress =>
+      _didMatch ? 1.0 : (_elapsedSeconds / 60.0).clamp(0.0, 0.9);
+
   @override
   void dispose() {
     _frameTimer.cancel();
     _clockTimer.cancel();
-    _matchTimer.cancel();
-    _progressCtrl.dispose();
+    if (!_didMatch) {
+      // Defer cancelSearch to avoid modifying Riverpod state during
+      // widget tree unmount, which triggers a "provider modified during
+      // build" assertion in debug mode.
+      Future.microtask(() => _notifier?.cancelSearch());
+    }
     super.dispose();
   }
 
-  void _goToChat() {
-    if (!mounted) return;
-    final args = _args ?? {};
-    final isGroup = args['isGroup'] as bool? ?? false;
-    Navigator.pushReplacementNamed(
-      context,
-      isGroup ? AppRoutes.groupChatScreen : AppRoutes.chatScreen,
-      arguments: {
-        'roomName': args['roomName'] ?? 'Red Lotus Lake',
-        'bgImage':
-            args['bgImage'] ?? 'assets/images/backgrounds/red_lotus_lake.png',
-        'roomType': args['roomType'],
-      },
-    );
+  Future<void> _startMatchmaking() async {
+    final isOnline = await ref.read(networkInfoProvider).isConnected;
+    if (!isOnline || !mounted) return;
+    final roomType = _args?['roomType'] as String? ?? '1v1';
+    switch (roomType) {
+      case 'group':
+        _notifier?.joinGroupRoom();
+      case 'create':
+        _notifier?.createCustomRoom();
+      default:
+        _notifier?.join1v1Pool();
+    }
   }
 
-  // ── Elapsed time string ────────────────────────────────────────────────────
   String get _timeLabel {
     if (_elapsedSeconds < 60) return '$_elapsedSeconds sec';
     final m = _elapsedSeconds ~/ 60;
@@ -107,10 +102,8 @@ class _FindingRoomScreenState extends State<FindingRoomScreen>
     return '${m}m ${s}s';
   }
 
-  // ── Dots animation for subtitle ────────────────────────────────────────────
   String get _dots => '.' * ((_elapsedSeconds % 3) + 1);
 
-  // ── Room type badge config ────────────────────────────────────────────────
   ({String label, IconData icon}) get _roomTypeBadge {
     final roomType = _args?['roomType'] as String? ?? '1v1';
     return switch (roomType) {
@@ -122,7 +115,45 @@ class _FindingRoomScreenState extends State<FindingRoomScreen>
 
   @override
   Widget build(BuildContext context) {
+    ref.listen<MatchmakingState>(matchmakingNotifierProvider, (_, next) {
+      if (_didMatch) return;
+      if (next.status == MatchmakingStatus.matched) {
+        _didMatch = true;
+        final args = _args ?? {};
+        final isGroup = args['isGroup'] as bool? ?? false;
+        Navigator.pushReplacementNamed(
+          context,
+          isGroup ? AppRoutes.groupChatScreen : AppRoutes.chatScreen,
+          arguments: {
+            'roomId': next.roomId,
+            'roomName': args['roomName'],
+            'bgImage': args['bgImage'],
+          },
+        );
+      } else if (next.status == MatchmakingStatus.error) {
+        // Don't navigate away when offline — the OfflineCard already handles
+        // the UI. Only pop if we're actually online and the error is real.
+        final isOffline = !ref
+            .read(isOnlineProvider)
+            .when(data: (v) => v, loading: () => true, error: (_, _) => true);
+        if (isOffline) return;
+        ScaffoldMessenger.of(context)
+          ..clearSnackBars()
+          ..showSnackBar(
+            SnackBar(content: Text(next.error ?? 'Something went wrong')),
+          );
+        _notifier?.cancelSearch();
+        Navigator.popUntil(
+          context,
+          ModalRoute.withName(AppRoutes.chooseRoomType),
+        );
+      }
+    });
+
     final badge = _roomTypeBadge;
+    final isOffline = !ref
+        .watch(isOnlineProvider)
+        .when(data: (v) => v, loading: () => true, error: (_, _) => true);
 
     return Scaffold(
       backgroundColor: AppColors.scaffoldBg,
@@ -133,7 +164,6 @@ class _FindingRoomScreenState extends State<FindingRoomScreen>
             children: [
               const Spacer(flex: 3),
 
-              // ── Title block ──────────────────────────────────────────────
               const Text(
                 'Find a room',
                 style: TextStyle(
@@ -155,7 +185,6 @@ class _FindingRoomScreenState extends State<FindingRoomScreen>
 
               const SizedBox(height: 20),
 
-              // ── Room type badge + room name ────────────────────────────────
               Container(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 20,
@@ -203,121 +232,118 @@ class _FindingRoomScreenState extends State<FindingRoomScreen>
 
               const SizedBox(height: 24),
 
-              // ── Tuk-tuk card ─────────────────────────────────────────────
-              Container(
-                width: double.infinity,
-                height: 230,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(24),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.07),
-                      blurRadius: 16,
-                      offset: const Offset(0, 6),
-                    ),
-                  ],
-                ),
-                clipBehavior: Clip.hardEdge,
-                child: Image.asset(
-                  _frames[_frameIndex],
-                  fit: BoxFit.contain,
-                  errorBuilder: (_, _, _) => const Center(
-                    child: Icon(
-                      Icons.directions_car_rounded,
-                      size: 80,
-                      color: Colors.black12,
+              if (isOffline) ...[
+                const OfflineCard(),
+                const Spacer(flex: 3),
+              ] else ...[
+                Container(
+                  width: double.infinity,
+                  height: 230,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(24),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.07),
+                        blurRadius: 16,
+                        offset: const Offset(0, 6),
+                      ),
+                    ],
+                  ),
+                  clipBehavior: Clip.hardEdge,
+                  child: Image.asset(
+                    _frames[_frameIndex],
+                    fit: BoxFit.contain,
+                    errorBuilder: (_, _, _) => const Center(
+                      child: Icon(
+                        Icons.directions_car_rounded,
+                        size: 80,
+                        color: Colors.black12,
+                      ),
                     ),
                   ),
                 ),
-              ),
 
-              const SizedBox(height: 28),
+                const SizedBox(height: 28),
 
-              // ── Progress bar ──────────────────────────────────────────────
-              AnimatedBuilder(
-                animation: _progressAnim,
-                builder: (context, _) {
-                  final pct = (_progressAnim.value * 100).round();
-                  return LayoutBuilder(
-                    builder: (context, constraints) {
-                      final fillW = constraints.maxWidth * _progressAnim.value;
-                      return Stack(
-                        children: [
-                          // Background track
-                          Container(
-                            height: 44,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFE4E4E4),
-                              borderRadius: BorderRadius.circular(22),
-                            ),
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    final pct = (_progress * 100).round();
+                    final fillW = constraints.maxWidth * _progress;
+                    return Stack(
+                      children: [
+                        Container(
+                          height: 44,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFE4E4E4),
+                            borderRadius: BorderRadius.circular(22),
                           ),
-                          // Green fill
-                          AnimatedContainer(
-                            duration: const Duration(milliseconds: 80),
-                            height: 44,
-                            width: fillW.clamp(44.0, constraints.maxWidth),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFB5D4A5),
-                              borderRadius: BorderRadius.circular(22),
-                            ),
+                        ),
+                        AnimatedContainer(
+                          duration: const Duration(milliseconds: 600),
+                          curve: Curves.easeOut,
+                          height: 44,
+                          width: fillW.clamp(44.0, constraints.maxWidth),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFB5D4A5),
+                            borderRadius: BorderRadius.circular(22),
                           ),
-                          // Percentage text
-                          SizedBox(
-                            height: 44,
-                            width: constraints.maxWidth,
-                            child: Center(
-                              child: Text(
-                                '$pct%',
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.black54,
-                                ),
+                        ),
+                        SizedBox(
+                          height: 44,
+                          width: constraints.maxWidth,
+                          child: Center(
+                            child: Text(
+                              '$pct%',
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black54,
                               ),
                             ),
                           ),
-                        ],
-                      );
-                    },
-                  );
-                },
-              ),
+                        ),
+                      ],
+                    );
+                  },
+                ),
 
-              const SizedBox(height: 14),
+                const SizedBox(height: 14),
 
-              // ── Elapsed time ──────────────────────────────────────────────
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(
-                    Icons.timer_outlined,
-                    size: 16,
-                    color: Colors.black38,
-                  ),
-                  const SizedBox(width: 6),
-                  Text(
-                    'Searching for $_timeLabel',
-                    style: const TextStyle(
-                      fontFamily: 'Poppins',
-                      fontSize: 13,
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(
+                      Icons.timer_outlined,
+                      size: 16,
                       color: Colors.black38,
                     ),
-                  ),
-                ],
-              ),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Searching for $_timeLabel',
+                      style: const TextStyle(
+                        fontFamily: 'Poppins',
+                        fontSize: 13,
+                        color: Colors.black38,
+                      ),
+                    ),
+                  ],
+                ),
 
-              const Spacer(flex: 3),
+                const Spacer(flex: 3),
+              ],
 
-              // ── Cancel button ─────────────────────────────────────────────
               SizedBox(
                 width: double.infinity,
                 height: 48,
                 child: OutlinedButton(
-                  onPressed: () => Navigator.popUntil(
-                    context,
-                    ModalRoute.withName(AppRoutes.chooseRoomType),
-                  ),
+                  onPressed: () {
+                    _notifier?.cancelSearch();
+                    Navigator.popUntil(
+                      context,
+                      ModalRoute.withName(AppRoutes.chooseRoomType),
+                    );
+                  },
                   style: OutlinedButton.styleFrom(
                     foregroundColor: Colors.black54,
                     side: const BorderSide(color: Colors.black26),

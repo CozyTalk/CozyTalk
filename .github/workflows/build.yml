@@ -15,6 +15,7 @@ concurrency:
 
 jobs:
   build-android:
+    if: github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     defaults:
@@ -28,6 +29,9 @@ jobs:
           distribution: temurin
           java-version: '21'
           cache: gradle
+
+      - name: Override Gradle JDK path
+        run: sed -i "s|org.gradle.java.home=.*|org.gradle.java.home=$JAVA_HOME|" android/gradle.properties
 
       - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
         with:

@@ -66,7 +66,7 @@ final _unbanUserProvider = Provider<UnbanUser>(
 );
 
 final _getBlockedUsersProvider = Provider<GetBlockedUsers>(
-  (ref) => GetBlockedUsers(ref.watch(_adminRepositoryProvider)),
+  (ref) => GetBlockedUsers(ref.watch(adminRepositoryProvider)),
 );
 
 // ── Public providers ───────────────────────────────────────────────────────

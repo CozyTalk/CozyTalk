@@ -117,6 +117,7 @@ function Stop-Emulators {
     }
     if ($null -ne $LogFile) {
         Write-Host "  Session log saved -> $LogFile" -ForegroundColor DarkGray
+        Write-Host "  Run .\logs.sh to view." -ForegroundColor DarkGray
     }
     Write-Host "  Done." -ForegroundColor DarkGray
     Write-Host ""
@@ -188,7 +189,8 @@ try {
 
             log "Starting Firebase emulators..."
             info "Session log -> $LogFile"
-            info "Emulator UI -> http://127.0.0.1:4000"
+            info "Emulator UI -> http://127.0.0.1:4000  (Logs tab = real-time function output)"
+            info "Tip         -> .\logs.sh -f  to follow logs in another terminal"
             Write-Host ""
 
             # cmd.exe runs synchronously (no & / start), so it stays alive until
@@ -251,6 +253,68 @@ try {
         Write-Host "  Press Ctrl+C to stop emulators." -ForegroundColor DarkGray
         Write-Host ""
         while ($true) { Start-Sleep -Seconds 1 }
+    }
+
+    # -- Java compatibility guard (Android/Gradle only) ------------------------
+    # Kotlin 2.1.0 (bundled in Gradle 8.x) can't parse Java 22+ version strings.
+    # If the active JDK is too new, find the highest installed version that's <= 21.
+    if (-not $USE_WEB -and -not $EMULATOR_ONLY) {
+        $javaVer = $null
+        try {
+            # Select-Object -First 1 + ToString() ensures a scalar string in both
+            # PS 5.1 (returns ErrorRecord objects) and PS 7 (returns strings).
+            # -match on an array filters elements instead of setting $Matches.
+            $javaLine = (& java -version 2>&1 | Select-Object -First 1).ToString()
+            if ($javaLine -match '"(\d+)[\.\d]*"') {
+                $major = [int]$Matches[1]
+                if ($major -eq 1 -and $javaLine -match '"1\.(\d+)') { $major = [int]$Matches[1] }
+                $javaVer = $major
+            }
+        } catch {}
+
+        if ($null -ne $javaVer -and $javaVer -gt 21) {
+            $jCandidate = $null
+
+            # 1. Check registry (covers Oracle, Adoptium, Microsoft, Corretto installers)
+            $regPath = 'HKLM:\SOFTWARE\JavaSoft\JDK'
+            if (Test-Path $regPath) {
+                $jCandidate = Get-ChildItem $regPath -ErrorAction SilentlyContinue |
+                    ForEach-Object {
+                        # -as [int] returns $null instead of throwing on non-numeric key names
+                        $v = ($_.PSChildName -split '\.')[0] -as [int]
+                        $h = (Get-ItemProperty $_.PSPath -ErrorAction SilentlyContinue).JavaHome
+                        if ($null -ne $v -and $v -ge 11 -and $v -le 21 -and $h -and (Test-Path "$h\bin\java.exe")) {
+                            [PSCustomObject]@{ Version = $v; Home = $h }
+                        }
+                    } | Sort-Object Version -Descending | Select-Object -First 1 -ExpandProperty Home
+            }
+
+            # 2. Fall back to scanning common install dirs
+            if (-not $jCandidate) {
+                $jCandidate = @(
+                    'C:\Program Files\Java',
+                    'C:\Program Files\Eclipse Adoptium',
+                    'C:\Program Files\Microsoft',
+                    'C:\Program Files\BellSoft',
+                    'C:\Program Files\Amazon Corretto'
+                ) | Where-Object { Test-Path $_ } |
+                    ForEach-Object { Get-ChildItem -Path $_ -Directory -ErrorAction SilentlyContinue } |
+                    ForEach-Object {
+                        $v = ($_.Name -replace '[^\d].*', '') -as [int]
+                        if ($null -ne $v -and $v -ge 11 -and $v -le 21 -and (Test-Path "$($_.FullName)\bin\java.exe")) {
+                            [PSCustomObject]@{ Version = $v; Home = $_.FullName }
+                        }
+                    } | Sort-Object Version -Descending | Select-Object -First 1 -ExpandProperty Home
+            }
+
+            if (-not $jCandidate) {
+                Abort "Java $javaVer is not supported by the Kotlin Gradle plugin (max: 21).`nInstall any JDK between 11 and 21 and re-run, or set JAVA_HOME manually."
+            }
+
+            $env:JAVA_HOME = $jCandidate
+            warn "Java $javaVer detected -- using $jCandidate for Gradle"
+            Write-Host ""
+        }
     }
 
     # -- Flutter ---------------------------------------------------------------

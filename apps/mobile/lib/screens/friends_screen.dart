@@ -1,6 +1,9 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter/material.dart';
+import '../shared/connectivity_provider.dart';
 import '../shared/info_dialog.dart';
+import '../shared/offline_card.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_routes.dart';
 import '../models/friend.dart';
@@ -92,14 +95,14 @@ final List<Friend> _mockFriends = [
   ),
 ];
 
-class FriendsScreen extends StatefulWidget {
+class FriendsScreen extends ConsumerStatefulWidget {
   const FriendsScreen({super.key});
 
   @override
-  State<FriendsScreen> createState() => _FriendsScreenState();
+  ConsumerState<FriendsScreen> createState() => _FriendsScreenState();
 }
 
-class _FriendsScreenState extends State<FriendsScreen> {
+class _FriendsScreenState extends ConsumerState<FriendsScreen> {
   late List<Friend> _friends;
   final TextEditingController _searchCtrl = TextEditingController();
   String _query = '';
@@ -132,26 +135,40 @@ class _FriendsScreenState extends State<FriendsScreen> {
   @override
   Widget build(BuildContext context) {
     final filtered = _filtered;
+    final isOffline = !ref
+        .watch(isOnlineProvider)
+        .when(data: (v) => v, loading: () => true, error: (_, _) => true);
+
     return Scaffold(
       backgroundColor: AppColors.scaffoldBg,
       body: Column(
         children: [
           _buildHeader(context),
-          Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-              itemCount: filtered.length + 1,
-              itemBuilder: (context, index) {
-                if (index == 0) return _buildSearchBar();
-                final friend = filtered[index - 1];
-                final originalIndex = _friends.indexOf(friend);
-                return Padding(
-                  padding: const EdgeInsets.only(top: 16),
-                  child: _buildFriendCard(friend, originalIndex),
-                );
-              },
+          if (isOffline)
+            const Expanded(
+              child: Center(
+                child: Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 20),
+                  child: OfflineCard(),
+                ),
+              ),
+            )
+          else
+            Expanded(
+              child: ListView.builder(
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+                itemCount: filtered.length + 1,
+                itemBuilder: (context, index) {
+                  if (index == 0) return _buildSearchBar();
+                  final friend = filtered[index - 1];
+                  final originalIndex = _friends.indexOf(friend);
+                  return Padding(
+                    padding: const EdgeInsets.only(top: 16),
+                    child: _buildFriendCard(friend, originalIndex),
+                  );
+                },
+              ),
             ),
-          ),
         ],
       ),
     );

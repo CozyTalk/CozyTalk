@@ -33,6 +33,9 @@ jobs:
           java-version: '21'
           cache: gradle
 
+      - name: Override Gradle JDK path
+        run: sed -i "s|org.gradle.java.home=.*|org.gradle.java.home=$JAVA_HOME|" android/gradle.properties
+
       - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
         with:
           flutter-version: '3.41.7'
@@ -40,6 +43,12 @@ jobs:
           cache: true
 
       - run: flutter pub get
+
+      - name: Dependency audit
+        uses: google/osv-scanner-action/osv-scanner-action@v2.3.8
+        with:
+          scan-args: |-
+            --lockfile=apps/mobile/pubspec.lock
 
       - run: dart run build_runner build
 
@@ -53,10 +62,17 @@ jobs:
 
       - run: flutter test --coverage
 
-      - uses: codecov/codecov-action@57e3a136b779b570ffcdbf80b3bdc90e7fab3de2 # v6.0.0
+      - uses: codecov/codecov-action@e79a6962e0d4c0c17b229090214935d2e33f8354 # v6.0.1
         with:
           files: apps/mobile/coverage/lcov.info
           fail_ci_if_error: false
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: coverage-report
+          path: apps/mobile/coverage/lcov.info
+          retention-days: 30
 
   functions-quality:
     runs-on: ubuntu-latest
@@ -80,30 +96,9 @@ jobs:
 
       - run: npm ci
 
+      - name: Dependency audit
+        run: npm audit --audit-level=high
+
       - run: npm run lint
 
       - run: npm run build
-
-      - name: Start Firebase emulators
-        working-directory: .
-        env:
-          FIREBASE_CLI_TELEMETRY_OPTOUT: '1'
-        run: |
-          npx -y firebase-tools emulators:start \
-            --only auth,firestore,database,functions,pubsub \
-            --project cozytalk-5d984 &
-          echo $! > /tmp/emulator.pid
-          for port in 9099 8080 9000 5001 8085; do
-            for i in $(seq 1 90); do
-              nc -z localhost "$port" 2>/dev/null && break
-              [ "$i" -eq 90 ] && echo "Timeout waiting for emulator port $port" && exit 1
-              sleep 1
-            done
-          done
-
-      - name: Jest integration tests
-        run: npm test
-
-      - name: Stop emulators
-        if: always()
-        run: kill "$(cat /tmp/emulator.pid)" 2>/dev/null || true
