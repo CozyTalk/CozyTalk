@@ -283,6 +283,7 @@ DONE WHEN: <criteria>
 | Edit lock files manually | Run package manager to regenerate |
 | `git push --force` to main | Hard block |
 | `print()` in production code | Use structured logging |
+| Run `git add` / `git commit` / `git stash` in parallel | Git holds `.git/index.lock` for the duration of each command — parallel calls race and deadlock. Always chain with `&&` in a single shell call. |
 
 ---
 
