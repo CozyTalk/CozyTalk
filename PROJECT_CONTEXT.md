@@ -144,7 +144,7 @@ Navigation hub `HomeScreen`. Used only when `_useMainUI = true`. No domain/data 
 Initialises Firebase, points to emulators (Auth `9099`, Functions `5001`, Firestore `8080`) when `USE_EMULATOR=true`. No automatic sign-in — `_AuthRouter` widget watches `authNotifierProvider` and routes to `LoginScreen` or `HelloScreen`.
 
 ### Tests
-890 Flutter unit + widget tests across auth, chat, matchmaking, profile, hello, friends, card_shuffle, and screens features. See [Test Coverage](#quality-gates-definition-of-done) for the full breakdown.
+902 Flutter unit + widget tests across auth, chat, matchmaking, profile, hello, friends, card_shuffle, avatar, and screens features. See [Test Coverage](#quality-gates-definition-of-done) for the full breakdown.
 
 ---
 
