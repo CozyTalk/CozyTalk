@@ -274,7 +274,7 @@ DONE WHEN: <criteria>
 | Persist chat messages | Privacy by Design |
 | Hand-roll `toJson`/`fromJson` | Use Freezed |
 | Secrets in SharedPreferences / Hive / assets | APK-extractable |
-| Edit `*.g.dart` / `*.freezed.dart` | Run `build_runner` |
+| Edit `*.g.dart` / `*.freezed.dart` | Run `build_runner` — these files are gitignored and must be regenerated locally |
 | `ListView(children: [...])` for dynamic data | Performance |
 | Remove or modify `_useMainUI` | Breaks dev/test workflow for whole team |
 | Visual changes (padding, color, layout) during integration | Separate design PR |
