@@ -128,7 +128,9 @@ class _DressUpScreenState extends ConsumerState<DressUpScreen> {
     await ref
         .read(avatarDecorationNotifierProvider.notifier)
         .updateHat(uid, _selected);
-    if (mounted) Navigator.pop(context);
+    if (mounted && ref.read(avatarDecorationNotifierProvider).error == null) {
+      Navigator.pop(context);
+    }
   }
 
   @override
