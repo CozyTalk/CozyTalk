@@ -10,14 +10,14 @@ features/chat/
 │   ├── entities/
 │   │   ├── chat_message.dart          ChatMessage (id, senderId, text, timestamp)
 │   │   ├── session_status.dart        SessionStatus enum
-│   │   └── typing_user.dart           TypingUser (uid, isTyping)
+│   │   └── typing_user.dart           TypingUser (uid, displayName, photoUrl?)
 │   ├── repositories/chat_repository.dart  abstract ChatRepository
 │   └── usecases/
 │       ├── end_session.dart           EndSession
 │       ├── send_message.dart          SendMessage
 │       ├── set_typing.dart            SetTyping
 │       ├── watch_messages.dart        WatchMessages
-│       └── watch_partner_typing.dart  WatchPartnerTyping
+│       └── watch_partner_typing.dart  WatchTypingUsers
 ├── data/
 │   ├── datasources/chat_datasource.dart        ChatDatasourceImpl (Firestore + RTDB + CFs)
 │   ├── models/chat_message_model.dart          @freezed ChatMessageModel + toEntity()
@@ -37,7 +37,7 @@ features/chat/
 
 `SessionStatus` enum: `idle | searching | chatting | disconnected`
 
-`ChatState` — `status` (SessionStatus), `messages` (List\<ChatMessage\>), `sessionId` (String?), `partnerName` (String?)
+`ChatState` — `status` (SessionStatus), `messages` (List\<ChatMessage\>), `sessionId` (String?), `currentUserId` (String?), `currentUserDisplayName` (String?), `currentUserPhotoUrl` (String?), `typingUsers` (List\<TypingUser\>), `isSending` (bool)
 
 ## Key Behavior
 
@@ -52,7 +52,7 @@ features/chat/
 
 ## Production Screens
 
-- `screens/chat_screen.dart` — `ChatScreen` (ConsumerStatefulWidget, ⚠️ partial — uses `shared/` providers only, not wired to `chatNotifierProvider`). AppBar has Jukebox music button (`Icons.queue_music_rounded`) and `JukeboxPlayer` is mounted in the Column body for audio lifecycle management.
+- `screens/chat_screen.dart` — `ChatScreen` (ConsumerStatefulWidget, ⚠️ partial — uses `shared/` providers only, not wired to `chatNotifierProvider`). AppBar has Jukebox music button (`Icons.queue_music_rounded`) and `JukeboxChatPlayer` is mounted in the Column body for audio lifecycle management.
 - `screens/group_chat_screen.dart` — `GroupChatScreen` (not yet integrated)
 
 ## Privacy

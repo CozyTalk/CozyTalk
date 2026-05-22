@@ -40,7 +40,7 @@ features/matchmaking/
 
 `MatchmakingStatus` enum: `idle | searching | waiting1v1 | matched | creating | error`
 
-`MatchmakingState` — `status`, `room` (Room?), `error` (String?)
+`MatchmakingState` — `status`, `currentRoom` (Room?), `roomId` (String?), `isNewRoom` (bool), `interestText` (String), `error` (String?)
 
 `Room` entity fields: `roomId` (String), `roomType` (RoomType: public|custom), `mode` (RoomMode: oneToOne|group), `status` (RoomStatus: active|padding|expired)
 
@@ -63,10 +63,10 @@ features/matchmaking/
 
 ## Production Screens
 
-- `screens/finding_room_screen.dart` — `FindingRoomScreen` (StatefulWidget — not yet integrated)
-- `screens/choose_room_type_screen.dart` — `ChooseRoomTypeScreen` (StatefulWidget — not yet integrated)
-- `screens/join_room_id_screen.dart` — `JoinRoomIdScreen` (StatefulWidget — not yet integrated)
-- `screens/group_chat_screen.dart` — `GroupChatScreen` (⚠️ partial — `ConsumerStatefulWidget` but uses `shared/` providers only, not wired to `chatNotifierProvider`)
+- `screens/finding_room_screen.dart` — `FindingRoomScreen` ✅ integrated — see `docs/frontend/screens.md` for full wiring detail
+- `screens/choose_room_type_screen.dart` — `ChooseRoomTypeScreen` ✅ integrated — back button uses `popUntil(isFirst)`
+- `screens/join_room_id_screen.dart` — `JoinRoomIdScreen` ⬜ pending
+- `screens/group_chat_screen.dart` — `GroupChatScreen` ⚠️ partial — `ConsumerStatefulWidget` but uses `shared/` providers only, not wired to `chatNotifierProvider`
 
 ## Notes
 

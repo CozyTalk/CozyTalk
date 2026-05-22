@@ -15,7 +15,7 @@ All admin functions are callable, deployed to `us-central1`. Every function veri
 `functions/src/admin/adminGetDashboard.ts`
 - **Trigger:** callable (admin only)
 - **Input:** none
-- **Process:** Parallel queries: (1) Firestore count on `reports/` where `status == "pending"`, (2) count unique UIDs across RTDB `pool_presence/` keys and `rooms/` with `status == "active"`, (3) Firestore count on `users/` where `banned == true`.
+- **Process:** Parallel queries: (1) Firestore count on `reports/` where `status == "pending"`, (2) count unique UIDs across RTDB `pool_presence/` keys and Firestore `rooms` docs (`users` array field) where `status == "active"`, (3) Firestore count on `users/` where `banned == true`.
 - **Output:** `{ pendingReports: number, onlineUsers: number, bannedUsers: number }`
 
 ### `adminResolveReport`
@@ -55,14 +55,14 @@ All admin functions are callable, deployed to `us-central1`. Every function veri
 - **Trigger:** callable (authenticated)
 - **Input:** `{ sessionId: string, text: string }`
 - **Process:** Looks up room in `rooms/{sessionId}` then `active_sessions/{sessionId}`. Verifies caller is participant. Encrypts text with AES-256-GCM (random 12-byte IV). Writes to `chat_rooms/{sessionId}/messages`.
-- **Output:** void (throws HttpsError on failure)
+- **Output:** `{ messageId: string }`
 
 ### `endSession`
 `functions/src/chat/endSession.ts`
 - **Trigger:** callable (authenticated)
 - **Input:** `{ sessionId: string }`
 - **Process:** Looks up `rooms/{sessionId}` then `active_sessions/{sessionId}`. Verifies caller is participant. Archives key to `session_keys/{sessionId}`. Tombstones room (`status: expired`). Deletes RTDB presence/typing/jukebox for room. Deletes `chat_rooms/{sessionId}/messages`.
-- **Output:** void
+- **Output:** `{ success: true }`
 
 ### `reportSession`
 `functions/src/chat/reportSession.ts`
@@ -80,7 +80,7 @@ All admin functions are callable, deployed to `us-central1`. Every function veri
 - **Trigger:** callable (authenticated)
 - **Input:** `{ interestText?: string }`
 - **Process:** Adds user to `waiting_pool/{uid}` with `status: waiting`. If `interestText` provided, generates embedding via Vertex AI and stores 256-dim vector. Sets `pool_presence/{uid}` in RTDB.
-- **Output:** void
+- **Output:** `{ success: true }`
 
 ### `cancel1v1Pool`
 `functions/src/matchmaking/cancel1v1Pool.ts`
@@ -92,7 +92,7 @@ All admin functions are callable, deployed to `us-central1`. Every function veri
 ### `match1v1Users`
 `functions/src/matchmaking/match1v1Users.ts`
 - **Trigger:** Firestore `onDocumentCreated` — `waiting_pool/{uid}` — **region: `asia-southeast1`**
-- **Process:** 2-phase atomic Firestore transaction. Finds best candidate by cosine similarity of interest vectors (threshold 0.65). Creates `rooms/{roomId}` with `mode: 1v1`, `status: active`. Removes both users from pool. Writes match result to RTDB.
+- **Process:** 2-phase atomic Firestore transaction. Finds best candidate by cosine similarity of interest vectors (threshold 0.65) from a window of up to **20** candidates. Creates `rooms/{roomId}` with `mode: 1v1`, `status: active`. Removes both users from pool. Writes match result to RTDB.
 - **Output:** void (trigger)
 
 ### `joinGroupRoom`
@@ -100,7 +100,7 @@ All admin functions are callable, deployed to `us-central1`. Every function veri
 - **Trigger:** callable (authenticated)
 - **Input:** `{ interestText?: string }`
 - **Process:** 3-phase match: find candidate group rooms → compute cosine similarity → join best match or create new group room. Room capacity 2–5 users.
-- **Output:** `{ roomId: string, mode: string, roomType: string }`
+- **Output:** `{ roomId: string, isNewRoom: boolean }`
 
 ### `createCustomRoom`
 `functions/src/matchmaking/createCustomRoom.ts`
@@ -121,14 +121,14 @@ All admin functions are callable, deployed to `us-central1`. Every function veri
 - **Trigger:** callable (authenticated)
 - **Input:** `{ roomId: string }`
 - **Process:** Removes caller from `rooms/{roomId}.users`. If room empty, tombstones it. Clears RTDB member node.
-- **Output:** void
+- **Output:** `{ success: true }`
 
 ### `setRoomLock`
 `functions/src/matchmaking/setRoomLock.ts`
 - **Trigger:** callable (authenticated)
 - **Input:** `{ roomId: string, isLocked: boolean }`
 - **Process:** Verifies caller is room participant. Sets `rooms/{roomId}.isLocked`.
-- **Output:** void
+- **Output:** `{ success: true }`
 
 ### `expireRooms`
 `functions/src/matchmaking/expireRooms.ts`

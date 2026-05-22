@@ -78,7 +78,7 @@ npm install && npm run build && npm test   # npm test requires emulators first
 ```
 
 Jest: 93 unit (matchmaking 60, embeddingService 21, chat 12). The 7 Vertex AI integration tests run separately via `jest.integration.config.js` — excluded from `npm test`.
-Flutter: 919 unit + widget tests.
+Flutter: 936 unit + widget tests.
 
 ---
 
@@ -133,9 +133,9 @@ Critical rules that prevent bugs:
 | `users/{uid}` | Email is **never** stored in Firestore |
 | `active_sessions/{id}` | Legacy — new code uses `rooms/` |
 | `chat_rooms/{id}/messages/{id}` | AES-256-GCM; `expiresAt` TTL 3 days |
-| `reports/{id}` | `encryptionKey` is CF-written — not in client `hasOnly` list |
+| `reports/{id}` | `chatLogStoragePath` and `outcome` are CF-written — not in client `hasOnly` list |
 
-RTDB paths: `rooms/{id}/members/{uid}`, `typing/{id}/{uid}`, `presence/{id}/{uid}`, `nameQueue/{id}`, `user_status/{uid}`, `pool_presence/{uid}`.
+RTDB paths: `rooms/{id}/members/{uid}`, `typing/{id}/{uid}`, `presence/{id}/{uid}`, `nameQueue/{id}`, `user_status/{uid}`, `pool_presence/{uid}`, `jukebox/{id}`.
 
 ---
 
