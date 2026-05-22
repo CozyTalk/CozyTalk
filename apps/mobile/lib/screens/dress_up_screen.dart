@@ -1,6 +1,8 @@
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../features/auth/presentation/providers/auth_provider.dart';
+import '../features/avatar/presentation/providers/avatar_decoration_provider.dart';
 import '../theme/app_colors.dart';
 import '../shared/avatar_overlay.dart';
 import '../shared/layered_avatar.dart';
@@ -38,12 +40,11 @@ class _DressUpScreenState extends ConsumerState<DressUpScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final saved = ref.read(avatarProvider).accessory;
-      final key = AvatarOverlays.accessory.entries
-          .where((e) => e.value == saved)
-          .map((e) => e.key)
-          .firstOrNull;
-      setState(() => _selected = key);
+      final hatKey = ref
+          .read(avatarDecorationNotifierProvider)
+          .decoration
+          ?.hatKey;
+      setState(() => _selected = hatKey);
     });
   }
 
@@ -117,8 +118,39 @@ class _DressUpScreenState extends ConsumerState<DressUpScreen> {
     ref.read(avatarProvider.notifier).setAccessory(null);
   }
 
+  Future<void> _save() async {
+    if (ref.read(avatarDecorationNotifierProvider).status ==
+        AvatarDecorationStatus.saving) {
+      return;
+    }
+    final uid = ref.read(authNotifierProvider).user?.uid;
+    if (uid == null || !mounted) return;
+    await ref
+        .read(avatarDecorationNotifierProvider.notifier)
+        .updateHat(uid, _selected);
+    if (mounted) Navigator.pop(context);
+  }
+
   @override
   Widget build(BuildContext context) {
+    ref.listen<AvatarDecorationState>(avatarDecorationNotifierProvider, (
+      prev,
+      next,
+    ) {
+      if (next.error != null && next.error != prev?.error && context.mounted) {
+        ScaffoldMessenger.of(context)
+          ..clearSnackBars()
+          ..showSnackBar(
+            SnackBar(
+              content: Text(next.error!),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+      }
+    });
+    final isSaving =
+        ref.watch(avatarDecorationNotifierProvider).status ==
+        AvatarDecorationStatus.saving;
     return Scaffold(
       backgroundColor: AppColors.scaffoldBg,
       body: Stack(
@@ -283,7 +315,7 @@ class _DressUpScreenState extends ConsumerState<DressUpScreen> {
             right: 0,
             child: Center(
               child: GestureDetector(
-                onTap: () => Navigator.pop(context, _selected),
+                onTap: isSaving ? null : _save,
                 child: Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 48,
