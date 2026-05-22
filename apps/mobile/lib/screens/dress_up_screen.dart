@@ -35,16 +35,20 @@ class _DressUpScreenState extends ConsumerState<DressUpScreen> {
   String? _selected;
   final List<String?> _history = [];
   final List<String?> _future = [];
+  bool _hasInitialized = false;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final hatKey = ref
-          .read(avatarDecorationNotifierProvider)
-          .decoration
-          ?.hatKey;
-      setState(() => _selected = hatKey);
+      if (!mounted) return;
+      final decoration = ref.read(avatarDecorationNotifierProvider).decoration;
+      if (decoration != null) {
+        setState(() {
+          _selected = decoration.hatKey;
+          _hasInitialized = true;
+        });
+      }
     });
   }
 
@@ -139,6 +143,15 @@ class _DressUpScreenState extends ConsumerState<DressUpScreen> {
       prev,
       next,
     ) {
+      if (!_hasInitialized &&
+          next.decoration != null &&
+          _history.isEmpty &&
+          _future.isEmpty) {
+        setState(() {
+          _selected = next.decoration!.hatKey;
+          _hasInitialized = true;
+        });
+      }
       if (next.error != null && next.error != prev?.error && context.mounted) {
         ScaffoldMessenger.of(context)
           ..clearSnackBars()
