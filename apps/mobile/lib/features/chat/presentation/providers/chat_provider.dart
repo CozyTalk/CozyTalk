@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:cloud_functions/cloud_functions.dart';
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -196,7 +197,9 @@ class ChatNotifier extends Notifier<ChatState> {
       var textToSend = text;
       try {
         textToSend = await ref.read(censorTextProvider).call(text);
-      } catch (_) {}
+      } catch (e) {
+        debugPrint('censorText failed, sending original: $e');
+      }
       await ref.read(_sendMessageProvider)(
         sessionId: sessionId,
         text: textToSend,
