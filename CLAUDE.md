@@ -77,7 +77,8 @@ npm install && npm run build && npm test   # npm test requires emulators first
 .\dev.ps1 [...]                           # Windows
 ```
 
-Test counts: see `PROJECT_CONTEXT.md`.
+Jest: 93 unit (matchmaking 60, embeddingService 21, chat 12). The 7 Vertex AI integration tests run separately via `jest.integration.config.js` — excluded from `npm test`.
+Flutter: 919 unit + widget tests.
 
 ---
 
@@ -94,6 +95,7 @@ Test counts: see `PROJECT_CONTEXT.md`.
 | `home` | — | Thin nav hub, no domain/data | Complete |
 | `friends` | `friendsNotifierProvider` · `friendChatNotifierProvider` | `FriendsState`: allUsers\|friends\|incomingRequests · `FriendChatState`: messages\|chatRoomId | Prototype (dev screens only) |
 | `card_shuffle` | `cardShuffleNotifierProvider` | `CardShuffleState`: currentQuestion?, isLoading, error? | Prototype (icebreaker panel in chat dev screen) |
+| `word_filter` | `censorTextProvider` | Stateless service — no Notifier | Complete · gates on `content_filtering_enabled` Remote Config flag |
 
 **State pattern (all features):** Nullable fields in `FooState.copyWith` use `_sentinel` so callers can explicitly pass `null` to clear them. Never use `??` for clearable fields.
 
@@ -272,7 +274,7 @@ DONE WHEN: <criteria>
 | Persist chat messages | Privacy by Design |
 | Hand-roll `toJson`/`fromJson` | Use Freezed |
 | Secrets in SharedPreferences / Hive / assets | APK-extractable |
-| Edit `*.g.dart` / `*.freezed.dart` | Run `build_runner` |
+| Edit `*.g.dart` / `*.freezed.dart` | Run `build_runner` — these files are gitignored and must be regenerated locally |
 | `ListView(children: [...])` for dynamic data | Performance |
 | Remove or modify `_useMainUI` | Breaks dev/test workflow for whole team |
 | Visual changes (padding, color, layout) during integration | Separate design PR |
@@ -281,7 +283,7 @@ DONE WHEN: <criteria>
 | Business logic in Screen or Notifier | UseCase only |
 | New packages during integration PR | Architect approval required |
 | Edit lock files manually | Run package manager to regenerate |
-| `git push --force` to main | Hard block |
+| `git push` directly to `main` or `master` | Never — always branch + PR; hook in `.claude/settings.json` enforces this |
 | `print()` in production code | Use structured logging |
 | Run `git add` / `git commit` / `git stash` in parallel | Git holds `.git/index.lock` for the duration of each command — parallel calls race and deadlock. Always chain with `&&` in a single shell call. |
 
