@@ -20,24 +20,24 @@ abstract class WordFilterDatasource {
 }
 
 class WordFilterDatasourceImpl implements WordFilterDatasource {
-  WordFilterDatasourceImpl(this._dbHelper, this._remoteConfig);
+  WordFilterDatasourceImpl(this._dbHelper, this._remoteConfig, this._prefs);
 
   final WordFilterDatabaseHelper _dbHelper;
   final FirebaseRemoteConfig _remoteConfig;
+  final SharedPreferences _prefs;
 
-  static const _keyDbSeeded = 'db_seeded';
+  static const _keyDbSeeded = 'db_seeded_v1';
   static const _flagName = 'content_filtering_enabled';
 
   List<String>? _enWords;
   List<String>? _thWords;
-  bool _initialized = false;
+  Future<void>? _initFuture;
 
   @override
   Future<void> seedIfNeeded() async {
     if (kIsWeb) return;
 
-    final prefs = await SharedPreferences.getInstance();
-    if (prefs.getBool(_keyDbSeeded) == true) return;
+    if (_prefs.getBool(_keyDbSeeded) == true) return;
 
     final jsonStr = await rootBundle.loadString('assets/banned_words.json');
     final data = Map<String, dynamic>.from(json.decode(jsonStr) as Map);
@@ -51,12 +51,15 @@ class WordFilterDatasourceImpl implements WordFilterDatasource {
     ];
 
     await _dbHelper.insertWordsBatch(wordMaps);
-    await prefs.setBool(_keyDbSeeded, true);
+    await _prefs.setBool(_keyDbSeeded, true);
   }
 
-  Future<void> _initWords() async {
-    if (_initialized) return;
+  Future<void> _initWords() {
+    _initFuture ??= _loadWords();
+    return _initFuture!;
+  }
 
+  Future<void> _loadWords() async {
     if (kIsWeb) {
       // Web: load directly from bundled JSON — SQLite not available on web
       final jsonStr = await rootBundle.loadString('assets/banned_words.json');
@@ -70,8 +73,6 @@ class WordFilterDatasourceImpl implements WordFilterDatasource {
       _enWords = enRows.map((r) => r['word'] as String).toList();
       _thWords = thRows.map((r) => r['word'] as String).toList();
     }
-
-    _initialized = true;
   }
 
   @override

@@ -52,8 +52,6 @@ final _endSessionProvider = Provider<EndSession>(
   (ref) => EndSession(ref.watch(_chatRepositoryProvider)),
 );
 
-final _censorTextProvider = Provider((ref) => ref.watch(censorTextProvider));
-
 final chatNotifierProvider = NotifierProvider<ChatNotifier, ChatState>(
   ChatNotifier.new,
 );
@@ -195,7 +193,7 @@ class ChatNotifier extends Notifier<ChatState> {
     if (sessionId == null || state.isSending) return;
     state = state.copyWith(isSending: true, error: null);
     try {
-      final censored = await ref.read(_censorTextProvider).call(text);
+      final censored = await ref.read(censorTextProvider).call(text);
       await ref.read(_sendMessageProvider)(
         sessionId: sessionId,
         text: censored,

@@ -6,11 +6,13 @@ import '../../data/datasources/word_filter_datasource.dart';
 import '../../data/repositories/word_filter_repository_impl.dart';
 import '../../domain/repositories/word_filter_repository.dart';
 import '../../domain/usecases/censor_text.dart';
+import '../../../../shared/prefs_provider.dart';
 
 final _wordFilterDatasourceProvider = Provider<WordFilterDatasource>(
   (ref) => WordFilterDatasourceImpl(
     WordFilterDatabaseHelper(),
     FirebaseRemoteConfig.instance,
+    ref.watch(sharedPreferencesProvider),
   ),
 );
 
