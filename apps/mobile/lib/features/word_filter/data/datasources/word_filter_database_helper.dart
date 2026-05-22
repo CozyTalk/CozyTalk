@@ -11,15 +11,18 @@ class WordFilterDatabaseHelper {
     return _db ??= await _openDb();
   }
 
-  Future<Database> _openDb() =>
-      openDatabase(_dbName, version: _dbVersion, onCreate: _onCreate);
+  Future<Database> _openDb() async {
+    final dbPath = '${await getDatabasesPath()}/$_dbName';
+    return openDatabase(dbPath, version: _dbVersion, onCreate: _onCreate);
+  }
 
   Future<void> _onCreate(Database db, int version) async {
     await db.execute('''
       CREATE TABLE $_table (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         word TEXT NOT NULL,
-        language TEXT NOT NULL
+        language TEXT NOT NULL,
+        UNIQUE(word, language)
       )
     ''');
     await db.execute('CREATE INDEX idx_language ON $_table(language)');

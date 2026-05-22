@@ -57,7 +57,10 @@ void main() async {
   await remoteConfig.setDefaults({'content_filtering_enabled': false});
   try {
     await remoteConfig.fetchAndActivate();
-  } catch (_) {}
+  } catch (e) {
+    // Non-fatal — cached/default values remain active. Log so CI/devs can diagnose.
+    debugPrint('Remote Config fetch failed: $e');
+  }
 
   if (_useEmulator) {
     await FirebaseAuth.instance.useAuthEmulator('127.0.0.1', 9099);
