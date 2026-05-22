@@ -426,10 +426,6 @@ CozyTalk/
 │   ├── index.ts                      ← exports all 15 functions
 │   ├── matchmaking/                  ← 11 exported CFs + embeddingService.ts + _utils.ts + __tests__/
 
-
-
-
-
 │   ├── chat/                         ← sendMessage, endSession, reportSession (exported); onProtoPresenceDeleted (internal stub)
 │   └── dev/                          ← seedTtlCollections (one-time HTTP dev helper)
 ├── firestore.rules                   ← deployed Firestore security rules
