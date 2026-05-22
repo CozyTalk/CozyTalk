@@ -193,10 +193,13 @@ class ChatNotifier extends Notifier<ChatState> {
     if (sessionId == null || state.isSending) return;
     state = state.copyWith(isSending: true, error: null);
     try {
-      final censored = await ref.read(censorTextProvider).call(text);
+      var textToSend = text;
+      try {
+        textToSend = await ref.read(censorTextProvider).call(text);
+      } catch (_) {}
       await ref.read(_sendMessageProvider)(
         sessionId: sessionId,
-        text: censored,
+        text: textToSend,
       );
       state = state.copyWith(isSending: false);
     } catch (e) {

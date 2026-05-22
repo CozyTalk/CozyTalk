@@ -87,7 +87,7 @@ If the flag is off, the original text is returned immediately with no DB access.
 ## Integration Point
 
 `ChatNotifier.sendMessage()` in `chat/presentation/providers/chat_provider.dart`:
-1. Reads `_censorTextProvider` (a `CensorText` usecase backed by `wordFilterRepositoryProvider`)
+1. Reads `censorTextProvider` (a `CensorText` usecase backed by `wordFilterRepositoryProvider`)
 2. Calls `await censorText(text)` to get the possibly-censored string
 3. Passes the censored string to `SendMessage` usecase
 
