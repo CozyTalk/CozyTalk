@@ -42,7 +42,15 @@ jobs:
       - name: Inject google-services.json
         env:
           GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
-        run: python3 -c "import base64,os; open('android/app/google-services.json','wb').write(base64.b64decode(os.environ['GOOGLE_SERVICES_JSON']))"
+        run: |
+          python3 << 'EOF'
+          import base64, os, json
+          encoded = os.environ['GOOGLE_SERVICES_JSON'].strip()
+          decoded = base64.b64decode(encoded)
+          json.loads(decoded)
+          with open('android/app/google-services.json', 'wb') as f:
+            f.write(decoded)
+          EOF
 
       - run: flutter pub get
 
