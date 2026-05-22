@@ -45,11 +45,19 @@ jobs:
         run: |
           python3 << 'EOF'
           import base64, os, json
-          encoded = os.environ['GOOGLE_SERVICES_JSON'].strip()
-          decoded = base64.b64decode(encoded)
-          json.loads(decoded)
+          encoded = os.environ.get('GOOGLE_SERVICES_JSON', '').strip()
+          if not encoded:
+            print("ERROR: GOOGLE_SERVICES_JSON secret is not set or empty")
+            exit(1)
+          try:
+            decoded = base64.b64decode(encoded)
+            json.loads(decoded)
+          except (ValueError, json.JSONDecodeError) as e:
+            print(f"ERROR: Invalid base64 or JSON: {e}")
+            exit(1)
           with open('android/app/google-services.json', 'wb') as f:
             f.write(decoded)
+          print("google-services.json injected successfully")
           EOF
 
       - run: flutter pub get

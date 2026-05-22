@@ -51,6 +51,22 @@ class _FakeAvatarDecorationNotifier extends AvatarDecorationNotifier {
   }
 }
 
+class _FakeAvatarDecorationNotifierWithError extends AvatarDecorationNotifier {
+  @override
+  AvatarDecorationState build() => const AvatarDecorationState();
+
+  @override
+  Future<void> load(String uid) async {}
+
+  @override
+  Future<void> updateMood(String uid, String? moodKey) async {
+    state = state.copyWith(
+      status: AvatarDecorationStatus.error,
+      error: "You're offline. Changes require a connection.",
+    );
+  }
+}
+
 class _FakeAuthNotifier extends AuthNotifier {
   @override
   AuthState build() => AuthState(
@@ -59,14 +75,22 @@ class _FakeAuthNotifier extends AuthNotifier {
   );
 }
 
+class _FakeUnauthNotifier extends AuthNotifier {
+  @override
+  AuthState build() => const AuthState(status: AuthStatus.unauthenticated);
+}
+
 Widget _build(
   _FakeAvatarNotifier fakeAvatar,
-  _FakeAvatarDecorationNotifier fakeDecoration,
-) => ProviderScope(
+  AvatarDecorationNotifier fakeDecoration, {
+  AuthNotifier? authNotifier,
+}) => ProviderScope(
   overrides: [
     avatarProvider.overrideWith(() => fakeAvatar),
     avatarDecorationNotifierProvider.overrideWith(() => fakeDecoration),
-    authNotifierProvider.overrideWith(() => _FakeAuthNotifier()),
+    authNotifierProvider.overrideWith(
+      () => authNotifier ?? _FakeAuthNotifier(),
+    ),
   ],
   child: const MaterialApp(home: MoodScreen()),
 );
@@ -151,6 +175,63 @@ void main() {
 
       expect(fakeDecoration.updateMoodCount, 1);
       expect(fakeDecoration.lastMoodKey, 'Thrilled');
+    });
+
+    testWidgets('Save is a no-op while status is saving', (tester) async {
+      tester.view.physicalSize = const Size(800, 1200);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      final fakeDecoration = _FakeAvatarDecorationNotifier(
+        initial: const AvatarDecorationState(
+          status: AvatarDecorationStatus.saving,
+        ),
+      );
+      await tester.pumpWidget(_build(_FakeAvatarNotifier(), fakeDecoration));
+      await tester.pump();
+
+      await tester.tap(find.text('Save'));
+      await tester.pumpAndSettle();
+
+      expect(fakeDecoration.updateMoodCount, 0);
+    });
+
+    testWidgets('Save is a no-op when uid is null', (tester) async {
+      final fakeDecoration = _FakeAvatarDecorationNotifier();
+      await tester.pumpWidget(
+        _build(
+          _FakeAvatarNotifier(),
+          fakeDecoration,
+          authNotifier: _FakeUnauthNotifier(),
+        ),
+      );
+      await tester.pump();
+
+      await tester.tap(find.text('Save'));
+      await tester.pumpAndSettle();
+
+      expect(fakeDecoration.updateMoodCount, 0);
+    });
+
+    testWidgets('shows error SnackBar when save fails', (tester) async {
+      tester.view.physicalSize = const Size(800, 1200);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      await tester.pumpWidget(
+        _build(_FakeAvatarNotifier(), _FakeAvatarDecorationNotifierWithError()),
+      );
+      await tester.pump();
+
+      await tester.tap(find.text('Thrilled'));
+      await tester.pump();
+      await tester.tap(find.text('Save'));
+      await tester.pump();
+
+      expect(
+        find.text("You're offline. Changes require a connection."),
+        findsOneWidget,
+      );
     });
   });
 }
