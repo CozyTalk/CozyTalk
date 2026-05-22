@@ -30,6 +30,7 @@ class _MoodScreenState extends ConsumerState<MoodScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       final moodKey = ref
           .read(avatarDecorationNotifierProvider)
           .decoration
@@ -92,7 +93,9 @@ class _MoodScreenState extends ConsumerState<MoodScreen> {
     await ref
         .read(avatarDecorationNotifierProvider.notifier)
         .updateMood(uid, _selected);
-    if (mounted) Navigator.pop(context);
+    if (mounted && ref.read(avatarDecorationNotifierProvider).error == null) {
+      Navigator.pop(context);
+    }
   }
 
   @override

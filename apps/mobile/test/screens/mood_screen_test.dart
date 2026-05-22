@@ -226,7 +226,7 @@ void main() {
       await tester.tap(find.text('Thrilled'));
       await tester.pump();
       await tester.tap(find.text('Save'));
-      await tester.pump();
+      await tester.pumpAndSettle();
 
       expect(
         find.text("You're offline. Changes require a connection."),
