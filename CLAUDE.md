@@ -283,7 +283,7 @@ DONE WHEN: <criteria>
 | Business logic in Screen or Notifier | UseCase only |
 | New packages during integration PR | Architect approval required |
 | Edit lock files manually | Run package manager to regenerate |
-| `git push --force` to main | Hard block |
+| `git push` directly to `main` or `master` | Never — always branch + PR; hook in `.claude/settings.json` enforces this |
 | `print()` in production code | Use structured logging |
 | Run `git add` / `git commit` / `git stash` in parallel | Git holds `.git/index.lock` for the duration of each command — parallel calls race and deadlock. Always chain with `&&` in a single shell call. |
 
