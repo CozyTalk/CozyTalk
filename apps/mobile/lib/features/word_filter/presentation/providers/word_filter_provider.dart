@@ -11,7 +11,7 @@ import '../../../../shared/prefs_provider.dart';
 final _wordFilterDatasourceProvider = Provider<WordFilterDatasource>(
   (ref) => WordFilterDatasourceImpl(
     WordFilterDatabaseHelper(),
-    FirebaseRemoteConfig.instance,
+    () => FirebaseRemoteConfig.instance.getBool('content_filtering_enabled'),
     ref.watch(sharedPreferencesProvider),
   ),
 );
