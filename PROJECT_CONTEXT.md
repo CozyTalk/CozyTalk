@@ -209,7 +209,7 @@ See `database.rules.json` for the canonical source. All nodes require `auth != n
 | `rooms` | `mode ASC, status ASC, isLocked ASC, memberCount ASC` | Group room picker: available unlocked rooms by fill level |
 | `rooms` | `status ASC, paddingUntil ASC` | `expireRooms` cron: find rooms past their padding window |
 
-### Cloud Functions — deployed (16 total)
+### Cloud Functions — deployed (21 total)
 
 | Function | Trigger | Region | Module |
 |---|---|---|---|
@@ -229,6 +229,11 @@ See `database.rules.json` for the canonical source. All nodes require `auth != n
 | `endSession` | callable | us-central1 | chat |
 | `reportSession` | callable | us-central1 | chat |
 | `onFriendshipDeleted` | Firestore onDelete `friendships/{friendshipId}` | us-central1 | friends |
+| `adminGetDashboard` | callable (admin only) | us-central1 | admin |
+| `adminResolveReport` | callable (admin only) | us-central1 | admin |
+| `adminGetChatLog` | callable (admin only) | us-central1 | admin |
+| `adminBanUser` | callable (admin only) | us-central1 | admin |
+| `adminUnbanUser` | callable (admin only) | us-central1 | admin |
 No CF needed for typing — clients write `typing/{roomId}/{uid}` directly via RTDB SDK.
 
 `seedTtlCollections` (`functions/src/dev/`) is a one-time dev HTTP helper; not included in the exported count above.
@@ -239,6 +244,8 @@ No CF needed for typing — clients write `typing/{roomId}/{uid}` directly via R
 
 `icebreakers_enabled` (boolean, default `true`) — gates the Moods/Drinks SVG sticker panel.
 Rollback: set to `false` in Remote Config console; clients pick it up within 12 hours.
+
+`content_filtering_enabled` (boolean, default `true`) — gates the word filter / censor feature. When `false`, `censorTextProvider` passes text through unchanged.
 
 ---
 
@@ -305,11 +312,14 @@ Expired tombstone shape: `{ status: 'expired', expiredAt: Timestamp, users: [] }
 | `reporterId` | string | UID of reporting user |
 | `reportedUserId` | string | UID of reported user |
 | `sessionId` | string | session where it occurred |
-| `encryptionKey` | string | hex AES-256 key stored for moderator decryption; CF-written via admin SDK only |
+| `reportType` | string | `spam` \| `harassment` \| `inappropriate_content` \| `other` |
 | `reason` | string | max 500 chars |
-| `description` | string? | max 2000 chars |
+| `contextText` | string? | optional free-text ≤2000 chars |
+| `contextImageUrls` | string[] | Storage URLs of up to 5 screenshots uploaded by reporter |
+| `chatLogStoragePath` | string? | path to `reports/{reportId}/chat_log.json` in Cloud Storage; null if Storage write failed; CF-written |
 | `createdAt` | timestamp | |
-| `status` | string | `'pending'` \| `'reviewed'` \| `'dismissed'` |
+| `status` | string | `pending` on creation; `reviewed` or `dismissed` after admin action |
+| `outcome` | map? | written by admin CFs: `{ kind: "banned"\|"reviewed"\|"dismissed", by: uid, byName: string, at: timestamp, note: string? }` |
 
 ### `chat_rooms/{sessionId}/messages/{messageId}` (Firestore)
 Encrypted message store. Written by the `sendMessage` CF. TTL policy on `expiresAt` auto-deletes messages after the retention window (3 days). Destroyed immediately by `leaveRoom`/`endSession` unless a report is pending.
@@ -357,7 +367,7 @@ Presence, typing, and nameQueue data are removed by `leaveRoom` CF on explicit l
 | Phase | Work | Status |
 |---|---|---|
 | **1.0 Frontend & UI** | UI/UX design, Auth screens, Waiting screen, Chat Room UI (bubbles, typing, SVGs, Skip) | Auth complete; main UI screens complete (not yet wired to backend) |
-| **2.0 Backend & Matchmaking** | Matchmaking Cloud Functions (race-condition safe), session cleanup/lifecycle, word censor, reporting | **Largely complete** — 16 CFs exported (matchmaking + chat + friends); Flutter matchmaking + chat + avatar + profile features complete; 99 Jest unit tests + 43 Flutter integration tests passing; word censor + group reporting deferred |
+| **2.0 Backend & Matchmaking** | Matchmaking Cloud Functions (race-condition safe), session cleanup/lifecycle, word censor, reporting | **Largely complete** — 21 CFs exported (matchmaking + chat + friends + admin); Flutter matchmaking + chat + avatar + profile features complete; 99 Jest unit tests + 43 Flutter integration tests passing; word censor + group reporting deferred |
 | **3.0 Logic & Integration** | Wire main UI to matchmaking backend, session state machine, network drop detection, biometric/passkey auth | Not started |
 | **4.0 Testing & Management** | Cross-platform UI tests (Android + Web), accessibility sweeps, performance profiling | Not started |
 

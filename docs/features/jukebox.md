@@ -27,7 +27,10 @@ features/jukebox/
 └── presentation/
     ├── providers/jukebox_provider.dart   jukeboxNotifierProvider, JukeboxNotifier, JukeboxUiState
     └── widgets/
-        ├── jukebox_player.dart               ConsumerStatefulWidget in ChatScreen body — calls enterRoom/leaveRoom, owns the embed
+        ├── jukebox_chat_player.dart          JukeboxChatPlayer — ConsumerStatefulWidget mounted in ChatScreen body — calls enterRoom/leaveRoom, owns the embed (conditional export)
+        ├── jukebox_chat_player_web.dart      JukeboxChatPlayer web variant (Flutter Web)
+        ├── jukebox_player.dart               standalone player widget (not used in ChatScreen)
+        ├── jukebox_floating_player.dart      floating player variant
         ├── jukebox_web_player.dart           conditional export: native on Android, web iframe on Flutter Web
         ├── jukebox_web_player_native.dart    WebViewWidget + loadHtmlString (YouTube IFrame API JS) (Android)
         ├── jukebox_web_player_web.dart       HtmlElementView invisible iframe + postMessage (Flutter Web)
@@ -95,12 +98,12 @@ Queue max: 4 tracks (index 0 = now playing + 3 up next). All writes are full-doc
 
 ## Key Behavior
 
-- `JukeboxPlayer` (`ConsumerStatefulWidget`) mounts in `ChatScreen.body` (not inside the bottom sheet). It calls `enterRoom()` on mount and `leaveRoom()` on dispose (clears subscription and resets state when user navigates back). The embed is always rendered here so it never restarts when the sheet is opened/closed.
+- `JukeboxChatPlayer` (`ConsumerStatefulWidget`) mounts in `ChatScreen.body` (not inside the bottom sheet). It calls `enterRoom()` on mount and `leaveRoom()` on dispose (clears subscription and resets state when user navigates back). The embed is always rendered here so it never restarts when the sheet is opened/closed.
 - First track added to an empty queue auto-starts: `isPlaying: true`, `startedAt: now`, `pausedAt: 0`.
 - `AddToQueue` returns the new `JukeboxRoomState`; `addUrl()` applies it optimistically so the NOW PLAYING section renders without waiting for RTDB.
 - Auto-advance: when the currently playing track ends, `JukeboxWebPlayer` fires `onTrackEnded` → `notifier.skip()` → RTDB updated → all clients load the next embed. On Android this is triggered by `onStateChange(0)` (ended) in the YouTube IFrame API JS. On web it uses the `onStateChange` postMessage event from YouTube.
 - `JukeboxWebPlayer` is a conditional export. In test environments (no platform WebView), the native controller init throws and `build()` returns `SizedBox.shrink()`.
-- `JukeboxSheet` shows track title, artist, artwork, play/pause button, skip button, and queue management. It does NOT render an embed — the embed lives in `JukeboxPlayer` to prevent restarts.
+- `JukeboxSheet` shows track title, artist, artwork, play/pause button, skip button, and queue management. It does NOT render an embed — the embed lives in `JukeboxChatPlayer` to prevent restarts.
 - On session end: `endSession` CF clears `jukebox/{sessionId}` from RTDB.
 
 ## Platform Differences
@@ -120,5 +123,5 @@ Queue max: 4 tracks (index 0 = now playing + 3 up next). All writes are full-doc
 
 `chat_screen.dart` — added:
 - Jukebox music button in `AppBar.actions` (before report button)
-- `JukeboxPlayer(roomId: widget.sessionId)` in `Column` body
+- `JukeboxChatPlayer(roomId: widget.sessionId)` in `Column` body
 - `_openJukeboxSheet()` triggers `showModalBottomSheet` with `JukeboxSheet`

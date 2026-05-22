@@ -63,6 +63,7 @@ Rules: update restricted to `updatedAt` field only (prevents client status manip
 | `isLocked` | boolean | |
 | `paddingUntil` | timestamp? | set when status transitions to `padding` |
 | `createdAt` | timestamp | |
+| `roomInterestVector` | number[]? | mean of all members' 256-dim Vertex AI interest embeddings; written by `joinGroupRoom` and `match1v1Users` CFs; used for group room cosine similarity matching |
 
 Rules: `users` membership checked for read/write access.
 
@@ -172,11 +173,12 @@ RTDB instance: `cozytalk-5d984-default-rtdb.asia-southeast1.firebasedatabase.app
 | `rooms/{roomId}/members/{uid}` | room members | room members | presence for room occupants |
 | `typing/{roomId}/{uid}` | room members | own UID | typing indicator |
 | `presence/{roomId}/{uid}` | room members | own UID | online presence (onDisconnect removes) |
-| `nameQueue/{roomId}` | room members | room members | anonymous name assignment |
+| `nameQueue/{roomId}` | room members | room members | anonymous name assignment — defined in RTDB rules but not actively used in current mobile or CF code; reserved for a future feature |
 | `pool_presence/{uid}` | own UID | own UID | pool presence (removed on disconnect) |
 | `jukebox/{roomId}` | room members | room members | synced music queue state (see jukebox feature) |
+| `user_status/{uid}` | own UID | own UID | global online/in-room presence; `{ status: 'online'\|'in_room', roomId?: string, roomMode?: string }`; written by `OwnStatusNotifier` on auth and matchmaking state changes; node deleted entirely on sign-out |
 
-Note: `cleanupMember` CF triggers on `rooms/{roomId}/members/{uid}` deletion. `cleanupPoolMember` triggers on `pool_presence/{uid}` deletion. `jukebox/{roomId}` is cleared by `endSession` CF when a session ends.
+Note: `cleanupMember` CF triggers on `rooms/{roomId}/members/{uid}` deletion. `cleanupPoolMember` triggers on `pool_presence/{uid}` deletion. `jukebox/{roomId}` is cleared by `endSession` CF when a session ends. `user_status/{uid}` is managed exclusively by `OwnStatusNotifier` on the client — no CF cleanup.
 
 ---
 
