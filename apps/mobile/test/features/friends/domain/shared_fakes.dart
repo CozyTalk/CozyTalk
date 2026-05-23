@@ -2,6 +2,7 @@ import 'package:mobile/features/friends/domain/entities/app_user.dart';
 import 'package:mobile/features/friends/domain/entities/friend.dart';
 import 'package:mobile/features/friends/domain/entities/friend_message.dart';
 import 'package:mobile/features/friends/domain/entities/friend_request.dart';
+import 'package:mobile/features/friends/domain/entities/friend_room_status.dart';
 import 'package:mobile/features/friends/domain/repositories/friends_repository.dart';
 
 class FakeFriendsRepository implements FriendsRepository {
@@ -50,6 +51,18 @@ class FakeFriendsRepository implements FriendsRepository {
     lastChatRoomId = chatRoomId;
     return error != null ? Stream.error(error!) : Stream.value(messages);
   }
+
+  @override
+  Stream<bool> watchFriendPresence(String friendUid) =>
+      error != null ? Stream.error(error!) : Stream.value(false);
+
+  @override
+  Stream<String> watchFriendLastMessage(String chatRoomId) =>
+      error != null ? Stream.error(error!) : Stream.value('');
+
+  @override
+  Stream<FriendRoomStatus?> watchFriendRoom(String friendUid) =>
+      error != null ? Stream.error(error!) : Stream.value(null);
 
   @override
   Future<void> sendFriendRequest({

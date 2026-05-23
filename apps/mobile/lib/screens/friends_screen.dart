@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter/material.dart';
 import '../features/friends/domain/entities/friend.dart' as domain;
+import '../features/friends/domain/entities/friend_room_status.dart';
 import '../features/friends/presentation/providers/friends_provider.dart';
 import '../shared/connectivity_provider.dart';
 import '../shared/info_dialog.dart';
@@ -45,16 +46,30 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
     super.dispose();
   }
 
-  Friend _toScreenFriend(domain.Friend f) => Friend(
-    friendshipId: f.friendshipId,
-    chatRoomId: f.chatRoomId,
-    name: f.friendDisplayName,
-    username: f.friendDisplayName,
-    note: _notes[f.friendshipId],
-    lastMessage: '',
-    isOnline: false,
-    unreadCount: _unreadCounts[f.friendshipId] ?? 0,
-    isBlocked: _blockedIds.contains(f.friendshipId),
+  Friend _toScreenFriend(domain.Friend f, FriendsState state) {
+    final roomStatus = state.roomMap[f.friendUid];
+    return Friend(
+      friendshipId: f.friendshipId,
+      chatRoomId: f.chatRoomId,
+      name: f.friendDisplayName,
+      username: f.friendDisplayName,
+      note: _notes[f.friendshipId],
+      lastMessage: state.lastMessageMap[f.chatRoomId] ?? '',
+      isOnline: state.presenceMap[f.friendUid] ?? false,
+      unreadCount: _unreadCounts[f.friendshipId] ?? 0,
+      isBlocked: _blockedIds.contains(f.friendshipId),
+      room: roomStatus != null ? _toRoomInfo(roomStatus) : null,
+    );
+  }
+
+  RoomInfo _toRoomInfo(FriendRoomStatus s) => RoomInfo(
+    name: s.mode == '1v1' ? '1v1 Room' : 'Group Room',
+    thumbnail: s.mode == '1v1'
+        ? 'assets/images/1on1_doodle.png'
+        : 'assets/images/group_doodle.png',
+    current: s.memberCount,
+    max: s.maxUsers,
+    isLocked: s.isLocked,
   );
 
   List<Friend> _filtered(List<Friend> friends) => _query.isEmpty
@@ -70,7 +85,9 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(friendsNotifierProvider);
-    final friends = state.friends.map(_toScreenFriend).toList();
+    final friends = state.friends
+        .map((f) => _toScreenFriend(f, state))
+        .toList();
     final filtered = _filtered(friends);
     final isOffline = !ref
         .watch(isOnlineProvider)

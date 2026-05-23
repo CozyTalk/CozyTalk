@@ -176,9 +176,10 @@ RTDB instance: `cozytalk-5d984-default-rtdb.asia-southeast1.firebasedatabase.app
 | `nameQueue/{roomId}` | room members | room members | anonymous name assignment — defined in RTDB rules but not actively used in current mobile or CF code; reserved for a future feature |
 | `pool_presence/{uid}` | own UID | own UID | pool presence (removed on disconnect) |
 | `jukebox/{roomId}` | room members | room members | synced music queue state (see jukebox feature) |
-| `user_status/{uid}` | own UID | own UID | global online/in-room presence; `{ status: 'online'\|'in_room', roomId?: string, roomMode?: string }`; written by `OwnStatusNotifier` on auth and matchmaking state changes; node deleted entirely on sign-out |
+| `user_status/{uid}` | own UID **or** friend of `$uid` (via `friends/{uid}/{auth.uid} === true`) | own UID | global online/in-room presence; `{ status: 'online'\|'in_room', roomId?: string, roomMode?: string }`; written by `OwnStatusNotifier` on auth and matchmaking state changes; node deleted entirely on sign-out |
+| `friends/{ownerUid}/{friendUid}` | own `$ownerUid` | own `$ownerUid` | denormalized friendship flag (`true`) used by RTDB security rules to allow friends to read each other's `user_status`; written by `FriendsDatasourceImpl.acceptFriendRequest()` client-side; cleaned up by `onFriendshipDeleted` CF on `friendships` document delete |
 
-Note: `cleanupMember` CF triggers on `rooms/{roomId}/members/{uid}` deletion. `cleanupPoolMember` triggers on `pool_presence/{uid}` deletion. `jukebox/{roomId}` is cleared by `endSession` CF when a session ends. `user_status/{uid}` is managed exclusively by `OwnStatusNotifier` on the client — no CF cleanup.
+Note: `cleanupMember` CF triggers on `rooms/{roomId}/members/{uid}` deletion. `cleanupPoolMember` triggers on `pool_presence/{uid}` deletion. `jukebox/{roomId}` is cleared by `endSession` CF when a session ends. `user_status/{uid}` is managed exclusively by `OwnStatusNotifier` on the client — no CF cleanup. `friends/{ownerUid}/{friendUid}` is cleaned up server-side by `onFriendshipDeleted` CF.
 
 ---
 
