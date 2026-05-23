@@ -16,6 +16,7 @@ class _FakeMatchmakingNotifier extends MatchmakingNotifier {
   int joinGroupCount = 0;
   int createCustomCount = 0;
   int cancelSearchCount = 0;
+  String? joinByIdRoomId;
 
   _FakeMatchmakingNotifier({
     MatchmakingState initial = const MatchmakingState(),
@@ -34,7 +35,22 @@ class _FakeMatchmakingNotifier extends MatchmakingNotifier {
   Future<void> createCustomRoom() async => createCustomCount++;
 
   @override
+  Future<void> joinRoomById(String roomId) async => joinByIdRoomId = roomId;
+
+  @override
   Future<void> cancelSearch() async => cancelSearchCount++;
+
+  @override
+  Future<void> setRoomLock({required bool isLocked}) async {}
+
+  @override
+  Future<void> leaveRoom() async {}
+
+  @override
+  void setInterestText(String text) {}
+
+  @override
+  Future<void> loadSavedInterestText() async {}
 
   void setStateForTest(MatchmakingState s) => state = s;
 }
@@ -48,6 +64,7 @@ Future<void> _pump(
   String roomType = '1v1',
   String roomName = 'Kao Tapu',
   String bgImage = 'assets/images/backgrounds/kao_tapu.png',
+  String? roomId,
   // Defaults to online so existing tests continue working without change.
   NetworkInfo? networkInfo,
 }) async {
@@ -56,6 +73,7 @@ Future<void> _pump(
     'roomName': roomName,
     'bgImage': bgImage,
     'isGroup': roomType == 'group' || roomType == 'create',
+    if (roomId != null) 'roomId': roomId,
   };
 
   // Always override networkInfoProvider — _startMatchmaking calls isConnected
@@ -80,11 +98,8 @@ Future<void> _pump(
           AppRoutes.chooseRoomType: (_) => Scaffold(
             body: Builder(
               builder: (ctx) => TextButton(
-                onPressed: () => Navigator.pushNamed(
-                  ctx,
-                  AppRoutes.findingRoom,
-                  arguments: args,
-                ),
+                onPressed: () =>
+                    Navigator.pushNamed(ctx, AppRoutes.findingRoom, arguments: args),
                 child: const Text('choose-room-type'),
               ),
             ),
@@ -143,6 +158,56 @@ void main() {
       expect(fake.joinGroupCount, 0);
     });
 
+    testWidgets('calls joinRoomById with correct id for joinById', (
+      tester,
+    ) async {
+      final fake = _FakeMatchmakingNotifier();
+      await _pump(tester, fake, roomType: 'joinById', roomId: 'XYZAB');
+      expect(fake.joinByIdRoomId, 'XYZAB');
+    });
+
+    // ── badge labels ─────────────────────────────────────────────────────────
+
+    testWidgets('shows 1 on 1 Chat badge for 1v1 roomType', (tester) async {
+      final fake = _FakeMatchmakingNotifier();
+      await _pump(tester, fake, roomType: '1v1', roomName: 'Test');
+      expect(find.text('1 on 1 Chat'), findsOneWidget);
+    });
+
+    testWidgets('shows Group Chat badge for group roomType', (tester) async {
+      final fake = _FakeMatchmakingNotifier();
+      await _pump(tester, fake, roomType: 'group', roomName: 'Test');
+      expect(find.text('Group Chat'), findsOneWidget);
+    });
+
+    testWidgets('shows Private Group badge for create roomType', (
+      tester,
+    ) async {
+      final fake = _FakeMatchmakingNotifier();
+      await _pump(tester, fake, roomType: 'create', roomName: 'Test');
+      expect(find.text('Private Group'), findsOneWidget);
+    });
+
+    testWidgets('shows Join by ID badge for joinById roomType', (
+      tester,
+    ) async {
+      final fake = _FakeMatchmakingNotifier();
+      await _pump(
+        tester,
+        fake,
+        roomType: 'joinById',
+        roomName: 'Test',
+        roomId: 'ABCDE',
+      );
+      expect(find.text('Join by ID'), findsOneWidget);
+    });
+
+    testWidgets('displays room name from args', (tester) async {
+      final fake = _FakeMatchmakingNotifier();
+      await _pump(tester, fake, roomType: '1v1', roomName: 'Red Lotus Lake');
+      expect(find.text('Red Lotus Lake'), findsOneWidget);
+    });
+
     // ── navigation on matched ─────────────────────────────────────────────────
 
     testWidgets('navigates to chatScreen when matched with roomType 1v1', (
@@ -192,6 +257,25 @@ void main() {
           const MatchmakingState(
             status: MatchmakingStatus.matched,
             roomId: 'CRT01',
+          ),
+        );
+        await tester.pump();
+        await tester.pump();
+
+        expect(find.text('group-chat-screen'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'navigates to groupChatScreen when matched with roomType joinById',
+      (tester) async {
+        final fake = _FakeMatchmakingNotifier();
+        await _pump(tester, fake, roomType: 'joinById', roomId: 'JN001');
+
+        fake.setStateForTest(
+          const MatchmakingState(
+            status: MatchmakingStatus.matched,
+            roomId: 'JN001',
           ),
         );
         await tester.pump();
