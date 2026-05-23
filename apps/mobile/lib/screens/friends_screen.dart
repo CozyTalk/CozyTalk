@@ -234,14 +234,8 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
                           borderRadius: BorderRadius.circular(14),
                           child: Padding(
                             padding: const EdgeInsets.only(top: 10),
-                            child: Center(
-                              child: friend.avatar.isNotEmpty
-                                  ? LayeredAvatar(boxSize: 48)
-                                  : const Icon(
-                                      Icons.person,
-                                      color: Colors.grey,
-                                      size: 35,
-                                    ),
+                            child: const Center(
+                              child: LayeredAvatar(boxSize: 48),
                             ),
                           ),
                         ),

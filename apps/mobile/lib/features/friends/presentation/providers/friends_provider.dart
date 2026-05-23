@@ -224,7 +224,7 @@ class FriendsNotifier extends Notifier<FriendsState> {
                 presenceMap: Map<String, bool>.from(state.presenceMap)
                   ..[f.friendUid] = isOnline,
               );
-            });
+            }, onError: (_) {});
       }
 
       if (!_lastMessageSubs.containsKey(f.chatRoomId)) {
@@ -235,7 +235,7 @@ class FriendsNotifier extends Notifier<FriendsState> {
                 lastMessageMap: Map<String, String>.from(state.lastMessageMap)
                   ..[f.chatRoomId] = msg,
               );
-            });
+            }, onError: (_) {});
       }
 
       if (!_roomSubs.containsKey(f.friendUid)) {
@@ -246,7 +246,7 @@ class FriendsNotifier extends Notifier<FriendsState> {
                 roomMap: Map<String, FriendRoomStatus?>.from(state.roomMap)
                   ..[f.friendUid] = room,
               );
-            });
+            }, onError: (_) {});
       }
     }
   }
