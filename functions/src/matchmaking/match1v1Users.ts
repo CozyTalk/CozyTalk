@@ -110,6 +110,13 @@ export const match1v1Users = onDocumentCreated(
         ? meanVector(Object.values(memberInterests))
         : null;
 
+      // When trigger has no theme, preserve the candidate's theme so the room
+      // carries the field whichever side chose it.
+      const partnerTheme =
+        triggerTheme ??
+        ((candidate.data().backgroundTheme as string | null | undefined) ||
+          null);
+
       let roomId: string;
       try {
         // Phase 2: create the room (outside any transaction — uses atomic create()).
@@ -125,7 +132,7 @@ export const match1v1Users = onDocumentCreated(
           paddingUntil: null,
           encryptionKey: generateKey(),
           ...(memberInterests ? {memberInterests, roomInterestVector} : {}),
-          ...(triggerTheme ? {backgroundTheme: triggerTheme} : {}),
+          ...(partnerTheme ? {backgroundTheme: partnerTheme} : {}),
         });
       } catch (e) {
         // Room creation failed — undo the claim so the candidate can be rematched.
