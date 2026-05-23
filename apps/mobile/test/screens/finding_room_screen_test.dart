@@ -98,8 +98,11 @@ Future<void> _pump(
           AppRoutes.chooseRoomType: (_) => Scaffold(
             body: Builder(
               builder: (ctx) => TextButton(
-                onPressed: () =>
-                    Navigator.pushNamed(ctx, AppRoutes.findingRoom, arguments: args),
+                onPressed: () => Navigator.pushNamed(
+                  ctx,
+                  AppRoutes.findingRoom,
+                  arguments: args,
+                ),
                 child: const Text('choose-room-type'),
               ),
             ),
@@ -188,9 +191,7 @@ void main() {
       expect(find.text('Private Group'), findsOneWidget);
     });
 
-    testWidgets('shows Join by ID badge for joinById roomType', (
-      tester,
-    ) async {
+    testWidgets('shows Join by ID badge for joinById roomType', (tester) async {
       final fake = _FakeMatchmakingNotifier();
       await _pump(
         tester,
@@ -222,7 +223,11 @@ void main() {
           roomId: 'ABC12',
         ),
       );
-      await tester.pump(); // ref.listen fires → Navigator.pushReplacementNamed
+      await tester
+          .pump(); // ref.listen fires → _goToChat → Future.delayed(700ms)
+      await tester.pump(
+        const Duration(milliseconds: 750),
+      ); // delay expires + nav fires
       await tester.pump(); // new screen renders
 
       expect(find.text('chat-screen'), findsOneWidget);
@@ -240,8 +245,12 @@ void main() {
             roomId: 'XYZ99',
           ),
         );
-        await tester.pump();
-        await tester.pump();
+        await tester
+            .pump(); // ref.listen fires → _goToChat → Future.delayed(700ms)
+        await tester.pump(
+          const Duration(milliseconds: 750),
+        ); // delay expires + nav fires
+        await tester.pump(); // new screen renders
 
         expect(find.text('group-chat-screen'), findsOneWidget);
       },
@@ -259,8 +268,12 @@ void main() {
             roomId: 'CRT01',
           ),
         );
-        await tester.pump();
-        await tester.pump();
+        await tester
+            .pump(); // ref.listen fires → _goToChat → Future.delayed(zero)
+        await tester.pump(
+          const Duration(milliseconds: 50),
+        ); // timer fires + nav fires
+        await tester.pump(); // new screen renders
 
         expect(find.text('group-chat-screen'), findsOneWidget);
       },
@@ -278,8 +291,12 @@ void main() {
             roomId: 'JN001',
           ),
         );
-        await tester.pump();
-        await tester.pump();
+        await tester
+            .pump(); // ref.listen fires → _goToChat → Future.delayed(zero)
+        await tester.pump(
+          const Duration(milliseconds: 50),
+        ); // timer fires + nav fires
+        await tester.pump(); // new screen renders
 
         expect(find.text('group-chat-screen'), findsOneWidget);
       },
