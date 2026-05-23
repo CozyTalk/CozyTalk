@@ -29,8 +29,11 @@ export const join1v1Pool = onCall(
     const backgroundTheme =
       rawTheme && VALID_BACKGROUND_THEMES.has(rawTheme) ? rawTheme : null;
 
-    // Embed interest text if provided; null means no interest or embedding failed.
-    const interestVector = rawInterest ? await embedText(rawInterest) : null;
+    // Embed interest text if provided; falls back to null on Vertex AI failure so
+    // the join still succeeds and the user gets random matching instead of an error.
+    const interestVector = rawInterest
+      ? await embedText(rawInterest).catch(() => null)
+      : null;
 
     // Delete any stale entry first (idempotent re-queue).
     await poolRef.delete().catch(() => null);
