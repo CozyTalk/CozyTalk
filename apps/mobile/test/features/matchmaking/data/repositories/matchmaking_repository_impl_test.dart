@@ -25,11 +25,15 @@ class _FakeMatchmakingDatasource implements MatchmakingDatasource {
   int cancel1v1PoolCalls = 0;
   String? lastSetRoomLockId;
   bool? lastSetRoomLockValue;
+  String? lastJoinGroupRoomBackgroundTheme;
+  String? lastJoin1v1PoolBackgroundTheme;
 
   @override
   Future<({String roomId, bool isNewRoom})> joinGroupRoom({
     String? interestText,
+    String? backgroundTheme,
   }) async {
+    lastJoinGroupRoomBackgroundTheme = backgroundTheme;
     if (error != null) throw error!;
     return joinGroupRoomResult;
   }
@@ -56,8 +60,12 @@ class _FakeMatchmakingDatasource implements MatchmakingDatasource {
   }
 
   @override
-  Future<void> join1v1Pool({String? interestText}) async {
+  Future<void> join1v1Pool({
+    String? interestText,
+    String? backgroundTheme,
+  }) async {
     join1v1PoolCalls++;
+    lastJoin1v1PoolBackgroundTheme = backgroundTheme;
     if (error != null) throw error!;
   }
 
@@ -141,6 +149,30 @@ void main() {
       await repo.join1v1Pool();
 
       expect(ds.join1v1PoolCalls, 1);
+    });
+
+    test('joinGroupRoom forwards backgroundTheme to datasource', () async {
+      await repo.joinGroupRoom(backgroundTheme: 'kao_tapu');
+
+      expect(ds.lastJoinGroupRoomBackgroundTheme, 'kao_tapu');
+    });
+
+    test('joinGroupRoom passes null backgroundTheme when omitted', () async {
+      await repo.joinGroupRoom();
+
+      expect(ds.lastJoinGroupRoomBackgroundTheme, isNull);
+    });
+
+    test('join1v1Pool forwards backgroundTheme to datasource', () async {
+      await repo.join1v1Pool(backgroundTheme: 'red_lotus_lake');
+
+      expect(ds.lastJoin1v1PoolBackgroundTheme, 'red_lotus_lake');
+    });
+
+    test('join1v1Pool passes null backgroundTheme when omitted', () async {
+      await repo.join1v1Pool();
+
+      expect(ds.lastJoin1v1PoolBackgroundTheme, isNull);
     });
 
     test('cancel1v1Pool returns the bool from datasource', () async {
