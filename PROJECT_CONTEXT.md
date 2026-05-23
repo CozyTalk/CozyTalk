@@ -386,12 +386,12 @@ Presence, typing, and nameQueue data are removed by `leaveRoom` CF on explicit l
 
 | Suite | Count | Location | Requires |
 |---|---|---|---|
-| Flutter unit + widget | 919 tests | `apps/mobile/test/` | Nothing |
-| Cloud Functions Jest | 93 unit tests | `functions/src/**/__tests__/*.test.ts` | `./dev.sh --emulator-only` |
+| Flutter unit + widget | 967 tests | `apps/mobile/test/` | Nothing |
+| Cloud Functions Jest | 96 unit tests | `functions/src/**/__tests__/*.test.ts` | `./dev.sh --emulator-only` |
 | Cloud Functions Jest (integration) | 7 live tests | `functions/src/matchmaking/__tests__/embeddingService.integration.test.ts` | Vertex AI credentials + `npm run test:embedding` |
 | Flutter integration | 43 tests | `apps/mobile/integration_test/matchmaking_advanced_test.dart` | Emulators + Android device |
 
-**CF Jest unit test breakdown:** `matchmaking.test.ts` (60 tests, 14 describe groups — priority selection, distribution, padding lifecycle, RTDB cleanup, 1v1/group flows, interest matching), `embeddingService.test.ts` (21 tests — cosine similarity, mean vector, mocked Vertex AI), `chat.test.ts` (12 tests — sendMessage, message destruction, TTL, rooms/ path, reportSession). Plus 7 integration tests in `embeddingService.integration.test.ts` (live Vertex AI, requires `npm run test:embedding`). Grand total: 100.
+**CF Jest unit test breakdown:** `matchmaking.test.ts` (60 tests, 14 describe groups — priority selection, distribution, padding lifecycle, RTDB cleanup, 1v1/group flows, interest matching), `embeddingService.test.ts` (21 tests — cosine similarity, mean vector, mocked Vertex AI), `chat.test.ts` (12 tests — sendMessage, message destruction, TTL, rooms/ path, reportSession), `friends.test.ts` (3 tests — onFriendshipDeleted: message cleanup, RTDB friends node removal, graceful no-users handling). Plus 7 integration tests in `embeddingService.integration.test.ts` (live Vertex AI, requires `npm run test:embedding`). Grand total: 103.
 
 **Flutter word_filter tests (14):** `banned_word_test.dart` (2), `censor_text_test.dart` (3), `banned_word_model_test.dart` (5), `word_filter_repository_impl_test.dart` (2), `word_filter_provider_test.dart` (2).
 
