@@ -2158,3 +2158,266 @@ describe("background theme: 1v1 pool partitioning", () => {
     await adminFirestoreUpdate(`rooms/${roomId}`, {status: "expired"});
   }, 30_000);
 });
+
+// ── Background theme: 1v1 re-queue after partner leaves ───────────────────────
+//
+// When one user leaves a matched 1v1 room the leaveRoom CF re-queues the
+// remaining user. The re-queue pool doc must carry the same backgroundTheme
+// that was on the room so match1v1Users can still apply the theme filter.
+
+describe("background theme: 1v1 re-queue after partner leaves", () => {
+  test("leaveRoom re-queues remaining user with backgroundTheme preserved", async () => {
+    const uidA = await signInAnon();
+    await callFn("join1v1Pool", {backgroundTheme: "kao_tapu"});
+    signOut();
+    const uidC = await signInAnon();
+    await callFn("join1v1Pool", {backgroundTheme: "kao_tapu"});
+
+    // Wait for the two to be matched.
+    const poolDocC = await waitUntilAdminDocMatches(
+      `waiting_pool/${uidC}`,
+      (d) => d?.["status"] === "matched",
+    );
+    const roomId = poolDocC!["roomId"] as string;
+
+    // C leaves — leaveRoom should re-queue A.
+    await callFn("leaveRoom", {roomId});
+
+    // Give leaveRoom time to write the re-queue pool doc.
+    await sleep(2000);
+
+    const poolDocA = await adminFirestoreDoc(`waiting_pool/${uidA}`);
+    expect(poolDocA!["status"]).toBe("waiting");
+    expect(poolDocA!["backgroundTheme"]).toBe("kao_tapu");
+
+    await tryCancelPool();
+  }, 30_000);
+
+  test("re-queued themed user does NOT match a different-theme candidate", async () => {
+    // B joins with Red Lotus Lake and waits.
+    const uidB = await signInAnon();
+    await callFn("join1v1Pool", {backgroundTheme: "red_lotus_lake"});
+
+    // A and C both join with Kao Tapu and match each other.
+    signOut();
+    const uidA = await signInAnon();
+    await callFn("join1v1Pool", {backgroundTheme: "kao_tapu"});
+    signOut();
+    await signInAnon();
+    await callFn("join1v1Pool", {backgroundTheme: "kao_tapu"});
+
+    const poolDocA = await waitUntilAdminDocMatches(
+      `waiting_pool/${uidA}`,
+      (d) => d?.["status"] === "matched",
+    );
+    const roomId = poolDocA!["roomId"] as string;
+
+    // C (current user) leaves. leaveRoom re-queues A.
+    await callFn("leaveRoom", {roomId});
+
+    // Give match1v1Users time to run for the re-queued A.
+    await sleep(5000);
+
+    // A should still be waiting — B has a different theme.
+    const poolDocAAfter = await adminFirestoreDoc(`waiting_pool/${uidA}`);
+    expect(poolDocAAfter!["status"]).toBe("waiting");
+    expect(poolDocAAfter!["backgroundTheme"]).toBe("kao_tapu");
+
+    // B should still be waiting — A's theme filter excluded B.
+    const uidBSnap = await adminFirestoreDoc(`waiting_pool/${uidB}`);
+    expect(uidBSnap!["status"]).toBe("waiting");
+
+    await tryCancelPool();
+  }, 40_000);
+
+  test("re-queued themed user matches same-theme new candidate", async () => {
+    // A and C match on Kao Tapu.
+    const uidA = await signInAnon();
+    await callFn("join1v1Pool", {backgroundTheme: "kao_tapu"});
+    signOut();
+    await signInAnon();
+    await callFn("join1v1Pool", {backgroundTheme: "kao_tapu"});
+
+    const poolDocA = await waitUntilAdminDocMatches(
+      `waiting_pool/${uidA}`,
+      (d) => d?.["status"] === "matched",
+    );
+    const roomId = poolDocA!["roomId"] as string;
+
+    // C leaves — A is re-queued with Kao Tapu.
+    await callFn("leaveRoom", {roomId});
+    await sleep(2000);
+
+    // D joins with the same Kao Tapu theme and triggers match1v1Users.
+    signOut();
+    const uidD = await signInAnon();
+    await callFn("join1v1Pool", {backgroundTheme: "kao_tapu"});
+
+    const poolDocD = await waitUntilAdminDocMatches(
+      `waiting_pool/${uidD}`,
+      (d) => d?.["status"] === "matched",
+    );
+    const newRoomId = poolDocD!["roomId"] as string;
+
+    const room = await adminFirestoreDoc(`rooms/${newRoomId}`);
+    expect(room!["users"] as string[]).toContain(uidA);
+    expect(room!["users"] as string[]).toContain(uidD);
+    expect(room!["backgroundTheme"]).toBe("kao_tapu");
+
+    await callFn("leaveRoom", {roomId: newRoomId});
+  }, 40_000);
+
+  test("re-queued unthemed user can match any waiting candidate", async () => {
+    // A and C both join with no theme and match.
+    const uidA = await signInAnon();
+    await callFn("join1v1Pool");
+    signOut();
+    await signInAnon();
+    await callFn("join1v1Pool");
+
+    const poolDocA = await waitUntilAdminDocMatches(
+      `waiting_pool/${uidA}`,
+      (d) => d?.["status"] === "matched",
+    );
+    const roomId = poolDocA!["roomId"] as string;
+
+    // C leaves — A is re-queued with null theme.
+    await callFn("leaveRoom", {roomId});
+    await sleep(2000);
+
+    const poolDocARequeued = await adminFirestoreDoc(`waiting_pool/${uidA}`);
+    expect(poolDocARequeued!["backgroundTheme"]).toBeNull();
+
+    // D joins with a theme — A (no theme) should still match D.
+    signOut();
+    const uidD = await signInAnon();
+    await callFn("join1v1Pool", {backgroundTheme: "sea_of_cloud"});
+
+    const poolDocD = await waitUntilAdminDocMatches(
+      `waiting_pool/${uidD}`,
+      (d) => d?.["status"] === "matched",
+    );
+    const newRoomId = poolDocD!["roomId"] as string;
+
+    const room = await adminFirestoreDoc(`rooms/${newRoomId}`);
+    expect(room!["users"] as string[]).toContain(uidA);
+    expect(room!["users"] as string[]).toContain(uidD);
+
+    await callFn("leaveRoom", {roomId: newRoomId});
+  }, 40_000);
+});
+
+// ── Background theme: custom rooms ───────────────────────────────────────────
+//
+// createCustomRoom now accepts backgroundTheme so the room appears in
+// theme-filtered joinGroupRoom queries. Without this, themed users creating a
+// custom room could never be found by a same-theme joinGroupRoom caller.
+
+describe("background theme: custom rooms", () => {
+  test("createCustomRoom stores backgroundTheme in Firestore", async () => {
+    await signInAnon();
+    const res = await callFn("createCustomRoom", {
+      backgroundTheme: "red_lotus_lake",
+    });
+    const roomId = res["roomId"] as string;
+
+    const room = await adminFirestoreDoc(`rooms/${roomId}`);
+    expect(room!["backgroundTheme"]).toBe("red_lotus_lake");
+    expect(room!["roomType"]).toBe("custom");
+
+    await tryLeaveRoom(roomId);
+  }, 15_000);
+
+  test("createCustomRoom without theme does not store backgroundTheme", async () => {
+    await signInAnon();
+    const res = await callFn("createCustomRoom");
+    const roomId = res["roomId"] as string;
+
+    const room = await adminFirestoreDoc(`rooms/${roomId}`);
+    expect(room!["backgroundTheme"]).toBeUndefined();
+
+    await tryLeaveRoom(roomId);
+  }, 15_000);
+
+  test("joinGroupRoom with matching theme finds a themed custom room", async () => {
+    // A creates a custom room with Red Lotus Lake.
+    const uidA = await signInAnon();
+    const resA = await callFn("createCustomRoom", {
+      backgroundTheme: "red_lotus_lake",
+    });
+    const customRoomId = resA["roomId"] as string;
+
+    // B joins with the same theme — should land in A's custom room.
+    signOut();
+    await signInAnon();
+    const resB = await callFn("joinGroupRoom", {
+      backgroundTheme: "red_lotus_lake",
+    });
+
+    expect(resB["roomId"]).toBe(customRoomId);
+    expect(resB["isNewRoom"]).toBe(false);
+
+    const room = await adminFirestoreDoc(`rooms/${customRoomId}`);
+    expect(room!["memberCount"]).toBe(2);
+    expect(room!["users"] as string[]).toContain(uidA);
+
+    await tryLeaveRoom(customRoomId);
+  }, 30_000);
+
+  test("joinGroupRoom with different theme does NOT join a themed custom room", async () => {
+    // A creates a custom room with Red Lotus Lake.
+    await signInAnon();
+    const resA = await callFn("createCustomRoom", {
+      backgroundTheme: "red_lotus_lake",
+    });
+    const customRoomId = resA["roomId"] as string;
+
+    // B joins with Kao Tapu — should create a brand-new room.
+    signOut();
+    await signInAnon();
+    const resB = await callFn("joinGroupRoom", {backgroundTheme: "kao_tapu"});
+    const newRoomId = resB["roomId"] as string;
+
+    expect(newRoomId).not.toBe(customRoomId);
+
+    const [customRoom, newRoom] = await Promise.all([
+      adminFirestoreDoc(`rooms/${customRoomId}`),
+      adminFirestoreDoc(`rooms/${newRoomId}`),
+    ]);
+    expect(customRoom!["memberCount"]).toBe(1);
+    expect(newRoom!["backgroundTheme"]).toBe("kao_tapu");
+
+    await Promise.all([tryLeaveRoom(customRoomId), tryLeaveRoom(newRoomId)]);
+  }, 30_000);
+
+  test("joinGroupRoom with no theme joins any available room including themed custom rooms", async () => {
+    // A creates a themed custom room.
+    await signInAnon();
+    const resA = await callFn("createCustomRoom", {
+      backgroundTheme: "lumphini_park",
+    });
+    const customRoomId = resA["roomId"] as string;
+
+    // B joins with no theme — null means no filter, so B lands in A's room.
+    signOut();
+    await signInAnon();
+    const resB = await callFn("joinGroupRoom");
+
+    expect(resB["roomId"]).toBe(customRoomId);
+
+    await tryLeaveRoom(customRoomId);
+  }, 30_000);
+
+  test("createCustomRoom with invalid theme ignores it (stores nothing)", async () => {
+    await signInAnon();
+    const res = await callFn("createCustomRoom", {
+      backgroundTheme: "not_a_real_theme",
+    });
+    const roomId = res["roomId"] as string;
+
+    const room = await adminFirestoreDoc(`rooms/${roomId}`);
+    expect(room!["backgroundTheme"]).toBeUndefined();
+
+    await tryLeaveRoom(roomId);
+  }, 15_000);
+});

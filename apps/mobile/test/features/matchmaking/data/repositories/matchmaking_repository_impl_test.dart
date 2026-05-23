@@ -27,6 +27,7 @@ class _FakeMatchmakingDatasource implements MatchmakingDatasource {
   bool? lastSetRoomLockValue;
   String? lastJoinGroupRoomBackgroundTheme;
   String? lastJoin1v1PoolBackgroundTheme;
+  String? lastCreateCustomRoomBackgroundTheme;
 
   @override
   Future<({String roomId, bool isNewRoom})> joinGroupRoom({
@@ -39,7 +40,8 @@ class _FakeMatchmakingDatasource implements MatchmakingDatasource {
   }
 
   @override
-  Future<String> createCustomRoom() async {
+  Future<String> createCustomRoom({String? backgroundTheme}) async {
+    lastCreateCustomRoomBackgroundTheme = backgroundTheme;
     if (error != null) throw error!;
     return createCustomRoomResult;
   }
@@ -124,6 +126,18 @@ void main() {
       final roomId = await repo.createCustomRoom();
 
       expect(roomId, 'CC456');
+    });
+
+    test('createCustomRoom forwards backgroundTheme to datasource', () async {
+      await repo.createCustomRoom(backgroundTheme: 'red_lotus_lake');
+
+      expect(ds.lastCreateCustomRoomBackgroundTheme, 'red_lotus_lake');
+    });
+
+    test('createCustomRoom passes null backgroundTheme when omitted', () async {
+      await repo.createCustomRoom();
+
+      expect(ds.lastCreateCustomRoomBackgroundTheme, isNull);
     });
 
     test('joinRoomById passes id to datasource and returns result', () async {
