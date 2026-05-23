@@ -60,7 +60,7 @@ features/matchmaking/
 - Interest vectors: Vertex AI `text-multilingual-embedding-002`, 256 dims, cosine threshold 0.65
 - Stored in `waiting_pool/{uid}.interestVector` (256-element array); text cached in `SharedPreferences`
 - `match1v1Users` CF deployed to `asia-southeast1` (co-located with RTDB — intentional for RTDB write latency)
-- **Background theme:** optional hard partition key (`kao_tapu`, `red_lotus_lake`, `sea_of_cloud`, `lumphini_park`). Stored in `MatchmakingState.backgroundTheme`; forwarded to `join1v1Pool` and `joinGroupRoom` CFs. `null` means no filter (randomised, backward-compatible). `setBackgroundTheme(String?)` on the notifier; preserved across room transitions by `_idleState()`. Server validates against the four allowed IDs — invalid values are silently dropped.
+- **Background theme:** optional hard partition key (`kao_tapu`, `red_lotus_lake`, `sea_of_cloud`, `lumphini_park`). Stored in `MatchmakingState.backgroundTheme`; forwarded to `join1v1Pool`, `joinGroupRoom`, and `createCustomRoom` CFs. `null` means no filter (randomised, backward-compatible). `setBackgroundTheme(String?)` on the notifier; preserved across room transitions by `_idleState()`. Server validates against the four allowed IDs — invalid values are silently dropped. `leaveRoom` CF preserves the room's `backgroundTheme` when re-queuing the remaining 1v1 user after their partner disconnects.
 
 ## Production Screens
 

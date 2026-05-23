@@ -105,8 +105,8 @@ All admin functions are callable, deployed to `us-central1`. Every function veri
 ### `createCustomRoom`
 `functions/src/matchmaking/createCustomRoom.ts`
 - **Trigger:** callable (authenticated)
-- **Input:** none (or optional config TBD)
-- **Process:** Generates 5-char crypto-random room ID. Creates `rooms/{roomId}` with `mode: group`, `roomType: custom`, `status: active`. Adds creator to `rooms/{roomId}/members` in RTDB.
+- **Input:** `{ backgroundTheme?: string }`
+- **Process:** Generates 5-char crypto-random room ID. Creates `rooms/{roomId}` with `mode: group`, `roomType: custom`, `status: active`. If `backgroundTheme` is provided and valid (one of the four allowed IDs), it is stored on the room. Adds creator to `rooms/{roomId}/members` in RTDB.
 - **Output:** `{ roomId: string }`
 
 ### `joinRoomById`
@@ -120,7 +120,7 @@ All admin functions are callable, deployed to `us-central1`. Every function veri
 `functions/src/matchmaking/leaveRoom.ts`
 - **Trigger:** callable (authenticated)
 - **Input:** `{ roomId: string }`
-- **Process:** Removes caller from `rooms/{roomId}.users`. If room empty, tombstones it. Clears RTDB member node.
+- **Process:** Removes caller from `rooms/{roomId}.users`. If room empty, tombstones it (`status: padding`). Clears RTDB member, typing, and presence nodes. For 1v1 rooms: if one user remains after the caller leaves, transitions the room to a 30-second padding window and immediately re-queues the remaining user in `waiting_pool` with their original `interestVector` and the room's `backgroundTheme` preserved — ensuring theme partitioning survives a partner-left re-queue.
 - **Output:** `{ success: true }`
 
 ### `setRoomLock`
