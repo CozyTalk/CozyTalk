@@ -11,7 +11,11 @@ class MatchmakingRepositoryImpl implements MatchmakingRepository {
   @override
   Future<({String roomId, bool isNewRoom})> joinGroupRoom({
     String? interestText,
-  }) => _datasource.joinGroupRoom(interestText: interestText);
+    String? backgroundTheme,
+  }) => _datasource.joinGroupRoom(
+    interestText: interestText,
+    backgroundTheme: backgroundTheme,
+  );
 
   @override
   Future<String> createCustomRoom() => _datasource.createCustomRoom();
@@ -25,8 +29,11 @@ class MatchmakingRepositoryImpl implements MatchmakingRepository {
   Future<void> leaveRoom(String roomId) => _datasource.leaveRoom(roomId);
 
   @override
-  Future<void> join1v1Pool({String? interestText}) =>
-      _datasource.join1v1Pool(interestText: interestText);
+  Future<void> join1v1Pool({String? interestText, String? backgroundTheme}) =>
+      _datasource.join1v1Pool(
+        interestText: interestText,
+        backgroundTheme: backgroundTheme,
+      );
 
   @override
   Future<bool> cancel1v1Pool() => _datasource.cancel1v1Pool();
