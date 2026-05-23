@@ -15,9 +15,16 @@ export const join1v1Pool = onCall(
     const db = admin.firestore();
     const poolRef = db.collection("waiting_pool").doc(uid);
 
-    const data = request.data as {interestText?: unknown};
+    const data = request.data as {
+      interestText?: unknown;
+      backgroundTheme?: unknown;
+    };
     const rawInterest =
       typeof data?.interestText === "string" ? data.interestText.trim() : null;
+    const backgroundTheme =
+      typeof data?.backgroundTheme === "string" && data.backgroundTheme.trim()
+        ? data.backgroundTheme.trim()
+        : null;
 
     // Embed interest text if provided; null means no interest or embedding failed.
     const interestVector = rawInterest ? await embedText(rawInterest) : null;
@@ -33,9 +40,14 @@ export const join1v1Pool = onCall(
       roomId: null,
       interestText: rawInterest,
       interestVector: interestVector,
+      backgroundTheme: backgroundTheme,
     });
 
-    logger.info("User joined 1v1 pool", {uid, hasInterest: !!interestVector});
+    logger.info("User joined 1v1 pool", {
+      uid,
+      hasInterest: !!interestVector,
+      backgroundTheme,
+    });
     // Client listens to this doc for status == 'matched' to get the roomId.
     return {success: true};
   },

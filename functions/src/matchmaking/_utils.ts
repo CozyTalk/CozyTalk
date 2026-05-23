@@ -42,6 +42,7 @@ export interface RoomData {
   encryptionKey: string;
   roomInterestVector?: number[] | null;
   memberInterests?: Record<string, number[]> | null;
+  backgroundTheme?: string | null;
 }
 
 /**
