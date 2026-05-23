@@ -24,6 +24,10 @@ export const match1v1Users = onDocumentCreated(
       Array.isArray(v) ? (v as number[]) : null;
 
     const triggerVector = toVector(data.interestVector);
+    const triggerTheme =
+      typeof data.backgroundTheme === "string" && data.backgroundTheme
+        ? data.backgroundTheme
+        : null;
 
     // Expanded to 20 candidates to give interest-matching a wider field.
     const candidatesSnap = await db
@@ -35,8 +39,17 @@ export const match1v1Users = onDocumentCreated(
       .get();
 
     let candidates = candidatesSnap.docs.filter((d) => d.id !== triggerUid);
+
+    // Hard-filter by backgroundTheme before interest sorting. Only applied when
+    // the triggering user picked a theme — null means "match anyone".
+    if (triggerTheme) {
+      candidates = candidates.filter(
+        (c) => c.data().backgroundTheme === triggerTheme,
+      );
+    }
+
     if (candidates.length === 0) {
-      logger.debug("No 1v1 partner found yet", {triggerUid});
+      logger.debug("No 1v1 partner found yet", {triggerUid, triggerTheme});
       return;
     }
 
@@ -112,6 +125,7 @@ export const match1v1Users = onDocumentCreated(
           paddingUntil: null,
           encryptionKey: generateKey(),
           ...(memberInterests ? {memberInterests, roomInterestVector} : {}),
+          ...(triggerTheme ? {backgroundTheme: triggerTheme} : {}),
         });
       } catch (e) {
         // Room creation failed — undo the claim so the candidate can be rematched.
