@@ -387,7 +387,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
 
   ChatMessage _toDisplay(chat_entity.ChatMessage msg, String? myUid) {
     final isMe = msg.senderId == myUid;
-    final isGif = msg.text.startsWith('http');
+    final isGif = msg.text.contains('giphy.com');
     return ChatMessage(
       type: isGif ? 'gif' : (isMe ? 'me' : 'other'),
       text: msg.text,

@@ -454,7 +454,7 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
 
   _GroupMsg _toGroupDisplay(chat_entity.ChatMessage msg, String? myUid) {
     final isMe = msg.senderId == myUid;
-    final isGif = msg.text.startsWith('http');
+    final isGif = msg.text.contains('giphy.com');
     return _GroupMsg(
       type: isGif ? _MsgType.gif : (isMe ? _MsgType.me : _MsgType.other),
       text: msg.text,
@@ -683,15 +683,9 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
                 // Lock toggle
                 GestureDetector(
                   onTap: () {
-                    final current =
-                        ref
-                            .read(matchmakingNotifierProvider)
-                            .currentRoom
-                            ?.isLocked ??
-                        false;
                     ref
                         .read(matchmakingNotifierProvider.notifier)
-                        .setRoomLock(isLocked: !current);
+                        .setRoomLock(isLocked: !isLocked);
                   },
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 200),
