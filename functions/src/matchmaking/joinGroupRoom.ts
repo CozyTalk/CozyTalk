@@ -2,7 +2,11 @@ import {onCall, HttpsError} from "firebase-functions/v2/https";
 import * as admin from "firebase-admin";
 import {FieldValue} from "firebase-admin/firestore";
 import * as logger from "firebase-functions/logger";
-import {createRoomWithRetry, generateKey} from "./_utils";
+import {
+  createRoomWithRetry,
+  generateKey,
+  VALID_BACKGROUND_THEMES,
+} from "./_utils";
 import {
   embedText,
   cosineSimilarity,
@@ -27,10 +31,12 @@ export const joinGroupRoom = onCall(
     };
     const rawInterest =
       typeof data?.interestText === "string" ? data.interestText.trim() : null;
-    const backgroundTheme =
-      typeof data?.backgroundTheme === "string" && data.backgroundTheme.trim()
+    const rawTheme =
+      typeof data?.backgroundTheme === "string"
         ? data.backgroundTheme.trim()
         : null;
+    const backgroundTheme =
+      rawTheme && VALID_BACKGROUND_THEMES.has(rawTheme) ? rawTheme : null;
     const userVector = rawInterest ? await embedText(rawInterest) : null;
 
     // Remove any stale waiting_pool entry to keep the pool clean.

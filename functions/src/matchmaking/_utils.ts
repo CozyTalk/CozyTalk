@@ -5,6 +5,13 @@ import {FieldValue} from "firebase-admin/firestore";
 import * as logger from "firebase-functions/logger";
 
 export const PADDING_MINUTES = 5;
+
+export const VALID_BACKGROUND_THEMES = new Set([
+  "kao_tapu",
+  "red_lotus_lake",
+  "sea_of_cloud",
+  "lumphini_park",
+]);
 const ROOM_ID_CHARS =
   "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
 const ROOM_ID_LENGTH = 5;

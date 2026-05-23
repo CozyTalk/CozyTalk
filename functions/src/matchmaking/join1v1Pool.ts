@@ -3,6 +3,7 @@ import * as admin from "firebase-admin";
 import {FieldValue} from "firebase-admin/firestore";
 import * as logger from "firebase-functions/logger";
 import {embedText} from "./embeddingService";
+import {VALID_BACKGROUND_THEMES} from "./_utils";
 
 export const join1v1Pool = onCall(
   {invoker: "public", cors: true, memory: "512MiB"},
@@ -21,10 +22,12 @@ export const join1v1Pool = onCall(
     };
     const rawInterest =
       typeof data?.interestText === "string" ? data.interestText.trim() : null;
-    const backgroundTheme =
-      typeof data?.backgroundTheme === "string" && data.backgroundTheme.trim()
+    const rawTheme =
+      typeof data?.backgroundTheme === "string"
         ? data.backgroundTheme.trim()
         : null;
+    const backgroundTheme =
+      rawTheme && VALID_BACKGROUND_THEMES.has(rawTheme) ? rawTheme : null;
 
     // Embed interest text if provided; null means no interest or embedding failed.
     const interestVector = rawInterest ? await embedText(rawInterest) : null;
