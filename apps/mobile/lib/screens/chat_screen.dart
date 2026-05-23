@@ -69,7 +69,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
   String friendMood = 'I love TikTok very much.';
   bool _friendRequestSent = false;
   bool _friendAccepted = false;
-  final List<ChatMessage> _localMessages = [];
+  final List<({ChatMessage msg, int seq})> _localMessages = [];
   String? _pendingGifUrl;
 
   @override
@@ -175,8 +175,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
   }
 
   void _sendTopicCard() {
+    final seq = ref.read(chatNotifierProvider).messages.length;
     setState(() {
-      _localMessages.add(ChatMessage(type: 'card', text: _pickCard()));
+      _localMessages.add((
+        msg: ChatMessage(type: 'card', text: _pickCard()),
+        seq: seq,
+      ));
     });
     _scrollToBottom();
   }
@@ -236,11 +240,16 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
   }
 
   void _shuffleTopic() {
+    final seq = ref.read(chatNotifierProvider).messages.length;
     setState(() {
-      _localMessages.add(
-        ChatMessage(type: 'system', text: 'Someone shuffled the topic!'),
-      );
-      _localMessages.add(ChatMessage(type: 'card', text: _pickCard()));
+      _localMessages.add((
+        msg: ChatMessage(type: 'system', text: 'Someone shuffled the topic!'),
+        seq: seq,
+      ));
+      _localMessages.add((
+        msg: ChatMessage(type: 'card', text: _pickCard()),
+        seq: seq,
+      ));
     });
     _scrollToBottom();
   }
@@ -694,11 +703,20 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
 
   // ── Message list ──────────────────────────────────────────────────────────
   Widget _buildMessageList(AvatarState avatarState, ChatState chatState) {
-    final displayMessages = [
-      ChatMessage(type: 'warning', text: _kWarning),
-      ...chatState.messages.map((m) => _toDisplay(m, chatState.currentUserId)),
-      ..._localMessages,
-    ];
+    final backendMsgs = chatState.messages
+        .map((m) => _toDisplay(m, chatState.currentUserId))
+        .toList();
+    final merged = <ChatMessage>[ChatMessage(type: 'warning', text: _kWarning)];
+    int localIdx = 0;
+    for (int i = 0; i <= backendMsgs.length; i++) {
+      while (localIdx < _localMessages.length &&
+          _localMessages[localIdx].seq <= i) {
+        merged.add(_localMessages[localIdx].msg);
+        localIdx++;
+      }
+      if (i < backendMsgs.length) merged.add(backendMsgs[i]);
+    }
+    final displayMessages = merged;
     final isTyping = chatState.typingUsers.isNotEmpty;
     final itemCount = displayMessages.length + (isTyping ? 1 : 0);
 

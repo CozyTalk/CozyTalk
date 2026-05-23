@@ -140,13 +140,27 @@ function Abort([string]$msg) {
     throw $msg
 }
 
+$mobileDir    = Join-Path (Join-Path $ROOT_DIR 'apps') 'mobile'
+$functionsDir = Join-Path $ROOT_DIR 'functions'
+
+# -- Load .env from apps/mobile ------------------------------------------------
+$envFile = Join-Path $mobileDir '.env'
+if (Test-Path $envFile) {
+    Get-Content $envFile | ForEach-Object {
+        if ($_ -match '^\s*([A-Z_]+)\s*=\s*(.+)\s*$') {
+            $k = $Matches[1]; $v = $Matches[2].Trim()
+            if (-not [System.Environment]::GetEnvironmentVariable($k)) {
+                [System.Environment]::SetEnvironmentVariable($k, $v, 'Process')
+            }
+        }
+    }
+}
+
 # -- Build Flutter args --------------------------------------------------------
 $FLUTTER_ARGS = @()
 if ($USE_WEB)  { $FLUTTER_ARGS += '-d', 'chrome' }
 if ($USE_PROD) { $FLUTTER_ARGS += '--dart-define=USE_EMULATOR=false' }
-
-$mobileDir    = Join-Path (Join-Path $ROOT_DIR 'apps') 'mobile'
-$functionsDir = Join-Path $ROOT_DIR 'functions'
+if ($env:GIPHY_API_KEY) { $FLUTTER_ARGS += "--dart-define=GIPHY_API_KEY=$env:GIPHY_API_KEY" }
 
 try {
     # -- Emulator startup ------------------------------------------------------

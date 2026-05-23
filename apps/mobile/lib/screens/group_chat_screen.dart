@@ -119,9 +119,7 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
   late final AnimationController _songCtrl;
   late final Animation<Offset> _songSlide;
 
-  // Group members — last entry = "Me" → gets avatarState overlays
-  final List<String> members = ['Somtum', 'Kaitom', 'Somjeed', 'Padthai', 'Me'];
-  final List<_GroupMsg> _localMessages = [];
+  final List<({_GroupMsg msg, int seq})> _localMessages = [];
   String? _pendingGifUrl;
 
   @override
@@ -249,8 +247,12 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
   }
 
   void _sendTopicCard() {
+    final seq = ref.read(chatNotifierProvider).messages.length;
     setState(() {
-      _localMessages.add(_GroupMsg(type: _MsgType.card, text: _pickCard()));
+      _localMessages.add((
+        msg: _GroupMsg(type: _MsgType.card, text: _pickCard()),
+        seq: seq,
+      ));
     });
     _scrollToBottom();
   }
@@ -310,14 +312,19 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
   }
 
   void _shuffleTopic() {
+    final seq = ref.read(chatNotifierProvider).messages.length;
     setState(() {
-      _localMessages.add(
-        const _GroupMsg(
+      _localMessages.add((
+        msg: const _GroupMsg(
           type: _MsgType.system,
           text: 'Someone shuffled the topic!',
         ),
-      );
-      _localMessages.add(_GroupMsg(type: _MsgType.card, text: _pickCard()));
+        seq: seq,
+      ));
+      _localMessages.add((
+        msg: _GroupMsg(type: _MsgType.card, text: _pickCard()),
+        seq: seq,
+      ));
     });
     _scrollToBottom();
   }
@@ -470,9 +477,22 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
     final userProfile = ref.watch(userProfileProvider);
     final chatState = ref.watch(chatNotifierProvider);
     final roomType = args?['roomType'] as String?;
-    final isLocked =
-        ref.watch(matchmakingNotifierProvider).currentRoom?.isLocked ??
-        (roomType == 'create');
+    final matchState = ref.watch(matchmakingNotifierProvider);
+    final isLocked = matchState.currentRoom?.isLocked ?? (roomType == 'create');
+
+    final myUid =
+        chatState.currentUserId ??
+        ref.watch(authNotifierProvider).user?.uid ??
+        '';
+    final nameMap = <String, String>{
+      for (final m in chatState.messages) m.senderId: m.displayName,
+    };
+    final roomUsers = matchState.currentRoom?.users ?? [];
+    final members = roomUsers.isEmpty
+        ? ['Me']
+        : roomUsers
+              .map((uid) => uid == myUid ? 'Me' : (nameMap[uid] ?? 'User'))
+              .toList();
 
     ref.listen(chatNotifierProvider.select((s) => s.status), (_, next) {
       if (next == SessionStatus.disconnected) {
@@ -523,6 +543,7 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
                           maxMembers,
                           avatarState,
                           userProfile,
+                          members,
                         ),
                         Expanded(
                           child: Stack(
@@ -765,6 +786,7 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
     int maxMembers,
     AvatarState avatarState,
     UserProfileState userProfile,
+    List<String> members,
   ) {
     final count = members.length.clamp(1, 5);
     final preset = _layouts[count];
@@ -958,13 +980,22 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
 
   // ── Message list ──────────────────────────────────────────────────────────
   Widget _buildMessageList(AvatarState avatarState, ChatState chatState) {
-    final displayMessages = [
+    final backendMsgs = chatState.messages
+        .map((m) => _toGroupDisplay(m, chatState.currentUserId))
+        .toList();
+    final merged = <_GroupMsg>[
       const _GroupMsg(type: _MsgType.warning, text: _kWarning),
-      ...chatState.messages.map(
-        (m) => _toGroupDisplay(m, chatState.currentUserId),
-      ),
-      ..._localMessages,
     ];
+    int localIdx = 0;
+    for (int i = 0; i <= backendMsgs.length; i++) {
+      while (localIdx < _localMessages.length &&
+          _localMessages[localIdx].seq <= i) {
+        merged.add(_localMessages[localIdx].msg);
+        localIdx++;
+      }
+      if (i < backendMsgs.length) merged.add(backendMsgs[i]);
+    }
+    final displayMessages = merged;
     final isTyping = chatState.typingUsers.isNotEmpty;
     final itemCount = displayMessages.length + (isTyping ? 1 : 0);
 
