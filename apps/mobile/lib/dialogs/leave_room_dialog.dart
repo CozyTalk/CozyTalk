@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../screens/home_screen.dart';
 
 class LeaveRoomDialog extends StatelessWidget {
   final VoidCallback? onLeave;
@@ -74,13 +73,9 @@ class LeaveRoomDialog extends StatelessWidget {
                     child: ElevatedButton(
                       onPressed: () {
                         onLeave?.call();
-                        Navigator.pushAndRemoveUntil(
+                        Navigator.of(
                           context,
-                          MaterialPageRoute<void>(
-                            builder: (_) => const HomeScreen(),
-                          ),
-                          (_) => false,
-                        );
+                        ).popUntil((route) => route.isFirst);
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFFD86A3B),

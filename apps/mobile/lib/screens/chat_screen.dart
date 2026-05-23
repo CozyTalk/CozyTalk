@@ -7,6 +7,7 @@ import '../features/auth/presentation/providers/auth_provider.dart';
 import '../features/chat/domain/entities/chat_message.dart' as chat_entity;
 import '../features/chat/domain/entities/session_status.dart';
 import '../features/chat/presentation/providers/chat_provider.dart';
+import '../features/matchmaking/domain/entities/matchmaking_status.dart';
 import '../features/matchmaking/presentation/providers/matchmaking_provider.dart';
 import '../theme/app_colors.dart';
 import '../dialogs/leave_room_dialog.dart';
@@ -22,7 +23,6 @@ import '../models/friend.dart';
 import '../shared/gif_picker.dart';
 import '../shared/friend_request_popup.dart';
 import '../shared/info_dialog.dart';
-import 'home_screen.dart';
 
 // ── Card assets ────────────────────────────────────────────────────────────
 const _cardAssets = [
@@ -415,11 +415,18 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
 
     ref.listen(chatNotifierProvider.select((s) => s.status), (_, next) {
       if (next == SessionStatus.disconnected) {
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute<void>(builder: (_) => const HomeScreen()),
-          (_) => false,
-        );
+        Navigator.of(context).popUntil((route) => route.isFirst);
+      }
+    });
+
+    ref.listen(matchmakingNotifierProvider.select((s) => s.status), (
+      prev,
+      next,
+    ) {
+      if (prev == MatchmakingStatus.matched &&
+          next != MatchmakingStatus.matched &&
+          ref.read(chatNotifierProvider).status == SessionStatus.chatting) {
+        ref.read(chatNotifierProvider.notifier).forceDisconnect();
       }
     });
 

@@ -3,7 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mobile/features/auth/domain/entities/auth_user.dart';
 import 'package:mobile/features/auth/presentation/providers/auth_provider.dart';
+import 'package:mobile/features/chat/domain/entities/session_status.dart';
 import 'package:mobile/features/chat/presentation/providers/chat_provider.dart';
+import 'package:mobile/features/matchmaking/domain/entities/matchmaking_status.dart';
 import 'package:mobile/features/matchmaking/presentation/providers/matchmaking_provider.dart';
 import 'package:mobile/screens/chat_screen.dart';
 import 'package:mobile/shared/avatar_overlay.dart';
@@ -46,6 +48,7 @@ class _FakeChatNotifier extends ChatNotifier {
   final List<String> sentMessages = [];
   int setTypingCount = 0;
   bool? lastTypingValue;
+  int forceDisconnectCount = 0;
 
   _FakeChatNotifier({ChatState initial = const ChatState()})
     : _initial = initial;
@@ -72,11 +75,25 @@ class _FakeChatNotifier extends ChatNotifier {
 
   @override
   Future<void> endSession() async {}
+
+  @override
+  void forceDisconnect() => forceDisconnectCount++;
 }
 
 class _FakeMatchmakingNotifier extends MatchmakingNotifier {
+  MatchmakingState _initial;
+
+  _FakeMatchmakingNotifier({
+    MatchmakingState initial = const MatchmakingState(),
+  }) : _initial = initial;
+
   @override
-  MatchmakingState build() => const MatchmakingState();
+  MatchmakingState build() => _initial;
+
+  void setStateForTest(MatchmakingState s) {
+    _initial = s;
+    state = s;
+  }
 
   @override
   Future<void> join1v1Pool() async {}
@@ -270,6 +287,25 @@ void main() {
       }
 
       expect(chatFake.sentMessages, isEmpty);
+    });
+
+    testWidgets('partner leaving triggers forceDisconnect', (tester) async {
+      final chatFake = _FakeChatNotifier(
+        initial: const ChatState(
+          status: SessionStatus.chatting,
+          sessionId: 's1',
+        ),
+      );
+      final matchFake = _FakeMatchmakingNotifier(
+        initial: const MatchmakingState(status: MatchmakingStatus.matched),
+      );
+      await tester.pumpWidget(_buildScreen(chatFake, matchFake: matchFake));
+      await _pump(tester);
+
+      matchFake.setStateForTest(const MatchmakingState());
+      await tester.pump();
+
+      expect(chatFake.forceDisconnectCount, 1);
     });
   });
 }

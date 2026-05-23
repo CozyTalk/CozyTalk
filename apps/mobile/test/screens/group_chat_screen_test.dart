@@ -9,6 +9,7 @@ import 'package:mobile/features/matchmaking/domain/entities/room.dart';
 import 'package:mobile/features/matchmaking/presentation/providers/matchmaking_provider.dart';
 import 'package:mobile/screens/group_chat_screen.dart';
 import 'package:mobile/shared/avatar_overlay.dart';
+import 'package:mobile/shared/press_bounce_btn.dart';
 import 'package:mobile/shared/user_profile.dart';
 
 // ── Fakes ─────────────────────────────────────────────────────────────────────
@@ -48,6 +49,7 @@ class _FakeChatNotifier extends ChatNotifier {
   final List<String> sentMessages = [];
   int setTypingCount = 0;
   bool? lastTypingValue;
+  int forceDisconnectCount = 0;
 
   _FakeChatNotifier({ChatState initial = const ChatState()})
     : _initial = initial;
@@ -74,11 +76,15 @@ class _FakeChatNotifier extends ChatNotifier {
 
   @override
   Future<void> endSession() async {}
+
+  @override
+  void forceDisconnect() => forceDisconnectCount++;
 }
 
 class _FakeMatchmakingNotifier extends MatchmakingNotifier {
   final MatchmakingState _initial;
   bool? lastLockValue;
+  int leaveRoomCount = 0;
 
   _FakeMatchmakingNotifier({
     MatchmakingState initial = const MatchmakingState(),
@@ -107,7 +113,7 @@ class _FakeMatchmakingNotifier extends MatchmakingNotifier {
       lastLockValue = isLocked;
 
   @override
-  Future<void> leaveRoom() async {}
+  Future<void> leaveRoom() async => leaveRoomCount++;
 
   @override
   void setInterestText(String text) {}
@@ -314,5 +320,26 @@ void main() {
 
       expect(chatFake.sentMessages, isEmpty);
     });
+
+    testWidgets(
+      'tapping Leave header button calls leaveRoom and forceDisconnect',
+      (tester) async {
+        final chatFake = _FakeChatNotifier();
+        final matchFake = _FakeMatchmakingNotifier();
+        await tester.pumpWidget(_buildScreen(chatFake, matchFake: matchFake));
+        await _pump(tester);
+
+        // First PressBounceBtn in the header is the back/leave button
+        await tester.tap(find.byType(PressBounceBtn).first);
+        await tester.pump();
+
+        // LeaveRoomDialog is now visible — tap the Leave confirmation
+        await tester.tap(find.text('Leave'));
+        await tester.pump();
+
+        expect(matchFake.leaveRoomCount, 1);
+        expect(chatFake.forceDisconnectCount, 1);
+      },
+    );
   });
 }

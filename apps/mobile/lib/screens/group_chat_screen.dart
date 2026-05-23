@@ -23,7 +23,6 @@ import '../models/friend.dart';
 import '../shared/gif_picker.dart';
 import '../shared/friend_request_popup.dart';
 import '../shared/info_dialog.dart';
-import 'home_screen.dart';
 
 // ── Card assets ────────────────────────────────────────────────────────────
 const _cardAssets = [
@@ -496,11 +495,7 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
 
     ref.listen(chatNotifierProvider.select((s) => s.status), (_, next) {
       if (next == SessionStatus.disconnected) {
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute<void>(builder: (_) => const HomeScreen()),
-          (_) => false,
-        );
+        Navigator.of(context).popUntil((route) => route.isFirst);
       }
     });
 
@@ -518,8 +513,10 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
           showDialog(
             context: context,
             builder: (_) => LeaveRoomDialog(
-              onLeave: () =>
-                  ref.read(chatNotifierProvider.notifier).endSession(),
+              onLeave: () {
+                ref.read(matchmakingNotifierProvider.notifier).leaveRoom();
+                ref.read(chatNotifierProvider.notifier).forceDisconnect();
+              },
             ),
           );
         }
@@ -645,8 +642,14 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
                   onTap: () => showDialog(
                     context: context,
                     builder: (_) => LeaveRoomDialog(
-                      onLeave: () =>
-                          ref.read(chatNotifierProvider.notifier).endSession(),
+                      onLeave: () {
+                        ref
+                            .read(matchmakingNotifierProvider.notifier)
+                            .leaveRoom();
+                        ref
+                            .read(chatNotifierProvider.notifier)
+                            .forceDisconnect();
+                      },
                     ),
                   ),
                   child: SvgPicture.asset(
