@@ -34,6 +34,15 @@ class FakeFriendsRepository implements FriendsRepository {
   String? lastText;
   String? lastSenderDisplayName;
 
+  bool presenceResult = false;
+  String? lastWatchPresenceFriendUid;
+
+  String lastMessageResult = '';
+  String? lastWatchLastMessageChatRoomId;
+
+  FriendRoomStatus? roomResult;
+  String? lastWatchRoomFriendUid;
+
   @override
   Stream<List<AppUser>> watchAllUsers() =>
       error != null ? Stream.error(error!) : Stream.value(allUsers);
@@ -53,16 +62,24 @@ class FakeFriendsRepository implements FriendsRepository {
   }
 
   @override
-  Stream<bool> watchFriendPresence(String friendUid) =>
-      error != null ? Stream.error(error!) : Stream.value(false);
+  Stream<bool> watchFriendPresence(String friendUid) {
+    lastWatchPresenceFriendUid = friendUid;
+    return error != null ? Stream.error(error!) : Stream.value(presenceResult);
+  }
 
   @override
-  Stream<String> watchFriendLastMessage(String chatRoomId) =>
-      error != null ? Stream.error(error!) : Stream.value('');
+  Stream<String> watchFriendLastMessage(String chatRoomId) {
+    lastWatchLastMessageChatRoomId = chatRoomId;
+    return error != null
+        ? Stream.error(error!)
+        : Stream.value(lastMessageResult);
+  }
 
   @override
-  Stream<FriendRoomStatus?> watchFriendRoom(String friendUid) =>
-      error != null ? Stream.error(error!) : Stream.value(null);
+  Stream<FriendRoomStatus?> watchFriendRoom(String friendUid) {
+    lastWatchRoomFriendUid = friendUid;
+    return error != null ? Stream.error(error!) : Stream.value(roomResult);
+  }
 
   @override
   Future<void> sendFriendRequest({

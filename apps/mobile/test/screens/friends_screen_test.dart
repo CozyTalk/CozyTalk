@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mobile/features/friends/domain/entities/friend.dart' as domain;
+import 'package:mobile/features/friends/domain/entities/friend_room_status.dart';
 import 'package:mobile/features/friends/presentation/providers/friends_provider.dart';
 import 'package:mobile/screens/friends_screen.dart';
+import 'package:mobile/screens/widgets.dart';
 import 'package:mobile/shared/connectivity_provider.dart';
 import 'package:mobile/shared/network_info.dart';
 import 'package:mobile/shared/offline_card.dart';
@@ -118,6 +120,86 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(fake.removeCount, 1);
+    });
+
+    testWidgets('shows last message text from lastMessageMap', (tester) async {
+      final fake = _FakeFriendsNotifier(
+        initial: FriendsState(
+          friends: [_fakeDomainFriend],
+          lastMessageMap: {'room1': 'hey there'},
+        ),
+      );
+      await tester.pumpWidget(
+        _build(networkInfo: FakeNetworkInfo(isOnline: true), notifier: fake),
+      );
+      await tester.pump();
+      expect(find.text('hey there'), findsOneWidget);
+    });
+
+    testWidgets('shows FriendRoomCard when friend is online and in a room', (
+      tester,
+    ) async {
+      const roomStatus = FriendRoomStatus(
+        roomId: 'abc12',
+        memberCount: 3,
+        maxUsers: 5,
+        isLocked: false,
+        mode: 'group',
+      );
+      final fake = _FakeFriendsNotifier(
+        initial: FriendsState(
+          friends: [_fakeDomainFriend],
+          presenceMap: {'uid1': true},
+          roomMap: {'uid1': roomStatus},
+        ),
+      );
+      await tester.pumpWidget(
+        _build(networkInfo: FakeNetworkInfo(isOnline: true), notifier: fake),
+      );
+      await tester.pump();
+      expect(find.byType(FriendRoomCard), findsOneWidget);
+      expect(find.text('Group Room'), findsOneWidget);
+    });
+
+    testWidgets(
+      'does not show FriendRoomCard when friend is offline even with room data',
+      (tester) async {
+        const roomStatus = FriendRoomStatus(
+          roomId: 'abc12',
+          memberCount: 3,
+          maxUsers: 5,
+          isLocked: false,
+          mode: 'group',
+        );
+        final fake = _FakeFriendsNotifier(
+          initial: FriendsState(
+            friends: [_fakeDomainFriend],
+            presenceMap: {'uid1': false},
+            roomMap: {'uid1': roomStatus},
+          ),
+        );
+        await tester.pumpWidget(
+          _build(networkInfo: FakeNetworkInfo(isOnline: true), notifier: fake),
+        );
+        await tester.pump();
+        expect(find.byType(FriendRoomCard), findsNothing);
+      },
+    );
+
+    testWidgets('does not show FriendRoomCard when friend has no room', (
+      tester,
+    ) async {
+      final fake = _FakeFriendsNotifier(
+        initial: FriendsState(
+          friends: [_fakeDomainFriend],
+          presenceMap: {'uid1': true},
+        ),
+      );
+      await tester.pumpWidget(
+        _build(networkInfo: FakeNetworkInfo(isOnline: true), notifier: fake),
+      );
+      await tester.pump();
+      expect(find.byType(FriendRoomCard), findsNothing);
     });
   });
 }
