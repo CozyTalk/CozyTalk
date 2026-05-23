@@ -11,7 +11,7 @@ abstract class MatchmakingDatasource {
     String? interestText,
     String? backgroundTheme,
   });
-  Future<String> createCustomRoom();
+  Future<String> createCustomRoom({String? backgroundTheme});
   Future<({String roomId, RoomMode mode, RoomType roomType})> joinRoomById(
     String roomId,
   );
@@ -60,8 +60,10 @@ class MatchmakingDatasourceImpl implements MatchmakingDatasource {
   }
 
   @override
-  Future<String> createCustomRoom() async {
-    final result = await _functions.httpsCallable('createCustomRoom').call({});
+  Future<String> createCustomRoom({String? backgroundTheme}) async {
+    final result = await _functions.httpsCallable('createCustomRoom').call({
+      if (backgroundTheme != null) 'backgroundTheme': backgroundTheme,
+    });
     final data = Map<String, dynamic>.from(result.data as Map);
     final roomId = data['roomId'] as String;
     await _registerDisconnect(roomId);

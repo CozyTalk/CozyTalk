@@ -207,7 +207,9 @@ class MatchmakingNotifier extends Notifier<MatchmakingState> {
       roomId: null,
     );
     try {
-      final roomId = await ref.read(_createCustomRoomProvider)();
+      final roomId = await ref
+          .read(_createCustomRoomProvider)
+          .call(backgroundTheme: state.backgroundTheme);
       state = state.copyWith(
         status: MatchmakingStatus.matched,
         roomId: roomId,

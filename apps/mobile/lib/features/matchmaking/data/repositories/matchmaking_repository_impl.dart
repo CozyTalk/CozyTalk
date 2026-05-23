@@ -18,7 +18,8 @@ class MatchmakingRepositoryImpl implements MatchmakingRepository {
   );
 
   @override
-  Future<String> createCustomRoom() => _datasource.createCustomRoom();
+  Future<String> createCustomRoom({String? backgroundTheme}) =>
+      _datasource.createCustomRoom(backgroundTheme: backgroundTheme);
 
   @override
   Future<({String roomId, RoomMode mode, RoomType roomType})> joinRoomById(

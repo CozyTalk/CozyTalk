@@ -5,7 +5,7 @@ abstract class MatchmakingRepository {
     String? interestText,
     String? backgroundTheme,
   });
-  Future<String> createCustomRoom();
+  Future<String> createCustomRoom({String? backgroundTheme});
   Future<({String roomId, RoomMode mode, RoomType roomType})> joinRoomById(
     String roomId,
   );
