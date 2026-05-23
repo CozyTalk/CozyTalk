@@ -37,7 +37,7 @@ const _cardAssets = [
 String _pickCard() => _cardAssets[Random().nextInt(_cardAssets.length)];
 
 // ── Message model ──────────────────────────────────────────────────────────
-enum _MsgType { warning, system, me, other, card, gif }
+enum _MsgType { warning, system, me, other, card, gif, gifOther }
 
 class _GroupMsg {
   final _MsgType type;
@@ -455,7 +455,9 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
     final isMe = msg.senderId == myUid;
     final isGif = msg.text.contains('giphy.com');
     return _GroupMsg(
-      type: isGif ? _MsgType.gif : (isMe ? _MsgType.me : _MsgType.other),
+      type: isGif
+          ? (isMe ? _MsgType.gif : _MsgType.gifOther)
+          : (isMe ? _MsgType.me : _MsgType.other),
       text: msg.text,
       sender: isMe ? 'Me' : msg.displayName,
       time: _formatTime(msg.timestamp),
@@ -1009,7 +1011,8 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
           _MsgType.warning => _buildWarning(msg.text),
           _MsgType.system => _buildSystem(msg),
           _MsgType.card => _buildCard(msg.text),
-          _MsgType.gif => _buildGifBubble(msg, avatarState),
+          _MsgType.gif => _buildGifBubble(msg, avatarState, isMe: true),
+          _MsgType.gifOther => _buildGifBubble(msg, avatarState, isMe: false),
           _ => _buildChatBubble(msg, avatarState),
         };
       },
@@ -1175,51 +1178,85 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
     return _TopicCard(assetPath: assetPath, onShuffle: _shuffleTopic);
   }
 
-  Widget _buildGifBubble(_GroupMsg msg, AvatarState avatarState) {
+  Widget _buildGifBubble(
+    _GroupMsg msg,
+    AvatarState avatarState, {
+    required bool isMe,
+  }) {
     final maxW = MediaQuery.of(context).size.width * 0.55;
+    final gifImage = ClipRRect(
+      borderRadius: BorderRadius.circular(8),
+      child: Image.network(
+        msg.text,
+        fit: BoxFit.cover,
+        errorBuilder: (_, _, _) => const Padding(
+          padding: EdgeInsets.all(8),
+          child: Text(
+            'GIF',
+            style: TextStyle(
+              fontWeight: FontWeight.w800,
+              fontSize: 15,
+              color: Color(0xFF4A3228),
+            ),
+          ),
+        ),
+      ),
+    );
+    final gifContainer = Container(
+      constraints: BoxConstraints(maxWidth: maxW),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: isMe ? const Color(0xFFF1CEE4) : const Color(0xFFDCEBCE),
+        borderRadius: BorderRadius.circular(18),
+        border: isMe ? null : Border.all(color: Colors.black12),
+      ),
+      child: gifImage,
+    );
+    final timestamp = Text(
+      msg.time ?? '',
+      style: const TextStyle(fontSize: 10, color: Colors.black45),
+    );
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.end,
+        mainAxisAlignment: isMe
+            ? MainAxisAlignment.end
+            : MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          Text(
-            msg.time ?? '',
-            style: const TextStyle(fontSize: 10, color: Colors.black45),
-          ),
-          const SizedBox(width: 6),
-          Container(
-            constraints: BoxConstraints(maxWidth: maxW),
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF1CEE4),
-              borderRadius: BorderRadius.circular(18),
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: Image.network(
-                msg.text,
-                fit: BoxFit.cover,
-                errorBuilder: (_, _, _) => const Padding(
-                  padding: EdgeInsets.all(8),
+          if (!isMe) ...[
+            LayeredAvatar(boxSize: 40),
+            const SizedBox(width: 8),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 4),
                   child: Text(
-                    'GIF',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w800,
-                      fontSize: 15,
-                      color: Color(0xFF4A3228),
+                    msg.sender ?? '',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
                 ),
-              ),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [gifContainer, const SizedBox(width: 6), timestamp],
+                ),
+              ],
             ),
-          ),
-          const SizedBox(width: 8),
-          LayeredAvatar(
-            boxSize: 40,
-            moodOverlay: avatarState.mood,
-            accessoryOverlay: avatarState.accessory,
-          ),
+          ] else ...[
+            timestamp,
+            const SizedBox(width: 6),
+            gifContainer,
+            const SizedBox(width: 8),
+            LayeredAvatar(
+              boxSize: 40,
+              moodOverlay: avatarState.mood,
+              accessoryOverlay: avatarState.accessory,
+            ),
+          ],
         ],
       ),
     );

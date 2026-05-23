@@ -389,7 +389,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
     final isMe = msg.senderId == myUid;
     final isGif = msg.text.contains('giphy.com');
     return ChatMessage(
-      type: isGif ? 'gif' : (isMe ? 'me' : 'other'),
+      type: isGif ? (isMe ? 'gif' : 'gif_other') : (isMe ? 'me' : 'other'),
       text: msg.text,
       time: _formatTime(msg.timestamp),
     );
@@ -742,7 +742,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
           'me' => _buildBubble(msg, isMe: true, avatarState: avatarState),
           'other' => _buildBubble(msg, isMe: false),
           'card' => _buildCard(msg.text),
-          'gif' => _buildGifBubble(msg, avatarState: avatarState),
+          'gif' => _buildGifBubble(msg, isMe: true, avatarState: avatarState),
+          'gif_other' => _buildGifBubble(msg, isMe: false),
           _ => const SizedBox.shrink(),
         };
       },
@@ -872,51 +873,67 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
     return _TopicCard(assetPath: assetPath, onShuffle: _shuffleTopic);
   }
 
-  Widget _buildGifBubble(ChatMessage msg, {AvatarState? avatarState}) {
+  Widget _buildGifBubble(
+    ChatMessage msg, {
+    required bool isMe,
+    AvatarState? avatarState,
+  }) {
     final maxW = MediaQuery.of(context).size.width * 0.55;
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.end,
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          Text(
-            msg.time ?? '',
-            style: const TextStyle(fontSize: 10, color: Colors.black45),
-          ),
-          const SizedBox(width: 6),
-          Container(
-            constraints: BoxConstraints(maxWidth: maxW),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF1CEE4),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: Image.network(
-                msg.text,
-                fit: BoxFit.cover,
-                errorBuilder: (_, _, _) => const Padding(
-                  padding: EdgeInsets.all(8),
-                  child: Text(
-                    'GIF',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w800,
-                      fontSize: 15,
-                      color: Color(0xFF4A3228),
-                    ),
-                  ),
-                ),
+    final gifWidget = Container(
+      constraints: BoxConstraints(maxWidth: maxW),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: isMe ? const Color(0xFFF1CEE4) : const Color(0xFFDCEBCE),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(8),
+        child: Image.network(
+          msg.text,
+          fit: BoxFit.cover,
+          errorBuilder: (_, _, _) => const Padding(
+            padding: EdgeInsets.all(8),
+            child: Text(
+              'GIF',
+              style: TextStyle(
+                fontWeight: FontWeight.w800,
+                fontSize: 15,
+                color: Color(0xFF4A3228),
               ),
             ),
           ),
-          const SizedBox(width: 8),
-          LayeredAvatar(
-            boxSize: 40,
-            moodOverlay: avatarState?.mood,
-            accessoryOverlay: avatarState?.accessory,
-          ),
+        ),
+      ),
+    );
+    final timestamp = Text(
+      msg.time ?? '',
+      style: const TextStyle(fontSize: 10, color: Colors.black45),
+    );
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        mainAxisAlignment: isMe
+            ? MainAxisAlignment.end
+            : MainAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          if (!isMe) ...[
+            LayeredAvatar(boxSize: 40),
+            const SizedBox(width: 8),
+            gifWidget,
+            const SizedBox(width: 6),
+            timestamp,
+          ] else ...[
+            timestamp,
+            const SizedBox(width: 6),
+            gifWidget,
+            const SizedBox(width: 8),
+            LayeredAvatar(
+              boxSize: 40,
+              moodOverlay: avatarState?.mood,
+              accessoryOverlay: avatarState?.accessory,
+            ),
+          ],
         ],
       ),
     );
