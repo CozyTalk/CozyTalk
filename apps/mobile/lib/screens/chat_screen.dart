@@ -38,7 +38,8 @@ String _pickCard() => _cardAssets[Random().nextInt(_cardAssets.length)];
 
 // ── Message model ──────────────────────────────────────────────────────────
 class ChatMessage {
-  final String type; // 'warning' | 'system' | 'me' | 'other' | 'card' | 'gif'
+  final String
+  type; // 'warning' | 'system' | 'me' | 'other' | 'card' | 'gif' | 'gif_other'
   final String text; // for 'card' = asset image path
   final String? time;
   ChatMessage({required this.type, required this.text, this.time});
@@ -70,6 +71,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
   bool _friendRequestSent = false;
   bool _friendAccepted = false;
   final List<({ChatMessage msg, int seq})> _localMessages = [];
+  final List<ChatMessage> _optimisticMessages = [];
   String? _pendingGifUrl;
 
   @override
@@ -158,12 +160,18 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
     bool sent = false;
     if (_pendingGifUrl != null) {
       final url = _pendingGifUrl!;
-      setState(() => _pendingGifUrl = null);
+      setState(() {
+        _pendingGifUrl = null;
+        _optimisticMessages.add(ChatMessage(type: 'gif', text: url));
+      });
       await notifier.sendMessage(url);
       sent = true;
     }
     final text = _msgController.text.trim();
     if (text.isNotEmpty) {
+      setState(() {
+        _optimisticMessages.add(ChatMessage(type: 'me', text: text));
+      });
       notifier.sendMessage(text);
       notifier.setTyping(false);
       _typingTimer?.cancel();
@@ -434,7 +442,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
       prev,
       next,
     ) {
-      if ((prev ?? 0) < next) _scrollToBottom();
+      if ((prev ?? 0) < next) {
+        if (_optimisticMessages.isNotEmpty) {
+          setState(() => _optimisticMessages.clear());
+        }
+        _scrollToBottom();
+      }
     });
 
     return PopScope(
@@ -723,7 +736,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
       }
       if (i < backendMsgs.length) merged.add(backendMsgs[i]);
     }
-    final displayMessages = merged;
+    final displayMessages = [...merged, ..._optimisticMessages];
     final isTyping = chatState.typingUsers.isNotEmpty;
     final itemCount = displayMessages.length + (isTyping ? 1 : 0);
 
@@ -918,7 +931,18 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           if (!isMe) ...[
-            LayeredAvatar(boxSize: 40),
+            GestureDetector(
+              onTap: () => showDialog(
+                context: context,
+                builder: (_) => UserProfileDialog(
+                  username: 'kaitom',
+                  initialAdded: _friendRequestSent,
+                  onAddFriend: () => _sendFriendRequest(),
+                  onCancelRequest: () => _cancelFriendRequest(),
+                ),
+              ),
+              child: LayeredAvatar(boxSize: 40),
+            ),
             const SizedBox(width: 8),
             gifWidget,
             const SizedBox(width: 6),
