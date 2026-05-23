@@ -20,7 +20,7 @@ All screens in `apps/mobile/lib/screens/`. These are the production frontend —
 | `FriendChatScreen` | `screens/friend_chat_screen.dart` | `/friends/chat` | StatefulWidget | ⬜ pending |
 | `BlockedScreen` | `screens/blocked_screen.dart` | `/blocked` | StatefulWidget | ⬜ pending |
 | `NotificationScreen` | `screens/notification_screen.dart` | `/notification` | ConsumerStatefulWidget | ✅ integrated — `friendsNotifierProvider.incomingRequests`; accept/decline wired; App Update static card |
-| `SelectBackgroundScreen` | `screens/select_background_screen.dart` | `/select-background` | StatefulWidget | ✅ integrated — no Riverpod needed; passes `{ roomType, roomName, bgImage, isGroup }` to `findingRoom` route; back button pops to `chooseRoomType` |
+| `SelectBackgroundScreen` | `screens/select_background_screen.dart` | `/select-background` | ConsumerStatefulWidget | ✅ integrated — wired to `matchmakingNotifierProvider`; calls `setBackgroundTheme(id)` before navigating so the selected theme drives CF-side matchmaking filtering; passes `{ roomType, roomName, bgImage, isGroup }` to `findingRoom` route; back button pops to `chooseRoomType` |
 | `LoginScreen` | `screens/login_screen.dart` | — | ConsumerStatefulWidget | ✅ used in production mode (`_useMainUI = true`) by `_MainUIAuthRouter` in `main.dart`; wired to `authNotifierProvider`; shows `OfflineChip` + blocks all sign-in actions when offline |
 | `SignupScreen` | `screens/signup_screen.dart` | — | ConsumerStatefulWidget | ⬜ design preview — never imported in `main.dart`; CA version (`features/auth/`) is used |
 
