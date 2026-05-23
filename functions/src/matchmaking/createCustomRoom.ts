@@ -38,7 +38,7 @@ export const createCustomRoom = onCall(
       createdAt: FieldValue.serverTimestamp(),
       paddingUntil: null,
       encryptionKey: generateKey(),
-      ...(backgroundTheme ? {backgroundTheme} : {}),
+      backgroundTheme: backgroundTheme,
     });
 
     await rtdb.ref(`rooms/${roomId}/members/${uid}`).set(true);

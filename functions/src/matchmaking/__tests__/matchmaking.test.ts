@@ -1916,7 +1916,7 @@ describe("background theme: group room partitioning", () => {
   }, 30_000);
 
   test("themed user ignores unthemed rooms and creates a new themed room", async () => {
-    // Build an unthemed room (createCustomRoom produces no backgroundTheme field).
+    // Build an unthemed room (backgroundTheme: null — excluded from themed queries).
     const unthermedRoomId = await buildRoom(1);
 
     signOut();
@@ -2328,13 +2328,13 @@ describe("background theme: custom rooms", () => {
     await tryLeaveRoom(roomId);
   }, 15_000);
 
-  test("createCustomRoom without theme does not store backgroundTheme", async () => {
+  test("createCustomRoom without theme stores null backgroundTheme", async () => {
     await signInAnon();
     const res = await callFn("createCustomRoom");
     const roomId = res["roomId"] as string;
 
     const room = await adminFirestoreDoc(`rooms/${roomId}`);
-    expect(room!["backgroundTheme"]).toBeUndefined();
+    expect(room!["backgroundTheme"]).toBeNull();
 
     await tryLeaveRoom(roomId);
   }, 15_000);
@@ -2392,23 +2392,27 @@ describe("background theme: custom rooms", () => {
 
   test("joinGroupRoom with no theme joins any available room including themed custom rooms", async () => {
     // A creates a themed custom room.
-    await signInAnon();
+    const uidA = await signInAnon();
     const resA = await callFn("createCustomRoom", {
       backgroundTheme: "lumphini_park",
     });
     const customRoomId = resA["roomId"] as string;
 
-    // B joins with no theme — null means no filter, so B lands in A's room.
+    // B joins with no theme — unthemed users see all rooms, so B lands in A's room.
     signOut();
     await signInAnon();
     const resB = await callFn("joinGroupRoom");
 
     expect(resB["roomId"]).toBe(customRoomId);
 
+    const room = await adminFirestoreDoc(`rooms/${customRoomId}`);
+    expect(room!["memberCount"]).toBe(2);
+    expect(room!["users"] as string[]).toContain(uidA);
+
     await tryLeaveRoom(customRoomId);
   }, 30_000);
 
-  test("createCustomRoom with invalid theme ignores it (stores nothing)", async () => {
+  test("createCustomRoom with invalid theme stores null backgroundTheme", async () => {
     await signInAnon();
     const res = await callFn("createCustomRoom", {
       backgroundTheme: "not_a_real_theme",
@@ -2416,7 +2420,7 @@ describe("background theme: custom rooms", () => {
     const roomId = res["roomId"] as string;
 
     const room = await adminFirestoreDoc(`rooms/${roomId}`);
-    expect(room!["backgroundTheme"]).toBeUndefined();
+    expect(room!["backgroundTheme"]).toBeNull();
 
     await tryLeaveRoom(roomId);
   }, 15_000);

@@ -80,6 +80,14 @@ export const joinGroupRoom = onCall(
               return;
             }
 
+            // Themed users must not land in a different-theme room.
+            // Unthemed users can join any room.
+            if (backgroundTheme) {
+              const roomTheme =
+                (d.backgroundTheme as string | null | undefined) ?? null;
+              if (roomTheme !== backgroundTheme) return;
+            }
+
             const update: Record<string, unknown> = {
               users: FieldValue.arrayUnion(uid),
               memberCount: FieldValue.increment(1),
@@ -122,8 +130,8 @@ export const joinGroupRoom = onCall(
 
     // Fetch Phase 1 (lone-user) and Phase 2 (2-4 member) candidates in parallel.
     // When the user has interest, we also use these results for Phase 0.
-    // When a backgroundTheme is set, add it as a hard filter so themed users
-    // only land in rooms with the same theme.
+    // Themed users get a backgroundTheme filter so they only land in same-theme
+    // rooms. Unthemed users see all rooms (no filter).
     let priorityQuery: admin.firestore.Query = db
       .collection("rooms")
       .where("mode", "==", "group")
@@ -207,7 +215,7 @@ export const joinGroupRoom = onCall(
             roomInterestVector: userVector,
           }
         : {}),
-      ...(backgroundTheme ? {backgroundTheme} : {}),
+      backgroundTheme: backgroundTheme,
     };
 
     const roomId = await createRoomWithRetry(db, newRoomData);
@@ -221,7 +229,7 @@ export const joinGroupRoom = onCall(
 
     // Race-condition mitigation: if another user created a 1-member room at the
     // same time (both saw an empty DB), merge into theirs and discard ours.
-    // Apply backgroundTheme filter so themed users only merge into same-theme rooms.
+    // Themed users only merge into same-theme rooms; unthemed merge anywhere.
     let soloQuery: admin.firestore.Query = db
       .collection("rooms")
       .where("mode", "==", "group")

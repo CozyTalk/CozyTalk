@@ -92,21 +92,21 @@ All admin functions are callable, deployed to `us-central1`. Every function veri
 ### `match1v1Users`
 `functions/src/matchmaking/match1v1Users.ts`
 - **Trigger:** Firestore `onDocumentCreated` — `waiting_pool/{uid}` — **region: `asia-southeast1`**
-- **Process:** 2-phase atomic Firestore transaction. If the triggering user has a `backgroundTheme`, hard-filters candidates to same-theme users before interest sorting. Finds best candidate by cosine similarity of interest vectors (threshold 0.65) from a window of up to **20** candidates. Creates `rooms/{roomId}` with `mode: 1v1`, `status: active`, and `backgroundTheme` if either matched user had one. Removes both users from pool. Writes match result to RTDB.
+- **Process:** 2-phase atomic Firestore transaction. If the triggering user has a `backgroundTheme`, hard-filters candidates to same-theme or unthemed users (unthemed = flexible, adopts the room's theme). The only blocked pairing is two users with different non-null themes. Unthemed triggers match anyone. Finds best candidate by cosine similarity of interest vectors (threshold 0.65) from a window of up to **20** candidates. Creates `rooms/{roomId}` with `mode: 1v1`, `status: active`, and `backgroundTheme` always written (valid string or `null`). Removes both users from pool. Writes match result to RTDB.
 - **Output:** void (trigger)
 
 ### `joinGroupRoom`
 `functions/src/matchmaking/joinGroupRoom.ts`
 - **Trigger:** callable (authenticated)
 - **Input:** `{ interestText?: string, backgroundTheme?: string }`
-- **Process:** 3-phase match: find candidate group rooms → compute cosine similarity → join best match or create new group room. If `backgroundTheme` is provided (validated against the four allowed IDs), Firestore queries are filtered to same-theme rooms only; themed users never land in unthemed rooms and vice-versa. Room capacity 2–5 users. `backgroundTheme` is stored on the created room when set. **Note:** a composite Firestore index (`mode + status + isLocked + backgroundTheme + memberCount`) is required for theme-filtered queries in production.
+- **Process:** 3-phase match: find candidate group rooms → compute cosine similarity → join best match or create new group room. If `backgroundTheme` is provided, Firestore queries are filtered to same-theme rooms only (themed users never land in a different-theme room). Unthemed users see all rooms and may join themed rooms. Room capacity 2–5 users. `backgroundTheme` is always written on created rooms (valid string or `null`). Requires composite Firestore index on `(mode, status, isLocked, backgroundTheme, memberCount)` — deployed in `firestore.indexes.json`.
 - **Output:** `{ roomId: string, isNewRoom: boolean }`
 
 ### `createCustomRoom`
 `functions/src/matchmaking/createCustomRoom.ts`
 - **Trigger:** callable (authenticated)
 - **Input:** `{ backgroundTheme?: string }`
-- **Process:** Generates 5-char crypto-random room ID. Creates `rooms/{roomId}` with `mode: group`, `roomType: custom`, `status: active`. If `backgroundTheme` is provided and valid (one of the four allowed IDs), it is stored on the room. Adds creator to `rooms/{roomId}/members` in RTDB.
+- **Process:** Generates 5-char crypto-random room ID. Creates `rooms/{roomId}` with `mode: group`, `roomType: custom`, `status: active`. `backgroundTheme` is always written (valid string when provided and valid, otherwise `null`). Adds creator to `rooms/{roomId}/members` in RTDB.
 - **Output:** `{ roomId: string }`
 
 ### `joinRoomById`

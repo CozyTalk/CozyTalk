@@ -40,12 +40,14 @@ export const match1v1Users = onDocumentCreated(
 
     let candidates = candidatesSnap.docs.filter((d) => d.id !== triggerUid);
 
-    // Hard-filter by backgroundTheme before interest sorting. Only applied when
-    // the triggering user picked a theme — null means "match anyone".
+    // Themed users match same-theme OR unthemed candidates (unthemed = flexible,
+    // adopts the room's theme). Unthemed triggers match anyone. The only pairing
+    // that is blocked is themed-A vs differently-themed-B.
     if (triggerTheme) {
-      candidates = candidates.filter(
-        (c) => c.data().backgroundTheme === triggerTheme,
-      );
+      candidates = candidates.filter((c) => {
+        const ct = c.data().backgroundTheme as string | null | undefined;
+        return ct === triggerTheme || !ct;
+      });
     }
 
     if (candidates.length === 0) {
@@ -132,7 +134,7 @@ export const match1v1Users = onDocumentCreated(
           paddingUntil: null,
           encryptionKey: generateKey(),
           ...(memberInterests ? {memberInterests, roomInterestVector} : {}),
-          ...(partnerTheme ? {backgroundTheme: partnerTheme} : {}),
+          backgroundTheme: partnerTheme,
         });
       } catch (e) {
         // Room creation failed — undo the claim so the candidate can be rematched.
