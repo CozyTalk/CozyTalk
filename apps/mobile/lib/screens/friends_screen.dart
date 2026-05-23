@@ -408,6 +408,7 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
               context: context,
               friend: friend,
               onConfirm: () {
+                if (ref.read(friendsNotifierProvider).isLoading) return;
                 ref
                     .read(friendsNotifierProvider.notifier)
                     .removeFriend(friend.friendshipId);
