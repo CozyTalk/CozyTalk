@@ -43,6 +43,7 @@ Rules: read by any signed-in user (broadened from owner-only to support friends 
 | `interestText` | string? | raw interest text |
 | `interestVector` | array? | 256-dim Vertex AI embedding |
 | `roomId` | string? | set by `match1v1Users` CF when matched (1v1 only); `null` initially |
+| `backgroundTheme` | string? | one of `kao_tapu`, `red_lotus_lake`, `sea_of_cloud`, `lumphini_park`; `null` = no theme filter |
 
 Rules: update restricted to `updatedAt` field only (prevents client status manipulation).
 
@@ -64,6 +65,7 @@ Rules: update restricted to `updatedAt` field only (prevents client status manip
 | `paddingUntil` | timestamp? | set when status transitions to `padding` |
 | `createdAt` | timestamp | |
 | `roomInterestVector` | number[]? | mean of all members' 256-dim Vertex AI interest embeddings; written by `joinGroupRoom` and `match1v1Users` CFs; used for group room cosine similarity matching |
+| `backgroundTheme` | string? | one of `kao_tapu`, `red_lotus_lake`, `sea_of_cloud`, `lumphini_park`; absent when no theme was chosen; acts as hard partition key during matchmaking |
 
 Rules: `users` membership checked for read/write access.
 
@@ -193,6 +195,7 @@ Note: `cleanupMember` CF triggers on `rooms/{roomId}/members/{uid}` deletion. `c
 | `waiting_pool` | `mode ASC, status ASC, updatedAt ASC` | Matchmaking: most-recently-updated waiting user by mode |
 | `reports` | `status ASC, createdAt DESC` | Admin dashboard: pending reports by time |
 | `rooms` | `mode ASC, status ASC, isLocked ASC, memberCount ASC` | Group room picker: available unlocked rooms by fill level |
+| `rooms` | `mode ASC, status ASC, isLocked ASC, backgroundTheme ASC, memberCount ASC` | **Needed for production** — themed group room queries in `joinGroupRoom`; not yet in `firestore.indexes.json` |
 | `rooms` | `status ASC, paddingUntil ASC` | `expireRooms` cron: find rooms past their padding window |
 | `friend_requests` | `toUid ASC, status ASC` | Friends: incoming pending requests for a user |
 

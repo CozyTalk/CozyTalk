@@ -78,8 +78,8 @@ All admin functions are callable, deployed to `us-central1`. Every function veri
 ### `join1v1Pool`
 `functions/src/matchmaking/join1v1Pool.ts`
 - **Trigger:** callable (authenticated)
-- **Input:** `{ interestText?: string }`
-- **Process:** Adds user to `waiting_pool/{uid}` with `status: waiting`. If `interestText` provided, generates embedding via Vertex AI and stores 256-dim vector. Sets `pool_presence/{uid}` in RTDB.
+- **Input:** `{ interestText?: string, backgroundTheme?: string }`
+- **Process:** Adds user to `waiting_pool/{uid}` with `status: waiting`. If `interestText` provided, generates embedding via Vertex AI and stores 256-dim vector. If `backgroundTheme` provided, validates against the four allowed IDs (`kao_tapu`, `red_lotus_lake`, `sea_of_cloud`, `lumphini_park`) — invalid values are silently dropped to `null`. Sets `pool_presence/{uid}` in RTDB.
 - **Output:** `{ success: true }`
 
 ### `cancel1v1Pool`
@@ -92,14 +92,14 @@ All admin functions are callable, deployed to `us-central1`. Every function veri
 ### `match1v1Users`
 `functions/src/matchmaking/match1v1Users.ts`
 - **Trigger:** Firestore `onDocumentCreated` — `waiting_pool/{uid}` — **region: `asia-southeast1`**
-- **Process:** 2-phase atomic Firestore transaction. Finds best candidate by cosine similarity of interest vectors (threshold 0.65) from a window of up to **20** candidates. Creates `rooms/{roomId}` with `mode: 1v1`, `status: active`. Removes both users from pool. Writes match result to RTDB.
+- **Process:** 2-phase atomic Firestore transaction. If the triggering user has a `backgroundTheme`, hard-filters candidates to same-theme users before interest sorting. Finds best candidate by cosine similarity of interest vectors (threshold 0.65) from a window of up to **20** candidates. Creates `rooms/{roomId}` with `mode: 1v1`, `status: active`, and `backgroundTheme` if either matched user had one. Removes both users from pool. Writes match result to RTDB.
 - **Output:** void (trigger)
 
 ### `joinGroupRoom`
 `functions/src/matchmaking/joinGroupRoom.ts`
 - **Trigger:** callable (authenticated)
-- **Input:** `{ interestText?: string }`
-- **Process:** 3-phase match: find candidate group rooms → compute cosine similarity → join best match or create new group room. Room capacity 2–5 users.
+- **Input:** `{ interestText?: string, backgroundTheme?: string }`
+- **Process:** 3-phase match: find candidate group rooms → compute cosine similarity → join best match or create new group room. If `backgroundTheme` is provided (validated against the four allowed IDs), Firestore queries are filtered to same-theme rooms only; themed users never land in unthemed rooms and vice-versa. Room capacity 2–5 users. `backgroundTheme` is stored on the created room when set. **Note:** a composite Firestore index (`mode + status + isLocked + backgroundTheme + memberCount`) is required for theme-filtered queries in production.
 - **Output:** `{ roomId: string, isNewRoom: boolean }`
 
 ### `createCustomRoom`
