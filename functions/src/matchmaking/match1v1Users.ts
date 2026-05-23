@@ -24,6 +24,10 @@ export const match1v1Users = onDocumentCreated(
       Array.isArray(v) ? (v as number[]) : null;
 
     const triggerVector = toVector(data.interestVector);
+    const triggerTheme =
+      typeof data.backgroundTheme === "string" && data.backgroundTheme
+        ? data.backgroundTheme
+        : null;
 
     // Expanded to 20 candidates to give interest-matching a wider field.
     const candidatesSnap = await db
@@ -35,8 +39,19 @@ export const match1v1Users = onDocumentCreated(
       .get();
 
     let candidates = candidatesSnap.docs.filter((d) => d.id !== triggerUid);
+
+    // Themed users match same-theme OR unthemed candidates (unthemed = flexible,
+    // adopts the room's theme). Unthemed triggers match anyone. The only pairing
+    // that is blocked is themed-A vs differently-themed-B.
+    if (triggerTheme) {
+      candidates = candidates.filter((c) => {
+        const ct = c.data().backgroundTheme as string | null | undefined;
+        return ct === triggerTheme || !ct;
+      });
+    }
+
     if (candidates.length === 0) {
-      logger.debug("No 1v1 partner found yet", {triggerUid});
+      logger.debug("No 1v1 partner found yet", {triggerUid, triggerTheme});
       return;
     }
 
@@ -97,6 +112,13 @@ export const match1v1Users = onDocumentCreated(
         ? meanVector(Object.values(memberInterests))
         : null;
 
+      // When trigger has no theme, preserve the candidate's theme so the room
+      // carries the field whichever side chose it.
+      const partnerTheme =
+        triggerTheme ??
+        ((candidate.data().backgroundTheme as string | null | undefined) ||
+          null);
+
       let roomId: string;
       try {
         // Phase 2: create the room (outside any transaction — uses atomic create()).
@@ -112,6 +134,7 @@ export const match1v1Users = onDocumentCreated(
           paddingUntil: null,
           encryptionKey: generateKey(),
           ...(memberInterests ? {memberInterests, roomInterestVector} : {}),
+          backgroundTheme: partnerTheme,
         });
       } catch (e) {
         // Room creation failed — undo the claim so the candidate can be rematched.
