@@ -1,6 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter/material.dart';
+import '../features/friends/domain/entities/friend.dart' as domain;
+import '../features/friends/presentation/providers/friends_provider.dart';
 import '../shared/connectivity_provider.dart';
 import '../shared/info_dialog.dart';
 import '../shared/offline_card.dart';
@@ -13,88 +15,6 @@ import 'remove_friend_dialog.dart';
 import 'block_dialogs.dart';
 import 'widgets.dart';
 
-final List<Friend> _mockFriends = [
-  Friend(
-    name: 'Nong Prae',
-    username: 'kaitom',
-    lastMessage: 'Hello',
-    isOnline: true,
-    unreadCount: 1,
-    room: const RoomInfo(
-      name: 'Red Lotus Lake',
-      thumbnail: 'assets/images/backgrounds/red_lotus_lake.png',
-      current: 2,
-      max: 2,
-    ),
-    avatar: 'assets/images/UserAvatar.png',
-    interest: 'Cats',
-  ),
-  Friend(
-    name: 'Somjeed',
-    username: 'somjeed123',
-    lastMessage: 'How are you?',
-    isOnline: false,
-    unreadCount: 2,
-    avatar: 'assets/images/UserAvatar.png',
-    interest: 'Music',
-  ),
-  Friend(
-    name: 'Kaitom',
-    username: 'kaitom99',
-    lastMessage: 'See you later!',
-    isOnline: true,
-    unreadCount: 0,
-    room: const RoomInfo(
-      name: 'Lumphini Park',
-      thumbnail: 'assets/images/backgrounds/lumphini_park.png',
-      current: 3,
-      max: 5,
-      isLocked: true,
-    ),
-    avatar: 'assets/images/UserAvatar.png',
-    interest: 'Sports',
-  ),
-  Friend(
-    name: 'Mitsuru',
-    username: 'mitsuru_m',
-    lastMessage: 'Busy now',
-    isOnline: true,
-    unreadCount: 0,
-    room: const RoomInfo(
-      name: 'Sea of Cloud',
-      thumbnail: 'assets/images/backgrounds/sea_of_cloud.png',
-      current: 5,
-      max: 5,
-    ),
-    avatar: 'assets/images/UserAvatar.png',
-    interest: 'Art',
-  ),
-  Friend(
-    name: 'Somying',
-    username: 'somying_s',
-    lastMessage: 'Come join us!',
-    isOnline: true,
-    unreadCount: 0,
-    room: const RoomInfo(
-      name: 'Kao Tapu',
-      thumbnail: 'assets/images/backgrounds/kao_tapu.png',
-      current: 3,
-      max: 5,
-    ),
-    avatar: 'assets/images/UserAvatar.png',
-    interest: 'Travel',
-  ),
-  Friend(
-    name: 'Platoo',
-    username: 'platoo_99',
-    lastMessage: 'How are you?',
-    isOnline: false,
-    unreadCount: 0,
-    avatar: 'assets/images/UserAvatar.png',
-    interest: 'Gaming',
-  ),
-];
-
 class FriendsScreen extends ConsumerStatefulWidget {
   const FriendsScreen({super.key});
 
@@ -103,14 +23,17 @@ class FriendsScreen extends ConsumerStatefulWidget {
 }
 
 class _FriendsScreenState extends ConsumerState<FriendsScreen> {
-  late List<Friend> _friends;
   final TextEditingController _searchCtrl = TextEditingController();
   String _query = '';
+
+  // Local-only state — no backend support yet
+  final Map<String, String?> _notes = {};
+  final Set<String> _blockedIds = {};
+  final Map<String, int> _unreadCounts = {};
 
   @override
   void initState() {
     super.initState();
-    _friends = List<Friend>.from(_mockFriends);
     _searchCtrl.addListener(
       () => setState(() => _query = _searchCtrl.text.trim().toLowerCase()),
     );
@@ -122,9 +45,21 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
     super.dispose();
   }
 
-  List<Friend> get _filtered => _query.isEmpty
-      ? _friends
-      : _friends
+  Friend _toScreenFriend(domain.Friend f) => Friend(
+    friendshipId: f.friendshipId,
+    chatRoomId: f.chatRoomId,
+    name: f.friendDisplayName,
+    username: f.friendDisplayName,
+    note: _notes[f.friendshipId],
+    lastMessage: '',
+    isOnline: false,
+    unreadCount: _unreadCounts[f.friendshipId] ?? 0,
+    isBlocked: _blockedIds.contains(f.friendshipId),
+  );
+
+  List<Friend> _filtered(List<Friend> friends) => _query.isEmpty
+      ? friends
+      : friends
             .where(
               (f) =>
                   f.displayName.toLowerCase().contains(_query) ||
@@ -134,10 +69,21 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final filtered = _filtered;
+    final state = ref.watch(friendsNotifierProvider);
+    final friends = state.friends.map(_toScreenFriend).toList();
+    final filtered = _filtered(friends);
     final isOffline = !ref
         .watch(isOnlineProvider)
         .when(data: (v) => v, loading: () => true, error: (_, _) => true);
+
+    ref.listen<FriendsState>(friendsNotifierProvider, (_, next) {
+      if (next.error != null) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(next.error!)));
+        ref.read(friendsNotifierProvider.notifier).clearError();
+      }
+    });
 
     return Scaffold(
       backgroundColor: AppColors.scaffoldBg,
@@ -161,10 +107,9 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
                 itemBuilder: (context, index) {
                   if (index == 0) return _buildSearchBar();
                   final friend = filtered[index - 1];
-                  final originalIndex = _friends.indexOf(friend);
                   return Padding(
                     padding: const EdgeInsets.only(top: 16),
-                    child: _buildFriendCard(friend, originalIndex),
+                    child: _buildFriendCard(friend),
                   );
                 },
               ),
@@ -217,16 +162,14 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
     );
   }
 
-  Widget _buildFriendCard(Friend friend, int index) {
+  Widget _buildFriendCard(Friend friend) {
     final showRoom = friend.room != null && friend.isOnline;
     return GestureDetector(
       onTap: () {
-        setState(() => _friends[index].unreadCount = 0);
-        Navigator.pushNamed(
-          context,
-          AppRoutes.friendChat,
-          arguments: _friends[index],
-        );
+        if (friend.unreadCount > 0) {
+          setState(() => _unreadCounts[friend.friendshipId] = 0);
+        }
+        Navigator.pushNamed(context, AppRoutes.friendChat, arguments: friend);
       },
       child: Container(
         width: double.infinity,
@@ -345,7 +288,7 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
-                        _buildMoreButton(friend, index),
+                        _buildMoreButton(friend),
                         if (friend.unreadCount > 0)
                           _buildUnreadBadge(friend.unreadCount)
                         else
@@ -401,7 +344,7 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
     );
   }
 
-  Widget _buildMoreButton(Friend friend, int index) {
+  Widget _buildMoreButton(Friend friend) {
     return PopupMenuButton<String>(
       padding: EdgeInsets.zero,
       icon: SvgPicture.asset(
@@ -423,11 +366,11 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
               context: context,
               friend: friend,
               onNoteSaved: (newNote) {
-                setState(
-                  () => _friends[index].note = newNote.isNotEmpty
+                setState(() {
+                  _notes[friend.friendshipId] = newNote.isNotEmpty
                       ? newNote
-                      : null,
-                );
+                      : null;
+                });
               },
             );
           case 'Block':
@@ -435,7 +378,7 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
               context: context,
               username: friend.displayName,
               onConfirm: () {
-                setState(() => _friends[index].isBlocked = true);
+                setState(() => _blockedIds.add(friend.friendshipId));
                 showInfoDialog(
                   context,
                   type: InfoDialogType.success,
@@ -450,7 +393,7 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
               context: context,
               username: friend.displayName,
               onConfirm: () {
-                setState(() => _friends[index].isBlocked = false);
+                setState(() => _blockedIds.remove(friend.friendshipId));
                 showInfoDialog(
                   context,
                   type: InfoDialogType.info,
@@ -465,7 +408,9 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
               context: context,
               friend: friend,
               onConfirm: () {
-                setState(() => _friends.removeAt(index));
+                ref
+                    .read(friendsNotifierProvider.notifier)
+                    .removeFriend(friend.friendshipId);
                 showInfoDialog(
                   context,
                   type: InfoDialogType.info,
