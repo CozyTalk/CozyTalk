@@ -78,8 +78,8 @@ All admin functions are callable, deployed to `us-central1`. Every function veri
 ### `join1v1Pool`
 `functions/src/matchmaking/join1v1Pool.ts`
 - **Trigger:** callable (authenticated)
-- **Input:** `{ interestText?: string }`
-- **Process:** Adds user to `waiting_pool/{uid}` with `status: waiting`. If `interestText` provided, generates embedding via Vertex AI and stores 256-dim vector. Sets `pool_presence/{uid}` in RTDB.
+- **Input:** `{ interestText?: string, backgroundTheme?: string }`
+- **Process:** Adds user to `waiting_pool/{uid}` with `status: waiting`. If `interestText` provided, generates embedding via Vertex AI and stores 256-dim vector. If `backgroundTheme` provided, validates against the four allowed IDs (`kao_tapu`, `red_lotus_lake`, `sea_of_cloud`, `lumphini_park`) — invalid values are silently dropped to `null`. Sets `pool_presence/{uid}` in RTDB.
 - **Output:** `{ success: true }`
 
 ### `cancel1v1Pool`
@@ -92,21 +92,21 @@ All admin functions are callable, deployed to `us-central1`. Every function veri
 ### `match1v1Users`
 `functions/src/matchmaking/match1v1Users.ts`
 - **Trigger:** Firestore `onDocumentCreated` — `waiting_pool/{uid}` — **region: `asia-southeast1`**
-- **Process:** 2-phase atomic Firestore transaction. Finds best candidate by cosine similarity of interest vectors (threshold 0.65) from a window of up to **20** candidates. Creates `rooms/{roomId}` with `mode: 1v1`, `status: active`. Removes both users from pool. Writes match result to RTDB.
+- **Process:** 2-phase atomic Firestore transaction. If the triggering user has a `backgroundTheme`, hard-filters candidates to same-theme or unthemed users (unthemed = flexible, adopts the room's theme). The only blocked pairing is two users with different non-null themes. Unthemed triggers match anyone. Finds best candidate by cosine similarity of interest vectors (threshold 0.65) from a window of up to **20** candidates. Creates `rooms/{roomId}` with `mode: 1v1`, `status: active`, and `backgroundTheme` always written (valid string or `null`). Removes both users from pool. Writes match result to RTDB.
 - **Output:** void (trigger)
 
 ### `joinGroupRoom`
 `functions/src/matchmaking/joinGroupRoom.ts`
 - **Trigger:** callable (authenticated)
-- **Input:** `{ interestText?: string }`
-- **Process:** 3-phase match: find candidate group rooms → compute cosine similarity → join best match or create new group room. Room capacity 2–5 users.
+- **Input:** `{ interestText?: string, backgroundTheme?: string }`
+- **Process:** 3-phase match: find candidate group rooms → compute cosine similarity → join best match or create new group room. If `backgroundTheme` is provided, Firestore queries are filtered to same-theme rooms only (themed users never land in a different-theme room). Unthemed users see all rooms and may join themed rooms. Room capacity 2–5 users. `backgroundTheme` is always written on created rooms (valid string or `null`). Requires composite Firestore index on `(mode, status, isLocked, backgroundTheme, memberCount)` — deployed in `firestore.indexes.json`.
 - **Output:** `{ roomId: string, isNewRoom: boolean }`
 
 ### `createCustomRoom`
 `functions/src/matchmaking/createCustomRoom.ts`
 - **Trigger:** callable (authenticated)
-- **Input:** none (or optional config TBD)
-- **Process:** Generates 5-char crypto-random room ID. Creates `rooms/{roomId}` with `mode: group`, `roomType: custom`, `status: active`. Adds creator to `rooms/{roomId}/members` in RTDB.
+- **Input:** `{ backgroundTheme?: string }`
+- **Process:** Generates 5-char crypto-random room ID. Creates `rooms/{roomId}` with `mode: group`, `roomType: custom`, `status: active`. `backgroundTheme` is always written (valid string when provided and valid, otherwise `null`). Adds creator to `rooms/{roomId}/members` in RTDB.
 - **Output:** `{ roomId: string }`
 
 ### `joinRoomById`
@@ -120,7 +120,7 @@ All admin functions are callable, deployed to `us-central1`. Every function veri
 `functions/src/matchmaking/leaveRoom.ts`
 - **Trigger:** callable (authenticated)
 - **Input:** `{ roomId: string }`
-- **Process:** Removes caller from `rooms/{roomId}.users`. If room empty, tombstones it. Clears RTDB member node.
+- **Process:** Removes caller from `rooms/{roomId}.users`. If room empty, tombstones it (`status: padding`). Clears RTDB member, typing, and presence nodes. For 1v1 rooms: if one user remains after the caller leaves, transitions the room to a 30-second padding window and immediately re-queues the remaining user in `waiting_pool` with their original `interestVector` and the room's `backgroundTheme` preserved — ensuring theme partitioning survives a partner-left re-queue.
 - **Output:** `{ success: true }`
 
 ### `setRoomLock`
