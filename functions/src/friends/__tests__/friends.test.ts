@@ -3,6 +3,8 @@
  * Runs against the local Firebase emulator suite.
  *
  * Covers:
+ *   - onFriendshipCreated: RTDB friends/{uid1}/{uid2} node creation
+ *   - onFriendshipCreated: graceful handling when users array is absent
  *   - onFriendshipDeleted: friend_messages subcollection cleanup
  *   - onFriendshipDeleted: RTDB friends/{uid1}/{uid2} node removal
  *   - onFriendshipDeleted: graceful handling when users array is absent
@@ -26,6 +28,47 @@ beforeEach(async () => {
 afterEach(async () => {
   await resetEmulatorData();
 }, 15_000);
+
+// ── onFriendshipCreated ──────────────────────────────────────────────────────
+
+describe("onFriendshipCreated", () => {
+  const friendshipId = "uid-alice_uid-bob";
+  const uid1 = "uid-alice";
+  const uid2 = "uid-bob";
+
+  test("writes both RTDB friends nodes when friendship is created", async () => {
+    await adminFirestoreSet(`friendships/${friendshipId}`, {
+      users: [uid1, uid2],
+      displayNames: {[uid1]: "Alice", [uid2]: "Bob"},
+      chatRoomId: friendshipId,
+    });
+
+    await waitUntilRtdbValue(`friends/${uid1}/${uid2}`, (snap) => snap.exists, {
+      timeout: 15_000,
+    });
+
+    const node1 = await rtdbGet(`friends/${uid1}/${uid2}`);
+    const node2 = await rtdbGet(`friends/${uid2}/${uid1}`);
+    expect(node1.exists).toBe(true);
+    expect(node2.exists).toBe(true);
+  });
+
+  test("handles missing users array without writing RTDB nodes", async () => {
+    await adminFirestoreSet(`friendships/${friendshipId}`, {
+      displayNames: {[uid1]: "Alice", [uid2]: "Bob"},
+      chatRoomId: friendshipId,
+      // users field intentionally absent
+    });
+
+    // Wait briefly for the CF to fire; both nodes must stay absent
+    await new Promise((r) => setTimeout(r, 3_000));
+
+    const node1 = await rtdbGet(`friends/${uid1}/${uid2}`);
+    const node2 = await rtdbGet(`friends/${uid2}/${uid1}`);
+    expect(node1.exists).toBe(false);
+    expect(node2.exists).toBe(false);
+  });
+});
 
 // ── onFriendshipDeleted ───────────────────────────────────────────────────────
 

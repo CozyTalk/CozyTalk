@@ -28,6 +28,31 @@ class _FakeFriendsNotifier extends FriendsNotifier {
   void clearError() {}
 }
 
+class _LoadingToIdleFriendsNotifier extends FriendsNotifier {
+  @override
+  FriendsState build() => FriendsState(
+    friends: [
+      domain.Friend(
+        friendshipId: 'fship1',
+        friendUid: 'uid1',
+        friendDisplayName: 'Alice',
+        chatRoomId: 'room1',
+        friendedAt: DateTime(2024),
+      ),
+    ],
+  );
+
+  @override
+  Future<void> removeFriend(String friendshipId) async {
+    state = state.copyWith(isLoading: true);
+    await Future.microtask(() {});
+    state = state.copyWith(isLoading: false);
+  }
+
+  @override
+  void clearError() {}
+}
+
 final _fakeDomainFriend = domain.Friend(
   friendshipId: 'fship1',
   friendUid: 'uid1',
@@ -200,6 +225,75 @@ void main() {
       );
       await tester.pump();
       expect(find.byType(FriendRoomCard), findsNothing);
+    });
+
+    testWidgets('shows generic person icon placeholder for each friend card', (
+      tester,
+    ) async {
+      final fake = _FakeFriendsNotifier(
+        initial: FriendsState(friends: [_fakeDomainFriend]),
+      );
+      await tester.pumpWidget(
+        _build(networkInfo: FakeNetworkInfo(isOnline: true), notifier: fake),
+      );
+      await tester.pump();
+      expect(find.byIcon(Icons.person), findsOneWidget);
+    });
+
+    testWidgets(
+      'shows success dialog after removeFriend loading state clears',
+      (tester) async {
+        final notifier = _LoadingToIdleFriendsNotifier();
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              networkInfoProvider.overrideWithValue(
+                FakeNetworkInfo(isOnline: true),
+              ),
+              friendsNotifierProvider.overrideWith(() => notifier),
+            ],
+            child: const MaterialApp(home: FriendsScreen()),
+          ),
+        );
+        await tester.pump();
+
+        await tester.tap(find.byType(PopupMenuButton<String>));
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.text('Unfriend'));
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.text('Remove'));
+        await tester.pumpAndSettle();
+
+        expect(find.text('Friend Removed'), findsOneWidget);
+      },
+    );
+
+    testWidgets('block dialog message does not promise server enforcement', (
+      tester,
+    ) async {
+      final fake = _FakeFriendsNotifier(
+        initial: FriendsState(friends: [_fakeDomainFriend]),
+      );
+      await tester.pumpWidget(
+        _build(networkInfo: FakeNetworkInfo(isOnline: true), notifier: fake),
+      );
+      await tester.pump();
+
+      await tester.tap(find.byType(PopupMenuButton<String>));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Block'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Block'));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.textContaining('will no longer be able to contact'),
+        findsNothing,
+      );
     });
   });
 }

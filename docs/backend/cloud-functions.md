@@ -150,12 +150,18 @@ All admin functions are callable, deployed to `us-central1`. Every function veri
 
 ---
 
-## Friends (1 function)
+## Friends (2 functions)
+
+### `onFriendshipCreated`
+`functions/src/friends/createFriendship.ts`
+- **Trigger:** Firestore `onDocumentCreated` — `friendships/{friendshipId}`
+- **Process:** When a `friendships` doc is created, writes `friends/{uid1}/{uid2} = true` and `friends/{uid2}/{uid1} = true` in RTDB using admin credentials. Admin credentials are required because the client-side RTDB rule is owner-only (`auth.uid == $ownerUid`), which would deny writing the peer's node. These nodes gate the `user_status` read rule that allows friends to see each other's presence.
+- **Output:** void (trigger)
 
 ### `onFriendshipDeleted`
 `functions/src/friends/removeFriendship.ts`
 - **Trigger:** Firestore `onDocumentDeleted` — `friendships/{friendshipId}`
-- **Process:** When a `friendships` doc is deleted, deletes the entire `friend_messages/{friendshipId}/messages` subcollection to prevent orphaned data consuming storage indefinitely.
+- **Process:** When a `friendships` doc is deleted, deletes the entire `friend_messages/{friendshipId}/messages` subcollection to prevent orphaned data consuming storage indefinitely. Also removes both RTDB `friends/{uid1}/{uid2}` and `friends/{uid2}/{uid1}` nodes so the `user_status` read rule reverts to owner-only.
 - **Output:** void (trigger)
 
 ---

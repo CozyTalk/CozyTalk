@@ -10,7 +10,6 @@ import '../shared/offline_card.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_routes.dart';
 import '../models/friend.dart';
-import '../shared/layered_avatar.dart';
 import 'friend_profile_dialog.dart';
 import 'remove_friend_dialog.dart';
 import 'block_dialogs.dart';
@@ -31,6 +30,7 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
   final Map<String, String?> _notes = {};
   final Set<String> _blockedIds = {};
   final Map<String, int> _unreadCounts = {};
+  String? _pendingRemoveName;
 
   @override
   void initState() {
@@ -93,12 +93,24 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
         .watch(isOnlineProvider)
         .when(data: (v) => v, loading: () => true, error: (_, _) => true);
 
-    ref.listen<FriendsState>(friendsNotifierProvider, (_, next) {
+    ref.listen<FriendsState>(friendsNotifierProvider, (prev, next) {
       if (next.error != null) {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text(next.error!)));
         ref.read(friendsNotifierProvider.notifier).clearError();
+      }
+      if (prev?.isLoading == true && !next.isLoading && next.error == null) {
+        final name = _pendingRemoveName;
+        if (name != null) {
+          _pendingRemoveName = null;
+          showInfoDialog(
+            context,
+            type: InfoDialogType.info,
+            title: 'Friend Removed',
+            message: '$name has been removed from your friends list.',
+          );
+        }
       }
     });
 
@@ -232,10 +244,11 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
                         ),
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(14),
-                          child: Padding(
-                            padding: const EdgeInsets.only(top: 10),
-                            child: const Center(
-                              child: LayeredAvatar(boxSize: 48),
+                          child: const Center(
+                            child: Icon(
+                              Icons.person,
+                              color: Colors.grey,
+                              size: 35,
                             ),
                           ),
                         ),
@@ -395,7 +408,7 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
                   type: InfoDialogType.success,
                   title: 'User Blocked',
                   message:
-                      '${friend.displayName} has been blocked.\nThey will no longer be able to contact you.',
+                      '${friend.displayName} has been blocked locally.\nServer-side enforcement is not yet available.',
                 );
               },
             );
@@ -420,16 +433,10 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
               friend: friend,
               onConfirm: () {
                 if (ref.read(friendsNotifierProvider).isLoading) return;
+                _pendingRemoveName = friend.displayName;
                 ref
                     .read(friendsNotifierProvider.notifier)
                     .removeFriend(friend.friendshipId);
-                showInfoDialog(
-                  context,
-                  type: InfoDialogType.info,
-                  title: 'Friend Removed',
-                  message:
-                      '${friend.displayName} has been removed from your friends list.',
-                );
               },
             );
         }

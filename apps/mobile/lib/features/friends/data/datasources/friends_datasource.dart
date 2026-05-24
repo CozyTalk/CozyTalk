@@ -208,11 +208,9 @@ class FriendsDatasourceImpl implements FriendsDatasource {
     });
 
     await batch.commit();
-
-    await Future.wait([
-      _database.ref('friends/$currentUid/$fromUid').set(true),
-      _database.ref('friends/$fromUid/$currentUid').set(true),
-    ]);
+    // RTDB friends nodes are written by the onFriendshipCreated CF using admin
+    // credentials, which bypasses the owner-only write rule that would deny
+    // writing the peer's node from this client.
   }
 
   @override
