@@ -137,11 +137,16 @@ export const match1v1Users = onDocumentCreated(
           backgroundTheme: partnerTheme,
         });
       } catch (e) {
-        // Room creation failed — undo the claim so the candidate can be rematched.
-        await candidateRef
-          .update({status: "waiting"})
-          .catch((err) => logger.error("Failed to undo claim", {err}));
         logger.error("Room creation failed during 1v1 match", {e});
+        // Undo the Phase 1 claim. If the undo itself fails, throw so the CF is
+        // retried — leaving the candidate stuck in 'matching' would prevent them
+        // from ever being matched again.
+        await candidateRef.update({status: "waiting"}).catch((undoErr) => {
+          logger.error("Failed to undo claim — rethrowing for CF retry", {
+            undoErr,
+          });
+          throw undoErr;
+        });
         return;
       }
 
@@ -167,7 +172,9 @@ export const match1v1Users = onDocumentCreated(
           tx.update(candidateRef, {status: "matched", roomId});
         });
       } catch (e) {
-        // Finalization failed — tombstone the prematurely-created room and retry.
+        // Finalization failed — tombstone the prematurely-created room and reset the
+        // candidate claim. If either cleanup fails, throw so the CF is retried rather
+        // than leaving an orphan room or a candidate permanently stuck in 'matching'.
         await db
           .collection("rooms")
           .doc(roomId)
@@ -179,13 +186,19 @@ export const match1v1Users = onDocumentCreated(
             },
             {merge: false},
           )
-          .catch((err) =>
-            logger.error("Failed to tombstone orphan room", {err}),
-          );
-        // Reset candidate claim so expireRooms stale-check doesn't need to.
-        await candidateRef
-          .update({status: "waiting"})
-          .catch((err) => logger.error("Failed to reset candidate", {err}));
+          .catch((tombErr) => {
+            logger.error(
+              "Failed to tombstone orphan room — rethrowing for CF retry",
+              {tombErr},
+            );
+            throw tombErr;
+          });
+        await candidateRef.update({status: "waiting"}).catch((resetErr) => {
+          logger.error("Failed to reset candidate — rethrowing for CF retry", {
+            resetErr,
+          });
+          throw resetErr;
+        });
         logger.warn("1v1 finalization failed", {
           triggerUid,
           candidateId: candidate.id,

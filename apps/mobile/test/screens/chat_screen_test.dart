@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mobile/features/auth/domain/entities/auth_user.dart';
 import 'package:mobile/features/auth/presentation/providers/auth_provider.dart';
+import 'package:mobile/features/chat/domain/entities/chat_message.dart'
+    as chat_entity;
 import 'package:mobile/features/chat/domain/entities/session_status.dart';
 import 'package:mobile/features/chat/presentation/providers/chat_provider.dart';
 import 'package:mobile/features/matchmaking/domain/entities/matchmaking_status.dart';
@@ -306,6 +308,36 @@ void main() {
       await tester.pump();
 
       expect(chatFake.forceDisconnectCount, 1);
+    });
+
+    testWidgets("gif_other message renders left-aligned, not right", (
+      tester,
+    ) async {
+      final chatFake = _FakeChatNotifier(
+        initial: ChatState(
+          currentUserId: 'u1',
+          messages: [
+            chat_entity.ChatMessage(
+              id: 'msg1',
+              senderId: 'other_user',
+              displayName: 'Brave Bear',
+              text: 'https://media.giphy.com/test.gif',
+              timestamp: DateTime(2025),
+            ),
+          ],
+        ),
+      );
+      await tester.pumpWidget(_buildScreen(chatFake));
+      await _pump(tester);
+
+      // A gif from another user must not produce an end-aligned row (which
+      // would place the bubble on the "me" / right side).
+      expect(
+        find.byWidgetPredicate(
+          (w) => w is Row && w.mainAxisAlignment == MainAxisAlignment.end,
+        ),
+        findsNothing,
+      );
     });
   });
 }

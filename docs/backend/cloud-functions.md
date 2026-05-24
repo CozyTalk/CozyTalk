@@ -79,7 +79,7 @@ All admin functions are callable, deployed to `us-central1`. Every function veri
 `functions/src/matchmaking/join1v1Pool.ts`
 - **Trigger:** callable (authenticated)
 - **Input:** `{ interestText?: string, backgroundTheme?: string }`
-- **Process:** Adds user to `waiting_pool/{uid}` with `status: waiting`. If `interestText` provided, generates embedding via Vertex AI and stores 256-dim vector. If `backgroundTheme` provided, validates against the four allowed IDs (`kao_tapu`, `red_lotus_lake`, `sea_of_cloud`, `lumphini_park`) — invalid values are silently dropped to `null`. Sets `pool_presence/{uid}` in RTDB.
+- **Process:** Adds user to `waiting_pool/{uid}` with `status: waiting`. If `interestText` provided, generates embedding via Vertex AI and stores 256-dim vector; if Vertex AI is unavailable or rate-limited the error is caught and the user joins with `interestVector: null`, falling back to random matching. If `backgroundTheme` provided, validates against the four allowed IDs (`kao_tapu`, `red_lotus_lake`, `sea_of_cloud`, `lumphini_park`) — invalid values are silently dropped to `null`. Sets `pool_presence/{uid}` in RTDB.
 - **Output:** `{ success: true }`
 
 ### `cancel1v1Pool`
@@ -92,7 +92,7 @@ All admin functions are callable, deployed to `us-central1`. Every function veri
 ### `match1v1Users`
 `functions/src/matchmaking/match1v1Users.ts`
 - **Trigger:** Firestore `onDocumentCreated` — `waiting_pool/{uid}` — **region: `asia-southeast1`**
-- **Process:** 2-phase atomic Firestore transaction. If the triggering user has a `backgroundTheme`, hard-filters candidates to same-theme or unthemed users (unthemed = flexible, adopts the room's theme). The only blocked pairing is two users with different non-null themes. Unthemed triggers match anyone. Finds best candidate by cosine similarity of interest vectors (threshold 0.65) from a window of up to **20** candidates. Creates `rooms/{roomId}` with `mode: 1v1`, `status: active`, and `backgroundTheme` always written (valid string or `null`). Removes both users from pool. Writes match result to RTDB.
+- **Process:** 2-phase atomic Firestore transaction. If the triggering user has a `backgroundTheme`, hard-filters candidates to same-theme or unthemed users (unthemed = flexible, adopts the room's theme). The only blocked pairing is two users with different non-null themes. Unthemed triggers match anyone. Finds best candidate by cosine similarity of interest vectors (threshold 0.65) from a window of up to **20** candidates. Creates `rooms/{roomId}` with `mode: 1v1`, `status: active`, and `backgroundTheme` always written (valid string or `null`). Removes both users from pool. Writes match result to RTDB. **Error recovery:** if Phase 2 (room creation) or Phase 3 (finalization) fails, cleanup writes rethrow on failure rather than swallowing — prevents a candidate from being permanently stuck in `"matching"` status if a secondary write fails mid-cleanup.
 - **Output:** void (trigger)
 
 ### `joinGroupRoom`
@@ -139,7 +139,7 @@ All admin functions are callable, deployed to `us-central1`. Every function veri
 ### `cleanupMember`
 `functions/src/matchmaking/cleanupMember.ts`
 - **Trigger:** RTDB `onValueDeleted` — `rooms/{roomId}/members/{uid}` — **region: `asia-southeast1`**
-- **Process:** When a member's RTDB presence node is deleted (disconnect), triggers room cleanup. If room now empty, tombstones Firestore room.
+- **Process:** When a member's RTDB presence node is deleted (network-drop disconnect), runs server-side room cleanup. If room is now empty, tombstones the Firestore room (`status: padding`). For 1v1 rooms with one user remaining: re-queues them in `waiting_pool` with their original `interestVector` and the room's `backgroundTheme` preserved, then removes their RTDB membership so a second invocation can decrement `memberCount` to 0 and let `expireRooms` tombstone the room. Mirrors the re-queue behaviour of `leaveRoom` for the disconnect (unclean exit) path.
 - **Output:** void (trigger)
 
 ### `cleanupPoolMember`
@@ -190,3 +190,24 @@ All admin functions are callable, deployed to `us-central1`. Every function veri
 - `generateKey()` — `crypto.randomBytes(32)` hex string for AES-256
 - `cosineSimilarity(a, b)` — dot product / magnitudes; returns 0 for zero vectors
 - `RoomData` interface — Firestore room document shape
+
+---
+
+## Operational Scripts
+
+### `tools/setup-firestore-ttl.sh`
+One-time idempotent script that applies the Firestore TTL policy for `chat_rooms/{id}/messages.expiresAt`.
+
+`sendMessage` sets `expiresAt = now + 3 days` on every message. Without the TTL policy in place, messages from crashed or abandoned sessions (where `endSession` never fired) persist in Firestore indefinitely — violating the privacy guarantee.
+
+**Must be run once per Firebase project.** Safe to re-run (gcloud is idempotent for TTL field definitions).
+
+```bash
+# Prerequisites: gcloud authenticated, project set to cozytalk-5d984
+gcloud auth login
+gcloud config set project cozytalk-5d984
+
+bash tools/setup-firestore-ttl.sh
+```
+
+**Verify:** Firebase Console → Firestore → Data → TTL policies. Look for collection group `messages`, field `expiresAt`. Propagation to existing documents can take up to 24 hours after first deployment.
