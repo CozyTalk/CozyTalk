@@ -631,7 +631,11 @@ class _AdminConsoleScreenState extends ConsumerState<AdminConsoleScreen> {
   Future<void> _viewBlockedUsers(String uid, String displayName) async {
     await ref.read(feat.adminUsersProvider.notifier).loadBlockedUsers(uid);
     if (!mounted) return;
-    final entries = ref.read(feat.adminUsersProvider).blockedUsersForUid ?? [];
+    final usersState = ref.read(feat.adminUsersProvider);
+    // A concurrent loadBlockedUsers for a different user may have overwritten
+    // the state while we awaited — only show the dialog if it still holds ours.
+    if (usersState.blockedUsersUid != uid) return;
+    final entries = usersState.blockedUsersForUid ?? [];
     showDialog(
       context: context,
       barrierColor: Colors.black.withValues(alpha: 0.35),
