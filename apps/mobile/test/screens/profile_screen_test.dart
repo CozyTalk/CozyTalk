@@ -5,7 +5,27 @@ import 'package:mobile/features/auth/domain/entities/auth_user.dart';
 import 'package:mobile/features/auth/presentation/providers/auth_provider.dart';
 import 'package:mobile/features/profile/domain/entities/profile_user.dart';
 import 'package:mobile/features/profile/presentation/providers/profile_provider.dart';
+import 'package:mobile/screens/profile_edit_screen.dart';
 import 'package:mobile/screens/profile_screen.dart';
+import 'package:mobile/shared/avatar_overlay.dart';
+import 'package:mobile/shared/connectivity_provider.dart';
+import 'package:mobile/shared/network_info.dart';
+
+class _FakeNetworkInfo implements NetworkInfo {
+  final bool _isOnline;
+  _FakeNetworkInfo({required bool isOnline}) : _isOnline = isOnline;
+
+  @override
+  Stream<bool> get onConnectivityChanged => Stream.value(_isOnline);
+
+  @override
+  Future<bool> get isConnected async => _isOnline;
+}
+
+class _FakeAvatarNotifier extends AvatarNotifier {
+  @override
+  AvatarState build() => const AvatarState();
+}
 
 class _FakeAuthNotifier extends AuthNotifier {
   final AuthState _initial;
@@ -60,10 +80,13 @@ class _FakeProfileNotifier extends ProfileNotifier {
 Widget _build({
   required AuthNotifier authFake,
   required _FakeProfileNotifier profileFake,
+  NetworkInfo? networkInfo,
 }) => ProviderScope(
   overrides: [
     authNotifierProvider.overrideWith(() => authFake),
     profileNotifierProvider.overrideWith(() => profileFake),
+    avatarProvider.overrideWith(() => _FakeAvatarNotifier()),
+    if (networkInfo != null) networkInfoProvider.overrideWithValue(networkInfo),
   ],
   child: const MaterialApp(home: ProfileScreen()),
 );
@@ -173,6 +196,55 @@ void main() {
       await tester.tap(find.text('Log out'));
       await tester.pump();
       expect(signOutCount, 1);
+    });
+
+    testWidgets('edit button pushes ProfileEditScreen', (tester) async {
+      await tester.pumpWidget(
+        _build(
+          authFake: _FakeAuthNotifier(
+            initial: AuthState(
+              status: AuthStatus.authenticated,
+              user: _authenticatedUser,
+            ),
+          ),
+          profileFake: _FakeProfileNotifier(),
+        ),
+      );
+      await tester.pump();
+
+      // Non-null onTap GestureDetectors in tree order:
+      // 0 = back button, 1 = edit icon, 2 = Blocked card, 3 = Contact us, 4 = Log out
+      final editButton = find
+          .byWidgetPredicate((w) => w is GestureDetector && w.onTap != null)
+          .at(1);
+      await tester.tap(editButton);
+      await tester.pumpAndSettle();
+
+      expect(find.byType(ProfileEditScreen), findsOneWidget);
+    });
+
+    testWidgets('OfflineChip visible when offline', (tester) async {
+      await tester.pumpWidget(
+        _build(
+          authFake: _FakeAuthNotifier(),
+          profileFake: _FakeProfileNotifier(),
+          networkInfo: _FakeNetworkInfo(isOnline: false),
+        ),
+      );
+      await tester.pump();
+      expect(find.text('Offline'), findsOneWidget);
+    });
+
+    testWidgets('OfflineChip not visible when online', (tester) async {
+      await tester.pumpWidget(
+        _build(
+          authFake: _FakeAuthNotifier(),
+          profileFake: _FakeProfileNotifier(),
+          networkInfo: _FakeNetworkInfo(isOnline: true),
+        ),
+      );
+      await tester.pump();
+      expect(find.text('Offline'), findsNothing);
     });
   });
 }

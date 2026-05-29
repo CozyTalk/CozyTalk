@@ -94,10 +94,25 @@ if ! $USE_PROD; then
   fi
 fi
 
+# ── Load .env from apps/mobile ────────────────────────────────────────────────
+ENV_FILE="$ROOT_DIR/apps/mobile/.env"
+if [[ -f "$ENV_FILE" ]]; then
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    [[ "$line" =~ ^\s*# ]] && continue
+    [[ "$line" =~ ^\s*$ ]] && continue
+    if [[ "$line" =~ ^([A-Z_]+)=(.*)$ ]]; then
+      k="${BASH_REMATCH[1]}"
+      v="${BASH_REMATCH[2]}"
+      [[ -z "${!k:-}" ]] && export "$k=$v"
+    fi
+  done < "$ENV_FILE"
+fi
+
 # ── Build Flutter args ────────────────────────────────────────────────────────
 FLUTTER_ARGS=()
 $USE_WEB  && FLUTTER_ARGS+=("-d" "chrome")
 $USE_PROD && FLUTTER_ARGS+=("--dart-define=USE_EMULATOR=false")
+[[ -n "${GIPHY_API_KEY:-}" ]] && FLUTTER_ARGS+=("--dart-define=GIPHY_API_KEY=$GIPHY_API_KEY")
 
 # ── Emulator startup ──────────────────────────────────────────────────────────
 EMULATOR_PID=""
@@ -219,6 +234,41 @@ if ! $USE_PROD; then
     wait_for_port "pubsub"    8085
     ok "Emulator UI → http://127.0.0.1:4000"
     printf "\n$HR\n"
+  fi
+fi
+
+# ── Java compatibility guard (Android/Gradle only) ───────────────────────────
+# Kotlin 2.1.0 (bundled in Gradle 8.x) can't parse Java 22+ version strings.
+# If the active JDK is too new, find the highest installed version that's ≤ 21.
+if ! $USE_WEB && ! $EMULATOR_ONLY && command -v java &>/dev/null; then
+  _ver=$(java -version 2>&1 | awk -F '"' 'NR==1 {split($2,a,"."); print (a[1]=="1"?a[2]:a[1])}')
+  if [[ "$_ver" =~ ^[0-9]+$ ]] && (( _ver > 21 )); then
+    _candidate=""
+    if [[ "$(uname)" == "Darwin" ]]; then
+      for _v in 21 20 19 18 17 16 15 14 13 12 11; do
+        _candidate=$(/usr/libexec/java_home -v "$_v" 2>/dev/null) && break
+      done
+    fi
+    if [[ -z "$_candidate" ]]; then
+      # Try explicit versioned paths in descending order (portable — no sort -V needed)
+      for _v in 21 20 19 18 17 16 15 14 13 12 11; do
+        for _dir in \
+          "/usr/lib/jvm/java-${_v}-openjdk" \
+          "/usr/lib/jvm/java-${_v}-openjdk-amd64" \
+          "/usr/lib/jvm/java-${_v}-openjdk-arm64" \
+          "/usr/lib/jvm/java-${_v}" \
+          "/usr/lib/jvm/temurin-${_v}" \
+          "/usr/local/lib/jvm/java-${_v}"; do
+          [[ -x "${_dir}/bin/java" ]] && _candidate="$_dir" && break 2
+        done
+      done
+    fi
+    if [[ -z "$_candidate" ]]; then
+      fail "Java ${_ver} is not supported by the Kotlin Gradle plugin (max: 21).\nInstall any JDK between 11 and 21 and re-run, or set JAVA_HOME manually."
+    fi
+    export JAVA_HOME="$_candidate"
+    warn "Java ${_ver} detected — using ${_candidate} for Gradle"
+    printf "\n"
   fi
 fi
 

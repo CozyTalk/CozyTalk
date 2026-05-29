@@ -7,7 +7,7 @@
         "members": {
           ".read": "auth != null && root.child('rooms').child($room_id).child('members').child(auth.uid).exists()",
           "$uid": {
-            ".write": false,
+            ".write": "auth != null && auth.uid == $uid && !newData.exists()",
             ".validate": "newData.isBoolean()"
           }
         }
@@ -32,9 +32,18 @@
         ".write": "auth != null && root.child('rooms').child($room_id).child('members').child(auth.uid).exists()"
       }
     },
+    "friends": {
+      "$ownerUid": {
+        "$friendUid": {
+          ".read": "auth != null && auth.uid == $ownerUid",
+          ".write": "auth != null && auth.uid == $ownerUid",
+          ".validate": "newData.isBoolean()"
+        }
+      }
+    },
     "user_status": {
       "$uid": {
-        ".read": "auth != null && auth.uid == $uid",
+        ".read": "auth != null && (auth.uid == $uid || root.child('friends').child($uid).child(auth.uid).val() === true)",
         ".write": "auth != null && auth.uid == $uid",
         ".validate": "newData.hasChildren(['status'])",
         "status": {
@@ -65,6 +74,12 @@
           ".write": "auth != null && auth.uid == $uid",
           ".validate": "!newData.exists() || (newData.isString() && newData.val().length > 0 && newData.val().length <= 30)"
         }
+      }
+    },
+    "jukebox": {
+      "$room_id": {
+        ".read":  "auth != null && (root.child('rooms').child($room_id).child('members').child(auth.uid).exists() || root.child('presence').child($room_id).child(auth.uid).exists())",
+        ".write": "auth != null && (root.child('rooms').child($room_id).child('members').child(auth.uid).exists() || root.child('presence').child($room_id).child(auth.uid).exists())"
       }
     }
   }

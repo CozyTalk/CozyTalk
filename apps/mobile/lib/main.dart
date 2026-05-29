@@ -1,12 +1,18 @@
 // ignore_for_file: unused_import
+import 'dart:ui' show PlatformDispatcher;
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:firebase_database/firebase_database.dart';
+import 'package:firebase_remote_config/firebase_remote_config.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'firebase_options.dart';
+import 'shared/prefs_provider.dart';
 // chatroom imports
 import 'features/auth/presentation/providers/auth_provider.dart';
 import 'features/auth/presentation/screens/login_screen.dart';
@@ -30,6 +36,7 @@ import 'screens/join_room_id_screen.dart';
 import 'screens/chat_screen.dart';
 import 'screens/group_chat_screen.dart';
 import 'screens/finding_room_screen.dart';
+import 'screens/admin_console_screen.dart';
 
 const _useEmulator = bool.fromEnvironment('USE_EMULATOR', defaultValue: true);
 
@@ -40,6 +47,21 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
+  final remoteConfig = FirebaseRemoteConfig.instance;
+  await remoteConfig.setConfigSettings(
+    RemoteConfigSettings(
+      fetchTimeout: const Duration(seconds: 10),
+      minimumFetchInterval: const Duration(hours: 1),
+    ),
+  );
+  await remoteConfig.setDefaults({'content_filtering_enabled': false});
+  try {
+    await remoteConfig.fetchAndActivate();
+  } catch (e) {
+    // Non-fatal — cached/default values remain active. Log so CI/devs can diagnose.
+    debugPrint('Remote Config fetch failed: $e');
+  }
+
   if (_useEmulator) {
     await FirebaseAuth.instance.useAuthEmulator('127.0.0.1', 9099);
     FirebaseFunctions.instanceFor(
@@ -47,9 +69,24 @@ void main() async {
     ).useFunctionsEmulator('127.0.0.1', 5001);
     FirebaseFirestore.instance.useFirestoreEmulator('127.0.0.1', 8080);
     FirebaseDatabase.instance.useDatabaseEmulator('127.0.0.1', 9000);
+    if (!kIsWeb) {
+      await FirebaseCrashlytics.instance.setCrashlyticsCollectionEnabled(false);
+    }
+  } else if (!kIsWeb) {
+    FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
+    PlatformDispatcher.instance.onError = (error, stack) {
+      FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
+      return true;
+    };
   }
 
-  runApp(const ProviderScope(child: MyApp()));
+  final prefs = await SharedPreferences.getInstance();
+  runApp(
+    ProviderScope(
+      overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+      child: const MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
@@ -77,14 +114,15 @@ class MyApp extends StatelessWidget {
             return SelectBackgroundScreen(roomType: args);
           },
           AppRoutes.joinRoomId: (_) => const JoinRoomIdScreen(),
+          AppRoutes.findingRoom: (_) => const FindingRoomScreen(),
           AppRoutes.chatScreen: (_) => const ChatScreen(),
           AppRoutes.groupChatScreen: (_) => const GroupChatScreen(),
-          AppRoutes.findingRoom: (_) => const FindingRoomScreen(),
         },
       );
     }
     return MaterialApp(
       title: 'CozyTalk',
+      debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
       ),

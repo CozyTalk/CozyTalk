@@ -31,7 +31,7 @@ features/profile/
 
 ## State
 
-`ProfileState` — `user` (ProfileUser?), `isLoading` (bool), `successField` (String?), `error` (String?)
+`ProfileState` — `profile` (ProfileUser?), `isLoading` (bool), `successField` (String?), `error` (String?)
 
 `successField` values: `'username' | 'interest' | 'thoughts'`
 
@@ -42,3 +42,15 @@ features/profile/
 - Firestore: `set(merge: true)` on `users/{uid}` — never overwrites unrelated fields
 - Production screen `screens/profile_edit_screen.dart`: interest capped at 100 chars (not 200), no thoughts field, does not call `profileNotifierProvider` — not yet integrated
 - `screens/profile_screen.dart` — read-only profile view screen (uses `shared/user_profile_provider`, not `profileNotifierProvider`)
+
+## Offline Behavior (added PR 8)
+
+- `load(uid)`: on successful Firestore read, writes to `ProfileCacheDatasource` (SharedPreferences, key `profile_cache_{uid}`). On Firestore exception, reads the cache — if a cached `ProfileUser` exists, sets it in state with no error; only sets `state.error` on double-miss (both Firestore and cache fail).
+- Write methods (`updateDisplayName`, `updateInterest`, `updateThoughts`): call `networkInfoProvider.isConnected` before touching Firestore. If offline, set `state.error = "You're offline. Changes require a connection."` and return — repository is not called.
+- Cache cleared on `signOut()` via `auth_provider.dart` to prevent cross-user data exposure on shared devices.
+
+| New file | Description |
+|---|---|
+| `data/datasources/profile_cache_datasource.dart` | Abstract `ProfileCacheDatasource` + `ProfileCacheDatasourceImpl(SharedPreferences)` — `read/write/clear` keyed by uid |
+| `domain/usecases/get_cached_profile.dart` | `GetCachedProfile` — reads from cache only, returns `null` on miss |
+| `profileRepositoryProvider` (now public) | Previously `_profileRepositoryProvider`; made non-private so tests can override it |

@@ -1,20 +1,17 @@
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../shared/info_dialog.dart';
-import '../theme/app_colors.dart';
 import '../shared/avatar_overlay.dart';
+import '../shared/connectivity_provider.dart';
+import '../shared/info_dialog.dart';
 import '../shared/layered_avatar.dart';
+import '../shared/offline_chip.dart';
+import '../theme/app_colors.dart';
+import '../features/auth/presentation/providers/auth_provider.dart';
+import '../features/profile/presentation/providers/profile_provider.dart';
 
 class ProfileEditScreen extends ConsumerStatefulWidget {
-  final String currentName;
-  final String currentInterest;
-
-  const ProfileEditScreen({
-    super.key,
-    required this.currentName,
-    required this.currentInterest,
-  });
+  const ProfileEditScreen({super.key});
 
   @override
   ConsumerState<ProfileEditScreen> createState() => _ProfileEditScreenState();
@@ -31,8 +28,9 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
   @override
   void initState() {
     super.initState();
-    _usernameCtrl = TextEditingController(text: widget.currentName);
-    _interestCtrl = TextEditingController(text: widget.currentInterest);
+    final profile = ref.read(profileNotifierProvider).profile;
+    _usernameCtrl = TextEditingController(text: profile?.displayName ?? '');
+    _interestCtrl = TextEditingController(text: profile?.interest ?? '');
     _usernameCtrl.addListener(() {
       if (_usernameError && _usernameCtrl.text.isNotEmpty) {
         setState(() => _usernameError = false);
@@ -49,11 +47,34 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final state = ref.watch(profileNotifierProvider);
+
+    ref.listen<ProfileState>(profileNotifierProvider, (prev, next) {
+      if (next.error != null && next.error != prev?.error) {
+        ScaffoldMessenger.of(context)
+          ..clearSnackBars()
+          ..showSnackBar(SnackBar(content: Text(next.error!)));
+      }
+      if (prev?.profile == null && next.profile != null) {
+        if (_usernameCtrl.text.isEmpty) {
+          _usernameCtrl.text = next.profile?.displayName ?? '';
+        }
+        if (_interestCtrl.text.isEmpty) {
+          _interestCtrl.text = next.profile?.interest ?? '';
+        }
+      }
+    });
+
+    final isOffline = !ref
+        .watch(isOnlineProvider)
+        .when(data: (v) => v, loading: () => true, error: (_, _) => true);
+
     return Scaffold(
       backgroundColor: AppColors.scaffoldBg,
       body: Column(
         children: [
           _buildCustomAppBar(context),
+          const OfflineChip(),
           Expanded(
             child: CustomScrollView(
               slivers: [
@@ -223,41 +244,75 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
 
                         // Save button
                         GestureDetector(
-                          onTap: () {
-                            if (_usernameCtrl.text.trim().isEmpty) {
-                              setState(() => _usernameError = true);
-                              showInfoDialog(
-                                context,
-                                type: InfoDialogType.error,
-                                title: 'Username Required',
-                                message:
-                                    'Please enter a username before saving your profile.',
-                              );
-                              return;
-                            }
-                            final result = {
-                              'name': _usernameCtrl.text.trim(),
-                              'interest': _interestCtrl.text.trim(),
-                            };
-                            showInfoDialog(
-                              context,
-                              type: InfoDialogType.success,
-                              title: 'Profile Saved',
-                              message:
-                                  'Your profile has been updated successfully.',
-                              onConfirm: () => Navigator.pop(context, result),
-                            );
-                          },
+                          onTap: state.isLoading
+                              ? null
+                              : () async {
+                                  if (isOffline) {
+                                    ScaffoldMessenger.of(context)
+                                      ..clearSnackBars()
+                                      ..showSnackBar(
+                                        const SnackBar(
+                                          content: Text(
+                                            "You're offline. Changes require a connection.",
+                                          ),
+                                          behavior: SnackBarBehavior.floating,
+                                        ),
+                                      );
+                                    return;
+                                  }
+                                  if (_usernameCtrl.text.trim().isEmpty) {
+                                    setState(() => _usernameError = true);
+                                    return;
+                                  }
+                                  final uid = ref
+                                      .read(authNotifierProvider)
+                                      .user
+                                      ?.uid;
+                                  if (uid == null) return;
+                                  final navigator = Navigator.of(context);
+                                  final notifier = ref.read(
+                                    profileNotifierProvider.notifier,
+                                  );
+                                  await notifier.updateDisplayName(
+                                    uid,
+                                    _usernameCtrl.text.trim(),
+                                  );
+                                  if (!mounted) return;
+                                  if (ref.read(profileNotifierProvider).error !=
+                                      null) {
+                                    return;
+                                  }
+                                  await notifier.updateInterest(
+                                    uid,
+                                    _interestCtrl.text.trim(),
+                                  );
+                                  if (!context.mounted) return;
+                                  if (ref.read(profileNotifierProvider).error ==
+                                      null) {
+                                    showInfoDialog(
+                                      context,
+                                      type: InfoDialogType.success,
+                                      title: 'Profile Saved',
+                                      message:
+                                          'Your profile has been updated successfully.',
+                                      onConfirm: () => navigator.pop(),
+                                    );
+                                  }
+                                },
                           child: Container(
                             padding: const EdgeInsets.symmetric(
                               horizontal: 48,
                               vertical: 12,
                             ),
                             decoration: BoxDecoration(
-                              color: const Color(0xFFDEF1C2),
+                              color: isOffline
+                                  ? Colors.grey.shade200
+                                  : const Color(0xFFDEF1C2),
                               borderRadius: BorderRadius.circular(20),
                               border: Border.all(
-                                color: const Color(0xFFC7D2B5),
+                                color: isOffline
+                                    ? Colors.grey.shade300
+                                    : const Color(0xFFC7D2B5),
                                 width: 1.5,
                               ),
                               boxShadow: [
@@ -268,14 +323,25 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
                                 ),
                               ],
                             ),
-                            child: const Text(
-                              'Save',
-                              style: TextStyle(
-                                color: Colors.black,
-                                fontSize: 16,
-                                fontWeight: FontWeight.w900,
-                              ),
-                            ),
+                            child: state.isLoading
+                                ? const SizedBox(
+                                    width: 24,
+                                    height: 24,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Colors.black,
+                                    ),
+                                  )
+                                : Text(
+                                    'Save',
+                                    style: TextStyle(
+                                      color: isOffline
+                                          ? Colors.grey.shade500
+                                          : Colors.black,
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w900,
+                                    ),
+                                  ),
                           ),
                         ),
                         const SizedBox(height: 16),

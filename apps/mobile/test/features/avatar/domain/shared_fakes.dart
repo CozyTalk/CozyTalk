@@ -3,9 +3,11 @@ import 'package:mobile/features/avatar/domain/repositories/avatar_repository.dar
 
 class FakeAvatarRepository implements AvatarRepository {
   AvatarDecoration? returnDecoration;
+  AvatarDecoration? returnCachedDecoration;
   Exception? error;
 
   int getDecorationCount = 0;
+  int getCachedDecorationCount = 0;
   int updateHatCount = 0;
   int updateMoodCount = 0;
   int updateDecorationCount = 0;
@@ -20,6 +22,13 @@ class FakeAvatarRepository implements AvatarRepository {
     lastUid = uid;
     if (error != null) throw error!;
     return returnDecoration;
+  }
+
+  @override
+  Future<AvatarDecoration?> getCachedDecoration(String uid) async {
+    getCachedDecorationCount++;
+    lastUid = uid;
+    return returnCachedDecoration;
   }
 
   @override

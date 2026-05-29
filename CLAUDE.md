@@ -21,7 +21,7 @@ Anonymous stranger chat — 1v1 and group rooms (up to 5 users) — Flutter (And
 |---|---|
 | Framework | Flutter 3.41+ · Dart 3.x |
 | State | Riverpod 3.x + `Notifier` pattern |
-| Backend | Firebase Auth, Firestore, RTDB, Cloud Functions v2 (TypeScript) |
+| Backend | Firebase Auth, Firestore, RTDB, Cloud Functions v2 (TypeScript), Firebase Crashlytics |
 | Models | Freezed + json_serializable |
 | Navigation | `MaterialApp.routes` + `AppRoutes` constants (`theme/app_routes.dart`) |
 | Observability | Structured CF logging (`firebase-functions/logger`) |
@@ -77,8 +77,8 @@ npm install && npm run build && npm test   # npm test requires emulators first
 .\dev.ps1 [...]                           # Windows
 ```
 
-Jest: 93 unit (matchmaking 60, embeddingService 21, chat 12). The 7 Vertex AI integration tests run separately via `jest.integration.config.js` — excluded from `npm test`.
-Flutter: 588 unit + widget tests.
+Jest: 110 unit (matchmaking 72, embeddingService 21, chat 12, friends 5). The 7 Vertex AI integration tests run separately via `jest.integration.config.js` — excluded from `npm test`.
+Flutter: 1022 unit + widget tests.
 
 ---
 
@@ -95,6 +95,7 @@ Flutter: 588 unit + widget tests.
 | `home` | — | Thin nav hub, no domain/data | Complete |
 | `friends` | `friendsNotifierProvider` · `friendChatNotifierProvider` | `FriendsState`: allUsers\|friends\|incomingRequests · `FriendChatState`: messages\|chatRoomId | Prototype (dev screens only) |
 | `card_shuffle` | `cardShuffleNotifierProvider` | `CardShuffleState`: currentQuestion?, isLoading, error? | Prototype (icebreaker panel in chat dev screen) |
+| `word_filter` | `censorTextProvider` | Stateless service — no Notifier | Complete · gates on `content_filtering_enabled` Remote Config flag |
 
 **State pattern (all features):** Nullable fields in `FooState.copyWith` use `_sentinel` so callers can explicitly pass `null` to clear them. Never use `??` for clearable fields.
 
@@ -113,32 +114,28 @@ In screens: `ref.watch(fooNotifierProvider)` for state · `ref.read(fooNotifierP
 
 **Auth:** `AuthNotifier.build()` subscribes to `watchAuthState()`. Stream skips updates while `status == loading`. Google: web uses `signInWithPopup`, native uses `GoogleSignIn.instance.authenticate()`. Firestore user doc written on account creation / first sign-in (`signUp`, `signInAnonymously` new user, `signInWithGoogle` new user) — not re-written on returning `signIn`. Use `set(merge: true)` for profile updates. `_anonymousName(uid)`: UID-seeded djb2 → adjective+animal (225 combos) in `auth_datasource.dart`. Also duplicated in `chat_datasource.dart` — extract if a third caller appears.
 
-**Matchmaking (11 exported CFs):** `cancel1v1Pool` returns `{success: false, reason: "matching_in_progress"}` when status is already `"matching"` — Flutter must handle this. `match1v1Users` deployed to `asia-southeast1` (co-located with RTDB — intentional). Interest matching: Vertex AI `text-multilingual-embedding-002`, 256 dims, cosine threshold 0.65. `onProtoPresenceDeleted.ts` is a disabled stub (`export {};`) — re-enable after proto-session cleanup is fully wired.
+**Matchmaking (11 exported CFs):** `cancel1v1Pool` returns `{success: false, reason: "matching_in_progress"}` when status is already `"matching"` — Flutter must handle this. `match1v1Users` deployed to `asia-southeast1` (co-located with RTDB — intentional). `onProtoPresenceDeleted.ts` is a disabled stub (`export {};`) — re-enable after proto-session cleanup is fully wired. Interest matching details: `MATCHMAKING_CONTEXT_AWARE.md`.
 
-**Chat:** `ChatDatasourceImpl` splits on `sessionId.startsWith('proto-')`: proto uses SHA256-derived key + direct Firestore writes; 1v1 calls `sendMessage`/`endSession` CFs. `ChatNotifier.enterSession()` is the entry point. RTDB: `typing/{id}/{uid}`, `presence/{id}/{uid}`. `onDisconnect().remove()` is set only on `presence` in proto sessions; for real sessions the `endSession` CF handles RTDB cleanup server-side. No `setTyping` CF exists — the file was never created; clients write typing state directly to RTDB.
+**Chat:** `ChatDatasourceImpl` splits on `sessionId.startsWith('proto-')`: proto uses SHA256-derived key + direct Firestore writes; 1v1 calls `sendMessage`/`endSession` CFs. `ChatNotifier.enterSession()` is the entry point. RTDB: `typing/{id}/{uid}`, `presence/{id}/{uid}`. `onDisconnect().remove()` is set only on `presence` in proto sessions; for real sessions the `endSession` CF handles RTDB cleanup server-side. No `setTyping` CF exists — clients write typing state directly to RTDB.
 
 **Profile:** The CA dev screen (`features/profile/`) validates: username ≤ 20, interest ≤ 200, thoughts ≤ 50. The production screen (`screens/profile_edit_screen.dart`) caps interest at 100 and has no thoughts field. Pre-fills controllers on mount and each successful save via `ref.listen`.
-
-**Avatar:** `FieldValue.delete()` for null fields. Syncs to shared `avatarProvider` via `_syncToSharedProvider()`.
 
 ---
 
 ## 7. Firestore & RTDB
 
-| Collection | Key fields |
-|---|---|
-| `users/{uid}` | uid, role (user\|admin), createdAt, lastSeen, displayName?, photoUrl?, hatKey?, moodKey?, interest?, thoughts? — email is never stored in Firestore |
-| `waiting_pool/{uid}` | status, mode, createdAt, updatedAt, interestText?, interestVector? (256-dim), roomId? |
-| `rooms/{roomId}` | 5-char ID; mode (1v1\|group), roomType (public\|custom), status (active\|padding\|expired), users[], maxUsers, memberCount, isLocked, encryptionKey, createdAt, paddingUntil? |
-| `active_sessions/{id}` | Legacy proto-sessions only — new code uses `rooms/` |
-| `chat_rooms/{id}/messages/{id}` | senderId, displayName, encryptedText, iv, authTag (AES-256-GCM), timestamp, expiresAt TTL (3 days), flagged? |
-| `session_keys/{id}` | sessionId, encryptionKey, users[], createdAt, expiresAt TTL (cleared when flagged by `reportSession`), flagged? |
-| `friend_requests/{id}` | fromUid, fromDisplayName, toUid, toDisplayName, status (pending\|accepted\|declined), createdAt |
-| `friendships/{id}` | users[], displayNames{uid:name}, chatRoomId (= doc ID = sorted UIDs), createdAt |
-| `friend_messages/{id}/messages/{id}` | senderId, senderDisplayName, text, timestamp — permanent, no TTL, no encryption (prototype) |
-| `reports/{id}` | Authenticated users may create; read/update/delete admin-only. `encryptionKey` is CF-written (not in client `hasOnly` list) |
+Full schema + security rules: [`PROJECT_CONTEXT.md`](PROJECT_CONTEXT.md).
 
-RTDB paths: `rooms/{id}/members/{uid}`, `typing/{id}/{uid}` (read: room member), `presence/{id}/{uid}` (read: room member), `nameQueue/{id}`, `user_status/{uid}` (read/write: owner), `pool_presence/{uid}`. Full schema + security rules: [`PROJECT_CONTEXT.md`](PROJECT_CONTEXT.md).
+Critical rules that prevent bugs:
+
+| Collection | Note |
+|---|---|
+| `users/{uid}` | Email is **never** stored in Firestore |
+| `active_sessions/{id}` | Legacy — new code uses `rooms/` |
+| `chat_rooms/{id}/messages/{id}` | AES-256-GCM; `expiresAt` TTL 3 days |
+| `reports/{id}` | `chatLogStoragePath` and `outcome` are CF-written — not in client `hasOnly` list |
+
+RTDB paths: `rooms/{id}/members/{uid}`, `typing/{id}/{uid}`, `presence/{id}/{uid}`, `nameQueue/{id}`, `user_status/{uid}`, `pool_presence/{uid}`, `jukebox/{id}`.
 
 ---
 
@@ -148,7 +145,7 @@ RTDB paths: `rooms/{id}/members/{uid}`, `typing/{id}/{uid}` (read: room member),
 
 **`_useMainUI` toggle (main.dart line 35):**
 - `false` (default) → chatroom/backend testing: `_AuthRouter` → `LoginScreen` (features/auth) → `HelloScreen`. Registers `findingRoom` route.
-- `true` → legacy UI / design preview: `HomeScreen` (screens/) + `AppRoutes` named routes. Note: `findingRoom` route is absent from this branch.
+- `true` → production UI: `HomeScreen` (screens/) + `AppRoutes` named routes including `findingRoom`.
 
 `_AuthRouter` routes: `authenticated → HelloScreen` · `idle → spinner` · others → `LoginScreen`.
 
@@ -277,7 +274,7 @@ DONE WHEN: <criteria>
 | Persist chat messages | Privacy by Design |
 | Hand-roll `toJson`/`fromJson` | Use Freezed |
 | Secrets in SharedPreferences / Hive / assets | APK-extractable |
-| Edit `*.g.dart` / `*.freezed.dart` | Run `build_runner` |
+| Edit `*.g.dart` / `*.freezed.dart` | Run `build_runner` — these files are gitignored and must be regenerated locally |
 | `ListView(children: [...])` for dynamic data | Performance |
 | Remove or modify `_useMainUI` | Breaks dev/test workflow for whole team |
 | Visual changes (padding, color, layout) during integration | Separate design PR |
@@ -286,8 +283,9 @@ DONE WHEN: <criteria>
 | Business logic in Screen or Notifier | UseCase only |
 | New packages during integration PR | Architect approval required |
 | Edit lock files manually | Run package manager to regenerate |
-| `git push --force` to main | Hard block |
+| `git push` directly to `main` or `master` | Never — always branch + PR; hook in `.claude/settings.json` enforces this |
 | `print()` in production code | Use structured logging |
+| Run `git add` / `git commit` / `git stash` in parallel | Git holds `.git/index.lock` for the duration of each command — parallel calls race and deadlock. Always chain with `&&` in a single shell call. |
 
 ---
 
@@ -320,3 +318,57 @@ Every code change that affects a documented behaviour **must** be accompanied by
 - Never document a file, field, or behaviour that does not exist in the current codebase.
 - If you are unsure what a doc should say, read the source file first — the code is the ground truth.
 - Doc updates are part of the task, not optional cleanup after. A PR that changes code without updating docs is incomplete.
+
+---
+
+## 17. Never Guess — Ask Instead (non-negotiable)
+
+If you are not certain about something, **stop and ask**. Do not invent, assume, or fill in gaps with plausible-sounding answers.
+
+This is especially critical during:
+- Security reviews and audits — a wrong claim is worse than no claim.
+- Schema or data model questions — assume nothing about fields or rules that aren't read from source.
+- Behaviour of code you haven't read — read it first, then answer.
+- Any destructive or irreversible operation — confirm intent before acting.
+
+**Hard rules:**
+- Only state something as fact if you have verified it by reading the current source, docs, or running a command.
+- If you have a question, ask it — one clear question is better than a confident wrong answer.
+- "I think" or "probably" is not good enough. Either verify and state the truth, or say you don't know and ask.
+- Never fabricate file paths, function names, field names, or behaviours. If unsure, `grep` or `Read` first.
+
+---
+
+## 18. Commit Message Convention (non-negotiable)
+
+All commits must follow [Conventional Commits v1.0.0](https://www.conventionalcommits.org/en/v1.0.0/).
+
+**Format:** `<type>(<optional scope>): <short imperative description>`
+
+| Type | When to use |
+|---|---|
+| `feat` | New feature or capability added |
+| `fix` | Bug fix |
+| `docs` | Documentation-only changes |
+| `test` | Adding or updating tests, no production code change |
+| `refactor` | Code change that neither fixes a bug nor adds a feature |
+| `chore` | Maintenance — dependency bumps, build config, auto-generated files |
+| `ci` | CI/CD pipeline changes |
+| `perf` | Performance improvement |
+| `revert` | Reverting a previous commit |
+
+**Hard rules:**
+- Always include the type prefix — `feat: ...`, `fix: ...`, etc.
+- Scope is optional but encouraged for multi-feature repos: `feat(profile):`, `fix(auth):`, `docs(screens):`
+- Description is imperative present tense: "add", not "added" or "adds"
+- No trailing period
+- No AI signatures, co-author tags, or boilerplate (see §15)
+
+**Examples:**
+```
+feat(shared): add connectivity infrastructure and offline UI primitives
+fix(screens): defer cancelSearch in dispose to prevent Riverpod build crash
+docs: update screens.md and PROJECT_CONTEXT.md for offline-first feature
+test(avatar): add offline cache datasource and notifier offline tests
+chore: bump connectivity_plus to 6.x
+```

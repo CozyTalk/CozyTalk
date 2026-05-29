@@ -1,5 +1,8 @@
+# macOS metadata
+.DS_Store
+
 # Claude Code local settings
-.claude/settings.local.json
+**/.claude/settings.local.json
 
 # Logs
 logs
@@ -79,3 +82,4 @@ node_modules/
 
 # Claude Code worktrees
 .claude/worktrees/
+.claude/plans/

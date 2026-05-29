@@ -1,10 +1,14 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../shared/connectivity_provider.dart';
+import '../../../../shared/prefs_provider.dart';
+import '../../data/datasources/profile_cache_datasource.dart';
 import '../../data/datasources/profile_datasource.dart';
 import '../../data/repositories/profile_repository_impl.dart';
 import '../../domain/entities/profile_user.dart';
 import '../../domain/repositories/profile_repository.dart';
+import '../../domain/usecases/get_cached_profile.dart';
 import '../../domain/usecases/get_profile.dart';
 import '../../domain/usecases/update_display_name.dart';
 import '../../domain/usecases/update_interest.dart';
@@ -14,24 +18,35 @@ final _profileDatasourceProvider = Provider<ProfileDatasource>(
   (ref) => ProfileDatasourceImpl(FirebaseFirestore.instance),
 );
 
-final _profileRepositoryProvider = Provider<ProfileRepository>(
-  (ref) => ProfileRepositoryImpl(ref.watch(_profileDatasourceProvider)),
+final _profileCacheDatasourceProvider = Provider<ProfileCacheDatasource>(
+  (ref) => ProfileCacheDatasourceImpl(ref.watch(sharedPreferencesProvider)),
+);
+
+final profileRepositoryProvider = Provider<ProfileRepository>(
+  (ref) => ProfileRepositoryImpl(
+    ref.watch(_profileDatasourceProvider),
+    ref.watch(_profileCacheDatasourceProvider),
+  ),
 );
 
 final _getProfileProvider = Provider<GetProfile>(
-  (ref) => GetProfile(ref.watch(_profileRepositoryProvider)),
+  (ref) => GetProfile(ref.watch(profileRepositoryProvider)),
+);
+
+final _getCachedProfileProvider = Provider<GetCachedProfile>(
+  (ref) => GetCachedProfile(ref.watch(profileRepositoryProvider)),
 );
 
 final _updateDisplayNameProvider = Provider<UpdateDisplayName>(
-  (ref) => UpdateDisplayName(ref.watch(_profileRepositoryProvider)),
+  (ref) => UpdateDisplayName(ref.watch(profileRepositoryProvider)),
 );
 
 final _updateInterestProvider = Provider<UpdateInterest>(
-  (ref) => UpdateInterest(ref.watch(_profileRepositoryProvider)),
+  (ref) => UpdateInterest(ref.watch(profileRepositoryProvider)),
 );
 
 final _updateThoughtsProvider = Provider<UpdateThoughts>(
-  (ref) => UpdateThoughts(ref.watch(_profileRepositoryProvider)),
+  (ref) => UpdateThoughts(ref.watch(profileRepositoryProvider)),
 );
 
 final profileNotifierProvider = NotifierProvider<ProfileNotifier, ProfileState>(
@@ -79,12 +94,25 @@ class ProfileNotifier extends Notifier<ProfileState> {
       final profile = await ref.read(_getProfileProvider)(uid);
       state = state.copyWith(isLoading: false, profile: profile);
     } catch (e) {
+      try {
+        final cached = await ref.read(_getCachedProfileProvider)(uid);
+        if (cached != null) {
+          state = state.copyWith(isLoading: false, profile: cached);
+          return;
+        }
+      } catch (_) {}
       state = state.copyWith(isLoading: false, error: e.toString());
     }
   }
 
   Future<void> updateDisplayName(String uid, String displayName) async {
     if (state.isLoading) return;
+    if (!await ref.read(networkInfoProvider).isConnected) {
+      state = state.copyWith(
+        error: "You're offline. Changes require a connection.",
+      );
+      return;
+    }
     state = state.copyWith(isLoading: true, error: null, successField: null);
     try {
       await ref.read(_updateDisplayNameProvider)(uid, displayName);
@@ -107,6 +135,12 @@ class ProfileNotifier extends Notifier<ProfileState> {
 
   Future<void> updateInterest(String uid, String interest) async {
     if (state.isLoading) return;
+    if (!await ref.read(networkInfoProvider).isConnected) {
+      state = state.copyWith(
+        error: "You're offline. Changes require a connection.",
+      );
+      return;
+    }
     state = state.copyWith(isLoading: true, error: null, successField: null);
     try {
       await ref.read(_updateInterestProvider)(uid, interest);
@@ -129,6 +163,12 @@ class ProfileNotifier extends Notifier<ProfileState> {
 
   Future<void> updateThoughts(String uid, String thoughts) async {
     if (state.isLoading) return;
+    if (!await ref.read(networkInfoProvider).isConnected) {
+      state = state.copyWith(
+        error: "You're offline. Changes require a connection.",
+      );
+      return;
+    }
     state = state.copyWith(isLoading: true, error: null, successField: null);
     try {
       await ref.read(_updateThoughtsProvider)(uid, thoughts);

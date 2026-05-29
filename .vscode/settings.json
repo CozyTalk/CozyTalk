@@ -20,5 +20,6 @@
       "source.fixAll.eslint": "always"
     }
   },
-  "files.eol": "\n"
+  "files.eol": "\n",
+  "java.configuration.updateBuildConfiguration": "interactive"
 }

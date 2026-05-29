@@ -4,9 +4,14 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mobile/features/auth/domain/entities/auth_user.dart';
 import 'package:mobile/features/auth/presentation/providers/auth_provider.dart';
 import 'package:mobile/features/avatar/presentation/providers/avatar_decoration_provider.dart';
+import 'package:mobile/features/friends/domain/entities/friend_request.dart';
+import 'package:mobile/features/friends/presentation/providers/friends_provider.dart';
 import 'package:mobile/features/profile/domain/entities/profile_user.dart';
 import 'package:mobile/features/profile/presentation/providers/profile_provider.dart';
 import 'package:mobile/screens/home_screen.dart';
+import 'package:mobile/shared/connectivity_provider.dart';
+import 'package:mobile/shared/network_info.dart';
+import '../shared/fake_network_info.dart';
 
 // ── Fakes ─────────────────────────────────────────────────────────────────────
 
@@ -73,6 +78,15 @@ class _FakeProfileNotifier extends ProfileNotifier {
   }
 }
 
+class _FakeFriendsNotifier extends FriendsNotifier {
+  final FriendsState _initial;
+  _FakeFriendsNotifier({FriendsState initial = const FriendsState()})
+    : _initial = initial;
+
+  @override
+  FriendsState build() => _initial;
+}
+
 class _FakeAvatarDecorationNotifier extends AvatarDecorationNotifier {
   final AvatarDecorationState _initial;
   int loadCount = 0;
@@ -102,6 +116,10 @@ class _FakeAvatarDecorationNotifier extends AvatarDecorationNotifier {
     String? hatKey,
     String? moodKey,
   ) async {}
+
+  void triggerError(String msg) {
+    state = state.copyWith(status: AvatarDecorationStatus.error, error: msg);
+  }
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -115,12 +133,19 @@ Widget _buildScreen(
   _FakeProfileNotifier profileFake,
   _FakeAvatarDecorationNotifier avatarFake, {
   AuthState auth = _authenticatedAuth,
+  FriendsState friends = const FriendsState(),
+  NetworkInfo? networkInfo,
 }) {
   return ProviderScope(
     overrides: [
       authNotifierProvider.overrideWith(() => _FakeAuthNotifier(initial: auth)),
       profileNotifierProvider.overrideWith(() => profileFake),
       avatarDecorationNotifierProvider.overrideWith(() => avatarFake),
+      friendsNotifierProvider.overrideWith(
+        () => _FakeFriendsNotifier(initial: friends),
+      ),
+      if (networkInfo != null)
+        networkInfoProvider.overrideWithValue(networkInfo),
     ],
     child: const MaterialApp(home: HomeScreen()),
   );
@@ -229,6 +254,54 @@ void main() {
       expect(profile.lastUid, 'test-uid');
     });
 
+    testWidgets('shows notification badge when there are incoming requests', (
+      tester,
+    ) async {
+      final request = FriendRequest(
+        id: 'r1',
+        fromUid: 'uid-a',
+        fromDisplayName: 'Alice',
+        toUid: 'test-uid',
+        toDisplayName: 'Me',
+        status: FriendRequestStatus.pending,
+        createdAt: DateTime(2025),
+      );
+      await tester.pumpWidget(
+        _buildScreen(
+          _FakeProfileNotifier(),
+          _FakeAvatarDecorationNotifier(),
+          friends: FriendsState(incomingRequests: [request]),
+        ),
+      );
+
+      final badge = find.byWidgetPredicate(
+        (w) =>
+            w is Container &&
+            w.decoration is BoxDecoration &&
+            (w.decoration as BoxDecoration).shape == BoxShape.circle &&
+            (w.decoration as BoxDecoration).color == const Color(0xFFCF5733),
+      );
+      expect(badge, findsOneWidget);
+    });
+
+    testWidgets(
+      'hides notification badge when there are no incoming requests',
+      (tester) async {
+        await tester.pumpWidget(
+          _buildScreen(_FakeProfileNotifier(), _FakeAvatarDecorationNotifier()),
+        );
+
+        final badge = find.byWidgetPredicate(
+          (w) =>
+              w is Container &&
+              w.decoration is BoxDecoration &&
+              (w.decoration as BoxDecoration).shape == BoxShape.circle &&
+              (w.decoration as BoxDecoration).color == const Color(0xFFCF5733),
+        );
+        expect(badge, findsNothing);
+      },
+    );
+
     testWidgets('does not call updateThoughts when dialog Cancel is tapped', (
       tester,
     ) async {
@@ -252,6 +325,63 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(profile.updateThoughtsCount, 0);
+    });
+
+    testWidgets('OfflineChip visible when offline', (tester) async {
+      await tester.pumpWidget(
+        _buildScreen(
+          _FakeProfileNotifier(),
+          _FakeAvatarDecorationNotifier(),
+          networkInfo: FakeNetworkInfo(isOnline: false),
+        ),
+      );
+      await tester.pump(); // let stream emit
+      expect(find.text('Offline'), findsOneWidget);
+    });
+
+    testWidgets('OfflineChip not visible when online', (tester) async {
+      await tester.pumpWidget(
+        _buildScreen(
+          _FakeProfileNotifier(),
+          _FakeAvatarDecorationNotifier(),
+          networkInfo: FakeNetworkInfo(isOnline: true),
+        ),
+      );
+      await tester.pump();
+      expect(find.text('Offline'), findsNothing);
+    });
+
+    testWidgets('avatar error SnackBar shown when error state is set', (
+      tester,
+    ) async {
+      final avatarFake = _FakeAvatarDecorationNotifier();
+      final container = ProviderContainer(
+        overrides: [
+          authNotifierProvider.overrideWith(
+            () => _FakeAuthNotifier(initial: _authenticatedAuth),
+          ),
+          profileNotifierProvider.overrideWith(() => _FakeProfileNotifier()),
+          avatarDecorationNotifierProvider.overrideWith(() => avatarFake),
+          friendsNotifierProvider.overrideWith(() => _FakeFriendsNotifier()),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: const MaterialApp(home: HomeScreen()),
+        ),
+      );
+      await tester.pump();
+
+      // Trigger a state change from null → error, which fires the ref.listen.
+      (container.read(avatarDecorationNotifierProvider.notifier)
+              as _FakeAvatarDecorationNotifier)
+          .triggerError('test avatar error');
+      await tester.pump();
+
+      expect(find.text('test avatar error'), findsOneWidget);
     });
   });
 }

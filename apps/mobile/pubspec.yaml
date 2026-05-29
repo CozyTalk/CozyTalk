@@ -20,10 +20,15 @@ dependencies:
   firebase_database: ^12.3.0
   cloud_functions: ^6.2.0
   firebase_storage: ^13.4.0
+  firebase_crashlytics: ^5.2.2
+  firebase_remote_config: ^6.5.1
+
+  # Local database
+  sqflite: ^2.3.3
 
   # Auth
   google_sign_in: ^7.2.0
-  flutter_secure_storage: ^10.2.0
+  flutter_secure_storage: ^10.3.0
 
   # Media
   image_picker: ^1.1.2
@@ -39,13 +44,22 @@ dependencies:
   json_annotation: ^4.11.0
   cryptography: ^2.7.0
   flutter_svg: ^2.0.17
-  google_fonts: ^6.2.1
+  google_fonts: ^8.1.0
+  http: ^1.6.0
+  url_launcher: ^6.3.2
+
+  cached_network_image: ^3.4.0
+  connectivity_plus: ^7.1.1
+
+  # Jukebox
+  web: ^1.0.0
+  webview_flutter: ^4.0.0
+  webview_flutter_web: ^0.2.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
 
-  http: ^1.6.0
   flutter_lints: ^6.0.0
   riverpod_generator: ^4.0.3
   build_runner: ^2.15.0
@@ -70,3 +84,4 @@ flutter:
     - assets/images/cards/
     - assets/images/tuktuk/
     - assets/icebreaker-questions.json
+    - assets/banned_words.json
