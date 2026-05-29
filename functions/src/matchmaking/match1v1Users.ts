@@ -38,6 +38,9 @@ export const match1v1Users = onDocumentCreated(
     let candidates = candidatesSnap.docs.filter((d) => d.id !== triggerUid);
 
     // Filter out pairs where either party has blocked the other.
+    // Read cost is 1 + N subcollection reads (1 for the trigger user + one per
+    // candidate). With the .limit(20) pool query above that is ≤ 21 reads per
+    // invocation; raising that limit scales this cost linearly.
     const triggerBlockedUids = await getBlockedUids(db, triggerUid);
     const blockChecks = await Promise.all(
       candidates.map(async (c) => {
