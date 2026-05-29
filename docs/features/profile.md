@@ -31,7 +31,7 @@ features/profile/
 
 ## State
 
-`ProfileState` — `user` (ProfileUser?), `isLoading` (bool), `successField` (String?), `error` (String?)
+`ProfileState` — `profile` (ProfileUser?), `isLoading` (bool), `successField` (String?), `error` (String?)
 
 `successField` values: `'username' | 'interest' | 'thoughts'`
 

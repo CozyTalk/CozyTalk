@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:cloud_functions/cloud_functions.dart';
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -17,6 +18,7 @@ import '../../domain/usecases/send_message.dart';
 import '../../domain/usecases/set_typing.dart';
 import '../../domain/usecases/watch_messages.dart';
 import '../../domain/usecases/watch_partner_typing.dart';
+import '../../../word_filter/presentation/providers/word_filter_provider.dart';
 
 final _chatDatasourceProvider = Provider<ChatDatasource>(
   (ref) => ChatDatasourceImpl(
@@ -192,7 +194,16 @@ class ChatNotifier extends Notifier<ChatState> {
     if (sessionId == null || state.isSending) return;
     state = state.copyWith(isSending: true, error: null);
     try {
-      await ref.read(_sendMessageProvider)(sessionId: sessionId, text: text);
+      var textToSend = text;
+      try {
+        textToSend = await ref.read(censorTextProvider).call(text);
+      } catch (e) {
+        debugPrint('censorText failed, sending original: $e');
+      }
+      await ref.read(_sendMessageProvider)(
+        sessionId: sessionId,
+        text: textToSend,
+      );
       state = state.copyWith(isSending: false);
     } catch (e) {
       state = state.copyWith(isSending: false, error: e.toString());
@@ -224,6 +235,17 @@ class ChatNotifier extends Notifier<ChatState> {
       state = state.copyWith(error: e.toString());
       return;
     }
+    state = state.copyWith(
+      status: SessionStatus.disconnected,
+      sessionId: null,
+      messages: [],
+      typingUsers: [],
+    );
+  }
+
+  void forceDisconnect() {
+    if (state.status == SessionStatus.disconnected) return;
+    _cancelSubscriptions();
     state = state.copyWith(
       status: SessionStatus.disconnected,
       sessionId: null,

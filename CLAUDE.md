@@ -77,7 +77,8 @@ npm install && npm run build && npm test   # npm test requires emulators first
 .\dev.ps1 [...]                           # Windows
 ```
 
-Test counts: see `PROJECT_CONTEXT.md`.
+Jest: 172 unit (matchmaking 82, admin 32, embeddingService 21, block 20, chat 12, friends 5). The 7 Vertex AI integration tests run separately via `jest.integration.config.js` — excluded from `npm test`.
+Flutter: 1096 unit + widget tests.
 
 ---
 
@@ -95,6 +96,7 @@ Test counts: see `PROJECT_CONTEXT.md`.
 | `block` | `blockNotifierProvider` | `BlockStatus`: idle\|loading\|loaded\|error | Complete |
 | `friends` | `friendsNotifierProvider` · `friendChatNotifierProvider` | `FriendsState`: allUsers\|friends\|incomingRequests · `FriendChatState`: messages\|chatRoomId | Prototype (dev screens only) |
 | `card_shuffle` | `cardShuffleNotifierProvider` | `CardShuffleState`: currentQuestion?, isLoading, error? | Prototype (icebreaker panel in chat dev screen) |
+| `word_filter` | `censorTextProvider` | Stateless service — no Notifier | Complete · gates on `content_filtering_enabled` Remote Config flag |
 
 **State pattern (all features):** Nullable fields in `FooState.copyWith` use `_sentinel` so callers can explicitly pass `null` to clear them. Never use `??` for clearable fields.
 
@@ -132,9 +134,9 @@ Critical rules that prevent bugs:
 | `users/{uid}` | Email is **never** stored in Firestore |
 | `active_sessions/{id}` | Legacy — new code uses `rooms/` |
 | `chat_rooms/{id}/messages/{id}` | AES-256-GCM; `expiresAt` TTL 3 days |
-| `reports/{id}` | `encryptionKey` is CF-written — not in client `hasOnly` list |
+| `reports/{id}` | `chatLogStoragePath` and `outcome` are CF-written — not in client `hasOnly` list |
 
-RTDB paths: `rooms/{id}/members/{uid}`, `typing/{id}/{uid}`, `presence/{id}/{uid}`, `nameQueue/{id}`, `user_status/{uid}`, `pool_presence/{uid}`.
+RTDB paths: `rooms/{id}/members/{uid}`, `typing/{id}/{uid}`, `presence/{id}/{uid}`, `nameQueue/{id}`, `user_status/{uid}`, `pool_presence/{uid}`, `jukebox/{id}`.
 
 ---
 
@@ -273,7 +275,7 @@ DONE WHEN: <criteria>
 | Persist chat messages | Privacy by Design |
 | Hand-roll `toJson`/`fromJson` | Use Freezed |
 | Secrets in SharedPreferences / Hive / assets | APK-extractable |
-| Edit `*.g.dart` / `*.freezed.dart` | Run `build_runner` |
+| Edit `*.g.dart` / `*.freezed.dart` | Run `build_runner` — these files are gitignored and must be regenerated locally |
 | `ListView(children: [...])` for dynamic data | Performance |
 | Remove or modify `_useMainUI` | Breaks dev/test workflow for whole team |
 | Visual changes (padding, color, layout) during integration | Separate design PR |
@@ -282,7 +284,7 @@ DONE WHEN: <criteria>
 | Business logic in Screen or Notifier | UseCase only |
 | New packages during integration PR | Architect approval required |
 | Edit lock files manually | Run package manager to regenerate |
-| `git push --force` to main | Hard block |
+| `git push` directly to `main` or `master` | Never — always branch + PR; hook in `.claude/settings.json` enforces this |
 | `print()` in production code | Use structured logging |
 | Run `git add` / `git commit` / `git stash` in parallel | Git holds `.git/index.lock` for the duration of each command — parallel calls race and deadlock. Always chain with `&&` in a single shell call. |
 

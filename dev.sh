@@ -94,10 +94,25 @@ if ! $USE_PROD; then
   fi
 fi
 
+# ── Load .env from apps/mobile ────────────────────────────────────────────────
+ENV_FILE="$ROOT_DIR/apps/mobile/.env"
+if [[ -f "$ENV_FILE" ]]; then
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    [[ "$line" =~ ^\s*# ]] && continue
+    [[ "$line" =~ ^\s*$ ]] && continue
+    if [[ "$line" =~ ^([A-Z_]+)=(.*)$ ]]; then
+      k="${BASH_REMATCH[1]}"
+      v="${BASH_REMATCH[2]}"
+      [[ -z "${!k:-}" ]] && export "$k=$v"
+    fi
+  done < "$ENV_FILE"
+fi
+
 # ── Build Flutter args ────────────────────────────────────────────────────────
 FLUTTER_ARGS=()
 $USE_WEB  && FLUTTER_ARGS+=("-d" "chrome")
 $USE_PROD && FLUTTER_ARGS+=("--dart-define=USE_EMULATOR=false")
+[[ -n "${GIPHY_API_KEY:-}" ]] && FLUTTER_ARGS+=("--dart-define=GIPHY_API_KEY=$GIPHY_API_KEY")
 
 # ── Emulator startup ──────────────────────────────────────────────────────────
 EMULATOR_PID=""

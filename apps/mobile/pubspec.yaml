@@ -21,10 +21,14 @@ dependencies:
   cloud_functions: ^6.2.0
   firebase_storage: ^13.4.0
   firebase_crashlytics: ^5.2.2
+  firebase_remote_config: ^6.5.1
+
+  # Local database
+  sqflite: ^2.3.3
 
   # Auth
   google_sign_in: ^7.2.0
-  flutter_secure_storage: ^10.2.0
+  flutter_secure_storage: ^10.3.0
 
   # Media
   image_picker: ^1.1.2
@@ -45,7 +49,7 @@ dependencies:
   url_launcher: ^6.3.2
 
   cached_network_image: ^3.4.0
-  connectivity_plus: ^6.0.0
+  connectivity_plus: ^7.1.1
 
   # Jukebox
   web: ^1.0.0
@@ -80,3 +84,4 @@ flutter:
     - assets/images/cards/
     - assets/images/tuktuk/
     - assets/icebreaker-questions.json
+    - assets/banned_words.json

@@ -107,7 +107,7 @@ fi
 
 printf "\n"
 if [ "$FAIL" -eq 0 ]; then
-  printf "  ✓  All checks passed — CI will be green.\n\n"
+  printf "  ✓  All checks passed.\n\n"
 else
   printf "  ✗  Fix the issues above before pushing.\n\n"
 fi
