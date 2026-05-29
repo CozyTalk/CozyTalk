@@ -144,7 +144,18 @@ $mobileDir    = Join-Path (Join-Path $ROOT_DIR 'apps') 'mobile'
 $functionsDir = Join-Path $ROOT_DIR 'functions'
 
 # -- Load .env from apps/mobile ------------------------------------------------
-$envFile = Join-Path $mobileDir '.env'
+$envFile     = Join-Path $mobileDir '.env'
+$envExample  = Join-Path $mobileDir '.env.example'
+
+if (-not (Test-Path $envFile)) {
+    if (Test-Path $envExample) {
+        Copy-Item $envExample $envFile
+        warn "apps/mobile/.env not found -- created from .env.example"
+        info "Open apps/mobile/.env and set your GIPHY_API_KEY, then re-run."
+        Write-Host ""
+    }
+}
+
 if (Test-Path $envFile) {
     Get-Content $envFile | ForEach-Object {
         if ($_ -match '^\s*([A-Z_]+)\s*=\s*(.+)\s*$') {
@@ -154,6 +165,12 @@ if (Test-Path $envFile) {
             }
         }
     }
+}
+
+if (-not $env:GIPHY_API_KEY) {
+    warn "GIPHY_API_KEY is not set -- GIF picker will be disabled."
+    info "Get a key at https://developers.giphy.com/ and add it to apps/mobile/.env"
+    Write-Host ""
 }
 
 # -- Build Flutter args --------------------------------------------------------
