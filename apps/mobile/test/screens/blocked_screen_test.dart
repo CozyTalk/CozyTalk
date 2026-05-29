@@ -18,16 +18,12 @@ class _FakeBlockNotifier extends BlockNotifier {
   BlockState build() => _initial;
 
   @override
-  Future<void> unblock(String ownerUid, String targetUid) async {
+  Future<void> unblock(String targetUid) async {
     unblockCallCount++;
   }
 
   @override
-  Future<void> block(
-    String ownerUid,
-    String targetUid, {
-    String? displayName,
-  }) async {}
+  Future<void> block(String targetUid, {String? displayName}) async {}
 }
 
 class _FakeAuthNotifier extends AuthNotifier {

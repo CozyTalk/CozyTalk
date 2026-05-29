@@ -46,16 +46,12 @@ class _FakeBlockNotifier extends BlockNotifier {
   BlockState build() => _initial;
 
   @override
-  Future<void> block(
-    String ownerUid,
-    String targetUid, {
-    String? displayName,
-  }) async {
+  Future<void> block(String targetUid, {String? displayName}) async {
     blockCallCount++;
   }
 
   @override
-  Future<void> unblock(String ownerUid, String targetUid) async {
+  Future<void> unblock(String targetUid) async {
     unblockCallCount++;
   }
 }
@@ -278,7 +274,7 @@ void main() {
       );
       addTearDown(container.dispose);
 
-      await container.read(blockNotifierProvider.notifier).unblock('o', 't');
+      await container.read(blockNotifierProvider.notifier).unblock('t');
       expect(fake.unblockCallCount, 1);
     });
 
@@ -291,7 +287,7 @@ void main() {
 
       await container
           .read(blockNotifierProvider.notifier)
-          .block('o', 't', displayName: 'Alice');
+          .block('t', displayName: 'Alice');
       expect(fake.blockCallCount, 1);
     });
   });

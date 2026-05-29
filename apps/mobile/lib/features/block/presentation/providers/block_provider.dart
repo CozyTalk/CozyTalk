@@ -102,11 +102,9 @@ class BlockNotifier extends Notifier<BlockState> {
     return const BlockState(status: BlockStatus.loading);
   }
 
-  Future<void> block(
-    String ownerUid,
-    String targetUid, {
-    String? displayName,
-  }) async {
+  Future<void> block(String targetUid, {String? displayName}) async {
+    final ownerUid = ref.read(authNotifierProvider).user?.uid;
+    if (ownerUid == null) return;
     if (state.isSubmitting) return;
     state = state.copyWith(isSubmitting: true, error: null);
     try {
@@ -119,7 +117,9 @@ class BlockNotifier extends Notifier<BlockState> {
     }
   }
 
-  Future<void> unblock(String ownerUid, String targetUid) async {
+  Future<void> unblock(String targetUid) async {
+    final ownerUid = ref.read(authNotifierProvider).user?.uid;
+    if (ownerUid == null) return;
     if (state.isSubmitting) return;
     state = state.copyWith(isSubmitting: true, error: null);
     try {

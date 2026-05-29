@@ -2,7 +2,6 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../features/auth/presentation/providers/auth_provider.dart';
 import '../features/block/presentation/providers/block_provider.dart';
 import '../theme/app_colors.dart';
 import '../models/friend.dart';
@@ -24,7 +23,6 @@ class _BlockedScreenState extends ConsumerState<BlockedScreen> {
   @override
   Widget build(BuildContext context) {
     final blockState = ref.watch(blockNotifierProvider);
-    final uid = ref.watch(authNotifierProvider).user?.uid ?? '';
     final blocked = blockState.blockedUsers;
 
     return Scaffold(
@@ -69,7 +67,7 @@ class _BlockedScreenState extends ConsumerState<BlockedScreen> {
                         isOnline: false,
                         interest: '',
                       );
-                      return _buildBlockedCard(context, friend, user.uid, uid);
+                      return _buildBlockedCard(context, friend, user.uid);
                     },
                   ),
           ),
@@ -139,7 +137,6 @@ class _BlockedScreenState extends ConsumerState<BlockedScreen> {
     BuildContext context,
     Friend friend,
     String targetUid,
-    String ownerUid,
   ) {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -209,7 +206,7 @@ class _BlockedScreenState extends ConsumerState<BlockedScreen> {
               username: friend.displayName,
               onConfirm: () => ref
                   .read(blockNotifierProvider.notifier)
-                  .unblock(ownerUid, targetUid),
+                  .unblock(targetUid),
             ),
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
