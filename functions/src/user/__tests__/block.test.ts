@@ -24,6 +24,16 @@ const mockOrderBy = jest.fn();
 const mockDoc = jest.fn();
 const mockCollection = jest.fn();
 
+// `runTransaction(fn)` invokes the callback with a tx that proxies the same
+// terminal Firestore mocks, so the get/set/update expectations below apply
+// unchanged whether the CF reads/writes directly or inside a transaction.
+const mockRunTransaction = jest.fn(
+  (fn: (tx: unknown) => unknown) =>
+    Promise.resolve(
+      fn({get: mockGet, set: mockSet, update: mockUpdate, delete: mockDelete}),
+    ),
+);
+
 // `orderBy` returns an object whose `get` resolves to a snap.
 mockOrderBy.mockReturnValue({get: mockGet});
 
@@ -44,7 +54,10 @@ mockCollection.mockReturnValue({
 });
 
 // `firestore()` returns an object with `collection`.
-const mockFirestore = jest.fn().mockReturnValue({collection: mockCollection});
+const mockFirestore = jest.fn().mockReturnValue({
+  collection: mockCollection,
+  runTransaction: mockRunTransaction,
+});
 
 jest.mock("firebase-admin", () => ({
   firestore: mockFirestore,
@@ -150,7 +163,10 @@ describe("blockUser", () => {
       collection: mockCollection,
     });
     mockOrderBy.mockReturnValue({get: mockGet});
-    mockFirestore.mockReturnValue({collection: mockCollection});
+    mockFirestore.mockReturnValue({
+      collection: mockCollection,
+      runTransaction: mockRunTransaction,
+    });
   });
 
   test("throws unauthenticated if not signed in", async () => {
@@ -187,6 +203,9 @@ describe("blockUser", () => {
     const result = await invoke(blockUser as {run: (r: CallableRequest) => unknown}, req);
     expect(result).toEqual({success: true});
     expect(mockSet).toHaveBeenCalledTimes(1);
+    // The read-check-write sequence must run inside a transaction so the
+    // 5-block cap cannot be bypassed by concurrent calls.
+    expect(mockRunTransaction).toHaveBeenCalledTimes(1);
   });
 
   test("returns max_blocked_reached when at limit (5 blocked)", async () => {
@@ -237,7 +256,10 @@ describe("unblockUser", () => {
       delete: mockDelete,
       collection: mockCollection,
     });
-    mockFirestore.mockReturnValue({collection: mockCollection});
+    mockFirestore.mockReturnValue({
+      collection: mockCollection,
+      runTransaction: mockRunTransaction,
+    });
   });
 
   test("throws unauthenticated if not signed in", async () => {
@@ -283,7 +305,10 @@ describe("adminGetBlockedUsers", () => {
       collection: mockCollection,
     });
     mockOrderBy.mockReturnValue({get: mockGet});
-    mockFirestore.mockReturnValue({collection: mockCollection});
+    mockFirestore.mockReturnValue({
+      collection: mockCollection,
+      runTransaction: mockRunTransaction,
+    });
   });
 
   test("throws unauthenticated if not signed in", async () => {

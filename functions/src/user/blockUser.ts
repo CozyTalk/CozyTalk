@@ -9,7 +9,7 @@ const MAX_BLOCKED_USERS = 5;
  * Blocks a target user. Enforces a maximum of 5 blocked users per caller.
  * Writing when the target is already blocked is idempotent (updates displayName).
  * @param {{ targetUid: string, displayName?: string }} data
- * @return {{ success: true } | { success: false, reason: "max_blocked_reached" | "already_blocked" }}
+ * @return {{ success: true } | { success: false, reason: "max_blocked_reached" }}
  */
 export const blockUser = onCall(
   {invoker: "public", cors: true},
@@ -45,34 +45,44 @@ export const blockUser = onCall(
       .collection("blocked");
     const targetRef = blockedCollRef.doc(targetUid);
 
-    const [existingSnap, countSnap] = await Promise.all([
-      targetRef.get(),
-      blockedCollRef.get(),
-    ]);
-
-    if (existingSnap.exists) {
-      // Idempotent — update displayName if provided, then confirm success.
-      if (typeof displayName === "string") {
-        await targetRef.update({displayName});
+    // Read + limit-check + write must be atomic. Without a transaction, two
+    // concurrent calls could both read size = 4, both pass the cap check, and
+    // both write — leaving the caller with 6 blocked users. The transaction
+    // serializes them so the second sees the first's write and is rejected.
+    const outcome = await db.runTransaction(async (tx) => {
+      const existingSnap = await tx.get(targetRef);
+      if (existingSnap.exists) {
+        // Idempotent — update displayName if provided, then confirm success.
+        if (typeof displayName === "string") {
+          tx.update(targetRef, {displayName});
+        }
+        return "already_blocked" as const;
       }
+
+      const countSnap = await tx.get(blockedCollRef);
+      if (countSnap.size >= MAX_BLOCKED_USERS) {
+        return "max_blocked_reached" as const;
+      }
+
+      tx.set(targetRef, {
+        blockedUid: targetUid,
+        displayName: typeof displayName === "string" ? displayName : null,
+        blockedAt: FieldValue.serverTimestamp(),
+      });
+      return "blocked" as const;
+    });
+
+    if (outcome === "max_blocked_reached") {
+      return {success: false, reason: "max_blocked_reached"};
+    }
+    if (outcome === "already_blocked") {
       logger.info("blockUser: already blocked, idempotent update", {
         callerUid,
         targetUid,
       });
-      return {success: true};
+    } else {
+      logger.info("blockUser: user blocked", {callerUid, targetUid});
     }
-
-    if (countSnap.size >= MAX_BLOCKED_USERS) {
-      return {success: false, reason: "max_blocked_reached"};
-    }
-
-    await targetRef.set({
-      blockedUid: targetUid,
-      displayName: typeof displayName === "string" ? displayName : null,
-      blockedAt: FieldValue.serverTimestamp(),
-    });
-
-    logger.info("blockUser: user blocked", {callerUid, targetUid});
     return {success: true};
   },
 );

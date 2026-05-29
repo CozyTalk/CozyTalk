@@ -13,7 +13,7 @@ Default region: `us-central1` (unless noted)
 `functions/src/user/blockUser.ts`
 - **Trigger:** callable (authenticated)
 - **Input:** `{ targetUid: string, displayName?: string }`
-- **Process:** Validates caller ≠ target. Reads `users/{callerUid}/blocked/` to enforce max 5 blocked users. If target is already blocked, idempotently updates `displayName`. Otherwise writes `{ blockedUid, displayName, blockedAt }` to `users/{callerUid}/blocked/{targetUid}`.
+- **Process:** Validates caller ≠ target. In a Firestore transaction, reads `users/{callerUid}/blocked/` and enforces the max 5 blocked users atomically (so concurrent calls cannot bypass the cap). If target is already blocked, idempotently updates `displayName`. Otherwise writes `{ blockedUid, displayName, blockedAt }` to `users/{callerUid}/blocked/{targetUid}`.
 - **Output:** `{ success: true }` or `{ success: false, reason: "max_blocked_reached" }`
 
 ### `unblockUser`
