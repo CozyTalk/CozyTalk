@@ -14,6 +14,7 @@ import 'package:mobile/features/matchmaking/domain/entities/room.dart';
 import 'package:mobile/features/matchmaking/presentation/providers/matchmaking_provider.dart';
 import 'package:mobile/features/profile/domain/entities/profile_user.dart';
 import 'package:mobile/features/profile/presentation/providers/profile_provider.dart';
+import 'package:mobile/features/jukebox/presentation/providers/jukebox_provider.dart';
 import 'package:mobile/screens/chat_screen.dart';
 import 'package:mobile/shared/avatar_overlay.dart';
 import 'package:mobile/shared/layered_avatar.dart';
@@ -176,6 +177,17 @@ class _FakeFriendsNotifierForChat extends FriendsNotifier {
   void clearError() {}
 }
 
+class _FakeJukeboxNotifier extends JukeboxNotifier {
+  @override
+  JukeboxUiState build() => const JukeboxUiState();
+
+  @override
+  void enterRoom(String roomId) {}
+
+  @override
+  void leaveRoom() {}
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 const _kArgs = {
@@ -218,6 +230,7 @@ Widget _buildScreen(
       friendsNotifierProvider.overrideWith(
         () => friendsFake ?? _FakeFriendsNotifierForChat(),
       ),
+      jukeboxNotifierProvider.overrideWith(() => _FakeJukeboxNotifier()),
     ],
     child: MaterialApp(
       onGenerateRoute: (settings) {

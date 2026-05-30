@@ -11,7 +11,9 @@ import '../features/matchmaking/domain/entities/matchmaking_status.dart';
 import '../features/matchmaking/presentation/providers/matchmaking_provider.dart';
 import '../theme/app_colors.dart';
 import '../dialogs/leave_room_dialog.dart';
-import '../dialogs/song_dialog.dart';
+import '../features/jukebox/presentation/providers/jukebox_provider.dart';
+import '../features/jukebox/presentation/widgets/jukebox_chat_player.dart';
+import '../features/jukebox/presentation/widgets/jukebox_sheet.dart';
 import '../dialogs/user_profile_dialog.dart';
 import '../shared/avatar_overlay.dart';
 import '../shared/layered_avatar.dart';
@@ -52,19 +54,14 @@ class ChatScreen extends ConsumerStatefulWidget {
   ConsumerState<ChatScreen> createState() => _ChatScreenState();
 }
 
-class _ChatScreenState extends ConsumerState<ChatScreen>
-    with SingleTickerProviderStateMixin {
+class _ChatScreenState extends ConsumerState<ChatScreen> {
   final TextEditingController _msgController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final FocusNode _focusNode = FocusNode();
   final bool _isBlocked = false;
   Timer? _typingTimer;
 
-  // ── Song panel animation ──
-  bool _songPanelOpen = false;
-  late final AnimationController _songCtrl;
-  late final Animation<Offset> _songSlide;
-
+  late final JukeboxNotifier _jukeboxNotifier;
   bool _friendRequestSent = false;
   String? _partnerUid;
   String _myThoughts = 'Care to share?';
@@ -77,14 +74,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
   @override
   void initState() {
     super.initState();
-    _songCtrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 260),
-    );
-    _songSlide = Tween<Offset>(
-      begin: const Offset(0, -1),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(parent: _songCtrl, curve: Curves.easeOutCubic));
+    _jukeboxNotifier = ref.read(jukeboxNotifierProvider.notifier);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _scrollToBottom();
       final matchState = ref.read(matchmakingNotifierProvider);
@@ -98,6 +88,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
             currentUserId: authUser.uid,
             currentUserDisplayName: authUser.displayName,
           );
+      _jukeboxNotifier.enterRoom(roomId);
       final room = ref.read(matchmakingNotifierProvider).currentRoom;
       final partnerUid = room?.users.firstWhere(
         (uid) => uid != authUser.uid,
@@ -132,22 +123,23 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
   @override
   void dispose() {
     _typingTimer?.cancel();
-    _songCtrl.dispose();
+    _jukeboxNotifier.leaveRoom();
     _msgController.dispose();
     _scrollController.dispose();
     _focusNode.dispose();
     super.dispose();
   }
 
-  void _openSongPanel() {
-    setState(() => _songPanelOpen = true);
-    _songCtrl.forward();
-  }
-
-  void _closeSongPanel() {
-    _songCtrl.reverse().then((_) {
-      if (mounted) setState(() => _songPanelOpen = false);
-    });
+  void _openJukebox(String roomId) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => JukeboxSheet(roomId: roomId),
+    );
   }
 
   void _scrollToBottom() {
@@ -406,6 +398,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
                           partnerThought,
                           _myInterest,
                           partnerInterest,
+                          roomId,
                         ),
                         Expanded(
                           child: Stack(
@@ -443,23 +436,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
                         blocked ? _buildBlockedBar() : _buildInputBar(),
                       ],
                     ),
-                    // Barrier
-                    if (_songPanelOpen)
-                      GestureDetector(
-                        onTap: _closeSongPanel,
-                        behavior: HitTestBehavior.opaque,
-                        child: Container(color: Colors.black26),
-                      ),
-                    // Slide-down song panel
-                    Positioned(
-                      top: 0,
-                      left: 0,
-                      right: 0,
-                      child: SlideTransition(
-                        position: _songSlide,
-                        child: SongPanelBody(onClose: _closeSongPanel),
-                      ),
-                    ),
+                    // Floating YouTube player (native only; web uses headless player)
+                    JukeboxChatPlayer(roomId: roomId),
                   ],
                 ),
               ),
@@ -563,6 +541,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
     String partnerThought,
     String myInterest,
     String partnerInterest,
+    String roomId,
   ) {
     return SizedBox(
       height: 250,
@@ -621,7 +600,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
                 _sideBtn(
                   'Song',
                   'assets/images/icons/song.svg',
-                  _openSongPanel,
+                  () => _openJukebox(roomId),
                 ),
                 const SizedBox(height: 10),
                 _sideBtn(
