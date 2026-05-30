@@ -251,16 +251,13 @@ class FriendsDatasourceImpl implements FriendsDatasource {
     final docs = await Future.wait(
       uids.map((uid) => _firestore.collection('users').doc(uid).get()),
     );
-    return docs
-        .where((d) => d.exists)
-        .map((d) {
-          final data = Map<String, dynamic>.from(d.data()!);
-          return AppUser(
-            uid: d.id,
-            displayName: data['displayName'] as String? ?? '',
-          );
-        })
-        .toList();
+    return docs.where((d) => d.exists).map((d) {
+      final data = Map<String, dynamic>.from(d.data()!);
+      return AppUser(
+        uid: d.id,
+        displayName: data['displayName'] as String? ?? '',
+      );
+    }).toList();
   }
 
   static String _makeFriendshipId(String uid1, String uid2) {

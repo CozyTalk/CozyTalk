@@ -395,9 +395,7 @@ class MatchmakingNotifier extends Notifier<MatchmakingState> {
               return;
             }
             final currentUid =
-                ref
-                    .read(_matchmakingDatasourceProvider)
-                    .getCurrentUserId() ??
+                ref.read(_matchmakingDatasourceProvider).getCurrentUserId() ??
                 '';
             state = state.copyWith(
               currentRoom: room,

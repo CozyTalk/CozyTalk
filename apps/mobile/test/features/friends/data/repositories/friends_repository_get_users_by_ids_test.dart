@@ -23,8 +23,7 @@ class _FakeDatasource implements FriendsDatasource {
   Stream<List<FriendModel>> watchFriends() => Stream.value([]);
 
   @override
-  Stream<List<FriendRequestModel>> watchIncomingRequests() =>
-      Stream.value([]);
+  Stream<List<FriendRequestModel>> watchIncomingRequests() => Stream.value([]);
 
   @override
   Stream<List<FriendMessageModel>> watchMessages(String chatRoomId) =>
@@ -34,8 +33,7 @@ class _FakeDatasource implements FriendsDatasource {
   Stream<bool> watchFriendPresence(String friendUid) => Stream.value(false);
 
   @override
-  Stream<String> watchFriendLastMessage(String chatRoomId) =>
-      Stream.value('');
+  Stream<String> watchFriendLastMessage(String chatRoomId) => Stream.value('');
 
   @override
   Stream<FriendRoomStatus?> watchFriendRoom(String friendUid) =>
@@ -81,9 +79,7 @@ void main() {
   group('FriendsRepositoryImpl.getUsersByIds', () {
     test('delegates uid list to datasource', () async {
       final ds = _FakeDatasource()
-        ..usersByIdResult = [
-          const AppUser(uid: 'u1', displayName: 'Alice'),
-        ];
+        ..usersByIdResult = [const AppUser(uid: 'u1', displayName: 'Alice')];
       final repo = FriendsRepositoryImpl(ds);
       await repo.getUsersByIds(['u1']);
       expect(ds.lastGetUsersByIds, ['u1']);
@@ -112,10 +108,7 @@ void main() {
     test('propagates datasource exception', () {
       final ds = _FakeDatasource()..error = Exception('Firestore error');
       final repo = FriendsRepositoryImpl(ds);
-      expect(
-        () => repo.getUsersByIds(['u1']),
-        throwsA(isA<Exception>()),
-      );
+      expect(() => repo.getUsersByIds(['u1']), throwsA(isA<Exception>()));
     });
   });
 }

@@ -30,9 +30,7 @@ void main() {
   });
 
   test('returns the AppUser list from repository', () async {
-    repo.usersById = [
-      const AppUser(uid: 'u3', displayName: 'Carol'),
-    ];
+    repo.usersById = [const AppUser(uid: 'u3', displayName: 'Carol')];
     final result = await usecase(['u3']);
     expect(result[0].uid, 'u3');
     expect(result[0].displayName, 'Carol');
