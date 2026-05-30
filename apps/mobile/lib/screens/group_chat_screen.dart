@@ -123,6 +123,9 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
   String _myThoughts = 'Care to share?';
   String _myDisplayName = '';
   String _myInterest = '';
+  // Accumulates uid→displayName from messages + typing events so names persist
+  // even before a member sends their first message.
+  final Map<String, String> _memberNameCache = {};
   final List<({_GroupMsg msg, int seq})> _localMessages = [];
   final List<_GroupMsg> _optimisticMessages = [];
   String? _pendingGifUrl;
@@ -406,9 +409,6 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
         chatState.currentUserId ??
         ref.watch(authNotifierProvider).user?.uid ??
         '';
-    final nameMap = <String, String>{
-      for (final m in chatState.messages) m.senderId: m.displayName,
-    };
     final myDisplayName = _myDisplayName.isNotEmpty
         ? _myDisplayName
         : (ref.watch(authNotifierProvider).user?.displayName ?? '');
@@ -416,13 +416,43 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
     final members = roomUsers.isEmpty
         ? ['Me']
         : roomUsers
-              .map((uid) => uid == myUid ? 'Me' : (nameMap[uid] ?? 'User'))
+              .map(
+                (uid) =>
+                    uid == myUid ? 'Me' : (_memberNameCache[uid] ?? 'User'),
+              )
               .toList();
 
     ref.listen(chatNotifierProvider.select((s) => s.status), (_, next) {
       if (next == SessionStatus.disconnected) {
         Navigator.of(context).popUntil((route) => route.isFirst);
       }
+    });
+
+    // Accumulate names from incoming messages into the persistent cache.
+    ref.listen(chatNotifierProvider.select((s) => s.messages), (_, msgs) {
+      bool changed = false;
+      for (final m in msgs) {
+        if (m.senderId != myUid &&
+            m.displayName.isNotEmpty &&
+            _memberNameCache[m.senderId] != m.displayName) {
+          _memberNameCache[m.senderId] = m.displayName;
+          changed = true;
+        }
+      }
+      if (changed) setState(() {});
+    });
+
+    // Accumulate names from typing events (transient, but populates early).
+    ref.listen(chatNotifierProvider.select((s) => s.typingUsers), (_, users) {
+      bool changed = false;
+      for (final u in users) {
+        if (u.displayName.isNotEmpty &&
+            _memberNameCache[u.uid] != u.displayName) {
+          _memberNameCache[u.uid] = u.displayName;
+          changed = true;
+        }
+      }
+      if (changed) setState(() {});
     });
 
     ref.listen(chatNotifierProvider.select((s) => s.messages.length), (
