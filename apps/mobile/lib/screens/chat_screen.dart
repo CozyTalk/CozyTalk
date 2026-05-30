@@ -193,14 +193,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
   }
 
   void _sendTopicCard() {
-    final seq = ref.read(chatNotifierProvider).messages.length;
-    setState(() {
-      _localMessages.add((
-        msg: ChatMessage(type: 'card', text: _pickCard()),
-        seq: seq,
-      ));
-    });
+    final cardPath = _pickCard();
+    setState(
+      () => _optimisticMessages.add(ChatMessage(type: 'card', text: cardPath)),
+    );
     _scrollToBottom();
+    ref.read(chatNotifierProvider.notifier).sendMessage('card::$cardPath');
   }
 
   void _sendGif(String url) {
@@ -239,18 +237,17 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
   }
 
   void _shuffleTopic() {
+    final cardPath = _pickCard();
     final seq = ref.read(chatNotifierProvider).messages.length;
     setState(() {
       _localMessages.add((
         msg: ChatMessage(type: 'system', text: 'Someone shuffled the topic!'),
         seq: seq,
       ));
-      _localMessages.add((
-        msg: ChatMessage(type: 'card', text: _pickCard()),
-        seq: seq,
-      ));
+      _optimisticMessages.add(ChatMessage(type: 'card', text: cardPath));
     });
     _scrollToBottom();
+    ref.read(chatNotifierProvider.notifier).sendMessage('card::$cardPath');
   }
 
   void _onWillPop() {
@@ -386,6 +383,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
 
   ChatMessage _toDisplay(chat_entity.ChatMessage msg, String? myUid) {
     final isMe = msg.senderId == myUid;
+    if (msg.text.startsWith('card::')) {
+      return ChatMessage(type: 'card', text: msg.text.substring(6));
+    }
+    if (msg.text.startsWith('system::')) {
+      return ChatMessage(type: 'system', text: msg.text.substring(8));
+    }
     final isGif = msg.text.contains('giphy.com');
     return ChatMessage(
       type: isGif ? (isMe ? 'gif' : 'gif_other') : (isMe ? 'me' : 'other'),

@@ -254,14 +254,14 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
   }
 
   void _sendTopicCard() {
-    final seq = ref.read(chatNotifierProvider).messages.length;
-    setState(() {
-      _localMessages.add((
-        msg: _GroupMsg(type: _MsgType.card, text: _pickCard()),
-        seq: seq,
-      ));
-    });
+    final cardPath = _pickCard();
+    setState(
+      () => _optimisticMessages.add(
+        _GroupMsg(type: _MsgType.card, text: cardPath),
+      ),
+    );
     _scrollToBottom();
+    ref.read(chatNotifierProvider.notifier).sendMessage('card::$cardPath');
   }
 
   void _sendGif(String url) {
@@ -311,6 +311,7 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
   }
 
   void _shuffleTopic() {
+    final cardPath = _pickCard();
     final seq = ref.read(chatNotifierProvider).messages.length;
     setState(() {
       _localMessages.add((
@@ -320,12 +321,10 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
         ),
         seq: seq,
       ));
-      _localMessages.add((
-        msg: _GroupMsg(type: _MsgType.card, text: _pickCard()),
-        seq: seq,
-      ));
+      _optimisticMessages.add(_GroupMsg(type: _MsgType.card, text: cardPath));
     });
     _scrollToBottom();
+    ref.read(chatNotifierProvider.notifier).sendMessage('card::$cardPath');
   }
 
   void _showLeaveForFriendChat() {
@@ -453,6 +452,12 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
 
   _GroupMsg _toGroupDisplay(chat_entity.ChatMessage msg, String? myUid) {
     final isMe = msg.senderId == myUid;
+    if (msg.text.startsWith('card::')) {
+      return _GroupMsg(type: _MsgType.card, text: msg.text.substring(6));
+    }
+    if (msg.text.startsWith('system::')) {
+      return _GroupMsg(type: _MsgType.system, text: msg.text.substring(8));
+    }
     final isGif = msg.text.contains('giphy.com');
     return _GroupMsg(
       type: isGif
