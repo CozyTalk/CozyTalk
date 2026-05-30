@@ -31,12 +31,20 @@ jobs:
 
       - run: flutter pub get
 
-      - run: dart run build_runner build --delete-conflicting-outputs
+      - run: dart run build_runner build
 
       - run: |
           flutter build web --release \
             --dart-define=USE_EMULATOR=false \
             --dart-define=GIPHY_API_KEY=${{ secrets.GIPHY_API_KEY }}
+
+      - name: Write version.json
+        run: |
+          printf '{"commit":"%s","ref":"%s","buildTime":"%s"}\n' \
+            "${{ github.sha }}" \
+            "${{ github.ref_name }}" \
+            "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            > build/web/version.json
 
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
