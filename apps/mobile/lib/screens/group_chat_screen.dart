@@ -7,6 +7,8 @@ import '../features/auth/presentation/providers/auth_provider.dart';
 import '../features/chat/domain/entities/chat_message.dart' as chat_entity;
 import '../features/chat/domain/entities/session_status.dart';
 import '../features/chat/presentation/providers/chat_provider.dart';
+import '../features/friends/domain/entities/app_user.dart';
+import '../features/friends/presentation/providers/friends_provider.dart';
 import '../features/matchmaking/presentation/providers/matchmaking_provider.dart';
 import '../theme/app_colors.dart';
 import '../dialogs/leave_room_dialog.dart';
@@ -21,7 +23,6 @@ import '../shared/friend_message_popup.dart';
 import '../theme/app_routes.dart';
 import '../models/friend.dart';
 import '../shared/gif_picker.dart';
-import '../shared/friend_request_popup.dart';
 import '../shared/info_dialog.dart';
 
 const _kThemeAssets = <String, String>{
@@ -107,8 +108,8 @@ class GroupChatScreen extends ConsumerStatefulWidget {
 
 class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
     with TickerProviderStateMixin {
+  // Keyed by partner UID after integration (was display name before).
   final Map<String, bool> _friendRequestSent = {};
-  final Map<String, bool> _friendAccepted = {};
   final Map<String, String> _knownNames = {};
   final TextEditingController _msgController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
@@ -275,53 +276,18 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
     setState(() => _pendingGifUrl = url);
   }
 
-  void _sendFriendRequest(String targetName) {
-    if (_friendRequestSent[targetName] == true) return;
-    setState(() => _friendRequestSent[targetName] = true);
+  void _sendFriendRequest(AppUser partner) {
+    final uid = partner.uid;
+    final friendsState = ref.read(friendsNotifierProvider);
+    if (friendsState.isLoading || _friendRequestSent[uid] == true) return;
+    setState(() => _friendRequestSent[uid] = true);
+    ref.read(friendsNotifierProvider.notifier).sendFriendRequest(partner);
     showInfoDialog(
       context,
       type: InfoDialogType.info,
       title: 'Friend Request Sent',
       message:
-          'Your friend request has been sent to $targetName.\nWaiting for them to accept.',
-    );
-    Future.delayed(const Duration(milliseconds: 1500), () {
-      if (!mounted) return;
-      showFriendRequestPopup(
-        context,
-        requesterName: targetName,
-        onAccept: () {
-          setState(() => _friendAccepted[targetName] = true);
-          showInfoDialog(
-            context,
-            type: InfoDialogType.success,
-            title: "You're now friends! 🎉",
-            message:
-                'You and $targetName are now friends.\nYou can find them in your friends list.',
-          );
-        },
-        onDecline: () => setState(() => _friendRequestSent[targetName] = false),
-      );
-    });
-  }
-
-  void _cancelFriendRequest(String targetName) {
-    if (_friendAccepted[targetName] == true) {
-      showInfoDialog(
-        context,
-        type: InfoDialogType.warning,
-        title: 'Cannot Cancel Request',
-        message:
-            '$targetName has already accepted your friend request.\nYou are now friends!',
-      );
-      return;
-    }
-    setState(() => _friendRequestSent[targetName] = false);
-    showInfoDialog(
-      context,
-      type: InfoDialogType.info,
-      title: 'Request Cancelled',
-      message: 'Your friend request to $targetName has been cancelled.',
+          'Your friend request has been sent to ${partner.displayName}.\nWaiting for them to accept.',
     );
   }
 
@@ -521,6 +487,21 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
               .map((uid) => uid == myUid ? 'Me' : (_knownNames[uid] ?? 'User'))
               .toList();
 
+    final partnerUids = matchState.partnerUids;
+    final partnersAsync = ref.watch(getUsersByIdsProvider(partnerUids));
+    final Map<String, AppUser> partnersMap = {
+      for (final u in (partnersAsync.value ?? <AppUser>[])) u.uid: u,
+    };
+
+    ref.listen<FriendsState>(friendsNotifierProvider, (prev, next) {
+      if (next.error != null && next.error != prev?.error) {
+        ScaffoldMessenger.of(context)
+          ..clearSnackBars()
+          ..showSnackBar(SnackBar(content: Text(next.error!)));
+        ref.read(friendsNotifierProvider.notifier).clearError();
+      }
+    });
+
     ref.listen(chatNotifierProvider.select((s) => s.status), (_, next) {
       if (next == SessionStatus.disconnected) {
         Navigator.of(context).popUntil((route) => route.isFirst);
@@ -574,11 +555,17 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
                           avatarState,
                           userProfile,
                           members,
+                          roomUsers,
+                          partnersMap,
                         ),
                         Expanded(
                           child: Stack(
                             children: [
-                              _buildMessageList(avatarState, chatState),
+                              _buildMessageList(
+                                avatarState,
+                                chatState,
+                                partnersMap,
+                              ),
                               Positioned(
                                 top: 0,
                                 left: 0,
@@ -627,11 +614,14 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
                         position: _panelSlide,
                         child: MembersPanelBody(
                           members: members,
+                          memberUids: roomUsers,
                           onClose: _closePanel,
                           avatarState: avatarState,
                           friendRequestSent: _friendRequestSent,
-                          onAddFriend: _sendFriendRequest,
-                          onCancelRequest: _cancelFriendRequest,
+                          onAddFriend: (uid) {
+                            final p = partnersMap[uid];
+                            if (p != null) _sendFriendRequest(p);
+                          },
                         ),
                       ),
                     ),
@@ -834,6 +824,8 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
     AvatarState avatarState,
     UserProfileState userProfile,
     List<String> members,
+    List<String> roomUsers,
+    Map<String, AppUser> partnersMap,
   ) {
     final count = members.length.clamp(1, 5);
     final preset = _layouts[count];
@@ -886,6 +878,10 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
                 final username = members[i];
                 final isMe = username == 'Me';
                 final displayName = isMe ? userProfile.username : username;
+                final memberUid = (i < roomUsers.length) ? roomUsers[i] : null;
+                final partner = (!isMe && memberUid != null)
+                    ? partnersMap[memberUid]
+                    : null;
                 final thought = isMe
                     ? (userProfile.thought.isNotEmpty
                           ? userProfile.thought
@@ -919,13 +915,11 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
                                   isMe: isMe,
                                   initialAdded:
                                       !isMe &&
-                                      (_friendRequestSent[displayName] == true),
-                                  onAddFriend: isMe
-                                      ? null
-                                      : () => _sendFriendRequest(displayName),
-                                  onCancelRequest: isMe
-                                      ? null
-                                      : () => _cancelFriendRequest(displayName),
+                                      memberUid != null &&
+                                      (_friendRequestSent[memberUid] == true),
+                                  onAddFriend: (!isMe && partner != null)
+                                      ? () => _sendFriendRequest(partner)
+                                      : null,
                                 ),
                               ),
                               child: LayeredAvatar(
@@ -1033,7 +1027,11 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
   }
 
   // ── Message list ──────────────────────────────────────────────────────────
-  Widget _buildMessageList(AvatarState avatarState, ChatState chatState) {
+  Widget _buildMessageList(
+    AvatarState avatarState,
+    ChatState chatState,
+    Map<String, AppUser> partnersMap,
+  ) {
     final backendMsgs = chatState.messages
         .map((m) => _toGroupDisplay(m, chatState.currentUserId))
         .toList();
@@ -1068,7 +1066,7 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
           _MsgType.card => _buildCard(msg.text),
           _MsgType.gif => _buildGifBubble(msg, avatarState, isMe: true),
           _MsgType.gifOther => _buildGifBubble(msg, avatarState, isMe: false),
-          _ => _buildChatBubble(msg, avatarState),
+          _ => _buildChatBubble(msg, avatarState, partnersMap),
         };
       },
     );
@@ -1130,7 +1128,11 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
     );
   }
 
-  Widget _buildChatBubble(_GroupMsg msg, AvatarState avatarState) {
+  Widget _buildChatBubble(
+    _GroupMsg msg,
+    AvatarState avatarState,
+    Map<String, AppUser> partnersMap,
+  ) {
     final isMe = msg.type == _MsgType.me;
     final maxW = MediaQuery.of(context).size.width * 0.60;
 
@@ -1148,16 +1150,23 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
               label: 'View user profile',
               button: true,
               child: GestureDetector(
-                onTap: () => showDialog(
-                  context: context,
-                  builder: (_) => UserProfileDialog(
-                    username: msg.sender ?? '',
-                    initialAdded: _friendRequestSent[msg.sender ?? ''] == true,
-                    onAddFriend: () => _sendFriendRequest(msg.sender ?? ''),
-                    onCancelRequest: () =>
-                        _cancelFriendRequest(msg.sender ?? ''),
-                  ),
-                ),
+                onTap: () {
+                  final partnerByName = partnersMap.values
+                      .where((u) => u.displayName == (msg.sender ?? ''))
+                      .firstOrNull;
+                  showDialog(
+                    context: context,
+                    builder: (_) => UserProfileDialog(
+                      username: msg.sender ?? '',
+                      initialAdded:
+                          partnerByName != null &&
+                          (_friendRequestSent[partnerByName.uid] == true),
+                      onAddFriend: partnerByName != null
+                          ? () => _sendFriendRequest(partnerByName)
+                          : null,
+                    ),
+                  );
+                },
                 child: LayeredAvatar(boxSize: 40),
               ),
             ),

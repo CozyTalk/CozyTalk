@@ -100,44 +100,48 @@ class _UserProfileDialogState extends ConsumerState<UserProfileDialog> {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             // Add friend / cancel request
-                            GestureDetector(
-                              onTap: _friendAdded
-                                  ? () {
-                                      Navigator.pop(context);
-                                      widget.onCancelRequest?.call();
-                                    }
-                                  : () {
-                                      setState(() => _friendAdded = true);
-                                      Navigator.pop(context);
-                                      widget.onAddFriend?.call();
-                                    },
-                              child: AnimatedContainer(
-                                duration: const Duration(milliseconds: 200),
-                                width: 44,
-                                height: 44,
-                                decoration: BoxDecoration(
-                                  color: _friendAdded
-                                      ? Colors.grey.shade200
-                                      : const Color(0xFFDCEBCE),
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(
+                            Semantics(
+                              label: 'Add friend',
+                              button: true,
+                              child: GestureDetector(
+                                onTap: _friendAdded
+                                    ? () {
+                                        Navigator.pop(context);
+                                        widget.onCancelRequest?.call();
+                                      }
+                                    : () {
+                                        setState(() => _friendAdded = true);
+                                        Navigator.pop(context);
+                                        widget.onAddFriend?.call();
+                                      },
+                                child: AnimatedContainer(
+                                  duration: const Duration(milliseconds: 200),
+                                  width: 44,
+                                  height: 44,
+                                  decoration: BoxDecoration(
                                     color: _friendAdded
-                                        ? Colors.grey.shade400
-                                        : const Color(0xFFC7D2B5),
-                                    width: 1,
+                                        ? Colors.grey.shade200
+                                        : const Color(0xFFDCEBCE),
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: _friendAdded
+                                          ? Colors.grey.shade400
+                                          : const Color(0xFFC7D2B5),
+                                      width: 1,
+                                    ),
                                   ),
-                                ),
-                                child: Center(
-                                  child: SvgPicture.asset(
-                                    'assets/images/icons/add_friend.svg',
-                                    width: 24,
-                                    height: 24,
-                                    colorFilter: _friendAdded
-                                        ? ColorFilter.mode(
-                                            Colors.grey.shade500,
-                                            BlendMode.srcIn,
-                                          )
-                                        : null,
+                                  child: Center(
+                                    child: SvgPicture.asset(
+                                      'assets/images/icons/add_friend.svg',
+                                      width: 24,
+                                      height: 24,
+                                      colorFilter: _friendAdded
+                                          ? ColorFilter.mode(
+                                              Colors.grey.shade500,
+                                              BlendMode.srcIn,
+                                            )
+                                          : null,
+                                    ),
                                   ),
                                 ),
                               ),

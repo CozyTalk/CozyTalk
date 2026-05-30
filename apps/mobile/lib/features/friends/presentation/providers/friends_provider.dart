@@ -15,6 +15,7 @@ import '../../domain/entities/friend_room_status.dart';
 import '../../domain/repositories/friends_repository.dart';
 import '../../domain/usecases/accept_friend_request.dart';
 import '../../domain/usecases/decline_friend_request.dart';
+import '../../domain/usecases/get_users_by_ids.dart';
 import '../../domain/usecases/remove_friend.dart';
 import '../../domain/usecases/send_friend_request.dart';
 import '../../domain/usecases/watch_all_users.dart';
@@ -79,6 +80,11 @@ final _watchFriendRoomProvider = Provider<WatchFriendRoom>(
 final friendsNotifierProvider = NotifierProvider<FriendsNotifier, FriendsState>(
   FriendsNotifier.new,
 );
+
+final getUsersByIdsProvider = FutureProvider.autoDispose
+    .family<List<AppUser>, List<String>>(
+      (ref, uids) => GetUsersByIds(ref.watch(friendsRepositoryProvider))(uids),
+    );
 
 const _sentinel = Object();
 
