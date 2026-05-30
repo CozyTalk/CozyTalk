@@ -404,7 +404,11 @@ Presence, typing, and nameQueue data are removed by `leaveRoom` CF on explicit l
 
 | Suite | Count | Location | Requires |
 |---|---|---|---|
+<<<<<<< HEAD
 | Flutter unit + widget | 1118 tests | `apps/mobile/test/` | Nothing |
+=======
+| Flutter unit + widget | 1115 tests | `apps/mobile/test/` | Nothing |
+>>>>>>> 53ffdc7a4deba892d5c968e72dcfa6c13cdd3499
 | Cloud Functions Jest | 172 unit tests | `functions/src/**/__tests__/*.test.ts` | `./dev.sh --emulator-only` |
 | Cloud Functions Jest (integration) | 7 live tests | `functions/src/matchmaking/__tests__/embeddingService.integration.test.ts` | Vertex AI credentials + `npm run test:embedding` |
 | Flutter integration | 43 tests | `apps/mobile/integration_test/matchmaking_advanced_test.dart` | Emulators + Android device |
