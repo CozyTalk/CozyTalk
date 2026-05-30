@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import '../features/auth/presentation/providers/auth_provider.dart';
+import '../features/avatar/presentation/providers/avatar_decoration_provider.dart';
 import '../shared/avatar_overlay.dart';
 import '../shared/layered_avatar.dart';
-import '../shared/user_profile.dart';
 import 'report_dialog.dart';
 
 class UserProfileDialog extends ConsumerStatefulWidget {
@@ -36,8 +37,13 @@ class _UserProfileDialogState extends ConsumerState<UserProfileDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final avatarState = ref.watch(avatarProvider);
-    final userProfile = ref.watch(userProfileProvider);
+    final myDisplayName =
+        ref.watch(authNotifierProvider).user?.displayName ?? '';
+    final decoState = ref.watch(avatarDecorationNotifierProvider);
+    final moodOverlay =
+        AvatarOverlays.mood[decoState.decoration?.moodKey ?? ''];
+    final accessoryOverlay =
+        AvatarOverlays.accessory[decoState.decoration?.hatKey ?? ''];
 
     return Dialog(
       backgroundColor: Colors.transparent,
@@ -86,9 +92,9 @@ class _UserProfileDialogState extends ConsumerState<UserProfileDialog> {
                           borderRadius: BorderRadius.circular(17),
                           child: LayeredAvatar(
                             boxSize: 100,
-                            moodOverlay: widget.isMe ? avatarState.mood : null,
+                            moodOverlay: widget.isMe ? moodOverlay : null,
                             accessoryOverlay: widget.isMe
-                                ? avatarState.accessory
+                                ? accessoryOverlay
                                 : null,
                           ),
                         ),
@@ -214,7 +220,7 @@ class _UserProfileDialogState extends ConsumerState<UserProfileDialog> {
                         ),
                         const SizedBox(height: 3),
                         Text(
-                          widget.isMe ? userProfile.username : widget.username,
+                          widget.isMe ? myDisplayName : widget.username,
                           style: const TextStyle(
                             fontSize: 15,
                             color: Colors.black87,
@@ -231,11 +237,8 @@ class _UserProfileDialogState extends ConsumerState<UserProfileDialog> {
                         ),
                         const SizedBox(height: 5),
                         Text(
-                          widget.isMe
-                              ? (userProfile.interest.isNotEmpty
-                                    ? userProfile.interest
-                                    : 'No interest set yet.')
-                              : 'I love TikTok very much. TikTok is the best application in the world.',
+                          // TODO: pass real interest as param once self/partner profile loading is separated
+                          'No interest set yet.',
                           style: const TextStyle(
                             fontSize: 14,
                             color: Colors.black87,

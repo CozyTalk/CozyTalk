@@ -325,6 +325,20 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
       }
     });
 
+    // Fallback: load partner profile if currentRoom became available after initState
+    ref.listen(matchmakingNotifierProvider.select((s) => s.currentRoom), (
+      _,
+      room,
+    ) {
+      if (room == null || _partnerUid != null) return;
+      final myUid = ref.read(authNotifierProvider).user?.uid;
+      if (myUid == null) return;
+      final uid = room.users.firstWhere((u) => u != myUid, orElse: () => '');
+      if (uid.isEmpty) return;
+      _partnerUid = uid;
+      ref.read(profileNotifierProvider.notifier).load(uid);
+    });
+
     ref.listen(matchmakingNotifierProvider.select((s) => s.status), (
       prev,
       next,
