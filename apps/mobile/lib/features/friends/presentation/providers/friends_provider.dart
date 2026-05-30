@@ -259,8 +259,14 @@ class FriendsNotifier extends Notifier<FriendsState> {
 
   Future<void> sendFriendRequest(AppUser toUser) async {
     if (state.isLoading) return;
-    final myDisplayName =
-        ref.read(authNotifierProvider).user?.displayName ?? 'Anonymous';
+    final authUser = ref.read(authNotifierProvider).user;
+    if (authUser?.email == null) {
+      state = state.copyWith(
+        error: 'Please sign in with an account to add friends.',
+      );
+      return;
+    }
+    final myDisplayName = authUser?.displayName ?? 'Anonymous';
     state = state.copyWith(isLoading: true, error: null);
     try {
       await ref.read(_sendFriendRequestProvider)(
