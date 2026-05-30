@@ -204,9 +204,8 @@ class _BlockedScreenState extends ConsumerState<BlockedScreen> {
             onTap: () => showConfirmUnblockDialog(
               context: context,
               username: friend.displayName,
-              onConfirm: () => ref
-                  .read(blockNotifierProvider.notifier)
-                  .unblock(targetUid),
+              onConfirm: () =>
+                  ref.read(blockNotifierProvider.notifier).unblock(targetUid),
             ),
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
