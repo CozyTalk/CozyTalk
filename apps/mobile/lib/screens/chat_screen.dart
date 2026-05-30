@@ -21,8 +21,10 @@ import '../shared/friend_message_popup.dart';
 import '../theme/app_routes.dart';
 import '../models/friend.dart';
 import '../shared/gif_picker.dart';
-import '../shared/friend_request_popup.dart';
 import '../shared/info_dialog.dart';
+import '../features/friends/domain/entities/app_user.dart';
+import '../features/friends/presentation/providers/friends_provider.dart';
+import '../features/profile/presentation/providers/profile_provider.dart';
 
 // ── Card assets ────────────────────────────────────────────────────────────
 const _cardAssets = [
@@ -38,7 +40,8 @@ String _pickCard() => _cardAssets[Random().nextInt(_cardAssets.length)];
 
 // ── Message model ──────────────────────────────────────────────────────────
 class ChatMessage {
-  final String type; // 'warning' | 'system' | 'me' | 'other' | 'card' | 'gif'
+  final String
+  type; // 'warning' | 'system' | 'me' | 'other' | 'card' | 'gif' | 'gif_other'
   final String text; // for 'card' = asset image path
   final String? time;
   ChatMessage({required this.type, required this.text, this.time});
@@ -66,10 +69,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
   late final AnimationController _songCtrl;
   late final Animation<Offset> _songSlide;
 
-  String friendMood = 'I love TikTok very much.';
   bool _friendRequestSent = false;
-  bool _friendAccepted = false;
+  String? _partnerUid;
   final List<({ChatMessage msg, int seq})> _localMessages = [];
+  final List<ChatMessage> _optimisticMessages = [];
   String? _pendingGifUrl;
 
   @override
@@ -96,6 +99,15 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
             currentUserId: authUser.uid,
             currentUserDisplayName: authUser.displayName,
           );
+      final room = ref.read(matchmakingNotifierProvider).currentRoom;
+      final partnerUid = room?.users.firstWhere(
+        (uid) => uid != authUser.uid,
+        orElse: () => '',
+      );
+      if (partnerUid != null && partnerUid.isNotEmpty) {
+        _partnerUid = partnerUid;
+        ref.read(profileNotifierProvider.notifier).load(partnerUid);
+      }
     });
     // Mock: friend sends a message after 3 seconds
     _friendMsgTimer = Timer(const Duration(seconds: 3), () {
@@ -158,12 +170,18 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
     bool sent = false;
     if (_pendingGifUrl != null) {
       final url = _pendingGifUrl!;
-      setState(() => _pendingGifUrl = null);
+      setState(() {
+        _pendingGifUrl = null;
+        _optimisticMessages.add(ChatMessage(type: 'gif', text: url));
+      });
       await notifier.sendMessage(url);
       sent = true;
     }
     final text = _msgController.text.trim();
     if (text.isNotEmpty) {
+      setState(() {
+        _optimisticMessages.add(ChatMessage(type: 'me', text: text));
+      });
       notifier.sendMessage(text);
       notifier.setTyping(false);
       _typingTimer?.cancel();
@@ -189,53 +207,34 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
     setState(() => _pendingGifUrl = url);
   }
 
-  void _sendFriendRequest([String name = 'kaitom']) {
+  void _sendFriendRequest([String name = '']) {
     if (_friendRequestSent) return;
+    final targetName = name.isNotEmpty ? name : 'your match';
     setState(() => _friendRequestSent = true);
+    if (_partnerUid != null && _partnerUid!.isNotEmpty) {
+      ref
+          .read(friendsNotifierProvider.notifier)
+          .sendFriendRequest(
+            AppUser(uid: _partnerUid!, displayName: targetName),
+          );
+    }
     showInfoDialog(
       context,
       type: InfoDialogType.info,
       title: 'Friend Request Sent',
       message:
-          'Your friend request has been sent to $name.\nWaiting for them to accept.',
+          'Your friend request has been sent to $targetName.\nWaiting for them to accept.',
     );
-    Future.delayed(const Duration(milliseconds: 1500), () {
-      if (!mounted) return;
-      showFriendRequestPopup(
-        context,
-        requesterName: name,
-        onAccept: () {
-          setState(() => _friendAccepted = true);
-          showInfoDialog(
-            context,
-            type: InfoDialogType.success,
-            title: "You're now friends! 🎉",
-            message:
-                'You and $name are now friends.\nYou can find them in your friends list.',
-          );
-        },
-        onDecline: () => setState(() => _friendRequestSent = false),
-      );
-    });
   }
 
-  void _cancelFriendRequest([String name = 'kaitom']) {
-    if (_friendAccepted) {
-      showInfoDialog(
-        context,
-        type: InfoDialogType.warning,
-        title: 'Cannot Cancel Request',
-        message:
-            '$name has already accepted your friend request.\nYou are now friends!',
-      );
-      return;
-    }
+  void _cancelFriendRequest([String name = '']) {
     setState(() => _friendRequestSent = false);
     showInfoDialog(
       context,
       type: InfoDialogType.info,
       title: 'Request Cancelled',
-      message: 'Your friend request to $name has been cancelled.',
+      message:
+          'Your friend request to ${name.isNotEmpty ? name : 'your match'} has been cancelled.',
     );
   }
 
@@ -395,6 +394,14 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
     );
   }
 
+  String? _findPartnerDisplayName(ChatState chatState) {
+    final myUid = chatState.currentUserId ?? '';
+    for (final m in chatState.messages) {
+      if (m.senderId != myUid) return m.displayName;
+    }
+    return null;
+  }
+
   @override
   Widget build(BuildContext context) {
     final args =
@@ -409,6 +416,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
     final avatarState = ref.watch(avatarProvider);
     final userProfile = ref.watch(userProfileProvider);
     final chatState = ref.watch(chatNotifierProvider);
+    final profileState = ref.watch(profileNotifierProvider);
+    final partnerName =
+        profileState.profile?.displayName ??
+        _findPartnerDisplayName(chatState) ??
+        '';
+    final partnerThought = profileState.profile?.thoughts ?? 'Care to share?';
     final myMood = userProfile.thought.isNotEmpty
         ? userProfile.thought
         : 'Care to share?';
@@ -434,7 +447,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
       prev,
       next,
     ) {
-      if ((prev ?? 0) < next) _scrollToBottom();
+      if ((prev ?? 0) < next) {
+        if (_optimisticMessages.isNotEmpty) {
+          setState(() => _optimisticMessages.clear());
+        }
+        _scrollToBottom();
+      }
     });
 
     return PopScope(
@@ -459,11 +477,17 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
                           avatarState,
                           myMood,
                           userProfile.username,
+                          partnerName,
+                          partnerThought,
                         ),
                         Expanded(
                           child: Stack(
                             children: [
-                              _buildMessageList(avatarState, chatState),
+                              _buildMessageList(
+                                avatarState,
+                                chatState,
+                                partnerName,
+                              ),
                               Positioned(
                                 top: 0,
                                 left: 0,
@@ -606,6 +630,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
     AvatarState avatarState,
     String myMood,
     String myUsername,
+    String partnerName,
+    String partnerThought,
   ) {
     return SizedBox(
       height: 250,
@@ -632,8 +658,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     _StaticAvatar(
-                      username: 'kaitom',
-                      moodText: friendMood,
+                      username: partnerName,
+                      moodText: partnerThought,
                       isMe: false,
                       boxWidth: eachW,
                       onFriendRequest: _sendFriendRequest,
@@ -709,7 +735,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
   }
 
   // ── Message list ──────────────────────────────────────────────────────────
-  Widget _buildMessageList(AvatarState avatarState, ChatState chatState) {
+  Widget _buildMessageList(
+    AvatarState avatarState,
+    ChatState chatState,
+    String partnerName,
+  ) {
     final backendMsgs = chatState.messages
         .map((m) => _toDisplay(m, chatState.currentUserId))
         .toList();
@@ -723,7 +753,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
       }
       if (i < backendMsgs.length) merged.add(backendMsgs[i]);
     }
-    final displayMessages = merged;
+    final displayMessages = [...merged, ..._optimisticMessages];
     final isTyping = chatState.typingUsers.isNotEmpty;
     final itemCount = displayMessages.length + (isTyping ? 1 : 0);
 
@@ -739,11 +769,25 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
         return switch (msg.type) {
           'warning' => _buildWarning(msg.text),
           'system' => _buildSystem(msg),
-          'me' => _buildBubble(msg, isMe: true, avatarState: avatarState),
-          'other' => _buildBubble(msg, isMe: false),
+          'me' => _buildBubble(
+            msg,
+            isMe: true,
+            avatarState: avatarState,
+            partnerName: partnerName,
+          ),
+          'other' => _buildBubble(msg, isMe: false, partnerName: partnerName),
           'card' => _buildCard(msg.text),
-          'gif' => _buildGifBubble(msg, isMe: true, avatarState: avatarState),
-          'gif_other' => _buildGifBubble(msg, isMe: false),
+          'gif' => _buildGifBubble(
+            msg,
+            isMe: true,
+            avatarState: avatarState,
+            partnerName: partnerName,
+          ),
+          'gif_other' => _buildGifBubble(
+            msg,
+            isMe: false,
+            partnerName: partnerName,
+          ),
           _ => const SizedBox.shrink(),
         };
       },
@@ -804,6 +848,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
     ChatMessage msg, {
     required bool isMe,
     AvatarState? avatarState,
+    String partnerName = '',
   }) {
     final maxW = MediaQuery.of(context).size.width * 0.62;
     return Padding(
@@ -819,10 +864,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
               onTap: () => showDialog(
                 context: context,
                 builder: (_) => UserProfileDialog(
-                  username: 'kaitom',
+                  username: partnerName,
                   initialAdded: _friendRequestSent,
-                  onAddFriend: () => _sendFriendRequest(),
-                  onCancelRequest: () => _cancelFriendRequest(),
+                  onAddFriend: () => _sendFriendRequest(partnerName),
+                  onCancelRequest: () => _cancelFriendRequest(partnerName),
                 ),
               ),
               child: LayeredAvatar(boxSize: 40),
@@ -877,6 +922,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
     ChatMessage msg, {
     required bool isMe,
     AvatarState? avatarState,
+    String partnerName = '',
   }) {
     final maxW = MediaQuery.of(context).size.width * 0.55;
     final gifWidget = Container(
@@ -918,7 +964,18 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           if (!isMe) ...[
-            LayeredAvatar(boxSize: 40),
+            GestureDetector(
+              onTap: () => showDialog(
+                context: context,
+                builder: (_) => UserProfileDialog(
+                  username: partnerName,
+                  initialAdded: _friendRequestSent,
+                  onAddFriend: () => _sendFriendRequest(partnerName),
+                  onCancelRequest: () => _cancelFriendRequest(partnerName),
+                ),
+              ),
+              child: LayeredAvatar(boxSize: 40),
+            ),
             const SizedBox(width: 8),
             gifWidget,
             const SizedBox(width: 6),

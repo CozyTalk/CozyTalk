@@ -21,8 +21,9 @@ import '../shared/friend_message_popup.dart';
 import '../theme/app_routes.dart';
 import '../models/friend.dart';
 import '../shared/gif_picker.dart';
-import '../shared/friend_request_popup.dart';
 import '../shared/info_dialog.dart';
+import '../features/friends/domain/entities/app_user.dart';
+import '../features/friends/presentation/providers/friends_provider.dart';
 
 // ── Card assets ────────────────────────────────────────────────────────────
 const _cardAssets = [
@@ -119,6 +120,7 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
   late final Animation<Offset> _songSlide;
 
   final List<({_GroupMsg msg, int seq})> _localMessages = [];
+  final List<_GroupMsg> _optimisticMessages = [];
   String? _pendingGifUrl;
 
   @override
@@ -229,12 +231,18 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
     bool sent = false;
     if (_pendingGifUrl != null) {
       final url = _pendingGifUrl!;
-      setState(() => _pendingGifUrl = null);
+      setState(() {
+        _pendingGifUrl = null;
+        _optimisticMessages.add(_GroupMsg(type: _MsgType.gif, text: url));
+      });
       await notifier.sendMessage(url);
       sent = true;
     }
     final text = _msgController.text.trim();
     if (text.isNotEmpty) {
+      setState(() {
+        _optimisticMessages.add(_GroupMsg(type: _MsgType.me, text: text));
+      });
       notifier.sendMessage(text);
       notifier.setTyping(false);
       _typingTimer?.cancel();
@@ -263,6 +271,16 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
   void _sendFriendRequest(String targetName) {
     if (_friendRequestSent[targetName] == true) return;
     setState(() => _friendRequestSent[targetName] = true);
+    final chatState = ref.read(chatNotifierProvider);
+    final targetUid = chatState.messages
+        .cast<chat_entity.ChatMessage?>()
+        .firstWhere((m) => m?.displayName == targetName, orElse: () => null)
+        ?.senderId;
+    if (targetUid != null) {
+      ref
+          .read(friendsNotifierProvider.notifier)
+          .sendFriendRequest(AppUser(uid: targetUid, displayName: targetName));
+    }
     showInfoDialog(
       context,
       type: InfoDialogType.info,
@@ -270,24 +288,6 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
       message:
           'Your friend request has been sent to $targetName.\nWaiting for them to accept.',
     );
-    Future.delayed(const Duration(milliseconds: 1500), () {
-      if (!mounted) return;
-      showFriendRequestPopup(
-        context,
-        requesterName: targetName,
-        onAccept: () {
-          setState(() => _friendAccepted[targetName] = true);
-          showInfoDialog(
-            context,
-            type: InfoDialogType.success,
-            title: "You're now friends! 🎉",
-            message:
-                'You and $targetName are now friends.\nYou can find them in your friends list.',
-          );
-        },
-        onDecline: () => setState(() => _friendRequestSent[targetName] = false),
-      );
-    });
   }
 
   void _cancelFriendRequest(String targetName) {
@@ -505,7 +505,12 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
       prev,
       next,
     ) {
-      if ((prev ?? 0) < next) _scrollToBottom();
+      if ((prev ?? 0) < next) {
+        if (_optimisticMessages.isNotEmpty) {
+          setState(() => _optimisticMessages.clear());
+        }
+        _scrollToBottom();
+      }
     });
 
     return PopScope(
@@ -994,7 +999,7 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
       }
       if (i < backendMsgs.length) merged.add(backendMsgs[i]);
     }
-    final displayMessages = merged;
+    final displayMessages = [...merged, ..._optimisticMessages];
     final isTyping = chatState.typingUsers.isNotEmpty;
     final itemCount = displayMessages.length + (isTyping ? 1 : 0);
 

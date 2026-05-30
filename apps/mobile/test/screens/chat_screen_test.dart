@@ -3,12 +3,19 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mobile/features/auth/domain/entities/auth_user.dart';
 import 'package:mobile/features/auth/presentation/providers/auth_provider.dart';
+import 'package:mobile/features/chat/domain/entities/chat_message.dart'
+    as chat_entity;
 import 'package:mobile/features/chat/domain/entities/session_status.dart';
 import 'package:mobile/features/chat/presentation/providers/chat_provider.dart';
+import 'package:mobile/features/friends/domain/entities/app_user.dart';
+import 'package:mobile/features/friends/presentation/providers/friends_provider.dart';
 import 'package:mobile/features/matchmaking/domain/entities/matchmaking_status.dart';
 import 'package:mobile/features/matchmaking/presentation/providers/matchmaking_provider.dart';
+import 'package:mobile/features/profile/domain/entities/profile_user.dart';
+import 'package:mobile/features/profile/presentation/providers/profile_provider.dart';
 import 'package:mobile/screens/chat_screen.dart';
 import 'package:mobile/shared/avatar_overlay.dart';
+import 'package:mobile/shared/layered_avatar.dart';
 import 'package:mobile/shared/user_profile.dart';
 
 // ── Fakes ─────────────────────────────────────────────────────────────────────
@@ -133,6 +140,41 @@ class _FakeUserProfileNotifier extends UserProfileNotifier {
   UserProfileState build() => const UserProfileState();
 }
 
+class _FakeProfileNotifier extends ProfileNotifier {
+  final ProfileState _initial;
+  int loadCount = 0;
+  String? lastLoadedUid;
+
+  _FakeProfileNotifier({ProfileState initial = const ProfileState()})
+    : _initial = initial;
+
+  @override
+  ProfileState build() => _initial;
+
+  @override
+  Future<void> load(String uid) async {
+    loadCount++;
+    lastLoadedUid = uid;
+  }
+}
+
+class _FakeFriendsNotifierForChat extends FriendsNotifier {
+  int sendRequestCount = 0;
+  AppUser? lastRequestTarget;
+
+  @override
+  FriendsState build() => const FriendsState();
+
+  @override
+  Future<void> sendFriendRequest(AppUser toUser) async {
+    sendRequestCount++;
+    lastRequestTarget = toUser;
+  }
+
+  @override
+  void clearError() {}
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 const _kArgs = {
@@ -153,6 +195,8 @@ Future<void> _pump(WidgetTester tester) async {
 Widget _buildScreen(
   _FakeChatNotifier chatFake, {
   _FakeMatchmakingNotifier? matchFake,
+  _FakeProfileNotifier? profileFake,
+  _FakeFriendsNotifierForChat? friendsFake,
   AuthState auth = const AuthState(
     status: AuthStatus.authenticated,
     user: AuthUser(uid: 'u1'),
@@ -167,6 +211,12 @@ Widget _buildScreen(
       ),
       avatarProvider.overrideWith(() => _FakeAvatarNotifier()),
       userProfileProvider.overrideWith(() => _FakeUserProfileNotifier()),
+      profileNotifierProvider.overrideWith(
+        () => profileFake ?? _FakeProfileNotifier(),
+      ),
+      friendsNotifierProvider.overrideWith(
+        () => friendsFake ?? _FakeFriendsNotifierForChat(),
+      ),
     ],
     child: MaterialApp(
       onGenerateRoute: (settings) {
@@ -306,6 +356,77 @@ void main() {
       await tester.pump();
 
       expect(chatFake.forceDisconnectCount, 1);
+    });
+
+    testWidgets(
+      'partner displayName from profileNotifierProvider appears in avatar dialog',
+      (tester) async {
+        final profileFake = _FakeProfileNotifier(
+          initial: ProfileState(
+            profile: ProfileUser(uid: 'u2', displayName: 'Alice'),
+          ),
+        );
+        await tester.pumpWidget(
+          _buildScreen(_FakeChatNotifier(), profileFake: profileFake),
+        );
+        await _pump(tester);
+
+        // The partner avatar in the banner opens a UserProfileDialog on tap
+        await tester.tap(find.byType(LayeredAvatar).first);
+        await tester.pump();
+
+        expect(find.text('Alice'), findsWidgets);
+      },
+    );
+
+    testWidgets(
+      'shows partner thoughts from profileNotifierProvider in thought bubble',
+      (tester) async {
+        final profileFake = _FakeProfileNotifier(
+          initial: ProfileState(
+            profile: ProfileUser(
+              uid: 'u2',
+              displayName: 'Bob',
+              thoughts: 'Love hiking!',
+            ),
+          ),
+        );
+        await tester.pumpWidget(
+          _buildScreen(_FakeChatNotifier(), profileFake: profileFake),
+        );
+        await _pump(tester);
+        expect(find.text('Love hiking!'), findsWidgets);
+      },
+    );
+
+    testWidgets("gif_other message renders left-aligned, not right", (
+      tester,
+    ) async {
+      final chatFake = _FakeChatNotifier(
+        initial: ChatState(
+          currentUserId: 'u1',
+          messages: [
+            chat_entity.ChatMessage(
+              id: 'msg1',
+              senderId: 'other_user',
+              displayName: 'Brave Bear',
+              text: 'https://media.giphy.com/test.gif',
+              timestamp: DateTime(2025),
+            ),
+          ],
+        ),
+      );
+      await tester.pumpWidget(_buildScreen(chatFake));
+      await _pump(tester);
+
+      // A gif from another user must not produce an end-aligned row (which
+      // would place the bubble on the "me" / right side).
+      expect(
+        find.byWidgetPredicate(
+          (w) => w is Row && w.mainAxisAlignment == MainAxisAlignment.end,
+        ),
+        findsNothing,
+      );
     });
   });
 }
