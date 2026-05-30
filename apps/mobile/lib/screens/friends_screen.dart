@@ -176,14 +176,20 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
           Expanded(
             child: TextField(
               controller: _searchCtrl,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 hintText: 'Search your friends...',
-                hintStyle: TextStyle(color: Colors.grey, fontSize: 14),
+                hintStyle: Theme.of(context).textTheme.bodyMedium!.copyWith(
+                  color: const Color(0xFF757575),
+                  fontSize: 14,
+                ),
                 border: InputBorder.none,
                 isDense: true,
                 contentPadding: EdgeInsets.zero,
               ),
-              style: const TextStyle(fontSize: 14, color: Colors.black87),
+              style: Theme.of(context).textTheme.bodyMedium!.copyWith(
+                fontSize: 14,
+                color: Colors.black87,
+              ),
             ),
           ),
         ],
@@ -283,24 +289,26 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
                       children: [
                         Text(
                           friend.displayName,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w900,
-                            fontSize: 16,
-                            color: Colors.black,
-                          ),
+                          style: Theme.of(context).textTheme.titleMedium!
+                              .copyWith(
+                                fontWeight: FontWeight.w900,
+                                fontSize: 16,
+                                color: Colors.black,
+                              ),
                         ),
                         const SizedBox(height: 4),
                         Text(
                           friend.lastMessage,
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: friend.unreadCount > 0
-                                ? Colors.black
-                                : Colors.grey.shade500,
-                            fontWeight: friend.unreadCount > 0
-                                ? FontWeight.w600
-                                : FontWeight.normal,
-                          ),
+                          style: Theme.of(context).textTheme.bodyMedium!
+                              .copyWith(
+                                fontSize: 14,
+                                color: friend.unreadCount > 0
+                                    ? Colors.black
+                                    : Colors.grey.shade600,
+                                fontWeight: friend.unreadCount > 0
+                                    ? FontWeight.w600
+                                    : FontWeight.normal,
+                              ),
                         ),
                       ],
                     ),
@@ -359,7 +367,7 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
       ),
       child: Text(
         '$count',
-        style: const TextStyle(
+        style: Theme.of(context).textTheme.bodySmall!.copyWith(
           color: Colors.white,
           fontSize: 12,
           fontWeight: FontWeight.bold,
@@ -471,7 +479,7 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
           child: Center(
             child: Text(
               label,
-              style: const TextStyle(
+              style: Theme.of(context).textTheme.bodyMedium!.copyWith(
                 fontWeight: FontWeight.w900,
                 fontSize: 14,
                 color: Colors.black,
@@ -497,24 +505,28 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: Row(
               children: [
-                GestureDetector(
-                  onTap: () => Navigator.pop(context),
-                  child: Container(
-                    width: 48,
-                    height: 48,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: Colors.grey.shade300,
-                        width: 1.5,
+                Semantics(
+                  label: 'Go back',
+                  button: true,
+                  child: GestureDetector(
+                    onTap: () => Navigator.pop(context),
+                    child: Container(
+                      width: 48,
+                      height: 48,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: Colors.grey.shade300,
+                          width: 1.5,
+                        ),
                       ),
-                    ),
-                    child: SvgPicture.asset(
-                      'assets/images/icons/Back.svg',
-                      width: 26,
-                      height: 26,
+                      child: SvgPicture.asset(
+                        'assets/images/icons/Back.svg',
+                        width: 26,
+                        height: 26,
+                      ),
                     ),
                   ),
                 ),

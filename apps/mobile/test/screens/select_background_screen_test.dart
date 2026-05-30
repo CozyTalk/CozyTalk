@@ -169,5 +169,18 @@ void main() {
       expect(find.text('1v1'), findsOneWidget);
       expect(find.text('Red Lotus Lake'), findsOneWidget);
     });
+
+    group('accessibility', () {
+      testWidgets('interactive elements have semantic labels', (tester) async {
+        final handle = tester.ensureSemantics();
+        try {
+          await tester.pumpWidget(_build());
+          await tester.pumpAndSettle();
+          expect(find.bySemanticsLabel('Go back'), findsOneWidget);
+        } finally {
+          handle.dispose();
+        }
+      });
+    });
   });
 }

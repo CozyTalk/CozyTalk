@@ -146,5 +146,18 @@ void main() {
       expect(find.text('joinById'), findsOneWidget);
       expect(find.text('XYZ12'), findsOneWidget);
     });
+
+    group('accessibility', () {
+      testWidgets('interactive elements have semantic labels', (tester) async {
+        final handle = tester.ensureSemantics();
+        try {
+          await tester.pumpWidget(_buildScreen());
+          await tester.pumpAndSettle();
+          expect(find.bySemanticsLabel('Go back'), findsOneWidget);
+        } finally {
+          handle.dispose();
+        }
+      });
+    });
   });
 }
