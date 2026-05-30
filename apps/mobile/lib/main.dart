@@ -177,9 +177,16 @@ class _MainUIAuthRouter extends ConsumerWidget {
         );
       });
     });
-    final status = ref.watch(authNotifierProvider.select((s) => s.status));
+    final authState = ref.watch(authNotifierProvider);
+    final status = authState.status;
+    if (status == AuthStatus.authenticated) {
+      final email = (authState.user?.email ?? '').toLowerCase();
+      if (email.isNotEmpty && email.endsWith('@cozytalk.com')) {
+        return const AdminConsoleScreen();
+      }
+      return const HomeScreen();
+    }
     return switch (status) {
-      AuthStatus.authenticated => const HomeScreen(),
       AuthStatus.idle => const Scaffold(
         body: Center(child: CircularProgressIndicator()),
       ),
