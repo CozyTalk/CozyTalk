@@ -125,6 +125,10 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
   // Accumulates uid→displayName from messages + typing events so names persist
   // even before a member sends their first message.
   final Map<String, String> _memberNameCache = {};
+  // Pending hop-in UIDs whose display names aren't known yet.
+  // Key = uid, value = seq (message count) at the moment they were detected,
+  // so the hop-in bubble is inserted at the right position once the name arrives.
+  final Map<String, int> _pendingJoinUids = {};
   final List<({_GroupMsg msg, int seq})> _localMessages = [];
   final List<_GroupMsg> _optimisticMessages = [];
   String? _pendingGifUrl;
@@ -445,6 +449,7 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
     });
 
     // Accumulate names from incoming messages into the persistent cache.
+    // Also flush any pending hop-in bubbles that were waiting for a name.
     ref.listen(chatNotifierProvider.select((s) => s.messages), (_, msgs) {
       bool changed = false;
       for (final m in msgs) {
@@ -455,10 +460,22 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
           changed = true;
         }
       }
+      for (final uid in List<String>.from(_pendingJoinUids.keys)) {
+        final name = _memberNameCache[uid];
+        if (name != null && name.isNotEmpty) {
+          _localMessages.add((
+            msg: _GroupMsg(type: _MsgType.system, text: '$name hop in'),
+            seq: _pendingJoinUids[uid]!,
+          ));
+          _pendingJoinUids.remove(uid);
+          changed = true;
+        }
+      }
       if (changed) setState(() {});
     });
 
     // Accumulate names from typing events (transient, but populates early).
+    // Also flush pending hop-ins whose name just became known.
     ref.listen(chatNotifierProvider.select((s) => s.typingUsers), (_, users) {
       bool changed = false;
       for (final u in users) {
@@ -468,8 +485,50 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
           changed = true;
         }
       }
+      for (final uid in List<String>.from(_pendingJoinUids.keys)) {
+        final name = _memberNameCache[uid];
+        if (name != null && name.isNotEmpty) {
+          _localMessages.add((
+            msg: _GroupMsg(type: _MsgType.system, text: '$name hop in'),
+            seq: _pendingJoinUids[uid]!,
+          ));
+          _pendingJoinUids.remove(uid);
+          changed = true;
+        }
+      }
       if (changed) setState(() {});
     });
+
+    // Detect new members joining and show a "hop in" system bubble.
+    ref.listen(
+      matchmakingNotifierProvider.select(
+        (s) => s.currentRoom?.users ?? const <String>[],
+      ),
+      (prev, next) {
+        final prevSet = (prev ?? const []).toSet();
+        final newUids = next.where(
+          (uid) => uid != myUid && !prevSet.contains(uid),
+        );
+        bool changed = false;
+        for (final uid in newUids) {
+          final name = _memberNameCache[uid];
+          final seq = ref.read(chatNotifierProvider).messages.length;
+          if (name != null && name.isNotEmpty) {
+            _localMessages.add((
+              msg: _GroupMsg(type: _MsgType.system, text: '$name hop in'),
+              seq: seq,
+            ));
+            changed = true;
+          } else {
+            _pendingJoinUids[uid] = seq;
+          }
+        }
+        if (changed) {
+          setState(() {});
+          _scrollToBottom();
+        }
+      },
+    );
 
     ref.listen(chatNotifierProvider.select((s) => s.messages.length), (
       prev,
