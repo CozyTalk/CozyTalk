@@ -128,9 +128,11 @@ class AuthNotifier extends Notifier<AuthState> {
       final user = await ref.read(_signInWithGoogleProvider)();
       state = state.copyWith(status: AuthStatus.authenticated, user: user);
     } catch (e) {
+      final msg = e.toString().replaceFirst('Exception: ', '');
+      // Empty message = user dismissed the popup (not an error — clear spinner silently).
       state = state.copyWith(
         status: AuthStatus.unauthenticated,
-        error: e.toString().replaceFirst('Exception: ', ''),
+        error: msg.isEmpty ? null : msg,
       );
     }
   }

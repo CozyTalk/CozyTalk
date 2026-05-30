@@ -67,12 +67,14 @@ class AuthDatasourceImpl implements AuthDatasource {
   @override
   Future<AuthUserModel> signInWithGoogle() async {
     try {
+      final provider = GoogleAuthProvider()
+        ..setCustomParameters({'prompt': 'select_account'});
       final UserCredential credential;
       if (kIsWeb) {
-        credential = await _auth.signInWithPopup(GoogleAuthProvider());
+        credential = await _auth.signInWithPopup(provider);
       } else {
         // Uses Chrome Custom Tab — no serverClientId required.
-        credential = await _auth.signInWithProvider(GoogleAuthProvider());
+        credential = await _auth.signInWithProvider(provider);
       }
       final user = credential.user!;
       if (credential.additionalUserInfo?.isNewUser == true) {
@@ -222,5 +224,7 @@ String _authErrorMessage(String code) => switch (code) {
   'invalid-email' => 'Please enter a valid email address.',
   'weak-password' => 'Password must be at least 6 characters.',
   'too-many-requests' => 'Too many attempts. Please try again later.',
+  // User dismissed the popup — not an error, treat as silent cancellation.
+  'popup-closed-by-user' || 'cancelled-popup-request' => '',
   _ => 'Authentication failed. Please try again.',
 };
