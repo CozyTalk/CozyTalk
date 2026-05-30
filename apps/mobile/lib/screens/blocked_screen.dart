@@ -36,20 +36,23 @@ class _BlockedScreenState extends ConsumerState<BlockedScreen> {
               alignment: Alignment.centerRight,
               child: Text(
                 '${blocked.length}/$_maxBlocked',
-                style: const TextStyle(
+                style: Theme.of(context).textTheme.bodyLarge!.copyWith(
                   fontSize: 15,
                   fontWeight: FontWeight.w700,
-                  color: Colors.grey,
+                  color: const Color(0xFF757575),
                 ),
               ),
             ),
           ),
           Expanded(
             child: blocked.isEmpty
-                ? const Center(
+                ? Center(
                     child: Text(
                       'No blocked users',
-                      style: TextStyle(color: Colors.grey, fontSize: 16),
+                      style: Theme.of(context).textTheme.titleMedium!.copyWith(
+                        color: const Color(0xFF757575),
+                        fontSize: 16,
+                      ),
                     ),
                   )
                 : ListView.separated(
@@ -91,35 +94,42 @@ class _BlockedScreenState extends ConsumerState<BlockedScreen> {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              GestureDetector(
-                onTap: () => Navigator.pop(context),
-                child: Container(
-                  width: 48,
-                  height: 48,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.08),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
+              Semantics(
+                label: 'Go back',
+                button: true,
+                child: GestureDetector(
+                  onTap: () => Navigator.pop(context),
+                  child: Container(
+                    width: 48,
+                    height: 48,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.08),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                      border: Border.all(
+                        color: Colors.grey.shade300,
+                        width: 1.5,
                       ),
-                    ],
-                    border: Border.all(color: Colors.grey.shade300, width: 1.5),
-                  ),
-                  child: SvgPicture.asset(
-                    'assets/images/icons/Back.svg',
-                    width: 26,
-                    height: 26,
+                    ),
+                    child: SvgPicture.asset(
+                      'assets/images/icons/Back.svg',
+                      width: 26,
+                      height: 26,
+                    ),
                   ),
                 ),
               ),
               const SizedBox(width: 16),
-              const Text(
+              Text(
                 'Blocked',
-                style: TextStyle(
+                style: Theme.of(context).textTheme.headlineSmall!.copyWith(
                   fontSize: 24,
                   fontWeight: FontWeight.w900,
                   color: Colors.white,
@@ -155,34 +165,38 @@ class _BlockedScreenState extends ConsumerState<BlockedScreen> {
       child: Row(
         children: [
           // ── Avatar (tappable → profile dialog) ──
-          GestureDetector(
-            onTap: () => showFriendProfileDialog(
-              context: context,
-              friend: friend,
-              onNoteSaved: (note) => setState(
-                () => _notes[targetUid] = note.isNotEmpty ? note : null,
+          Semantics(
+            label: 'View user profile',
+            button: true,
+            child: GestureDetector(
+              onTap: () => showFriendProfileDialog(
+                context: context,
+                friend: friend,
+                onNoteSaved: (note) => setState(
+                  () => _notes[targetUid] = note.isNotEmpty ? note : null,
+                ),
               ),
-            ),
-            child: Container(
-              width: 60,
-              height: 60,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.05),
-                    blurRadius: 5,
-                    offset: const Offset(0, 2),
+              child: Container(
+                width: 60,
+                height: 60,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.05),
+                      blurRadius: 5,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                  border: Border.all(color: Colors.grey.shade200, width: 1.5),
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(14),
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Center(child: LayeredAvatar(boxSize: 44)),
                   ),
-                ],
-                border: Border.all(color: Colors.grey.shade200, width: 1.5),
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(14),
-                child: Padding(
-                  padding: const EdgeInsets.only(top: 8),
-                  child: Center(child: LayeredAvatar(boxSize: 44)),
                 ),
               ),
             ),
@@ -192,7 +206,7 @@ class _BlockedScreenState extends ConsumerState<BlockedScreen> {
           Expanded(
             child: Text(
               friend.displayName,
-              style: const TextStyle(
+              style: Theme.of(context).textTheme.titleMedium!.copyWith(
                 fontWeight: FontWeight.w900,
                 fontSize: 16,
                 color: Colors.black,
@@ -221,9 +235,9 @@ class _BlockedScreenState extends ConsumerState<BlockedScreen> {
                   ),
                 ],
               ),
-              child: const Text(
+              child: Text(
                 'Unblock',
-                style: TextStyle(
+                style: Theme.of(context).textTheme.bodyMedium!.copyWith(
                   color: Colors.black,
                   fontSize: 13,
                   fontWeight: FontWeight.w900,

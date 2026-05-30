@@ -153,5 +153,25 @@ void main() {
       expect(find.text('Unblock "uid-1"'), findsOneWidget);
       expect(find.text('Cancel'), findsOneWidget);
     });
+
+    group('accessibility', () {
+      testWidgets('interactive elements have semantic labels', (tester) async {
+        final handle = tester.ensureSemantics();
+        try {
+          final blockFake = _FakeBlockNotifier(
+            initial: BlockState(
+              status: BlockStatus.loaded,
+              blockedUsers: [_makeUser('uid-1')],
+            ),
+          );
+          await tester.pumpWidget(_buildScreen(blockFake: blockFake));
+          await tester.pumpAndSettle();
+          expect(find.bySemanticsLabel('Go back'), findsOneWidget);
+          expect(find.bySemanticsLabel('View user profile'), findsOneWidget);
+        } finally {
+          handle.dispose();
+        }
+      });
+    });
   });
 }

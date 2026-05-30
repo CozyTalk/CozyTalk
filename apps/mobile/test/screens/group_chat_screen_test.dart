@@ -341,5 +341,20 @@ void main() {
         expect(chatFake.forceDisconnectCount, 1);
       },
     );
+
+    group('accessibility', () {
+      testWidgets('interactive elements have semantic labels', (tester) async {
+        final handle = tester.ensureSemantics();
+        try {
+          await tester.pumpWidget(_buildScreen(_FakeChatNotifier()));
+          await _pump(tester);
+          expect(find.bySemanticsLabel('Send message'), findsOneWidget);
+          expect(find.bySemanticsLabel('End chat'), findsOneWidget);
+          expect(find.bySemanticsLabel('Toggle room lock'), findsOneWidget);
+        } finally {
+          handle.dispose();
+        }
+      });
+    });
   });
 }
