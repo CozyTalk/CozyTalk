@@ -8,6 +8,7 @@ import 'package:mobile/features/chat/domain/entities/chat_message.dart'
 import 'package:mobile/features/chat/presentation/providers/chat_provider.dart';
 import 'package:mobile/features/friends/domain/entities/app_user.dart';
 import 'package:mobile/features/friends/presentation/providers/friends_provider.dart';
+import 'package:mobile/features/jukebox/presentation/providers/jukebox_provider.dart';
 import 'package:mobile/features/matchmaking/domain/entities/matchmaking_status.dart';
 import 'package:mobile/features/matchmaking/domain/entities/room.dart';
 import 'package:mobile/features/matchmaking/presentation/providers/matchmaking_provider.dart';
@@ -137,6 +138,29 @@ class _FakeUserProfileNotifier extends UserProfileNotifier {
   UserProfileState build() => const UserProfileState();
 }
 
+class _FakeJukeboxNotifier extends JukeboxNotifier {
+  @override
+  JukeboxUiState build() => const JukeboxUiState();
+
+  @override
+  void enterRoom(String roomId) {}
+
+  @override
+  void leaveRoom() {}
+
+  @override
+  Future<void> addUrl(String url) async {}
+
+  @override
+  Future<void> skip() async {}
+
+  @override
+  Future<void> setPlaying(bool isPlaying) async {}
+
+  @override
+  Future<void> removeFromQueue(int index) async {}
+}
+
 class _FakeFriendsNotifierForGroup extends FriendsNotifier {
   int sendRequestCount = 0;
   AppUser? lastRequestTarget;
@@ -192,6 +216,7 @@ Widget _buildScreen(
       friendsNotifierProvider.overrideWith(
         () => friendsFake ?? _FakeFriendsNotifierForGroup(),
       ),
+      jukeboxNotifierProvider.overrideWith(() => _FakeJukeboxNotifier()),
     ],
     child: MaterialApp(
       onGenerateRoute: (settings) {

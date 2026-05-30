@@ -295,11 +295,28 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
   void _sendFriendRequest(String targetName) {
     if (_friendRequestSent[targetName] == true) return;
     setState(() => _friendRequestSent[targetName] = true);
-    final chatState = ref.read(chatNotifierProvider);
-    final targetUid = chatState.messages
-        .cast<chat_entity.ChatMessage?>()
-        .firstWhere((m) => m?.displayName == targetName, orElse: () => null)
-        ?.senderId;
+
+    // Primary: match by name inside roomUsers — works even before first message.
+    final myUid = ref.read(authNotifierProvider).user?.uid;
+    final roomUsers =
+        ref.read(matchmakingNotifierProvider).currentRoom?.users ?? [];
+    String? targetUid;
+    for (final uid in roomUsers) {
+      if (uid == myUid) continue;
+      if ((_memberNameCache[uid] ?? 'User') == targetName) {
+        targetUid = uid;
+        break;
+      }
+    }
+    // Fallback: scan messages (handles edge cases where roomUsers is empty).
+    if (targetUid == null) {
+      final chatState = ref.read(chatNotifierProvider);
+      targetUid = chatState.messages
+          .cast<chat_entity.ChatMessage?>()
+          .firstWhere((m) => m?.displayName == targetName, orElse: () => null)
+          ?.senderId;
+    }
+
     if (targetUid != null) {
       ref
           .read(friendsNotifierProvider.notifier)
