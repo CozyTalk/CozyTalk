@@ -30,4 +30,5 @@ abstract class FriendsRepository {
     required String text,
     required String senderDisplayName,
   });
+  Future<List<AppUser>> getUsersByIds(List<String> uids);
 }
