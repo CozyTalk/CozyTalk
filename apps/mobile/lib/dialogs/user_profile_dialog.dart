@@ -9,6 +9,7 @@ import 'report_dialog.dart';
 
 class UserProfileDialog extends ConsumerStatefulWidget {
   final String username;
+  final String? interest;
   final bool isMe;
   final bool initialAdded;
   final VoidCallback? onAddFriend;
@@ -16,6 +17,7 @@ class UserProfileDialog extends ConsumerStatefulWidget {
   const UserProfileDialog({
     super.key,
     required this.username,
+    this.interest,
     this.isMe = false,
     this.initialAdded = false,
     this.onAddFriend,
@@ -237,8 +239,9 @@ class _UserProfileDialogState extends ConsumerState<UserProfileDialog> {
                         ),
                         const SizedBox(height: 5),
                         Text(
-                          // TODO: pass real interest as param once self/partner profile loading is separated
-                          'No interest set yet.',
+                          widget.interest?.isNotEmpty == true
+                              ? widget.interest!
+                              : 'No interest set yet.',
                           style: const TextStyle(
                             fontSize: 14,
                             color: Colors.black87,

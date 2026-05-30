@@ -117,6 +117,8 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
   late final Animation<Offset> _songSlide;
 
   String _myThoughts = 'Care to share?';
+  String _myDisplayName = '';
+  String _myInterest = '';
   final List<({_GroupMsg msg, int seq})> _localMessages = [];
   final List<_GroupMsg> _optimisticMessages = [];
   String? _pendingGifUrl;
@@ -157,9 +159,23 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
       if (ref.read(avatarDecorationNotifierProvider).decoration == null) {
         ref.read(avatarDecorationNotifierProvider.notifier).load(authUser.uid);
       }
-      final ownThoughts = ref.read(profileNotifierProvider).profile?.thoughts;
+      final ownProfile = ref.read(profileNotifierProvider).profile;
+      final ownThoughts = ownProfile?.thoughts;
+      final ownDisplayName = ownProfile?.displayName;
+      final ownInterest = ownProfile?.interest;
       if (ownThoughts != null && ownThoughts.isNotEmpty) {
-        setState(() => _myThoughts = ownThoughts);
+        _myThoughts = ownThoughts;
+      }
+      if (ownDisplayName != null && ownDisplayName.isNotEmpty) {
+        _myDisplayName = ownDisplayName;
+      }
+      if (ownInterest != null && ownInterest.isNotEmpty) {
+        _myInterest = ownInterest;
+      }
+      if (_myThoughts != 'Care to share?' ||
+          _myDisplayName.isNotEmpty ||
+          _myInterest.isNotEmpty) {
+        setState(() {});
       }
     });
     // TODO: show real incoming friend message popup from friendChatNotifierProvider
@@ -383,8 +399,9 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
     final nameMap = <String, String>{
       for (final m in chatState.messages) m.senderId: m.displayName,
     };
-    final myDisplayName =
-        ref.watch(authNotifierProvider).user?.displayName ?? '';
+    final myDisplayName = _myDisplayName.isNotEmpty
+        ? _myDisplayName
+        : (ref.watch(authNotifierProvider).user?.displayName ?? '');
     final roomUsers = matchState.currentRoom?.users ?? [];
     final members = roomUsers.isEmpty
         ? ['Me']
@@ -445,6 +462,7 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
                           avatarState,
                           myDisplayName,
                           members,
+                          _myInterest,
                         ),
                         Expanded(
                           child: Stack(
@@ -688,6 +706,7 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
     AvatarState avatarState,
     String myDisplayName,
     List<String> members,
+    String myInterest,
   ) {
     final count = members.length.clamp(1, 5);
     final preset = _layouts[count];
@@ -765,6 +784,7 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
                               builder: (_) => UserProfileDialog(
                                 username: displayName,
                                 isMe: isMe,
+                                interest: isMe ? myInterest : null,
                                 initialAdded:
                                     !isMe &&
                                     (_friendRequestSent[displayName] == true),

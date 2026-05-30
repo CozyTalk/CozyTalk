@@ -68,6 +68,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
   bool _friendRequestSent = false;
   String? _partnerUid;
   String _myThoughts = 'Care to share?';
+  String _myDisplayName = '';
+  String _myInterest = '';
   final List<({ChatMessage msg, int seq})> _localMessages = [];
   final List<ChatMessage> _optimisticMessages = [];
   String? _pendingGifUrl;
@@ -101,9 +103,20 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
         (uid) => uid != authUser.uid,
         orElse: () => '',
       );
-      final ownThoughts = ref.read(profileNotifierProvider).profile?.thoughts;
-      if (ownThoughts != null && ownThoughts.isNotEmpty) {
-        setState(() => _myThoughts = ownThoughts);
+      final ownProfile = ref.read(profileNotifierProvider).profile;
+      if (ownProfile?.thoughts?.isNotEmpty == true) {
+        _myThoughts = ownProfile!.thoughts!;
+      }
+      if (ownProfile?.displayName?.isNotEmpty == true) {
+        _myDisplayName = ownProfile!.displayName!;
+      }
+      if (ownProfile?.interest?.isNotEmpty == true) {
+        _myInterest = ownProfile!.interest!;
+      }
+      if (_myThoughts != 'Care to share?' ||
+          _myDisplayName.isNotEmpty ||
+          _myInterest.isNotEmpty) {
+        setState(() {});
       }
       if (partnerUid != null && partnerUid.isNotEmpty) {
         _partnerUid = partnerUid;
@@ -317,7 +330,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
     final partnerThought = isPartnerProfileLoaded
         ? (profileState.profile?.thoughts ?? 'Care to share?')
         : 'Care to share?';
-    final myUsername = ref.watch(authNotifierProvider).user?.displayName ?? '';
+    final myUsername = _myDisplayName.isNotEmpty
+        ? _myDisplayName
+        : (ref.watch(authNotifierProvider).user?.displayName ?? '');
+    final partnerInterest = isPartnerProfileLoaded
+        ? (profileState.profile?.interest ?? '')
+        : '';
 
     ref.listen(chatNotifierProvider.select((s) => s.status), (_, next) {
       if (next == SessionStatus.disconnected) {
@@ -386,6 +404,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
                           myUsername,
                           partnerName,
                           partnerThought,
+                          _myInterest,
+                          partnerInterest,
                         ),
                         Expanded(
                           child: Stack(
@@ -394,6 +414,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
                                 avatarState,
                                 chatState,
                                 partnerName,
+                                _myInterest,
+                                partnerInterest,
                               ),
                               Positioned(
                                 top: 0,
@@ -539,6 +561,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
     String myUsername,
     String partnerName,
     String partnerThought,
+    String myInterest,
+    String partnerInterest,
   ) {
     return SizedBox(
       height: 250,
@@ -568,6 +592,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
                       username: partnerName,
                       moodText: partnerThought,
                       isMe: false,
+                      interest: partnerInterest,
                       boxWidth: eachW,
                       onFriendRequest: _sendFriendRequest,
                       onCancelRequest: _cancelFriendRequest,
@@ -578,6 +603,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
                       username: myUsername,
                       moodText: myThoughts,
                       isMe: true,
+                      interest: myInterest,
                       avatarState: avatarState,
                       boxWidth: eachW,
                     ),
@@ -646,6 +672,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
     AvatarState avatarState,
     ChatState chatState,
     String partnerName,
+    String myInterest,
+    String partnerInterest,
   ) {
     final backendMsgs = chatState.messages
         .map((m) => _toDisplay(m, chatState.currentUserId))
@@ -681,19 +709,27 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
             isMe: true,
             avatarState: avatarState,
             partnerName: partnerName,
+            interest: myInterest,
           ),
-          'other' => _buildBubble(msg, isMe: false, partnerName: partnerName),
+          'other' => _buildBubble(
+            msg,
+            isMe: false,
+            partnerName: partnerName,
+            interest: partnerInterest,
+          ),
           'card' => _buildCard(msg.text),
           'gif' => _buildGifBubble(
             msg,
             isMe: true,
             avatarState: avatarState,
             partnerName: partnerName,
+            interest: myInterest,
           ),
           'gif_other' => _buildGifBubble(
             msg,
             isMe: false,
             partnerName: partnerName,
+            interest: partnerInterest,
           ),
           _ => const SizedBox.shrink(),
         };
@@ -756,6 +792,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
     required bool isMe,
     AvatarState? avatarState,
     String partnerName = '',
+    String interest = '',
   }) {
     final maxW = MediaQuery.of(context).size.width * 0.62;
     return Padding(
@@ -772,6 +809,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
                 context: context,
                 builder: (_) => UserProfileDialog(
                   username: partnerName,
+                  interest: interest,
                   initialAdded: _friendRequestSent,
                   onAddFriend: () => _sendFriendRequest(partnerName),
                   onCancelRequest: () => _cancelFriendRequest(partnerName),
@@ -830,6 +868,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
     required bool isMe,
     AvatarState? avatarState,
     String partnerName = '',
+    String interest = '',
   }) {
     final maxW = MediaQuery.of(context).size.width * 0.55;
     final gifWidget = Container(
@@ -876,6 +915,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
                 context: context,
                 builder: (_) => UserProfileDialog(
                   username: partnerName,
+                  interest: interest,
                   initialAdded: _friendRequestSent,
                   onAddFriend: () => _sendFriendRequest(partnerName),
                   onCancelRequest: () => _cancelFriendRequest(partnerName),
@@ -1293,6 +1333,7 @@ class _StaticAvatar extends StatelessWidget {
     required this.username,
     required this.moodText,
     required this.isMe,
+    this.interest,
     this.avatarState,
     this.boxWidth = 120,
     this.onFriendRequest,
@@ -1303,6 +1344,7 @@ class _StaticAvatar extends StatelessWidget {
   final String username;
   final String moodText;
   final bool isMe;
+  final String? interest;
   final AvatarState? avatarState;
   final VoidCallback? onFriendRequest;
   final VoidCallback? onCancelRequest;
@@ -1327,6 +1369,7 @@ class _StaticAvatar extends StatelessWidget {
                 context: context,
                 builder: (_) => UserProfileDialog(
                   username: username,
+                  interest: interest,
                   isMe: isMe,
                   initialAdded: !isMe && friendRequestSent,
                   onAddFriend: isMe ? null : onFriendRequest,
