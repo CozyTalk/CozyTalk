@@ -1,13 +1,31 @@
 # Cloud Functions
 
-21 exported functions total. All in `functions/src/`. Deployed via Firebase CLI.
+24 exported functions total. All in `functions/src/`. Deployed via Firebase CLI.
 
 Firebase project: `cozytalk-5d984`
 Default region: `us-central1` (unless noted)
 
 ---
 
-## Admin (5 functions)
+## User (2 functions)
+
+### `blockUser`
+`functions/src/user/blockUser.ts`
+- **Trigger:** callable (authenticated)
+- **Input:** `{ targetUid: string, displayName?: string }`
+- **Process:** Validates caller ≠ target. In a Firestore transaction, reads `users/{callerUid}/blocked/` and enforces the max 5 blocked users atomically (so concurrent calls cannot bypass the cap). If target is already blocked, idempotently updates `displayName`. Otherwise writes `{ blockedUid, displayName, blockedAt }` to `users/{callerUid}/blocked/{targetUid}`.
+- **Output:** `{ success: true }` or `{ success: false, reason: "max_blocked_reached" }`
+
+### `unblockUser`
+`functions/src/user/unblockUser.ts`
+- **Trigger:** callable (authenticated)
+- **Input:** `{ targetUid: string }`
+- **Process:** Deletes `users/{callerUid}/blocked/{targetUid}`. Idempotent — no error if not blocked.
+- **Output:** `{ success: true }`
+
+---
+
+## Admin (6 functions)
 
 All admin functions are callable, deployed to `us-central1`. Every function verifies the caller has `role == "admin"` in `users/{uid}` via admin SDK.
 
@@ -45,6 +63,13 @@ All admin functions are callable, deployed to `us-central1`. Every function veri
 - **Input:** `{ uid: string, note?: string }`
 - **Process:** Reads user; rejects if not banned. Builds a history record from current ban fields (including `unbannedAt: Timestamp.now()`, `unbannedBy: callerUid`). Deletes all active ban fields from `users/{uid}`. Appends history record to `users/{uid}.banHistory` via `FieldValue.arrayUnion`.
 - **Output:** `{ success: true }` or `{ success: false, reason: "user_not_found" | "not_banned" }`
+
+### `adminGetBlockedUsers`
+`functions/src/admin/adminGetBlockedUsers.ts`
+- **Trigger:** callable (admin only)
+- **Input:** `{ uid: string }`
+- **Process:** Reads `users/{uid}/blocked/` subcollection ordered by `blockedAt` descending. Returns serialized list with `blockedAt` as ISO string.
+- **Output:** `{ blockedUsers: Array<{ uid, displayName, blockedAt }> }`
 
 ---
 
@@ -92,14 +117,14 @@ All admin functions are callable, deployed to `us-central1`. Every function veri
 ### `match1v1Users`
 `functions/src/matchmaking/match1v1Users.ts`
 - **Trigger:** Firestore `onDocumentCreated` — `waiting_pool/{uid}` — **region: `asia-southeast1`**
-- **Process:** 2-phase atomic Firestore transaction. If the triggering user has a `backgroundTheme`, hard-filters candidates to same-theme or unthemed users (unthemed = flexible, adopts the room's theme). The only blocked pairing is two users with different non-null themes. Unthemed triggers match anyone. Finds best candidate by cosine similarity of interest vectors (threshold 0.65) from a window of up to **20** candidates. Creates `rooms/{roomId}` with `mode: 1v1`, `status: active`, and `backgroundTheme` always written (valid string or `null`). Removes both users from pool. Writes match result to RTDB. **Error recovery:** if Phase 2 (room creation) or Phase 3 (finalization) fails, cleanup writes rethrow on failure rather than swallowing — prevents a candidate from being permanently stuck in `"matching"` status if a secondary write fails mid-cleanup.
+- **Process:** 2-phase atomic Firestore transaction over a window of up to **20** candidates. Filters out candidate pairs where either user has blocked the other (read cost: 1 + N block-list subcollection reads). If the triggering user has a `backgroundTheme`, also hard-filters candidates to same-theme or unthemed users (unthemed = flexible, adopts the room's theme); the only blocked pairing is two users with different non-null themes, and unthemed triggers match anyone. Finds best candidate by cosine similarity of interest vectors (threshold 0.65). Creates `rooms/{roomId}` with `mode: 1v1`, `status: active`, and `backgroundTheme` always written (valid string or `null`). Removes both users from pool. Writes match result to RTDB. **Error recovery:** if Phase 2 (room creation) or Phase 3 (finalization) fails, cleanup writes rethrow on failure rather than swallowing — prevents a candidate from being permanently stuck in `"matching"` status if a secondary write fails mid-cleanup.
 - **Output:** void (trigger)
 
 ### `joinGroupRoom`
 `functions/src/matchmaking/joinGroupRoom.ts`
 - **Trigger:** callable (authenticated)
 - **Input:** `{ interestText?: string, backgroundTheme?: string }`
-- **Process:** 3-phase match: find candidate group rooms → compute cosine similarity → join best match or create new group room. If `backgroundTheme` is provided, Firestore queries are filtered to same-theme rooms only (themed users never land in a different-theme room). Unthemed users see all rooms and may join themed rooms. Room capacity 2–5 users. `backgroundTheme` is always written on created rooms (valid string or `null`). Requires composite Firestore index on `(mode, status, isLocked, backgroundTheme, memberCount)` — deployed in `firestore.indexes.json`.
+- **Process:** 3-phase match: find candidate group rooms → compute cosine similarity → join best match or create new group room. If `backgroundTheme` is provided, Firestore queries are filtered to same-theme rooms only (themed users never land in a different-theme room); unthemed users see all rooms and may join themed rooms. Room capacity 2–5 users. `backgroundTheme` is always written on created rooms (valid string or `null`). Before joining, fetches the caller's blocked list and rejects the join if the caller's UID appears in the room's `blockList` (blocked by an existing member) or if any room member is in the caller's blocked list; on successful join, merges the caller's blocked UIDs into `rooms/{roomId}.blockList`. Requires composite Firestore index on `(mode, status, isLocked, backgroundTheme, memberCount)` — deployed in `firestore.indexes.json`.
 - **Output:** `{ roomId: string, isNewRoom: boolean }`
 
 ### `createCustomRoom`
@@ -113,14 +138,14 @@ All admin functions are callable, deployed to `us-central1`. Every function veri
 `functions/src/matchmaking/joinRoomById.ts`
 - **Trigger:** callable (authenticated)
 - **Input:** `{ roomId: string }`
-- **Process:** Validates room exists, is not expired/padding, not locked, not full. Adds caller to `rooms/{roomId}.users` and RTDB members. Returns room info.
+- **Process:** Validates room exists, is not expired/padding, not locked, not full. Before joining, fetches the caller's blocked list. Rejects the join if the caller's UID appears in the room's `blockList` (blocked by an existing member) or if any room member is in the caller's blocked list. On successful join, merges the caller's blocked UIDs into `rooms/{roomId}.blockList`. Adds caller to `rooms/{roomId}.users` and RTDB members. Returns room info.
 - **Output:** `{ roomId: string, mode: string, roomType: string }`
 
 ### `leaveRoom`
 `functions/src/matchmaking/leaveRoom.ts`
 - **Trigger:** callable (authenticated)
 - **Input:** `{ roomId: string }`
-- **Process:** Removes caller from `rooms/{roomId}.users`. If room empty, tombstones it (`status: padding`). Clears RTDB member, typing, and presence nodes. For 1v1 rooms: if one user remains after the caller leaves, transitions the room to a 30-second padding window and immediately re-queues the remaining user in `waiting_pool` with their original `interestVector` and the room's `backgroundTheme` preserved — ensuring theme partitioning survives a partner-left re-queue.
+- **Process:** Removes caller from `rooms/{roomId}.users`, decrementing the leaver's entries in `rooms/{roomId}.blockList` and removing entries with `amount = 0`. If room empty, tombstones it (`status: padding`). Clears RTDB member, typing, and presence nodes. For 1v1 rooms: if one user remains after the caller leaves, transitions the room to a 30-second padding window and immediately re-queues the remaining user in `waiting_pool` with their original `interestVector` and the room's `backgroundTheme` preserved — ensuring theme partitioning survives a partner-left re-queue.
 - **Output:** `{ success: true }`
 
 ### `setRoomLock`

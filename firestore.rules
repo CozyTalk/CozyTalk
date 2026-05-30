@@ -62,6 +62,11 @@ service cloud.firestore {
         && (!('thoughts' in request.resource.data) || request.resource.data.thoughts is string);
     }
 
+    // ── users/{userId}/blocked ────────────────────────────────────────────────
+    match /users/{userId}/blocked/{blockedId} {
+      allow read, write: if isOwner(userId);
+    }
+
     // ── waiting_pool ─────────────────────────────────────────────────────────
     match /waiting_pool/{userId} {
       allow read, delete: if isOwner(userId);

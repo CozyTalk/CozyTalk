@@ -3,6 +3,8 @@ import {HttpsError} from "firebase-functions/v2/https";
 import * as admin from "firebase-admin";
 import {FieldValue} from "firebase-admin/firestore";
 import * as logger from "firebase-functions/logger";
+import type {BlockListEntry} from "../user/_blockUtils";
+export type {BlockListEntry} from "../user/_blockUtils";
 
 export const PADDING_MINUTES = 5;
 
@@ -49,6 +51,7 @@ export interface RoomData {
   encryptionKey: string;
   roomInterestVector?: number[] | null;
   memberInterests?: Record<string, number[]> | null;
+  blockList?: BlockListEntry[] | null;
   backgroundTheme?: string | null;
 }
 
