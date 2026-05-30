@@ -18,6 +18,7 @@ import '../../domain/usecases/send_message.dart';
 import '../../domain/usecases/set_typing.dart';
 import '../../domain/usecases/watch_messages.dart';
 import '../../domain/usecases/watch_partner_typing.dart';
+import '../../domain/usecases/watch_presence.dart';
 import '../../../word_filter/presentation/providers/word_filter_provider.dart';
 
 final _chatDatasourceProvider = Provider<ChatDatasource>(
@@ -39,6 +40,10 @@ final _watchMessagesProvider = Provider<WatchMessages>(
 
 final _watchTypingUsersProvider = Provider<WatchTypingUsers>(
   (ref) => WatchTypingUsers(ref.watch(_chatRepositoryProvider)),
+);
+
+final _watchPresenceProvider = Provider<WatchPresence>(
+  (ref) => WatchPresence(ref.watch(_chatRepositoryProvider)),
 );
 
 final _sendMessageProvider = Provider<SendMessage>(
@@ -67,6 +72,7 @@ class ChatState {
   final String? currentUserPhotoUrl;
   final List<ChatMessage> messages;
   final List<TypingUser> typingUsers;
+  final Set<String>? presenceMembers;
   final bool isSending;
   final String? error;
 
@@ -78,6 +84,7 @@ class ChatState {
     this.currentUserPhotoUrl,
     this.messages = const [],
     this.typingUsers = const [],
+    this.presenceMembers,
     this.isSending = false,
     this.error,
   });
@@ -90,6 +97,7 @@ class ChatState {
     Object? currentUserPhotoUrl = _sentinel,
     List<ChatMessage>? messages,
     List<TypingUser>? typingUsers,
+    Object? presenceMembers = _sentinel,
     bool? isSending,
     Object? error = _sentinel,
   }) => ChatState(
@@ -106,6 +114,9 @@ class ChatState {
         : currentUserPhotoUrl as String?,
     messages: messages ?? this.messages,
     typingUsers: typingUsers ?? this.typingUsers,
+    presenceMembers: presenceMembers == _sentinel
+        ? this.presenceMembers
+        : presenceMembers as Set<String>?,
     isSending: isSending ?? this.isSending,
     error: error == _sentinel ? this.error : error as String?,
   );
@@ -114,6 +125,7 @@ class ChatState {
 class ChatNotifier extends Notifier<ChatState> {
   StreamSubscription<List<ChatMessage>>? _messagesSub;
   StreamSubscription<List<TypingUser>>? _typingSub;
+  StreamSubscription<Set<String>>? _presenceSub;
 
   @override
   ChatState build() => const ChatState();
@@ -187,6 +199,16 @@ class ChatNotifier extends Notifier<ChatState> {
             _typingSub = null;
           },
         );
+
+    _presenceSub = ref
+        .read(_watchPresenceProvider)(sessionId)
+        .listen(
+          (uids) => state = state.copyWith(presenceMembers: uids),
+          onError: (Object _) {
+            _presenceSub?.cancel();
+            _presenceSub = null;
+          },
+        );
   }
 
   Future<void> sendMessage(String text) async {
@@ -257,7 +279,9 @@ class ChatNotifier extends Notifier<ChatState> {
   void _cancelSubscriptions() {
     _messagesSub?.cancel();
     _typingSub?.cancel();
+    _presenceSub?.cancel();
     _messagesSub = null;
     _typingSub = null;
+    _presenceSub = null;
   }
 }

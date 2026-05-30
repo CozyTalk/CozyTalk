@@ -11,6 +11,7 @@ class _FakeChatDatasource implements ChatDatasource {
   final String keyHex;
   final List<ChatMessageModel> messages;
   final List<TypingUser> typingUsers;
+  final Set<String> presenceUids;
 
   int sendMessageCount = 0;
   int endSessionCount = 0;
@@ -21,6 +22,7 @@ class _FakeChatDatasource implements ChatDatasource {
     required this.keyHex,
     this.messages = const [],
     this.typingUsers = const [],
+    this.presenceUids = const {},
   });
 
   @override
@@ -33,6 +35,10 @@ class _FakeChatDatasource implements ChatDatasource {
   @override
   Stream<List<TypingUser>> watchTypingUsers(String sessionId) =>
       Stream.value(typingUsers);
+
+  @override
+  Stream<Set<String>> watchPresence(String sessionId) =>
+      Stream.value(presenceUids);
 
   @override
   Future<void> sendMessage({
@@ -55,9 +61,6 @@ class _FakeChatDatasource implements ChatDatasource {
   @override
   Future<void> endSession({required String sessionId}) async =>
       endSessionCount++;
-
-  @override
-  Stream<Set<String>> watchPresence(String sessionId) => Stream.value({});
 
   @override
   Future<String> joinProtoSession({
@@ -197,6 +200,20 @@ void main() {
         final result = await repo.watchTypingUsers('session-1').first;
         expect(result.length, 1);
         expect(result[0].uid, 'u1');
+      });
+    });
+
+    group('watchPresence', () {
+      test('delegates to datasource and returns uid set', () async {
+        final datasource = _FakeChatDatasource(
+          keyHex: _testKeyHex,
+          presenceUids: {'u1', 'u2'},
+        );
+        final repo = ChatRepositoryImpl(datasource);
+
+        final result = await repo.watchPresence('session-1').first;
+        expect(result, containsAll(['u1', 'u2']));
+        expect(result.length, 2);
       });
     });
 

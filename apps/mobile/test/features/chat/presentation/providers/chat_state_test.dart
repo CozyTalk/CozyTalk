@@ -86,6 +86,7 @@ void main() {
       expect(state.currentUserPhotoUrl, isNull);
       expect(state.messages, isEmpty);
       expect(state.typingUsers, isEmpty);
+      expect(state.presenceMembers, isNull);
       expect(state.isSending, isFalse);
       expect(state.error, isNull);
     });
@@ -153,6 +154,24 @@ void main() {
       const state = ChatState();
       final updated = state.copyWith(typingUsers: users);
       expect(updated.typingUsers.length, 1);
+    });
+
+    test('copyWith sets presenceMembers', () {
+      const state = ChatState();
+      final updated = state.copyWith(presenceMembers: {'u1', 'u2'});
+      expect(updated.presenceMembers, containsAll(['u1', 'u2']));
+    });
+
+    test('copyWith clears presenceMembers with explicit null (sentinel)', () {
+      final state = ChatState(presenceMembers: {'u1'});
+      final cleared = state.copyWith(presenceMembers: null);
+      expect(cleared.presenceMembers, isNull);
+    });
+
+    test('copyWith without presenceMembers preserves existing value', () {
+      final state = ChatState(presenceMembers: {'u1'});
+      final copy = state.copyWith(status: SessionStatus.chatting);
+      expect(copy.presenceMembers, containsAll(['u1']));
     });
 
     test('copyWith sets currentUserPhotoUrl', () {

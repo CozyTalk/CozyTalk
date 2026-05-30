@@ -91,7 +91,10 @@ export const joinGroupRoom = onCall(
 
             const blockList = (d.blockList as BlockListEntry[]) ?? [];
             if (isBlockedByRoom(blockList, uid)) return;
-            if ((d.users as string[]).some((u) => joinerBlockedUids.includes(u))) return;
+            if (
+              (d.users as string[]).some((u) => joinerBlockedUids.includes(u))
+            )
+              return;
 
             // Themed users must not land in a different-theme room.
             // Unthemed users can join any room.
@@ -189,7 +192,11 @@ export const joinGroupRoom = onCall(
       });
 
       if (matchingRooms.length > 0) {
-        const matched = await _tryJoinCandidates(matchingRooms, userVector, joinerBlockedUids);
+        const matched = await _tryJoinCandidates(
+          matchingRooms,
+          userVector,
+          joinerBlockedUids,
+        );
         if (matched) {
           return {roomId: matched, isNewRoom: false};
         }
@@ -209,7 +216,11 @@ export const joinGroupRoom = onCall(
 
     // Phase 2 — Random: no lone-user rooms found; join any available room with
     // 2–4 members, chosen at random.
-    const otherRoomId = await _tryJoinCandidates(otherSnap.docs, userVector, joinerBlockedUids);
+    const otherRoomId = await _tryJoinCandidates(
+      otherSnap.docs,
+      userVector,
+      joinerBlockedUids,
+    );
     if (otherRoomId) {
       return {roomId: otherRoomId, isNewRoom: false};
     }
@@ -226,7 +237,11 @@ export const joinGroupRoom = onCall(
       createdAt: FieldValue.serverTimestamp(),
       paddingUntil: null,
       encryptionKey: generateKey(),
-      blockList: joinerBlockedUids.map((userId) => ({blockedBy: uid, userId, amount: 1})),
+      blockList: joinerBlockedUids.map((userId) => ({
+        blockedBy: uid,
+        userId,
+        amount: 1,
+      })),
       ...(userVector
         ? {
             memberInterests: {[uid]: userVector},
@@ -259,9 +274,18 @@ export const joinGroupRoom = onCall(
     }
     const soloRooms = await soloQuery.limit(5).get();
 
-    const mergeTarget = soloRooms.docs.find((d) => d.id !== roomId);
-    if (mergeTarget) {
-      const targetRef = db.collection("rooms").doc(mergeTarget.id);
+    // Iterate all candidates; skip stale rooms whose RTDB members node is empty
+    // (disconnected user — cleanupMember hasn't run yet). Try each valid
+    // candidate until one merges successfully or all are exhausted.
+    for (const candidate of soloRooms.docs) {
+      if (candidate.id === roomId) continue;
+
+      const targetRtdbSnap = await rtdb
+        .ref(`rooms/${candidate.id}/members`)
+        .get();
+      if (!targetRtdbSnap.exists() || !targetRtdbSnap.val()) continue;
+
+      const targetRef = db.collection("rooms").doc(candidate.id);
       const myRoomRef = db.collection("rooms").doc(roomId);
       let merged = false;
 
@@ -282,14 +306,20 @@ export const joinGroupRoom = onCall(
             return;
           }
 
-          const mergeBlockList = (td.blockList as BlockListEntry[] | undefined) ?? [];
+          const mergeBlockList =
+            (td.blockList as BlockListEntry[] | undefined) ?? [];
           if (isBlockedByRoom(mergeBlockList, uid)) return;
-          if ((td.users as string[]).some((u) => joinerBlockedUids.includes(u))) return;
+          if ((td.users as string[]).some((u) => joinerBlockedUids.includes(u)))
+            return;
 
           const mergeUpdate: Record<string, unknown> = {
             users: FieldValue.arrayUnion(uid),
             memberCount: FieldValue.increment(1),
-            blockList: mergeIntoBlockList(mergeBlockList, uid, joinerBlockedUids),
+            blockList: mergeIntoBlockList(
+              mergeBlockList,
+              uid,
+              joinerBlockedUids,
+            ),
           };
           if (userVector) {
             const existing =
@@ -304,23 +334,25 @@ export const joinGroupRoom = onCall(
           merged = true;
         });
       } catch (err) {
-        logger.warn("Group room merge failed, staying in created room", {
+        logger.warn("Group room merge failed, trying next candidate", {
           roomId,
+          candidateId: candidate.id,
           err,
         });
+        continue;
       }
 
       if (merged) {
         await Promise.all([
           rtdb.ref(`rooms/${roomId}/members/${uid}`).remove(),
-          rtdb.ref(`rooms/${mergeTarget.id}/members/${uid}`).set(true),
+          rtdb.ref(`rooms/${candidate.id}/members/${uid}`).set(true),
         ]);
         logger.info("Merged into existing group room after creation", {
           uid,
-          roomId: mergeTarget.id,
+          roomId: candidate.id,
           abandonedRoomId: roomId,
         });
-        return {roomId: mergeTarget.id, isNewRoom: false};
+        return {roomId: candidate.id, isNewRoom: false};
       }
     }
 

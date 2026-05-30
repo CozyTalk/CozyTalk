@@ -173,8 +173,10 @@ Join transaction:
   - If user has vector: memberInterests[uid] = vector, roomInterestVector = mean(all)
 
 Post-creation race mitigation:
-  - After Phase 3, re-query for other 1-member rooms
-  - If one exists, merge into it (transaction), discard own room, update RTDB
+  - After Phase 3, re-query for other 1-member rooms (limit 5)
+  - Iterate all candidates; for each, check RTDB rooms/{id}/members — skip if empty (stale disconnected room whose cleanupMember hasn't run)
+  - On first live candidate, attempt merge transaction: discard own room, update RTDB
+  - Falls back to own room if all candidates are stale or merge fails
 ```
 
 ### leaveRoom.ts + cleanupMember.ts

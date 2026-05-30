@@ -29,6 +29,10 @@ class ChatRepositoryImpl implements ChatRepository {
       _datasource.watchTypingUsers(sessionId);
 
   @override
+  Stream<Set<String>> watchPresence(String sessionId) =>
+      _datasource.watchPresence(sessionId);
+
+  @override
   Future<void> sendMessage({required String sessionId, required String text}) =>
       _datasource.sendMessage(sessionId: sessionId, text: text);
 
@@ -50,10 +54,6 @@ class ChatRepositoryImpl implements ChatRepository {
   @override
   Future<void> endSession({required String sessionId}) =>
       _datasource.endSession(sessionId: sessionId);
-
-  @override
-  Stream<Set<String>> watchPresence(String sessionId) =>
-      _datasource.watchPresence(sessionId);
 
   Future<ChatMessage> _decrypt(
     ChatMessageModel model,

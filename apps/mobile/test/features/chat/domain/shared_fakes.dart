@@ -32,6 +32,12 @@ class FakeChatRepository implements ChatRepository {
   }
 
   @override
+  Stream<Set<String>> watchPresence(String sessionId) {
+    lastSessionId = sessionId;
+    return presenceStream;
+  }
+
+  @override
   Future<void> sendMessage({
     required String sessionId,
     required String text,
@@ -63,11 +69,5 @@ class FakeChatRepository implements ChatRepository {
     endSessionCount++;
     lastSessionId = sessionId;
     if (error != null) throw error!;
-  }
-
-  @override
-  Stream<Set<String>> watchPresence(String sessionId) {
-    lastSessionId = sessionId;
-    return presenceStream;
   }
 }

@@ -109,6 +109,7 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
     with TickerProviderStateMixin {
   final Map<String, bool> _friendRequestSent = {};
   final Map<String, bool> _friendAccepted = {};
+  final Map<String, String> _knownNames = {};
   final TextEditingController _msgController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final FocusNode _focusNode = FocusNode();
@@ -501,14 +502,23 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
         chatState.currentUserId ??
         ref.watch(authNotifierProvider).user?.uid ??
         '';
-    final nameMap = <String, String>{
-      for (final m in chatState.messages) m.senderId: m.displayName,
-    };
+    for (final m in chatState.messages) {
+      _knownNames[m.senderId] = m.displayName;
+    }
+    for (final u in chatState.typingUsers) {
+      _knownNames[u.uid] = u.displayName;
+    }
+    final presenceMembers = chatState.presenceMembers;
     final roomUsers = matchState.currentRoom?.users ?? [];
-    final members = roomUsers.isEmpty
+    // Filter to live users only. When presenceMembers is null (subscription not
+    // yet delivered), fall back to the full list to avoid an empty banner flash.
+    final liveUsers = presenceMembers == null
+        ? roomUsers
+        : roomUsers.where((uid) => presenceMembers.contains(uid)).toList();
+    final members = liveUsers.isEmpty
         ? ['Me']
-        : roomUsers
-              .map((uid) => uid == myUid ? 'Me' : (nameMap[uid] ?? 'User'))
+        : liveUsers
+              .map((uid) => uid == myUid ? 'Me' : (_knownNames[uid] ?? 'User'))
               .toList();
 
     ref.listen(chatNotifierProvider.select((s) => s.status), (_, next) {

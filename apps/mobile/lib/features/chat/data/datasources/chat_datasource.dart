@@ -13,6 +13,7 @@ abstract class ChatDatasource {
   Future<String> fetchSessionKey(String sessionId);
   Stream<List<ChatMessageModel>> watchRawMessages(String sessionId);
   Stream<List<TypingUser>> watchTypingUsers(String sessionId);
+  Stream<Set<String>> watchPresence(String sessionId);
   Future<void> sendMessage({required String sessionId, required String text});
   Future<void> setTyping({
     required String sessionId,
@@ -22,8 +23,6 @@ abstract class ChatDatasource {
     String? photoUrl,
   });
   Future<void> endSession({required String sessionId});
-
-  Stream<Set<String>> watchPresence(String sessionId);
   Future<String> joinProtoSession({
     required String sessionId,
     required String uid,
@@ -90,6 +89,14 @@ class ChatDatasourceImpl implements ChatDatasource {
             return ChatMessageModel.fromJson(data);
           }).toList(),
         );
+  }
+
+  @override
+  Stream<Set<String>> watchPresence(String sessionId) {
+    return _db.ref('presence/$sessionId').onValue.map((event) {
+      final raw = event.snapshot.value as Map? ?? {};
+      return raw.keys.cast<String>().toSet();
+    });
   }
 
   @override
@@ -200,14 +207,6 @@ class ChatDatasourceImpl implements ChatDatasource {
       await _db.ref('typing/$sessionId/$uid').remove();
     }
     await _functions.httpsCallable('endSession').call({'sessionId': sessionId});
-  }
-
-  @override
-  Stream<Set<String>> watchPresence(String sessionId) {
-    return _db.ref('presence/$sessionId').onValue.map((event) {
-      final raw = event.snapshot.value as Map? ?? {};
-      return raw.keys.cast<String>().toSet();
-    });
   }
 
   @override
