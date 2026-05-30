@@ -36,20 +36,23 @@ class _BlockedScreenState extends ConsumerState<BlockedScreen> {
               alignment: Alignment.centerRight,
               child: Text(
                 '${blocked.length}/$_maxBlocked',
-                style: const TextStyle(
+                style: Theme.of(context).textTheme.bodyLarge!.copyWith(
                   fontSize: 15,
                   fontWeight: FontWeight.w700,
-                  color: Colors.grey,
+                  color: const Color(0xFF757575),
                 ),
               ),
             ),
           ),
           Expanded(
             child: blocked.isEmpty
-                ? const Center(
+                ? Center(
                     child: Text(
                       'No blocked users',
-                      style: TextStyle(color: Colors.grey, fontSize: 16),
+                      style: Theme.of(context).textTheme.titleMedium!.copyWith(
+                        color: const Color(0xFF757575),
+                        fontSize: 16,
+                      ),
                     ),
                   )
                 : ListView.separated(
@@ -117,9 +120,9 @@ class _BlockedScreenState extends ConsumerState<BlockedScreen> {
                 ),
               ),
               const SizedBox(width: 16),
-              const Text(
+              Text(
                 'Blocked',
-                style: TextStyle(
+                style: Theme.of(context).textTheme.headlineSmall!.copyWith(
                   fontSize: 24,
                   fontWeight: FontWeight.w900,
                   color: Colors.white,
@@ -192,7 +195,7 @@ class _BlockedScreenState extends ConsumerState<BlockedScreen> {
           Expanded(
             child: Text(
               friend.displayName,
-              style: const TextStyle(
+              style: Theme.of(context).textTheme.titleMedium!.copyWith(
                 fontWeight: FontWeight.w900,
                 fontSize: 16,
                 color: Colors.black,
@@ -221,9 +224,9 @@ class _BlockedScreenState extends ConsumerState<BlockedScreen> {
                   ),
                 ],
               ),
-              child: const Text(
+              child: Text(
                 'Unblock',
-                style: TextStyle(
+                style: Theme.of(context).textTheme.bodyMedium!.copyWith(
                   color: Colors.black,
                   fontSize: 13,
                   fontWeight: FontWeight.w900,

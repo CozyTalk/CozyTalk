@@ -103,10 +103,10 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text(
+          Text(
             'Welcome to\nCozyTalk!',
             textAlign: TextAlign.center,
-            style: TextStyle(
+            style: Theme.of(context).textTheme.titleLarge!.copyWith(
               color: Colors.white,
               fontSize: 22,
               fontWeight: FontWeight.bold,
@@ -114,10 +114,10 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
             ),
           ),
           const SizedBox(height: 8),
-          const Text(
+          Text(
             'SIGN UP',
             textAlign: TextAlign.center,
-            style: TextStyle(
+            style: Theme.of(context).textTheme.bodyLarge!.copyWith(
               color: AppColors.yellowWarm,
               fontSize: 15,
               fontWeight: FontWeight.bold,
@@ -162,15 +162,18 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Text(
+              Text(
                 'Already have an account? ',
-                style: TextStyle(color: Colors.white70, fontSize: 13),
+                style: Theme.of(context).textTheme.bodyMedium!.copyWith(
+                  color: const Color(0xCCFFFFFF),
+                  fontSize: 13,
+                ),
               ),
               GestureDetector(
                 onTap: () => Navigator.pop(context),
-                child: const Text(
+                child: Text(
                   'Login',
-                  style: TextStyle(
+                  style: Theme.of(context).textTheme.bodyMedium!.copyWith(
                     color: AppColors.yellowWarm,
                     fontSize: 13,
                     fontWeight: FontWeight.bold,
@@ -183,10 +186,10 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
           GestureDetector(
             onTap: () =>
                 ref.read(authNotifierProvider.notifier).signInAnonymously(),
-            child: const Text(
+            child: Text(
               'Login as a guest',
               textAlign: TextAlign.center,
-              style: TextStyle(
+              style: Theme.of(context).textTheme.bodyMedium!.copyWith(
                 color: Colors.white,
                 fontSize: 13,
                 decoration: TextDecoration.underline,
@@ -201,7 +204,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
 
   Widget _label(String text) => Text(
     text,
-    style: const TextStyle(
+    style: Theme.of(context).textTheme.bodyMedium!.copyWith(
       color: Colors.white,
       fontSize: 14,
       fontWeight: FontWeight.w600,
@@ -217,7 +220,9 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
     controller: controller,
     keyboardType: keyboardType,
     validator: validator,
-    style: const TextStyle(color: Colors.black87, fontSize: 14),
+    style: Theme.of(
+      context,
+    ).textTheme.bodyMedium!.copyWith(color: Colors.black87, fontSize: 14),
     decoration: _inputDecoration(hint),
   );
 
@@ -225,7 +230,9 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
     controller: _passwordController,
     obscureText: _obscurePassword,
     validator: _validatePassword,
-    style: const TextStyle(color: Colors.black87, fontSize: 14),
+    style: Theme.of(
+      context,
+    ).textTheme.bodyMedium!.copyWith(color: Colors.black87, fontSize: 14),
     decoration: _inputDecoration('Enter your password').copyWith(
       suffixIcon: IconButton(
         icon: Icon(
@@ -242,7 +249,10 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
 
   InputDecoration _inputDecoration(String hint) => InputDecoration(
     hintText: hint,
-    hintStyle: const TextStyle(color: Color(0xFFAAAAAA), fontSize: 14),
+    hintStyle: Theme.of(context).textTheme.bodyMedium!.copyWith(
+      color: const Color(0xFF767676),
+      fontSize: 14,
+    ),
     filled: true,
     fillColor: Colors.white,
     contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -258,7 +268,9 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
       borderRadius: BorderRadius.circular(10),
       borderSide: const BorderSide(color: AppColors.yellowWarm, width: 1.5),
     ),
-    errorStyle: const TextStyle(color: AppColors.yellowWarm, fontSize: 12),
+    errorStyle: Theme.of(
+      context,
+    ).textTheme.bodySmall!.copyWith(color: AppColors.yellowWarm, fontSize: 12),
     errorBorder: OutlineInputBorder(
       borderRadius: BorderRadius.circular(10),
       borderSide: const BorderSide(color: AppColors.yellowWarm),
@@ -290,12 +302,18 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
         ),
       ),
       const SizedBox(width: 8),
-      Text(label, style: const TextStyle(color: Colors.white70, fontSize: 12)),
+      Text(
+        label,
+        style: Theme.of(context).textTheme.bodySmall!.copyWith(
+          color: const Color(0xCCFFFFFF),
+          fontSize: 12,
+        ),
+      ),
       GestureDetector(
         onTap: onLinkTap,
         child: Text(
           linkText,
-          style: const TextStyle(
+          style: Theme.of(context).textTheme.bodySmall!.copyWith(
             color: AppColors.yellowWarm,
             fontSize: 12,
             fontWeight: FontWeight.bold,
@@ -307,17 +325,20 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
     ],
   );
 
-  Widget _orDivider() => const Row(
+  Widget _orDivider() => Row(
     children: [
-      Expanded(child: Divider(color: Colors.white38, thickness: 1)),
+      const Expanded(child: Divider(color: Colors.white38, thickness: 1)),
       Padding(
-        padding: EdgeInsets.symmetric(horizontal: 14),
+        padding: const EdgeInsets.symmetric(horizontal: 14),
         child: Text(
           'or',
-          style: TextStyle(color: Colors.white60, fontSize: 13),
+          style: Theme.of(context).textTheme.bodyMedium!.copyWith(
+            color: const Color(0xCCFFFFFF),
+            fontSize: 13,
+          ),
         ),
       ),
-      Expanded(child: Divider(color: Colors.white38, thickness: 1)),
+      const Expanded(child: Divider(color: Colors.white38, thickness: 1)),
     ],
   );
 
@@ -346,12 +367,12 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
               height: 22,
             ),
             const SizedBox(width: 10),
-            const Text(
+            Text(
               'Sign up with Google',
-              style: TextStyle(
+              style: Theme.of(context).textTheme.bodyLarge!.copyWith(
                 fontSize: 15,
                 fontWeight: FontWeight.w600,
-                color: Color(0xFF4A3228),
+                color: const Color(0xFF4A3228),
               ),
             ),
           ],
@@ -389,9 +410,12 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                 height: 20,
                 child: CircularProgressIndicator(strokeWidth: 2),
               )
-            : const Text(
+            : Text(
                 'Sign Up',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                style: Theme.of(context).textTheme.titleMedium!.copyWith(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
       ),
     );
@@ -473,19 +497,22 @@ class _PolicyDialog extends StatelessWidget {
                       children: [
                         Text(
                           content.title,
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
+                          style: Theme.of(context).textTheme.titleMedium!
+                              .copyWith(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
                         ),
                         const SizedBox(height: 2),
-                        const Text(
+                        Text(
                           'CozyTalk Application',
-                          style: TextStyle(fontSize: 12, color: Colors.black54),
+                          style: Theme.of(context).textTheme.bodySmall!
+                              .copyWith(fontSize: 12, color: Colors.black54),
                         ),
-                        const Text(
+                        Text(
                           'Last Updated: April 2026',
-                          style: TextStyle(fontSize: 12, color: Colors.black54),
+                          style: Theme.of(context).textTheme.bodySmall!
+                              .copyWith(fontSize: 12, color: Colors.black54),
                         ),
                       ],
                     ),
@@ -500,15 +527,17 @@ class _PolicyDialog extends StatelessWidget {
                         children: [
                           Text(
                             s.heading,
-                            style: const TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.bold,
-                            ),
+                            style: Theme.of(context).textTheme.bodyMedium!
+                                .copyWith(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.bold,
+                                ),
                           ),
                           const SizedBox(height: 4),
                           Text(
                             s.body,
-                            style: const TextStyle(fontSize: 13, height: 1.55),
+                            style: Theme.of(context).textTheme.bodyMedium!
+                                .copyWith(fontSize: 13, height: 1.55),
                           ),
                         ],
                       ),

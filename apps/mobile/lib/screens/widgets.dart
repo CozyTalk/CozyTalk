@@ -41,7 +41,7 @@ class PillButton extends StatelessWidget {
         ),
         child: Text(
           label,
-          style: TextStyle(
+          style: Theme.of(context).textTheme.bodySmall!.copyWith(
             color: textColor,
             fontSize: 12,
             fontWeight: FontWeight.bold,
@@ -133,9 +133,9 @@ class FriendRoomCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 if (showLabel)
-                  const Text(
+                  Text(
                     'CURRENTLY IN',
-                    style: TextStyle(
+                    style: Theme.of(context).textTheme.labelSmall!.copyWith(
                       fontSize: 10,
                       fontWeight: FontWeight.w700,
                       color: AppColors.brownDeep,
@@ -145,7 +145,7 @@ class FriendRoomCard extends StatelessWidget {
                 if (showLabel) const SizedBox(height: 2),
                 Text(
                   room.name,
-                  style: const TextStyle(
+                  style: Theme.of(context).textTheme.bodyMedium!.copyWith(
                     fontSize: 14,
                     fontWeight: FontWeight.w800,
                     color: Colors.black87,
@@ -168,15 +168,18 @@ class FriendRoomCard extends StatelessWidget {
                     const SizedBox(width: 4),
                     Text(
                       '${room.current}/${room.max}',
-                      style: const TextStyle(
+                      style: Theme.of(context).textTheme.bodySmall!.copyWith(
                         fontSize: 12,
                         color: AppColors.brownDeep,
                       ),
                     ),
                     if (!room.isOneOnOne && (room.isLocked || room.isFull)) ...[
-                      const Text(
+                      Text(
                         '  ·  ',
-                        style: TextStyle(fontSize: 12, color: Colors.grey),
+                        style: Theme.of(context).textTheme.bodySmall!.copyWith(
+                          fontSize: 12,
+                          color: const Color(0xFF757575),
+                        ),
                       ),
                       _StatusPill(room: room),
                     ],
@@ -218,9 +221,9 @@ class _StatusPill extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 3),
-            const Text(
+            Text(
               'Locked',
-              style: TextStyle(
+              style: Theme.of(context).textTheme.labelSmall!.copyWith(
                 fontSize: 11,
                 color: AppColors.brownDeep,
                 fontWeight: FontWeight.w700,
@@ -236,9 +239,9 @@ class _StatusPill extends StatelessWidget {
         color: Colors.grey.shade200,
         borderRadius: BorderRadius.circular(20),
       ),
-      child: const Text(
+      child: Text(
         'Full',
-        style: TextStyle(
+        style: Theme.of(context).textTheme.labelSmall!.copyWith(
           fontSize: 11,
           color: Colors.grey,
           fontWeight: FontWeight.w700,
@@ -265,7 +268,7 @@ class _ActionButton extends StatelessWidget {
         ),
         child: Text(
           'Join',
-          style: TextStyle(
+          style: Theme.of(context).textTheme.bodyMedium!.copyWith(
             fontSize: 13,
             fontWeight: FontWeight.w900,
             color: Colors.grey.shade400,
@@ -283,12 +286,12 @@ class _ActionButton extends StatelessWidget {
             borderRadius: BorderRadius.circular(20),
             border: Border.all(color: const Color(0xFFC7D2B5), width: 1.5),
           ),
-          child: const Text(
+          child: Text(
             'Join',
-            style: TextStyle(
+            style: Theme.of(context).textTheme.bodyMedium!.copyWith(
               fontSize: 13,
               fontWeight: FontWeight.w900,
-              color: Color(0xFF4A553F),
+              color: const Color(0xFF4A553F),
             ),
           ),
         ),
@@ -304,7 +307,7 @@ class _ActionButton extends StatelessWidget {
       ),
       child: Text(
         'Join',
-        style: TextStyle(
+        style: Theme.of(context).textTheme.bodyMedium!.copyWith(
           fontSize: 13,
           fontWeight: FontWeight.w900,
           color: Colors.grey.shade400,

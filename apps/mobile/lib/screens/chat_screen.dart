@@ -563,7 +563,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
                     children: [
                       Text(
                         roomName,
-                        style: const TextStyle(
+                        style: Theme.of(context).textTheme.titleLarge!.copyWith(
                           color: Colors.white,
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
@@ -571,7 +571,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
                       ),
                       Text(
                         'Room ID:   $roomId',
-                        style: const TextStyle(
+                        style: Theme.of(context).textTheme.bodySmall!.copyWith(
                           color: Colors.white70,
                           fontSize: 12,
                         ),
@@ -713,7 +713,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
             const SizedBox(height: 2),
             Text(
               label,
-              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+              style: Theme.of(context).textTheme.labelSmall!.copyWith(
+                fontSize: 11,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ],
         ),
@@ -775,8 +778,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
       child: Text(
         text,
         textAlign: TextAlign.center,
-        style: const TextStyle(
-          color: Color(0xFF836151),
+        style: Theme.of(context).textTheme.bodyMedium!.copyWith(
+          color: const Color(0xFF836151),
           fontSize: 13,
           fontWeight: FontWeight.w500,
         ),
@@ -791,7 +794,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
           const SizedBox(height: 8),
           Text(
             msg.time!,
-            style: const TextStyle(fontSize: 12, color: Colors.black45),
+            style: Theme.of(context).textTheme.bodySmall!.copyWith(
+              fontSize: 12,
+              color: Colors.black.withValues(alpha: 0.60),
+            ),
           ),
           const SizedBox(height: 6),
         ],
@@ -805,7 +811,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
           ),
           child: Text(
             msg.text,
-            style: const TextStyle(fontSize: 12, color: Colors.black54),
+            style: Theme.of(context).textTheme.bodySmall!.copyWith(
+              fontSize: 12,
+              color: Colors.black54,
+            ),
           ),
         ),
         const SizedBox(height: 8),
@@ -845,7 +854,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
           if (isMe) ...[
             Text(
               msg.time ?? '',
-              style: const TextStyle(fontSize: 10, color: Colors.black45),
+              style: Theme.of(context).textTheme.labelSmall!.copyWith(
+                fontSize: 10,
+                color: Colors.black.withValues(alpha: 0.60),
+              ),
             ),
             const SizedBox(width: 6),
           ],
@@ -859,14 +871,19 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
             ),
             child: Text(
               msg.text,
-              style: const TextStyle(fontSize: 15, height: 1.6),
+              style: Theme.of(
+                context,
+              ).textTheme.bodyLarge!.copyWith(fontSize: 15, height: 1.6),
             ),
           ),
           if (!isMe) ...[
             const SizedBox(width: 6),
             Text(
               msg.time ?? '',
-              style: const TextStyle(fontSize: 10, color: Colors.black45),
+              style: Theme.of(context).textTheme.labelSmall!.copyWith(
+                fontSize: 10,
+                color: Colors.black.withValues(alpha: 0.60),
+              ),
             ),
           ],
           if (isMe) ...[
@@ -920,7 +937,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
     );
     final timestamp = Text(
       msg.time ?? '',
-      style: const TextStyle(fontSize: 10, color: Colors.black45),
+      style: Theme.of(context).textTheme.labelSmall!.copyWith(
+        fontSize: 10,
+        color: Colors.black.withValues(alpha: 0.60),
+      ),
     );
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
@@ -1014,9 +1034,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
             ),
           ),
           const SizedBox(width: 10),
-          const Text(
+          Text(
             'GIF ready to send',
-            style: TextStyle(color: Colors.white70, fontSize: 12),
+            style: Theme.of(context).textTheme.bodySmall!.copyWith(
+              color: Colors.white70,
+              fontSize: 12,
+            ),
           ),
           const Spacer(),
           GestureDetector(
@@ -1056,7 +1079,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
                 maxLines: 5,
                 keyboardType: TextInputType.multiline,
                 textInputAction: TextInputAction.newline,
-                style: const TextStyle(fontSize: 15),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodyLarge!.copyWith(fontSize: 15),
                 strutStyle: const StrutStyle(
                   fontSize: 15,
                   height: 1.6,

@@ -166,9 +166,9 @@ class _FriendProfileDialogState extends State<_FriendProfileDialog> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // Username
-        const Text(
+        Text(
           'Username',
-          style: TextStyle(
+          style: Theme.of(context).textTheme.bodyLarge!.copyWith(
             fontWeight: FontWeight.w900,
             fontSize: 15,
             color: Colors.black,
@@ -177,15 +177,17 @@ class _FriendProfileDialogState extends State<_FriendProfileDialog> {
         const SizedBox(height: 2),
         Text(
           widget.friend.username,
-          style: const TextStyle(fontSize: 13, color: Colors.black87),
+          style: Theme.of(
+            context,
+          ).textTheme.bodyMedium!.copyWith(fontSize: 13, color: Colors.black87),
         ),
         const SizedBox(height: 14),
         // Note label row
         Row(
           children: [
-            const Text(
+            Text(
               'Note',
-              style: TextStyle(
+              style: Theme.of(context).textTheme.bodyLarge!.copyWith(
                 fontWeight: FontWeight.w900,
                 fontSize: 15,
                 color: Colors.black,
@@ -210,7 +212,10 @@ class _FriendProfileDialogState extends State<_FriendProfileDialog> {
                 valueListenable: _noteCtrl,
                 builder: (_, val, _) => Text(
                   '${val.text.length}/$_maxNote',
-                  style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
+                  style: Theme.of(context).textTheme.bodySmall!.copyWith(
+                    fontSize: 12,
+                    color: Colors.grey.shade600,
+                  ),
                 ),
               ),
             ],
@@ -221,7 +226,10 @@ class _FriendProfileDialogState extends State<_FriendProfileDialog> {
         if (!_editing)
           Text(
             widget.friend.note?.isNotEmpty == true ? widget.friend.note! : '—',
-            style: const TextStyle(fontSize: 13, color: Colors.black87),
+            style: Theme.of(context).textTheme.bodyMedium!.copyWith(
+              fontSize: 13,
+              color: Colors.black87,
+            ),
           )
         else
           SizedBox(
@@ -237,7 +245,9 @@ class _FriendProfileDialogState extends State<_FriendProfileDialog> {
                     maxLength,
                   }) => null,
               autofocus: true,
-              style: const TextStyle(fontSize: 13),
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium!.copyWith(fontSize: 13),
               decoration: InputDecoration(
                 contentPadding: const EdgeInsets.symmetric(
                   horizontal: 12,
@@ -271,9 +281,9 @@ class _FriendProfileDialogState extends State<_FriendProfileDialog> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           'Interest',
-          style: TextStyle(
+          style: Theme.of(context).textTheme.bodyLarge!.copyWith(
             fontWeight: FontWeight.w900,
             fontSize: 15,
             color: Colors.black,
@@ -282,7 +292,9 @@ class _FriendProfileDialogState extends State<_FriendProfileDialog> {
         const SizedBox(height: 4),
         Text(
           widget.friend.interest.isNotEmpty ? widget.friend.interest : '—',
-          style: const TextStyle(fontSize: 13, color: Colors.black87),
+          style: Theme.of(
+            context,
+          ).textTheme.bodyMedium!.copyWith(fontSize: 13, color: Colors.black87),
         ),
       ],
     );

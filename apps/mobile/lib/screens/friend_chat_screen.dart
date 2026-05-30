@@ -364,7 +364,10 @@ class _FriendChatScreenState extends State<FriendChatScreen> {
       child: Center(
         child: Text(
           _chatDateLabel(),
-          style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
+          style: Theme.of(context).textTheme.bodySmall!.copyWith(
+            fontSize: 12,
+            color: Colors.grey.shade600,
+          ),
         ),
       ),
     );
@@ -383,11 +386,15 @@ class _FriendChatScreenState extends State<FriendChatScreen> {
           width: 1.5,
         ),
       ),
-      child: const Text(
+      child: Text(
         'Keep it friendly! Please be respectful and protect your personal info.\n'
         'Report any suspicious behavior to help keep our community safe.',
         textAlign: TextAlign.center,
-        style: TextStyle(fontSize: 13, color: AppColors.brownDeep, height: 1.5),
+        style: Theme.of(context).textTheme.bodyMedium!.copyWith(
+          fontSize: 13,
+          color: AppColors.brownDeep,
+          height: 1.5,
+        ),
       ),
     );
   }
@@ -463,13 +470,19 @@ class _FriendChatScreenState extends State<FriendChatScreen> {
                   )
                 : Text(
                     message.text,
-                    style: const TextStyle(fontSize: 15, color: Colors.black87),
+                    style: Theme.of(context).textTheme.bodyLarge!.copyWith(
+                      fontSize: 15,
+                      color: Colors.black87,
+                    ),
                   ),
           ),
           const SizedBox(height: 4),
           Text(
             message.time,
-            style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
+            style: Theme.of(context).textTheme.labelSmall!.copyWith(
+              fontSize: 11,
+              color: Colors.grey.shade600,
+            ),
           ),
         ],
       ),
