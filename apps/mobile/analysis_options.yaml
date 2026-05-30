@@ -33,9 +33,5 @@ linter:
     # form in avatar_datasource.dart is intentional — suppress this suggestion.
     use_null_aware_elements: false
 
-analyzer:
-  exclude:
-    - build/**
-
 # Additional information about this file can be found at
 # https://dart.dev/guides/language/analysis-options
