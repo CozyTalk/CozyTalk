@@ -305,11 +305,13 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
         ),
       ),
       const SizedBox(width: 8),
-      Text(
-        label,
-        style: Theme.of(context).textTheme.bodySmall!.copyWith(
-          color: const Color(0xCCFFFFFF),
-          fontSize: 12,
+      Flexible(
+        child: Text(
+          label,
+          style: Theme.of(context).textTheme.bodySmall!.copyWith(
+            color: const Color(0xCCFFFFFF),
+            fontSize: 12,
+          ),
         ),
       ),
       GestureDetector(

@@ -58,6 +58,25 @@ Registered in `main.dart` under `MaterialApp.routes` (production mode only, `_us
 
 When `_useMainUI = false`, the app uses `_AuthRouter` → `features/auth/presentation/screens/login_screen.dart` → `features/hello/presentation/screens/hello_screen.dart`.
 
+## Shared Widgets (`screens/widgets.dart`)
+
+| Widget | Notes |
+|---|---|
+| `buildAppBar(context, title)` | Standard back-arrow AppBar. `IconButton` has `tooltip: 'Go back'` for WCAG 2.2 AA. |
+| `PillButton` | Small pill-shaped action button (Accept / Decline / Unblock). Text child = accessible label. |
+| `AvatarActionButton` | SVG icon button for Undo/Redo/Delete in MoodScreen + DressUpScreen. Requires `semanticLabel` param. Wraps in `Semantics(label: ..., button: true, enabled: ...)`. |
+| `UserAvatarWidget` | Decorative avatar image — wrapped in `ExcludeSemantics`. |
+
+## Accessibility (WCAG 2.2 AA — Criterion 4.1.2)
+
+All production screens have semantic labels on interactive elements:
+- Icon-only `GestureDetector`s wrapped in `Semantics(label: '...', button: true, child: ...)`
+- `IconButton`s without visible text have `tooltip: '...'`
+- Decorative images wrapped in `ExcludeSemantics`
+- Barrier/overlay-dismiss `GestureDetector`s wrapped in `ExcludeSemantics`
+
+Each screen test file (`test/screens/`) has a `group('accessibility', ...)` block verifying labels via `find.bySemanticsLabel` / `find.byTooltip`.
+
 ## Integration Rules (summary)
 
 Convert `StatefulWidget` → `ConsumerStatefulWidget`. Wire `ref.watch/read`. Never change widget tree or visual design. One screen per PR. See CLAUDE.md §9.
