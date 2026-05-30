@@ -1,5 +1,9 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter/material.dart';
+import '../features/auth/presentation/providers/auth_provider.dart';
+import '../features/friends/domain/entities/friend_message.dart';
+import '../features/friends/presentation/providers/friend_chat_provider.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_routes.dart';
 import '../models/friend.dart';
@@ -9,36 +13,26 @@ import '../shared/layered_avatar.dart';
 import 'friend_profile_dialog.dart';
 import 'widgets.dart';
 
-// Mock conversation history per friend name — ready to swap with real API
-final Map<String, List<ChatMessage>> _mockConversations = {
-  'Nong Prae': [
-    const ChatMessage(text: 'Hello', isMe: false, time: '10:00 pm'),
-    const ChatMessage(text: 'Hello 😊🔥💕😊', isMe: true, time: '10:00 pm'),
-  ],
-  'Somjeed': [
-    const ChatMessage(text: 'How are you?', isMe: false, time: '9:30 am'),
-    const ChatMessage(text: "I'm good, thanks!", isMe: true, time: '9:31 am'),
-    const ChatMessage(text: 'How are you?', isMe: false, time: '9:32 am'),
-  ],
-  'Platoo': [
-    const ChatMessage(text: 'How are you?', isMe: false, time: '8:00 pm'),
-  ],
-};
-
-class FriendChatScreen extends StatefulWidget {
+class FriendChatScreen extends ConsumerStatefulWidget {
   const FriendChatScreen({super.key});
 
   @override
-  State<FriendChatScreen> createState() => _FriendChatScreenState();
+  ConsumerState<FriendChatScreen> createState() => _FriendChatScreenState();
 }
 
-class _FriendChatScreenState extends State<FriendChatScreen> {
+class _FriendChatScreenState extends ConsumerState<FriendChatScreen> {
   final TextEditingController _inputCtrl = TextEditingController();
   final ScrollController _scrollCtrl = ScrollController();
 
+  late final FriendChatNotifier _chatNotifier;
   late Friend _friend;
-  late List<ChatMessage> _messages;
   bool _initialized = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _chatNotifier = ref.read(friendChatNotifierProvider.notifier);
+  }
 
   @override
   void didChangeDependencies() {
@@ -50,22 +44,17 @@ class _FriendChatScreenState extends State<FriendChatScreen> {
         return;
       }
       _friend = args;
-      _messages = List<ChatMessage>.from(
-        _mockConversations[_friend.name] ??
-            [
-              ChatMessage(
-                text: _friend.lastMessage,
-                isMe: false,
-                time: _formatNow(),
-              ),
-            ],
-      );
       _initialized = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        _chatNotifier.enterChat(_friend.chatRoomId, _friend.username);
+      });
     }
   }
 
   @override
   void dispose() {
+    _chatNotifier.leaveChat();
     _inputCtrl.dispose();
     _scrollCtrl.dispose();
     super.dispose();
@@ -74,27 +63,17 @@ class _FriendChatScreenState extends State<FriendChatScreen> {
   void _sendMessage() {
     final text = _inputCtrl.text.trim();
     if (text.isEmpty) return;
-    setState(() {
-      _messages.add(ChatMessage(text: text, isMe: true, time: _formatNow()));
-      _inputCtrl.clear();
-    });
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_scrollCtrl.hasClients) {
-        _scrollCtrl.animateTo(
-          _scrollCtrl.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeOut,
-        );
-      }
-    });
+    _inputCtrl.clear();
+    _chatNotifier.sendMessage(text);
+    _scrollToBottom();
   }
 
   void _sendGif(String label) {
-    setState(() {
-      _messages.add(
-        ChatMessage(text: label, isMe: true, time: _formatNow(), isGif: true),
-      );
-    });
+    _chatNotifier.sendMessage('[GIF] $label');
+    _scrollToBottom();
+  }
+
+  void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scrollCtrl.hasClients) {
         _scrollCtrl.animateTo(
@@ -139,12 +118,30 @@ class _FriendChatScreenState extends State<FriendChatScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final chatState = ref.watch(friendChatNotifierProvider);
+    final currentUid = ref.watch(
+      authNotifierProvider.select((s) => s.user?.uid ?? ''),
+    );
+
+    ref.listen<FriendChatState>(friendChatNotifierProvider, (prev, next) {
+      if (next.error != null && next.error != prev?.error) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(next.error!)));
+      }
+      if ((prev?.messages.length ?? 0) < next.messages.length) {
+        _scrollToBottom();
+      }
+    });
+
     return Scaffold(
       backgroundColor: AppColors.scaffoldBg,
       body: Column(
         children: [
           _buildHeader(context),
-          if (_friend.room != null && _friend.isOnline)
+          if (chatState.isLoading)
+            const LinearProgressIndicator()
+          else if (_friend.room != null && _friend.isOnline)
             Container(
               margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
               decoration: BoxDecoration(
@@ -176,18 +173,30 @@ class _FriendChatScreenState extends State<FriendChatScreen> {
               ),
             ),
           Expanded(
-            child: ListView(
-              controller: _scrollCtrl,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              children: [
-                _buildDateLabel(),
-                _buildSafetyNotice(),
-                const SizedBox(height: 8),
-                ..._messages.map(_buildMessageBubble),
-              ],
-            ),
+            child: chatState.messages.isEmpty && !chatState.isLoading
+                ? const Center(
+                    child: Text(
+                      'No messages yet. Say hello!',
+                      style: TextStyle(color: Colors.grey),
+                    ),
+                  )
+                : ListView(
+                    controller: _scrollCtrl,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
+                    children: [
+                      _buildDateLabel(),
+                      _buildSafetyNotice(),
+                      const SizedBox(height: 8),
+                      ...chatState.messages.map(
+                        (m) => _buildMessageBubble(m, currentUid),
+                      ),
+                    ],
+                  ),
           ),
-          _friend.isBlocked ? _buildBlockedBar() : _buildInputBar(),
+          _friend.isBlocked ? _buildBlockedBar() : _buildInputBar(chatState),
         ],
       ),
     );
@@ -413,11 +422,12 @@ class _FriendChatScreenState extends State<FriendChatScreen> {
   }
 
   // ─── Message bubble ───
-  Widget _buildMessageBubble(ChatMessage message) {
+  Widget _buildMessageBubble(FriendMessage message, String currentUid) {
+    final isMe = message.senderId == currentUid;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Column(
-        crossAxisAlignment: message.isMe
+        crossAxisAlignment: isMe
             ? CrossAxisAlignment.end
             : CrossAxisAlignment.start,
         children: [
@@ -427,71 +437,33 @@ class _FriendChatScreenState extends State<FriendChatScreen> {
             ),
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
-              color: message.isMe
-                  ? const Color(0xFFF6D4E5)
-                  : const Color(0xFFDEF1C2),
+              color: isMe ? const Color(0xFFF6D4E5) : const Color(0xFFDEF1C2),
               borderRadius: BorderRadius.only(
                 topLeft: const Radius.circular(18),
                 topRight: const Radius.circular(18),
-                bottomLeft: message.isMe
+                bottomLeft: isMe
                     ? const Radius.circular(18)
                     : const Radius.circular(4),
-                bottomRight: message.isMe
+                bottomRight: isMe
                     ? const Radius.circular(4)
                     : const Radius.circular(18),
               ),
               border: Border.all(
-                color: message.isMe
-                    ? const Color(0xFFF0BFD6)
-                    : const Color(0xFFC7D2B5),
+                color: isMe ? const Color(0xFFF0BFD6) : const Color(0xFFC7D2B5),
                 width: 1.5,
               ),
             ),
-            child: message.isGif
-                ? Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        message.text,
-                        style: const TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w800,
-                          color: Color(0xFF4A3228),
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.yellowWarm,
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: const Text(
-                          'GIF',
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w700,
-                            color: Color(0xFF4A3228),
-                            letterSpacing: 0.5,
-                          ),
-                        ),
-                      ),
-                    ],
-                  )
-                : Text(
-                    message.text,
-                    style: Theme.of(context).textTheme.bodyLarge!.copyWith(
-                      fontSize: 15,
-                      color: Colors.black87,
-                    ),
-                  ),
+            child: Text(
+              message.text,
+              style: Theme.of(context).textTheme.bodyLarge!.copyWith(
+                fontSize: 15,
+                color: Colors.black87,
+              ),
+            ),
           ),
           const SizedBox(height: 4),
           Text(
-            message.time,
+            _formatNow(),
             style: Theme.of(context).textTheme.labelSmall!.copyWith(
               fontSize: 11,
               color: Colors.grey.shade600,
@@ -532,7 +504,7 @@ class _FriendChatScreenState extends State<FriendChatScreen> {
   }
 
   // ─── Bottom input bar ───
-  Widget _buildInputBar() {
+  Widget _buildInputBar(FriendChatState chatState) {
     return Container(
       decoration: const BoxDecoration(color: AppColors.brownDeep),
       padding: EdgeInsets.fromLTRB(
@@ -618,7 +590,7 @@ class _FriendChatScreenState extends State<FriendChatScreen> {
             label: 'Send message',
             button: true,
             child: GestureDetector(
-              onTap: _sendMessage,
+              onTap: chatState.isSending ? null : _sendMessage,
               child: Container(
                 width: 58,
                 height: 58,
@@ -638,15 +610,21 @@ class _FriendChatScreenState extends State<FriendChatScreen> {
                     ),
                   ],
                 ),
-                child: SvgPicture.asset(
-                  'assets/images/icons/sent.svg',
-                  width: 26,
-                  height: 26,
-                  colorFilter: const ColorFilter.mode(
-                    Color(0xFF695959),
-                    BlendMode.srcIn,
-                  ),
-                ),
+                child: chatState.isSending
+                    ? const SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : SvgPicture.asset(
+                        'assets/images/icons/sent.svg',
+                        width: 26,
+                        height: 26,
+                        colorFilter: const ColorFilter.mode(
+                          Color(0xFF695959),
+                          BlendMode.srcIn,
+                        ),
+                      ),
               ),
             ),
           ),
