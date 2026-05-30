@@ -249,7 +249,8 @@ No CF needed for typing — clients write `typing/{roomId}/{uid}` directly via R
 `icebreakers_enabled` (boolean, default `true`) — gates the Moods/Drinks SVG sticker panel.
 Rollback: set to `false` in Remote Config console; clients pick it up within 12 hours.
 
-`content_filtering_enabled` (boolean, default `true`) — gates the word filter / censor feature. When `false`, `censorTextProvider` passes text through unchanged.
+`content_filtering_enabled` (boolean, default `false`) — gates the word filter / censor feature. When `false`, `censorTextProvider` passes text through unchanged. The app-side default is `false` (filter disabled); set to `true` in the Remote Config console to enable.
+Rollback: set to `false` in Remote Config console; clients pick it up within 1 hour (minimum fetch interval). No release required.
 
 ---
 
