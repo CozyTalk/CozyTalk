@@ -21,8 +21,8 @@ All screens in `apps/mobile/lib/screens/`. These are the production frontend —
 | `BlockedScreen` | `screens/blocked_screen.dart` | `/blocked` | ConsumerStatefulWidget | ✅ integrated |
 | `NotificationScreen` | `screens/notification_screen.dart` | `/notification` | ConsumerStatefulWidget | ✅ integrated — `friendsNotifierProvider.incomingRequests`; accept/decline wired; App Update static card |
 | `SelectBackgroundScreen` | `screens/select_background_screen.dart` | `/select-background` | ConsumerStatefulWidget | ✅ integrated — wired to `matchmakingNotifierProvider`; calls `setBackgroundTheme(id)` before navigating so the selected theme drives CF-side matchmaking filtering; passes `{ roomType, roomName, bgImage, isGroup }` to `findingRoom` route; back button pops to `chooseRoomType` |
-| `LoginScreen` | `screens/login_screen.dart` | — | ConsumerStatefulWidget | ✅ used in production mode (`_useMainUI = true`) by `_MainUIAuthRouter` in `main.dart`; wired to `authNotifierProvider`; shows `OfflineChip` + blocks all sign-in actions when offline |
-| `SignupScreen` | `screens/signup_screen.dart` | — | ConsumerStatefulWidget | ⬜ design preview — never imported in `main.dart`; CA version (`features/auth/`) is used |
+| `LoginScreen` | `screens/login_screen.dart` | — | ConsumerStatefulWidget | ✅ integrated — used as `ui.LoginScreen` in `_MainUIAuthRouter` (`_useMainUI = true`); wired to `authNotifierProvider`; shows `OfflineChip` + blocks all sign-in actions when offline; `@cozytalk.com` logins redirect to `AdminConsoleScreen` |
+| `SignupScreen` | `screens/signup_screen.dart` | — | ConsumerStatefulWidget | ✅ integrated — pushed from `LoginScreen`; `@cozytalk.com` emails blocked at form validation |
 
 ## Admin Screens (admin role only)
 
@@ -76,6 +76,14 @@ All production screens have semantic labels on interactive elements:
 - Barrier/overlay-dismiss `GestureDetector`s wrapped in `ExcludeSemantics`
 
 Each screen test file (`test/screens/`) has a `group('accessibility', ...)` block verifying labels via `find.bySemanticsLabel` / `find.byTooltip`.
+
+## Admin Routing (`_useMainUI = true`)
+
+`_MainUIAuthRouter` checks the authenticated user's email after sign-in:
+- `email.endsWith('@cozytalk.com')` → `AdminConsoleScreen`
+- all other emails → `HomeScreen`
+
+`SignupScreen` blocks `@cozytalk.com` email addresses at form validation to prevent regular users from creating admin accounts.
 
 ## Integration Rules (summary)
 

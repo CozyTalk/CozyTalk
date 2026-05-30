@@ -150,6 +150,8 @@ RTDB paths: `rooms/{id}/members/{uid}`, `typing/{id}/{uid}`, `presence/{id}/{uid
 
 `_AuthRouter` routes: `authenticated → HelloScreen` · `idle → spinner` · others → `LoginScreen`.
 
+`_MainUIAuthRouter` routes (when `_useMainUI = true`): `authenticated + @cozytalk.com email → AdminConsoleScreen` · `authenticated + other email → HomeScreen` · `idle → spinner` · others → `ui.LoginScreen`.
+
 ---
 
 ## 9. Integration Rules
