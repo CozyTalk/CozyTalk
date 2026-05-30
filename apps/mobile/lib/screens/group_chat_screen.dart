@@ -1235,7 +1235,18 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           if (!isMe) ...[
-            LayeredAvatar(boxSize: 40),
+            GestureDetector(
+              onTap: () => showDialog(
+                context: context,
+                builder: (_) => UserProfileDialog(
+                  username: msg.sender ?? '',
+                  initialAdded: _friendRequestSent[msg.sender ?? ''] == true,
+                  onAddFriend: () => _sendFriendRequest(msg.sender ?? ''),
+                  onCancelRequest: () => _cancelFriendRequest(msg.sender ?? ''),
+                ),
+              ),
+              child: LayeredAvatar(boxSize: 40),
+            ),
             const SizedBox(width: 8),
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
