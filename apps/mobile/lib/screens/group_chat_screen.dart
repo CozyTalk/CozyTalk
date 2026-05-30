@@ -16,10 +16,6 @@ import '../dialogs/members_list_dialog.dart';
 import '../shared/avatar_overlay.dart';
 import '../shared/layered_avatar.dart';
 import '../shared/press_bounce_btn.dart';
-import '../shared/user_profile.dart';
-import '../shared/friend_message_popup.dart';
-import '../theme/app_routes.dart';
-import '../models/friend.dart';
 import '../shared/gif_picker.dart';
 import '../shared/info_dialog.dart';
 import '../features/friends/domain/entities/app_user.dart';
@@ -107,7 +103,6 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
   final ScrollController _scrollController = ScrollController();
   final FocusNode _focusNode = FocusNode();
   Timer? _typingTimer;
-  Timer? _friendMsgTimer;
 
   // ── Members panel animation ──
   bool _panelOpen = false;
@@ -157,21 +152,12 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
             currentUserDisplayName: authUser.displayName,
           );
     });
-    _friendMsgTimer = Timer(const Duration(seconds: 3), () {
-      if (!mounted) return;
-      showFriendMessagePopup(
-        context,
-        friendName: 'Nong Prae',
-        message: 'Hey! Are you free tonight? 🍕',
-        onTap: () => _showLeaveForFriendChat(),
-      );
-    });
+    // TODO: show real incoming friend message popup from friendChatNotifierProvider
   }
 
   @override
   void dispose() {
     _typingTimer?.cancel();
-    _friendMsgTimer?.cancel();
     _panelCtrl.dispose();
     _songCtrl.dispose();
     _msgController.dispose();
@@ -327,117 +313,8 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
     ref.read(chatNotifierProvider.notifier).sendMessage('card::$cardPath');
   }
 
-  void _showLeaveForFriendChat() {
-    if (!mounted) return;
-    final mockFriend = Friend(
-      name: 'Nong Prae',
-      username: 'kaitom',
-      lastMessage: 'Hey! Are you free tonight? 🍕',
-      isOnline: true,
-      avatar: 'assets/images/UserAvatar.png',
-      interest: 'Cats',
-    );
-    showDialog(
-      context: context,
-      builder: (dialogCtx) => Dialog(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        insetPadding: const EdgeInsets.symmetric(horizontal: 32),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(24, 22, 24, 20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text(
-                'Leave this room?',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w800,
-                  color: Colors.black,
-                  decoration: TextDecoration.none,
-                ),
-              ),
-              const SizedBox(height: 10),
-              const Text(
-                'You will leave this room and won\'t\nbe able to come back.',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 15,
-                  height: 1.3,
-                  color: Colors.black87,
-                  decoration: TextDecoration.none,
-                  fontWeight: FontWeight.w400,
-                ),
-              ),
-              const SizedBox(height: 20),
-              Row(
-                children: [
-                  Expanded(
-                    child: SizedBox(
-                      height: 42,
-                      child: ElevatedButton(
-                        onPressed: () => Navigator.pop(dialogCtx),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFD9D5D1),
-                          foregroundColor: Colors.black,
-                          elevation: 0,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(18),
-                            side: const BorderSide(color: Color(0xFFC8C3BE)),
-                          ),
-                        ),
-                        child: const Text(
-                          'Stay',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: SizedBox(
-                      height: 42,
-                      child: ElevatedButton(
-                        onPressed: () {
-                          Navigator.pop(dialogCtx);
-                          Navigator.popUntil(context, (route) => route.isFirst);
-                          Navigator.pushNamed(context, AppRoutes.friends);
-                          Navigator.pushNamed(
-                            context,
-                            AppRoutes.friendChat,
-                            arguments: mockFriend,
-                          );
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFD86A3B),
-                          foregroundColor: Colors.white,
-                          elevation: 0,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(18),
-                          ),
-                        ),
-                        child: const Text(
-                          'Leave',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
+  // TODO: implement _showLeaveForFriendChat — navigate to /friends/chat with real Friend
+  // from friendsNotifierProvider; triggered by incoming friend message popup
 
   static const _kWarning =
       'Keep it friendly! Please be respectful and protect your personal info.\n'
@@ -480,7 +357,6 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
     final maxMembers = args?['maxMembers'] as int? ?? 5;
 
     final avatarState = ref.watch(avatarProvider);
-    final userProfile = ref.watch(userProfileProvider);
     final chatState = ref.watch(chatNotifierProvider);
     final roomType = args?['roomType'] as String?;
     final matchState = ref.watch(matchmakingNotifierProvider);
@@ -493,6 +369,8 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
     final nameMap = <String, String>{
       for (final m in chatState.messages) m.senderId: m.displayName,
     };
+    final myDisplayName =
+        ref.watch(authNotifierProvider).user?.displayName ?? '';
     final roomUsers = matchState.currentRoom?.users ?? [];
     final members = roomUsers.isEmpty
         ? ['Me']
@@ -551,7 +429,7 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
                           bgImage,
                           maxMembers,
                           avatarState,
-                          userProfile,
+                          myDisplayName,
                           members,
                         ),
                         Expanded(
@@ -794,7 +672,7 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
     String bgImage,
     int maxMembers,
     AvatarState avatarState,
-    UserProfileState userProfile,
+    String myDisplayName,
     List<String> members,
   ) {
     final count = members.length.clamp(1, 5);
@@ -847,12 +725,9 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
                 final pos = preset[i];
                 final username = members[i];
                 final isMe = username == 'Me';
-                final displayName = isMe ? userProfile.username : username;
-                final thought = isMe
-                    ? (userProfile.thought.isNotEmpty
-                          ? userProfile.thought
-                          : 'Care to share?')
-                    : 'Hello!';
+                final displayName = isMe ? myDisplayName : username;
+                // TODO: load each member's thoughts from their Firestore profile
+                const thought = 'Care to share?';
                 final rawScale = pos.size / 90;
                 final scale = rawScale.clamp(0.78, 1.0);
                 final bubbleW = 84 * scale;
