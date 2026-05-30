@@ -51,6 +51,10 @@ class ChatRepositoryImpl implements ChatRepository {
   Future<void> endSession({required String sessionId}) =>
       _datasource.endSession(sessionId: sessionId);
 
+  @override
+  Stream<Set<String>> watchPresence(String sessionId) =>
+      _datasource.watchPresence(sessionId);
+
   Future<ChatMessage> _decrypt(
     ChatMessageModel model,
     List<int> keyBytes,

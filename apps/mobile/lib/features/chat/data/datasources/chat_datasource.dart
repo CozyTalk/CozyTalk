@@ -23,6 +23,7 @@ abstract class ChatDatasource {
   });
   Future<void> endSession({required String sessionId});
 
+  Stream<Set<String>> watchPresence(String sessionId);
   Future<String> joinProtoSession({
     required String sessionId,
     required String uid,
@@ -199,6 +200,14 @@ class ChatDatasourceImpl implements ChatDatasource {
       await _db.ref('typing/$sessionId/$uid').remove();
     }
     await _functions.httpsCallable('endSession').call({'sessionId': sessionId});
+  }
+
+  @override
+  Stream<Set<String>> watchPresence(String sessionId) {
+    return _db.ref('presence/$sessionId').onValue.map((event) {
+      final raw = event.snapshot.value as Map? ?? {};
+      return raw.keys.cast<String>().toSet();
+    });
   }
 
   @override

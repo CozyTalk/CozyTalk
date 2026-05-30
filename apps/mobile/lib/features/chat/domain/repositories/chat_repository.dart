@@ -13,4 +13,5 @@ abstract class ChatRepository {
     String? photoUrl,
   });
   Future<void> endSession({required String sessionId});
+  Stream<Set<String>> watchPresence(String sessionId);
 }

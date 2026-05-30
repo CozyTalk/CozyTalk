@@ -57,6 +57,9 @@ class _FakeChatDatasource implements ChatDatasource {
       endSessionCount++;
 
   @override
+  Stream<Set<String>> watchPresence(String sessionId) => Stream.value({});
+
+  @override
   Future<String> joinProtoSession({
     required String sessionId,
     required String uid,
