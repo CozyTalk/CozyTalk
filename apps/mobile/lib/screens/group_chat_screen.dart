@@ -13,7 +13,6 @@ import '../theme/app_colors.dart';
 import '../dialogs/leave_room_dialog.dart';
 import '../dialogs/song_dialog.dart';
 import '../features/jukebox/presentation/providers/jukebox_provider.dart';
-import '../features/jukebox/presentation/widgets/jukebox_chat_player.dart';
 import '../dialogs/user_profile_dialog.dart';
 import '../dialogs/members_list_dialog.dart';
 import '../shared/avatar_overlay.dart';
@@ -575,8 +574,6 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
                         ),
                       ),
                     ),
-                    // Floating player (hidden widget; overlay renders the video)
-                    JukeboxChatPlayer(roomId: roomId),
                   ],
                 ),
               ),

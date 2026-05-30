@@ -13,7 +13,6 @@ import '../theme/app_colors.dart';
 import '../dialogs/leave_room_dialog.dart';
 import '../dialogs/song_dialog.dart';
 import '../features/jukebox/presentation/providers/jukebox_provider.dart';
-import '../features/jukebox/presentation/widgets/jukebox_chat_player.dart';
 import '../dialogs/user_profile_dialog.dart';
 import '../shared/avatar_overlay.dart';
 import '../shared/layered_avatar.dart';
@@ -459,8 +458,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
                         blocked ? _buildBlockedBar() : _buildInputBar(),
                       ],
                     ),
-                    // Floating YouTube player (hidden widget; overlay renders the video)
-                    JukeboxChatPlayer(roomId: roomId),
                     // Barrier
                     if (_songPanelOpen)
                       GestureDetector(

@@ -186,6 +186,18 @@ class _FakeJukeboxNotifier extends JukeboxNotifier {
 
   @override
   void leaveRoom() {}
+
+  @override
+  Future<void> addUrl(String url) async {}
+
+  @override
+  Future<void> skip() async {}
+
+  @override
+  Future<void> setPlaying(bool isPlaying) async {}
+
+  @override
+  Future<void> removeFromQueue(int index) async {}
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────

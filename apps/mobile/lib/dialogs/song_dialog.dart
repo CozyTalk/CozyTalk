@@ -1,8 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import '../features/jukebox/domain/entities/jukebox_room_state.dart';
 import '../features/jukebox/domain/entities/jukebox_track.dart';
 import '../features/jukebox/presentation/providers/jukebox_provider.dart';
+import '../features/jukebox/presentation/widgets/jukebox_web_player.dart';
 import '../theme/app_colors.dart';
 
 /// Slide-down song panel — rendered inside a Stack below the header.
@@ -71,7 +75,6 @@ class _SongPanelBodyState extends ConsumerState<SongPanelBody>
       }
     });
 
-    final currentTrack = roomState?.currentTrack;
     final currentIndex = roomState?.currentIndex ?? 0;
     final queue = roomState?.queue ?? const <JukeboxTrack>[];
     final upNext = <({int index, JukeboxTrack track})>[
@@ -100,7 +103,7 @@ class _SongPanelBodyState extends ConsumerState<SongPanelBody>
             ),
           ),
           const SizedBox(height: 10),
-          _nowPlayingCard(currentTrack),
+          _nowPlayingCard(roomState, currentIndex),
           const SizedBox(height: 18),
           // ── Queue ──
           const Text(
@@ -121,46 +124,110 @@ class _SongPanelBodyState extends ConsumerState<SongPanelBody>
     );
   }
 
-  Widget _nowPlayingCard(JukeboxTrack? track) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.08),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          RotationTransition(
-            turns: _spinCtrl,
-            child: SvgPicture.asset(
-              'assets/images/icons/musicdisk.svg',
-              width: 44,
-              height: 44,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              track != null ? track.title : '—',
-              style: const TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                height: 1.35,
+  Widget _nowPlayingCard(JukeboxRoomState? roomState, int currentIndex) {
+    final track = roomState?.currentTrack;
+    final notifier = ref.read(jukeboxNotifierProvider.notifier);
+
+    if (track == null) {
+      // No track: show spinning vinyl placeholder
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: _cardDecoration(),
+        child: Row(
+          children: [
+            RotationTransition(
+              turns: _spinCtrl,
+              child: SvgPicture.asset(
+                'assets/images/icons/musicdisk.svg',
+                width: 44,
+                height: 44,
               ),
             ),
-          ),
-          const SizedBox(width: 8),
-          if (track != null)
-            _xBtn(
-              onTap: () => ref.read(jukeboxNotifierProvider.notifier).skip(),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Text(
+                '—',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  height: 1.35,
+                ),
+              ),
             ),
+          ],
+        ),
+      );
+    }
+
+    // Track playing: show embedded YouTube video + title + controls
+    return Container(
+      decoration: _cardDecoration(),
+      clipBehavior: Clip.hardEdge,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // ── Video player ──
+          AspectRatio(
+            aspectRatio: 16 / 9,
+            child: JukeboxWebPlayer(
+              key: ValueKey(currentIndex),
+              videoId: track.videoId,
+              startedAt: roomState!.startedAt,
+              pausedAt: roomState.pausedAt,
+              isPlaying: roomState.isPlaying,
+              onTrackEnded: notifier.skip,
+            ),
+          ),
+          // ── Track info + controls ──
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  track.title,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    height: 1.35,
+                  ),
+                ),
+                if (track.artist.isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    track.artist,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 12, color: Colors.black54),
+                  ),
+                ],
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    _PlaybackPosition(
+                      startedAt: roomState.startedAt,
+                      pausedAt: roomState.pausedAt,
+                      isPlaying: roomState.isPlaying,
+                    ),
+                    const Spacer(),
+                    _controlBtn(
+                      icon: roomState.isPlaying
+                          ? Icons.pause_rounded
+                          : Icons.play_arrow_rounded,
+                      onTap: () => notifier.setPlaying(!roomState.isPlaying),
+                    ),
+                    const SizedBox(width: 8),
+                    _controlBtn(
+                      icon: Icons.skip_next_rounded,
+                      onTap: notifier.skip,
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -169,17 +236,7 @@ class _SongPanelBodyState extends ConsumerState<SongPanelBody>
   Widget _queueCard(List<({int index, JukeboxTrack track})> upNext) {
     return Container(
       padding: const EdgeInsets.fromLTRB(14, 14, 14, 4),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.08),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
+      decoration: _cardDecoration(),
       child: upNext.isEmpty
           ? const Padding(
               padding: EdgeInsets.only(bottom: 10),
@@ -238,6 +295,18 @@ class _SongPanelBodyState extends ConsumerState<SongPanelBody>
     );
   }
 
+  BoxDecoration _cardDecoration() => BoxDecoration(
+    color: Colors.white,
+    borderRadius: BorderRadius.circular(18),
+    boxShadow: [
+      BoxShadow(
+        color: Colors.black.withValues(alpha: 0.08),
+        blurRadius: 6,
+        offset: const Offset(0, 2),
+      ),
+    ],
+  );
+
   Widget _xBtn({required VoidCallback onTap}) {
     return GestureDetector(
       onTap: onTap,
@@ -249,6 +318,21 @@ class _SongPanelBodyState extends ConsumerState<SongPanelBody>
           border: Border.all(color: const Color(0xFFCF5733), width: 1.5),
         ),
         child: const Icon(Icons.close, color: Color(0xFFCF5733), size: 16),
+      ),
+    );
+  }
+
+  Widget _controlBtn({required IconData icon, required VoidCallback onTap}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 36,
+        height: 36,
+        decoration: BoxDecoration(
+          color: const Color(0xFFEAC163),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Icon(icon, color: Colors.white, size: 20),
       ),
     );
   }
@@ -311,6 +395,76 @@ class _SongPanelBodyState extends ConsumerState<SongPanelBody>
           ),
         ),
       ],
+    );
+  }
+}
+
+// ── Live playback position ─────────────────────────────────────────────────────
+
+class _PlaybackPosition extends StatefulWidget {
+  final int startedAt;
+  final int pausedAt;
+  final bool isPlaying;
+
+  const _PlaybackPosition({
+    required this.startedAt,
+    required this.pausedAt,
+    required this.isPlaying,
+  });
+
+  @override
+  State<_PlaybackPosition> createState() => _PlaybackPositionState();
+}
+
+class _PlaybackPositionState extends State<_PlaybackPosition> {
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _startTimer();
+  }
+
+  @override
+  void didUpdateWidget(_PlaybackPosition old) {
+    super.didUpdateWidget(old);
+    if (old.isPlaying != widget.isPlaying ||
+        old.startedAt != widget.startedAt) {
+      _startTimer();
+    }
+  }
+
+  void _startTimer() {
+    _timer?.cancel();
+    _timer = null;
+    if (widget.isPlaying) {
+      _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+        if (mounted) setState(() {});
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final rawSecs = widget.isPlaying
+        ? (DateTime.now().millisecondsSinceEpoch - widget.startedAt) ~/ 1000
+        : widget.pausedAt ~/ 1000;
+    final secs = rawSecs.clamp(0, 86400);
+    final m = secs ~/ 60;
+    final s = secs % 60;
+    return Text(
+      '${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}',
+      style: const TextStyle(
+        fontSize: 13,
+        fontWeight: FontWeight.w600,
+        color: Colors.black54,
+      ),
     );
   }
 }
