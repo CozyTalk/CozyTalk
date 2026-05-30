@@ -89,7 +89,9 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
               border: Border.all(color: const Color(0xFF695959), width: 3),
             ),
             child: ClipOval(
-              child: Image.asset('assets/images/Logo.png', fit: BoxFit.cover),
+              child: ExcludeSemantics(
+                child: Image.asset('assets/images/Logo.png', fit: BoxFit.cover),
+              ),
             ),
           ),
         ),
@@ -235,6 +237,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
     ).textTheme.bodyMedium!.copyWith(color: Colors.black87, fontSize: 14),
     decoration: _inputDecoration('Enter your password').copyWith(
       suffixIcon: IconButton(
+        tooltip: 'Toggle password visibility',
         icon: Icon(
           _obscurePassword
               ? Icons.visibility_off_outlined
@@ -551,6 +554,7 @@ class _PolicyDialog extends StatelessWidget {
               top: 4,
               right: 4,
               child: IconButton(
+                tooltip: 'Close',
                 icon: const Icon(Icons.cancel_outlined, size: 28),
                 onPressed: () => Navigator.of(context).pop(),
               ),

@@ -8,6 +8,7 @@ PreferredSizeWidget buildAppBar(BuildContext context, String title) {
   return AppBar(
     leading: IconButton(
       icon: const Icon(Icons.chevron_left, size: 30),
+      tooltip: 'Go back',
       onPressed: () => Navigator.pop(context),
     ),
     title: Text(title),
@@ -322,27 +323,34 @@ class AvatarActionButton extends StatelessWidget {
   final String svgPath;
   final bool enabled;
   final VoidCallback onTap;
+  final String semanticLabel;
 
   const AvatarActionButton({
     super.key,
     required this.svgPath,
     required this.enabled,
     required this.onTap,
+    required this.semanticLabel,
   });
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: enabled ? onTap : null,
-      child: Opacity(
-        opacity: enabled ? 1.0 : 0.35,
-        child: SvgPicture.asset(
-          svgPath,
-          width: 28,
-          height: 28,
-          colorFilter: const ColorFilter.mode(
-            AppColors.brownDeep,
-            BlendMode.srcIn,
+    return Semantics(
+      label: semanticLabel,
+      button: true,
+      enabled: enabled,
+      child: GestureDetector(
+        onTap: enabled ? onTap : null,
+        child: Opacity(
+          opacity: enabled ? 1.0 : 0.35,
+          child: SvgPicture.asset(
+            svgPath,
+            width: 28,
+            height: 28,
+            colorFilter: const ColorFilter.mode(
+              AppColors.brownDeep,
+              BlendMode.srcIn,
+            ),
           ),
         ),
       ),
@@ -357,11 +365,13 @@ class UserAvatarWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Image.asset(
-      'assets/images/UserAvatar.png',
-      height: size,
-      errorBuilder: (_, _, _) =>
-          Icon(Icons.person, size: size, color: AppColors.brownDeep),
+    return ExcludeSemantics(
+      child: Image.asset(
+        'assets/images/UserAvatar.png',
+        height: size,
+        errorBuilder: (_, _, _) =>
+            Icon(Icons.person, size: size, color: AppColors.brownDeep),
+      ),
     );
   }
 }

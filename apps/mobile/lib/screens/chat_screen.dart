@@ -505,10 +505,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
                     ),
                     // Barrier
                     if (_songPanelOpen)
-                      GestureDetector(
-                        onTap: _closeSongPanel,
-                        behavior: HitTestBehavior.opaque,
-                        child: Container(color: Colors.black26),
+                      ExcludeSemantics(
+                        child: GestureDetector(
+                          onTap: _closeSongPanel,
+                          behavior: HitTestBehavior.opaque,
+                          child: Container(color: Colors.black26),
+                        ),
                       ),
                     // Slide-down song panel
                     Positioned(
@@ -547,12 +549,16 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                _headerBtn(
-                  onTap: _onWillPop,
-                  child: SvgPicture.asset(
-                    'assets/images/icons/Back.svg',
-                    width: 24,
-                    height: 24,
+                Semantics(
+                  label: 'End chat',
+                  button: true,
+                  child: _headerBtn(
+                    onTap: _onWillPop,
+                    child: SvgPicture.asset(
+                      'assets/images/icons/Back.svg',
+                      width: 24,
+                      height: 24,
+                    ),
                   ),
                 ),
                 const SizedBox(width: 16),
@@ -837,17 +843,21 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           if (!isMe) ...[
-            GestureDetector(
-              onTap: () => showDialog(
-                context: context,
-                builder: (_) => UserProfileDialog(
-                  username: 'kaitom',
-                  initialAdded: _friendRequestSent,
-                  onAddFriend: () => _sendFriendRequest(),
-                  onCancelRequest: () => _cancelFriendRequest(),
+            Semantics(
+              label: 'View user profile',
+              button: true,
+              child: GestureDetector(
+                onTap: () => showDialog(
+                  context: context,
+                  builder: (_) => UserProfileDialog(
+                    username: 'kaitom',
+                    initialAdded: _friendRequestSent,
+                    onAddFriend: () => _sendFriendRequest(),
+                    onCancelRequest: () => _cancelFriendRequest(),
+                  ),
                 ),
+                child: LayeredAvatar(boxSize: 40),
               ),
-              child: LayeredAvatar(boxSize: 40),
             ),
             const SizedBox(width: 8),
           ],
@@ -951,17 +961,21 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           if (!isMe) ...[
-            GestureDetector(
-              onTap: () => showDialog(
-                context: context,
-                builder: (_) => UserProfileDialog(
-                  username: 'kaitom',
-                  initialAdded: _friendRequestSent,
-                  onAddFriend: () => _sendFriendRequest(),
-                  onCancelRequest: () => _cancelFriendRequest(),
+            Semantics(
+              label: 'View user profile',
+              button: true,
+              child: GestureDetector(
+                onTap: () => showDialog(
+                  context: context,
+                  builder: (_) => UserProfileDialog(
+                    username: 'kaitom',
+                    initialAdded: _friendRequestSent,
+                    onAddFriend: () => _sendFriendRequest(),
+                    onCancelRequest: () => _cancelFriendRequest(),
+                  ),
                 ),
+                child: LayeredAvatar(boxSize: 40),
               ),
-              child: LayeredAvatar(boxSize: 40),
             ),
             const SizedBox(width: 8),
             gifWidget,
@@ -1042,9 +1056,13 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
             ),
           ),
           const Spacer(),
-          GestureDetector(
-            onTap: () => setState(() => _pendingGifUrl = null),
-            child: const Icon(Icons.close, color: Colors.white54, size: 20),
+          Semantics(
+            label: 'Close GIF preview',
+            button: true,
+            child: GestureDetector(
+              onTap: () => setState(() => _pendingGifUrl = null),
+              child: const Icon(Icons.close, color: Colors.white54, size: 20),
+            ),
           ),
         ],
       ),
@@ -1149,20 +1167,24 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
             ),
           ),
           const SizedBox(width: 10),
-          GestureDetector(
-            onTap: _sendMessage,
-            child: Container(
-              width: 50,
-              height: 50,
-              decoration: BoxDecoration(
-                color: const Color(0xFFEAC163),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              alignment: Alignment.center,
-              child: SvgPicture.asset(
-                'assets/images/icons/sent.svg',
-                width: 24,
-                height: 24,
+          Semantics(
+            label: 'Send message',
+            button: true,
+            child: GestureDetector(
+              onTap: _sendMessage,
+              child: Container(
+                width: 50,
+                height: 50,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEAC163),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                alignment: Alignment.center,
+                child: SvgPicture.asset(
+                  'assets/images/icons/sent.svg',
+                  width: 24,
+                  height: 24,
+                ),
               ),
             ),
           ),
@@ -1407,21 +1429,25 @@ class _StaticAvatar extends StatelessWidget {
             bottom: 0,
             left: 0,
             right: 0,
-            child: GestureDetector(
-              onTap: () => showDialog(
-                context: context,
-                builder: (_) => UserProfileDialog(
-                  username: username,
-                  isMe: isMe,
-                  initialAdded: !isMe && friendRequestSent,
-                  onAddFriend: isMe ? null : onFriendRequest,
-                  onCancelRequest: isMe ? null : onCancelRequest,
+            child: Semantics(
+              label: 'View user profile',
+              button: true,
+              child: GestureDetector(
+                onTap: () => showDialog(
+                  context: context,
+                  builder: (_) => UserProfileDialog(
+                    username: username,
+                    isMe: isMe,
+                    initialAdded: !isMe && friendRequestSent,
+                    onAddFriend: isMe ? null : onFriendRequest,
+                    onCancelRequest: isMe ? null : onCancelRequest,
+                  ),
                 ),
-              ),
-              child: LayeredAvatar(
-                boxSize: 90 * s,
-                moodOverlay: isMe ? avatarState?.mood : null,
-                accessoryOverlay: isMe ? avatarState?.accessory : null,
+                child: LayeredAvatar(
+                  boxSize: 90 * s,
+                  moodOverlay: isMe ? avatarState?.mood : null,
+                  accessoryOverlay: isMe ? avatarState?.accessory : null,
+                ),
               ),
             ),
           ),

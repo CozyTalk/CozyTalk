@@ -588,13 +588,15 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
                     ),
                     // Barrier — tap outside to close whichever panel is open
                     if (_panelOpen || _songPanelOpen)
-                      GestureDetector(
-                        onTap: _panelOpen ? _closePanel : _closeSongPanel,
-                        behavior: HitTestBehavior.opaque,
-                        child: AnimatedOpacity(
-                          opacity: 1.0,
-                          duration: const Duration(milliseconds: 260),
-                          child: Container(color: Colors.black26),
+                      ExcludeSemantics(
+                        child: GestureDetector(
+                          onTap: _panelOpen ? _closePanel : _closeSongPanel,
+                          behavior: HitTestBehavior.opaque,
+                          child: AnimatedOpacity(
+                            opacity: 1.0,
+                            duration: const Duration(milliseconds: 260),
+                            child: Container(color: Colors.black26),
+                          ),
                         ),
                       ),
                     // Slide-down members panel
@@ -652,24 +654,28 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 // Back button
-                _headerBtn(
-                  onTap: () => showDialog(
-                    context: context,
-                    builder: (_) => LeaveRoomDialog(
-                      onLeave: () {
-                        ref
-                            .read(matchmakingNotifierProvider.notifier)
-                            .leaveRoom();
-                        ref
-                            .read(chatNotifierProvider.notifier)
-                            .forceDisconnect();
-                      },
+                Semantics(
+                  label: 'End chat',
+                  button: true,
+                  child: _headerBtn(
+                    onTap: () => showDialog(
+                      context: context,
+                      builder: (_) => LeaveRoomDialog(
+                        onLeave: () {
+                          ref
+                              .read(matchmakingNotifierProvider.notifier)
+                              .leaveRoom();
+                          ref
+                              .read(chatNotifierProvider.notifier)
+                              .forceDisconnect();
+                        },
+                      ),
                     ),
-                  ),
-                  child: SvgPicture.asset(
-                    'assets/images/icons/Back.svg',
-                    width: 24,
-                    height: 24,
+                    child: SvgPicture.asset(
+                      'assets/images/icons/Back.svg',
+                      width: 24,
+                      height: 24,
+                    ),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -698,64 +704,75 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
                   ),
                 ),
                 // Lock toggle
-                GestureDetector(
-                  onTap: () {
-                    ref
-                        .read(matchmakingNotifierProvider.notifier)
-                        .setRoomLock(isLocked: !isLocked);
-                  },
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    width: 60,
-                    height: 32,
-                    padding: const EdgeInsets.symmetric(horizontal: 3),
-                    decoration: BoxDecoration(
-                      color: isLocked
-                          ? const Color(0xFFBA5F3A)
-                          : const Color(0xFFD9D9D9),
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: Colors.black12),
-                    ),
-                    child: Stack(
-                      children: [
-                        AnimatedAlign(
-                          duration: const Duration(milliseconds: 200),
-                          alignment: isLocked
-                              ? Alignment.centerRight
-                              : Alignment.centerLeft,
-                          child: Container(
-                            width: 26,
-                            height: 26,
-                            decoration: const BoxDecoration(
-                              color: Colors.white,
-                              shape: BoxShape.circle,
-                              boxShadow: [
-                                BoxShadow(color: Colors.black12, blurRadius: 4),
-                              ],
-                            ),
-                            child: Icon(
-                              isLocked
-                                  ? Icons.lock_rounded
-                                  : Icons.lock_open_rounded,
-                              size: 16,
-                              color: isLocked
-                                  ? const Color(0xFFBA5F3A)
-                                  : Colors.grey,
+                Semantics(
+                  label: 'Toggle room lock',
+                  button: true,
+                  child: GestureDetector(
+                    onTap: () {
+                      ref
+                          .read(matchmakingNotifierProvider.notifier)
+                          .setRoomLock(isLocked: !isLocked);
+                    },
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      width: 60,
+                      height: 32,
+                      padding: const EdgeInsets.symmetric(horizontal: 3),
+                      decoration: BoxDecoration(
+                        color: isLocked
+                            ? const Color(0xFFBA5F3A)
+                            : const Color(0xFFD9D9D9),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: Colors.black12),
+                      ),
+                      child: Stack(
+                        children: [
+                          AnimatedAlign(
+                            duration: const Duration(milliseconds: 200),
+                            alignment: isLocked
+                                ? Alignment.centerRight
+                                : Alignment.centerLeft,
+                            child: Container(
+                              width: 26,
+                              height: 26,
+                              decoration: const BoxDecoration(
+                                color: Colors.white,
+                                shape: BoxShape.circle,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black12,
+                                    blurRadius: 4,
+                                  ),
+                                ],
+                              ),
+                              child: Icon(
+                                isLocked
+                                    ? Icons.lock_rounded
+                                    : Icons.lock_open_rounded,
+                                size: 16,
+                                color: isLocked
+                                    ? const Color(0xFFBA5F3A)
+                                    : Colors.grey,
+                              ),
                             ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ),
                 const SizedBox(width: 10),
                 // Member list button
-                _headerBtn(
-                  onTap: _panelOpen ? _closePanel : _openPanel,
-                  child: SvgPicture.asset(
-                    'assets/images/icons/memberlist.svg',
-                    width: 26,
-                    height: 26,
+                Semantics(
+                  label: 'View member list',
+                  button: true,
+                  child: _headerBtn(
+                    onTap: _panelOpen ? _closePanel : _openPanel,
+                    child: SvgPicture.asset(
+                      'assets/images/icons/memberlist.svg',
+                      width: 26,
+                      height: 26,
+                    ),
                   ),
                 ),
               ],
@@ -872,29 +889,33 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
                           bottom: 0,
                           left: 0,
                           right: 0,
-                          child: GestureDetector(
-                            onTap: () => showDialog(
-                              context: context,
-                              builder: (_) => UserProfileDialog(
-                                username: displayName,
-                                isMe: isMe,
-                                initialAdded:
-                                    !isMe &&
-                                    (_friendRequestSent[displayName] == true),
-                                onAddFriend: isMe
-                                    ? null
-                                    : () => _sendFriendRequest(displayName),
-                                onCancelRequest: isMe
-                                    ? null
-                                    : () => _cancelFriendRequest(displayName),
+                          child: Semantics(
+                            label: 'View user profile',
+                            button: true,
+                            child: GestureDetector(
+                              onTap: () => showDialog(
+                                context: context,
+                                builder: (_) => UserProfileDialog(
+                                  username: displayName,
+                                  isMe: isMe,
+                                  initialAdded:
+                                      !isMe &&
+                                      (_friendRequestSent[displayName] == true),
+                                  onAddFriend: isMe
+                                      ? null
+                                      : () => _sendFriendRequest(displayName),
+                                  onCancelRequest: isMe
+                                      ? null
+                                      : () => _cancelFriendRequest(displayName),
+                                ),
                               ),
-                            ),
-                            child: LayeredAvatar(
-                              boxSize: pos.size,
-                              moodOverlay: isMe ? avatarState.mood : null,
-                              accessoryOverlay: isMe
-                                  ? avatarState.accessory
-                                  : null,
+                              child: LayeredAvatar(
+                                boxSize: pos.size,
+                                moodOverlay: isMe ? avatarState.mood : null,
+                                accessoryOverlay: isMe
+                                    ? avatarState.accessory
+                                    : null,
+                              ),
                             ),
                           ),
                         ),
@@ -1104,17 +1125,22 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
         children: [
           // Avatar (others only)
           if (!isMe) ...[
-            GestureDetector(
-              onTap: () => showDialog(
-                context: context,
-                builder: (_) => UserProfileDialog(
-                  username: msg.sender ?? '',
-                  initialAdded: _friendRequestSent[msg.sender ?? ''] == true,
-                  onAddFriend: () => _sendFriendRequest(msg.sender ?? ''),
-                  onCancelRequest: () => _cancelFriendRequest(msg.sender ?? ''),
+            Semantics(
+              label: 'View user profile',
+              button: true,
+              child: GestureDetector(
+                onTap: () => showDialog(
+                  context: context,
+                  builder: (_) => UserProfileDialog(
+                    username: msg.sender ?? '',
+                    initialAdded: _friendRequestSent[msg.sender ?? ''] == true,
+                    onAddFriend: () => _sendFriendRequest(msg.sender ?? ''),
+                    onCancelRequest: () =>
+                        _cancelFriendRequest(msg.sender ?? ''),
+                  ),
                 ),
+                child: LayeredAvatar(boxSize: 40),
               ),
-              child: LayeredAvatar(boxSize: 40),
             ),
             const SizedBox(width: 8),
           ],
@@ -1338,9 +1364,13 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
               ),
             ),
           ),
-          GestureDetector(
-            onTap: () => setState(() => _pendingGifUrl = null),
-            child: const Icon(Icons.close, color: Colors.white70, size: 20),
+          Semantics(
+            label: 'Close GIF preview',
+            button: true,
+            child: GestureDetector(
+              onTap: () => setState(() => _pendingGifUrl = null),
+              child: const Icon(Icons.close, color: Colors.white70, size: 20),
+            ),
           ),
         ],
       ),
@@ -1433,20 +1463,24 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
             ),
           ),
           const SizedBox(width: 10),
-          GestureDetector(
-            onTap: _sendMessage,
-            child: Container(
-              width: 50,
-              height: 50,
-              decoration: BoxDecoration(
-                color: const Color(0xFFEAC163),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              alignment: Alignment.center,
-              child: SvgPicture.asset(
-                'assets/images/icons/sent.svg',
-                width: 24,
-                height: 24,
+          Semantics(
+            label: 'Send message',
+            button: true,
+            child: GestureDetector(
+              onTap: _sendMessage,
+              child: Container(
+                width: 50,
+                height: 50,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEAC163),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                alignment: Alignment.center,
+                child: SvgPicture.asset(
+                  'assets/images/icons/sent.svg',
+                  width: 24,
+                  height: 24,
+                ),
               ),
             ),
           ),

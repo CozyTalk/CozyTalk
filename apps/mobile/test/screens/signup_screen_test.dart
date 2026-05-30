@@ -164,5 +164,20 @@ void main() {
       await tester.pump();
       expect(fake.signInAnonymouslyCount, 1);
     });
+
+    group('accessibility', () {
+      testWidgets('interactive elements have semantic labels', (tester) async {
+        final handle = tester.ensureSemantics();
+        try {
+          await tester.pumpWidget(_build(_FakeAuthNotifier()));
+          await tester.pumpAndSettle();
+          // Flutter surfaces IconButton tooltip text as a semantics tooltip (not
+          // label), so byTooltip is the correct finder here.
+          expect(find.byTooltip('Toggle password visibility'), findsOneWidget);
+        } finally {
+          handle.dispose();
+        }
+      });
+    });
   });
 }

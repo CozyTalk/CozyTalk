@@ -106,18 +106,22 @@ class _FriendProfileDialogState extends State<_FriendProfileDialog> {
             Positioned(
               top: -10,
               right: -10,
-              child: GestureDetector(
-                onTap: () => Navigator.pop(context),
-                behavior: HitTestBehavior.opaque,
-                child: Padding(
-                  padding: const EdgeInsets.all(4),
-                  child: SvgPicture.asset(
-                    'assets/images/icons/Close.svg',
-                    width: 30,
-                    height: 30,
-                    colorFilter: const ColorFilter.mode(
-                      Colors.black,
-                      BlendMode.srcIn,
+              child: Semantics(
+                label: 'Close',
+                button: true,
+                child: GestureDetector(
+                  onTap: () => Navigator.pop(context),
+                  behavior: HitTestBehavior.opaque,
+                  child: Padding(
+                    padding: const EdgeInsets.all(4),
+                    child: SvgPicture.asset(
+                      'assets/images/icons/Close.svg',
+                      width: 30,
+                      height: 30,
+                      colorFilter: const ColorFilter.mode(
+                        Colors.black,
+                        BlendMode.srcIn,
+                      ),
                     ),
                   ),
                 ),
@@ -194,15 +198,19 @@ class _FriendProfileDialogState extends State<_FriendProfileDialog> {
               ),
             ),
             const SizedBox(width: 5),
-            GestureDetector(
-              onTap: _startEdit,
-              child: SvgPicture.asset(
-                'assets/images/icons/Edit.svg',
-                width: 22,
-                height: 22,
-                colorFilter: const ColorFilter.mode(
-                  Colors.black87,
-                  BlendMode.srcIn,
+            Semantics(
+              label: 'Edit note',
+              button: true,
+              child: GestureDetector(
+                onTap: _startEdit,
+                child: SvgPicture.asset(
+                  'assets/images/icons/Edit.svg',
+                  width: 22,
+                  height: 22,
+                  colorFilter: const ColorFilter.mode(
+                    Colors.black87,
+                    BlendMode.srcIn,
+                  ),
                 ),
               ),
             ),

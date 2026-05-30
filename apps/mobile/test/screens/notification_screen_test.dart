@@ -152,5 +152,18 @@ void main() {
       expect(find.textContaining('wants to be friends'), findsNothing);
       expect(find.text('Accept'), findsNothing);
     });
+
+    group('accessibility', () {
+      testWidgets('interactive elements have semantic labels', (tester) async {
+        final handle = tester.ensureSemantics();
+        try {
+          await tester.pumpWidget(_buildScreen(_FakeFriendsNotifier()));
+          await tester.pumpAndSettle();
+          expect(find.bySemanticsLabel('Go back'), findsOneWidget);
+        } finally {
+          handle.dispose();
+        }
+      });
+    });
   });
 }

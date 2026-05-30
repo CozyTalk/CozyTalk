@@ -505,24 +505,28 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: Row(
               children: [
-                GestureDetector(
-                  onTap: () => Navigator.pop(context),
-                  child: Container(
-                    width: 48,
-                    height: 48,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: Colors.grey.shade300,
-                        width: 1.5,
+                Semantics(
+                  label: 'Go back',
+                  button: true,
+                  child: GestureDetector(
+                    onTap: () => Navigator.pop(context),
+                    child: Container(
+                      width: 48,
+                      height: 48,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: Colors.grey.shade300,
+                          width: 1.5,
+                        ),
                       ),
-                    ),
-                    child: SvgPicture.asset(
-                      'assets/images/icons/Back.svg',
-                      width: 26,
-                      height: 26,
+                      child: SvgPicture.asset(
+                        'assets/images/icons/Back.svg',
+                        width: 26,
+                        height: 26,
+                      ),
                     ),
                   ),
                 ),

@@ -94,28 +94,35 @@ class _BlockedScreenState extends ConsumerState<BlockedScreen> {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              GestureDetector(
-                onTap: () => Navigator.pop(context),
-                child: Container(
-                  width: 48,
-                  height: 48,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.08),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
+              Semantics(
+                label: 'Go back',
+                button: true,
+                child: GestureDetector(
+                  onTap: () => Navigator.pop(context),
+                  child: Container(
+                    width: 48,
+                    height: 48,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.08),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                      border: Border.all(
+                        color: Colors.grey.shade300,
+                        width: 1.5,
                       ),
-                    ],
-                    border: Border.all(color: Colors.grey.shade300, width: 1.5),
-                  ),
-                  child: SvgPicture.asset(
-                    'assets/images/icons/Back.svg',
-                    width: 26,
-                    height: 26,
+                    ),
+                    child: SvgPicture.asset(
+                      'assets/images/icons/Back.svg',
+                      width: 26,
+                      height: 26,
+                    ),
                   ),
                 ),
               ),
@@ -158,34 +165,38 @@ class _BlockedScreenState extends ConsumerState<BlockedScreen> {
       child: Row(
         children: [
           // ── Avatar (tappable → profile dialog) ──
-          GestureDetector(
-            onTap: () => showFriendProfileDialog(
-              context: context,
-              friend: friend,
-              onNoteSaved: (note) => setState(
-                () => _notes[targetUid] = note.isNotEmpty ? note : null,
+          Semantics(
+            label: 'View user profile',
+            button: true,
+            child: GestureDetector(
+              onTap: () => showFriendProfileDialog(
+                context: context,
+                friend: friend,
+                onNoteSaved: (note) => setState(
+                  () => _notes[targetUid] = note.isNotEmpty ? note : null,
+                ),
               ),
-            ),
-            child: Container(
-              width: 60,
-              height: 60,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.05),
-                    blurRadius: 5,
-                    offset: const Offset(0, 2),
+              child: Container(
+                width: 60,
+                height: 60,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.05),
+                      blurRadius: 5,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                  border: Border.all(color: Colors.grey.shade200, width: 1.5),
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(14),
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Center(child: LayeredAvatar(boxSize: 44)),
                   ),
-                ],
-                border: Border.all(color: Colors.grey.shade200, width: 1.5),
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(14),
-                child: Padding(
-                  padding: const EdgeInsets.only(top: 8),
-                  child: Center(child: LayeredAvatar(boxSize: 44)),
                 ),
               ),
             ),

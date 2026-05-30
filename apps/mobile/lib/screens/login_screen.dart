@@ -94,7 +94,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               border: Border.all(color: const Color(0xFF695959), width: 3),
             ),
             child: ClipOval(
-              child: Image.asset('assets/images/Logo.png', fit: BoxFit.cover),
+              child: ExcludeSemantics(
+                child: Image.asset('assets/images/Logo.png', fit: BoxFit.cover),
+              ),
             ),
           ),
         ),
@@ -238,6 +240,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     ).textTheme.bodyMedium!.copyWith(color: Colors.black87, fontSize: 14),
     decoration: _inputDecoration('Enter your password').copyWith(
       suffixIcon: IconButton(
+        tooltip: _obscurePassword ? 'Show password' : 'Hide password',
         icon: Icon(
           _obscurePassword
               ? Icons.visibility_off_outlined

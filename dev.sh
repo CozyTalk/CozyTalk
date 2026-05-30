@@ -127,7 +127,7 @@ fi
 
 # ── Build Flutter args ────────────────────────────────────────────────────────
 FLUTTER_ARGS=()
-$USE_WEB  && FLUTTER_ARGS+=("-d" "chrome")
+$USE_WEB  && FLUTTER_ARGS+=("-d" "chrome" "--profile")
 $USE_PROD && FLUTTER_ARGS+=("--dart-define=USE_EMULATOR=false")
 [[ -n "${GIPHY_API_KEY:-}" ]] && FLUTTER_ARGS+=("--dart-define=GIPHY_API_KEY=$GIPHY_API_KEY")
 
