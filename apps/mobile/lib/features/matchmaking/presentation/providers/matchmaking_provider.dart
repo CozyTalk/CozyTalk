@@ -239,13 +239,23 @@ class MatchmakingNotifier extends Notifier<MatchmakingState> {
     );
     try {
       final result = await ref.read(_joinRoomByIdProvider)(roomId);
+      // Fetch the first Firestore snapshot so the chat screen renders with
+      // the correct backgroundTheme on its very first frame, with no flash.
+      Room? initialRoom;
+      try {
+        initialRoom = await ref
+            .read(_watchRoomProvider)(result.roomId)
+            .firstWhere((r) => r != null, orElse: () => null)
+            .timeout(const Duration(seconds: 2));
+      } catch (_) {}
+      _subscribeToRoom(result.roomId);
       state = state.copyWith(
         status: MatchmakingStatus.matched,
         roomId: result.roomId,
         isNewRoom: false,
+        currentRoom: initialRoom,
         error: null,
       );
-      _subscribeToRoom(result.roomId);
     } catch (e) {
       state = state.copyWith(
         status: MatchmakingStatus.error,
