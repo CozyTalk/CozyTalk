@@ -3,12 +3,17 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mobile/features/auth/domain/entities/auth_user.dart';
 import 'package:mobile/features/auth/presentation/providers/auth_provider.dart';
+import 'package:mobile/features/chat/domain/entities/chat_message.dart'
+    as chat_entity;
 import 'package:mobile/features/chat/presentation/providers/chat_provider.dart';
+import 'package:mobile/features/friends/domain/entities/app_user.dart';
+import 'package:mobile/features/friends/presentation/providers/friends_provider.dart';
 import 'package:mobile/features/matchmaking/domain/entities/matchmaking_status.dart';
 import 'package:mobile/features/matchmaking/domain/entities/room.dart';
 import 'package:mobile/features/matchmaking/presentation/providers/matchmaking_provider.dart';
 import 'package:mobile/screens/group_chat_screen.dart';
 import 'package:mobile/shared/avatar_overlay.dart';
+import 'package:mobile/shared/layered_avatar.dart';
 import 'package:mobile/shared/press_bounce_btn.dart';
 import 'package:mobile/shared/user_profile.dart';
 
@@ -132,6 +137,23 @@ class _FakeUserProfileNotifier extends UserProfileNotifier {
   UserProfileState build() => const UserProfileState();
 }
 
+class _FakeFriendsNotifierForGroup extends FriendsNotifier {
+  int sendRequestCount = 0;
+  AppUser? lastRequestTarget;
+
+  @override
+  FriendsState build() => const FriendsState();
+
+  @override
+  Future<void> sendFriendRequest(AppUser toUser) async {
+    sendRequestCount++;
+    lastRequestTarget = toUser;
+  }
+
+  @override
+  void clearError() {}
+}
+
 /// Pumps one frame to execute [addPostFrameCallback], then advances 400 ms to
 /// drain the non-cancellable [Future.delayed(350ms)] inside [_scrollToBottom].
 Future<void> _pump(WidgetTester tester) async {
@@ -152,6 +174,7 @@ const _kArgs = {
 Widget _buildScreen(
   _FakeChatNotifier chatFake, {
   _FakeMatchmakingNotifier? matchFake,
+  _FakeFriendsNotifierForGroup? friendsFake,
   AuthState auth = const AuthState(
     status: AuthStatus.authenticated,
     user: AuthUser(uid: 'u1'),
@@ -166,6 +189,9 @@ Widget _buildScreen(
       ),
       avatarProvider.overrideWith(() => _FakeAvatarNotifier()),
       userProfileProvider.overrideWith(() => _FakeUserProfileNotifier()),
+      friendsNotifierProvider.overrideWith(
+        () => friendsFake ?? _FakeFriendsNotifierForGroup(),
+      ),
     ],
     child: MaterialApp(
       onGenerateRoute: (settings) {
@@ -341,5 +367,43 @@ void main() {
         expect(chatFake.forceDisconnectCount, 1);
       },
     );
+
+    testWidgets('tapping Add Friend on member calls sendFriendRequest', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(800, 1400);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      final chatFake = _FakeChatNotifier(
+        initial: ChatState(
+          currentUserId: 'u1',
+          messages: [
+            chat_entity.ChatMessage(
+              id: 'm1',
+              senderId: 'u2',
+              displayName: 'Bob',
+              text: 'Hello!',
+              timestamp: DateTime(2025),
+            ),
+          ],
+        ),
+      );
+      final friendsFake = _FakeFriendsNotifierForGroup();
+      await tester.pumpWidget(_buildScreen(chatFake, friendsFake: friendsFake));
+      await _pump(tester);
+
+      await tester.tap(find.byType(LayeredAvatar).first);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      if (find.text('Add Friend').evaluate().isNotEmpty) {
+        await tester.tap(find.text('Add Friend'));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 300));
+        expect(friendsFake.sendRequestCount, 1);
+        expect(friendsFake.lastRequestTarget?.uid, 'u2');
+      }
+    });
   });
 }

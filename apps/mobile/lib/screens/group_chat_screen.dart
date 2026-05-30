@@ -21,8 +21,9 @@ import '../shared/friend_message_popup.dart';
 import '../theme/app_routes.dart';
 import '../models/friend.dart';
 import '../shared/gif_picker.dart';
-import '../shared/friend_request_popup.dart';
 import '../shared/info_dialog.dart';
+import '../features/friends/domain/entities/app_user.dart';
+import '../features/friends/presentation/providers/friends_provider.dart';
 
 // ── Card assets ────────────────────────────────────────────────────────────
 const _cardAssets = [
@@ -270,6 +271,16 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
   void _sendFriendRequest(String targetName) {
     if (_friendRequestSent[targetName] == true) return;
     setState(() => _friendRequestSent[targetName] = true);
+    final chatState = ref.read(chatNotifierProvider);
+    final targetUid = chatState.messages
+        .cast<chat_entity.ChatMessage?>()
+        .firstWhere((m) => m?.displayName == targetName, orElse: () => null)
+        ?.senderId;
+    if (targetUid != null) {
+      ref
+          .read(friendsNotifierProvider.notifier)
+          .sendFriendRequest(AppUser(uid: targetUid, displayName: targetName));
+    }
     showInfoDialog(
       context,
       type: InfoDialogType.info,
@@ -277,24 +288,6 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
       message:
           'Your friend request has been sent to $targetName.\nWaiting for them to accept.',
     );
-    Future.delayed(const Duration(milliseconds: 1500), () {
-      if (!mounted) return;
-      showFriendRequestPopup(
-        context,
-        requesterName: targetName,
-        onAccept: () {
-          setState(() => _friendAccepted[targetName] = true);
-          showInfoDialog(
-            context,
-            type: InfoDialogType.success,
-            title: "You're now friends! 🎉",
-            message:
-                'You and $targetName are now friends.\nYou can find them in your friends list.',
-          );
-        },
-        onDecline: () => setState(() => _friendRequestSent[targetName] = false),
-      );
-    });
   }
 
   void _cancelFriendRequest(String targetName) {
