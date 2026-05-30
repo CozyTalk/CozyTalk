@@ -21,6 +21,7 @@ import '../shared/gif_picker.dart';
 import '../shared/info_dialog.dart';
 import '../features/friends/domain/entities/app_user.dart';
 import '../features/friends/presentation/providers/friends_provider.dart';
+import '../features/profile/presentation/providers/profile_provider.dart';
 
 // ── Card assets ────────────────────────────────────────────────────────────
 const _cardAssets = [
@@ -115,6 +116,7 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
   late final AnimationController _songCtrl;
   late final Animation<Offset> _songSlide;
 
+  String _myThoughts = 'Care to share?';
   final List<({_GroupMsg msg, int seq})> _localMessages = [];
   final List<_GroupMsg> _optimisticMessages = [];
   String? _pendingGifUrl;
@@ -154,6 +156,10 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
           );
       if (ref.read(avatarDecorationNotifierProvider).decoration == null) {
         ref.read(avatarDecorationNotifierProvider.notifier).load(authUser.uid);
+      }
+      final ownThoughts = ref.read(profileNotifierProvider).profile?.thoughts;
+      if (ownThoughts != null && ownThoughts.isNotEmpty) {
+        setState(() => _myThoughts = ownThoughts);
       }
     });
     // TODO: show real incoming friend message popup from friendChatNotifierProvider
@@ -734,8 +740,8 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
                 final username = members[i];
                 final isMe = username == 'Me';
                 final displayName = isMe ? myDisplayName : username;
-                // TODO: load each member's thoughts from their Firestore profile
-                const thought = 'Care to share?';
+                // TODO: load each non-self member's thoughts from their Firestore profile
+                final thought = isMe ? _myThoughts : 'Care to share?';
                 final rawScale = pos.size / 90;
                 final scale = rawScale.clamp(0.78, 1.0);
                 final bubbleW = 84 * scale;

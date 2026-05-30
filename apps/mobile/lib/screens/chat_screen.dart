@@ -67,6 +67,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
 
   bool _friendRequestSent = false;
   String? _partnerUid;
+  String _myThoughts = 'Care to share?';
   final List<({ChatMessage msg, int seq})> _localMessages = [];
   final List<ChatMessage> _optimisticMessages = [];
   String? _pendingGifUrl;
@@ -100,6 +101,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
         (uid) => uid != authUser.uid,
         orElse: () => '',
       );
+      final ownThoughts = ref.read(profileNotifierProvider).profile?.thoughts;
+      if (ownThoughts != null && ownThoughts.isNotEmpty) {
+        setState(() => _myThoughts = ownThoughts);
+      }
       if (partnerUid != null && partnerUid.isNotEmpty) {
         _partnerUid = partnerUid;
         ref.read(profileNotifierProvider.notifier).load(partnerUid);
@@ -309,9 +314,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
         '';
     final partnerThought = profileState.profile?.thoughts ?? 'Care to share?';
     final myUsername = ref.watch(authNotifierProvider).user?.displayName ?? '';
-    // TODO: load own thoughts from profileNotifierProvider once self-profile
-    // loading is separated from partner-profile loading
-    const myMood = 'Care to share?';
 
     ref.listen(chatNotifierProvider.select((s) => s.status), (_, next) {
       if (next == SessionStatus.disconnected) {
@@ -362,7 +364,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
                         _buildBanner(
                           bgImage,
                           avatarState,
-                          myMood,
+                          _myThoughts,
                           myUsername,
                           partnerName,
                           partnerThought,
@@ -515,7 +517,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
   Widget _buildBanner(
     String bgImage,
     AvatarState avatarState,
-    String myMood,
+    String myThoughts,
     String myUsername,
     String partnerName,
     String partnerThought,
@@ -556,7 +558,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
                     const SizedBox(width: 20),
                     _StaticAvatar(
                       username: myUsername,
-                      moodText: myMood,
+                      moodText: myThoughts,
                       isMe: true,
                       avatarState: avatarState,
                       boxWidth: eachW,
