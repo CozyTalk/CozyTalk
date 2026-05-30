@@ -243,6 +243,8 @@ void main() {
         find.widgetWithText(TextFormField, 'Enter your email'),
         'user@example.com',
       );
+      await _agreeToTerms(tester);
+      await tester.tap(find.byType(ElevatedButton).first);
       await tester.pump();
 
       expect(find.text('This email cannot be used to sign up.'), findsNothing);
