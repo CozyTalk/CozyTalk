@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../features/auth/presentation/providers/auth_provider.dart';
+import '../features/avatar/presentation/providers/avatar_decoration_provider.dart';
 import '../features/chat/domain/entities/chat_message.dart' as chat_entity;
 import '../features/chat/domain/entities/session_status.dart';
 import '../features/chat/presentation/providers/chat_provider.dart';
@@ -151,6 +152,9 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
             currentUserId: authUser.uid,
             currentUserDisplayName: authUser.displayName,
           );
+      if (ref.read(avatarDecorationNotifierProvider).decoration == null) {
+        ref.read(avatarDecorationNotifierProvider.notifier).load(authUser.uid);
+      }
     });
     // TODO: show real incoming friend message popup from friendChatNotifierProvider
   }
@@ -356,7 +360,11 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
         args?['bgImage'] as String? ?? 'assets/images/backgrounds/kao_tapu.png';
     final maxMembers = args?['maxMembers'] as int? ?? 5;
 
-    final avatarState = ref.watch(avatarProvider);
+    final decoState = ref.watch(avatarDecorationNotifierProvider);
+    final avatarState = AvatarState(
+      mood: AvatarOverlays.mood[decoState.decoration?.moodKey ?? ''],
+      accessory: AvatarOverlays.accessory[decoState.decoration?.hatKey ?? ''],
+    );
     final chatState = ref.watch(chatNotifierProvider);
     final roomType = args?['roomType'] as String?;
     final matchState = ref.watch(matchmakingNotifierProvider);

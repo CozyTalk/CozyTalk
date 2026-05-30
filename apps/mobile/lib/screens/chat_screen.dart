@@ -18,6 +18,7 @@ import '../shared/layered_avatar.dart';
 import '../shared/press_bounce_btn.dart';
 import '../shared/gif_picker.dart';
 import '../shared/info_dialog.dart';
+import '../features/avatar/presentation/providers/avatar_decoration_provider.dart';
 import '../features/friends/domain/entities/app_user.dart';
 import '../features/friends/presentation/providers/friends_provider.dart';
 import '../features/profile/presentation/providers/profile_provider.dart';
@@ -102,6 +103,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
       if (partnerUid != null && partnerUid.isNotEmpty) {
         _partnerUid = partnerUid;
         ref.read(profileNotifierProvider.notifier).load(partnerUid);
+      }
+      if (ref.read(avatarDecorationNotifierProvider).decoration == null) {
+        ref.read(avatarDecorationNotifierProvider.notifier).load(authUser.uid);
       }
     });
     // TODO: show real incoming friend message popup from friendChatNotifierProvider
@@ -292,7 +296,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
         'assets/images/backgrounds/red_lotus_lake.png';
     final blocked = args?['isBlocked'] as bool? ?? _isBlocked;
 
-    final avatarState = ref.watch(avatarProvider);
+    final decoState = ref.watch(avatarDecorationNotifierProvider);
+    final avatarState = AvatarState(
+      mood: AvatarOverlays.mood[decoState.decoration?.moodKey ?? ''],
+      accessory: AvatarOverlays.accessory[decoState.decoration?.hatKey ?? ''],
+    );
     final chatState = ref.watch(chatNotifierProvider);
     final profileState = ref.watch(profileNotifierProvider);
     final partnerName =
