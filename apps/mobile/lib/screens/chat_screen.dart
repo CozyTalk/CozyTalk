@@ -308,11 +308,15 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
     );
     final chatState = ref.watch(chatNotifierProvider);
     final profileState = ref.watch(profileNotifierProvider);
-    final partnerName =
-        profileState.profile?.displayName ??
-        _findPartnerDisplayName(chatState) ??
-        '';
-    final partnerThought = profileState.profile?.thoughts ?? 'Care to share?';
+    final isPartnerProfileLoaded = profileState.profile?.uid == _partnerUid;
+    final partnerName = isPartnerProfileLoaded
+        ? (profileState.profile?.displayName ??
+              _findPartnerDisplayName(chatState) ??
+              '')
+        : (_findPartnerDisplayName(chatState) ?? '');
+    final partnerThought = isPartnerProfileLoaded
+        ? (profileState.profile?.thoughts ?? 'Care to share?')
+        : 'Care to share?';
     final myUsername = ref.watch(authNotifierProvider).user?.displayName ?? '';
 
     ref.listen(chatNotifierProvider.select((s) => s.status), (_, next) {

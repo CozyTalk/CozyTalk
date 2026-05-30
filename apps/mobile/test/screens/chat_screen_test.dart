@@ -10,6 +10,7 @@ import 'package:mobile/features/chat/presentation/providers/chat_provider.dart';
 import 'package:mobile/features/friends/domain/entities/app_user.dart';
 import 'package:mobile/features/friends/presentation/providers/friends_provider.dart';
 import 'package:mobile/features/matchmaking/domain/entities/matchmaking_status.dart';
+import 'package:mobile/features/matchmaking/domain/entities/room.dart';
 import 'package:mobile/features/matchmaking/presentation/providers/matchmaking_provider.dart';
 import 'package:mobile/features/profile/domain/entities/profile_user.dart';
 import 'package:mobile/features/profile/presentation/providers/profile_provider.dart';
@@ -366,8 +367,28 @@ void main() {
             profile: ProfileUser(uid: 'u2', displayName: 'Alice'),
           ),
         );
+        final matchFake = _FakeMatchmakingNotifier(
+          initial: MatchmakingState(
+            roomId: 'room1',
+            currentRoom: Room(
+              roomId: 'room1',
+              roomType: RoomType.public,
+              mode: RoomMode.oneToOne,
+              status: RoomStatus.active,
+              maxUsers: 2,
+              memberCount: 2,
+              users: const ['u1', 'u2'],
+              isLocked: false,
+              createdAt: DateTime(2025),
+            ),
+          ),
+        );
         await tester.pumpWidget(
-          _buildScreen(_FakeChatNotifier(), profileFake: profileFake),
+          _buildScreen(
+            _FakeChatNotifier(),
+            matchFake: matchFake,
+            profileFake: profileFake,
+          ),
         );
         await _pump(tester);
 
@@ -391,8 +412,28 @@ void main() {
             ),
           ),
         );
+        final matchFake = _FakeMatchmakingNotifier(
+          initial: MatchmakingState(
+            roomId: 'room1',
+            currentRoom: Room(
+              roomId: 'room1',
+              roomType: RoomType.public,
+              mode: RoomMode.oneToOne,
+              status: RoomStatus.active,
+              maxUsers: 2,
+              memberCount: 2,
+              users: const ['u1', 'u2'],
+              isLocked: false,
+              createdAt: DateTime(2025),
+            ),
+          ),
+        );
         await tester.pumpWidget(
-          _buildScreen(_FakeChatNotifier(), profileFake: profileFake),
+          _buildScreen(
+            _FakeChatNotifier(),
+            matchFake: matchFake,
+            profileFake: profileFake,
+          ),
         );
         await _pump(tester);
         expect(find.text('Love hiking!'), findsWidgets);
