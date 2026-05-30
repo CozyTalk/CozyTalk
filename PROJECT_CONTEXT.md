@@ -148,7 +148,7 @@ Navigation hub `HomeScreen`. Used only when `_useMainUI = true`. No domain/data 
 Initialises Firebase, points to emulators (Auth `9099`, Functions `5001`, Firestore `8080`) when `USE_EMULATOR=true`. No automatic sign-in — `_AuthRouter` widget watches `authNotifierProvider` and routes to `LoginScreen` or `HelloScreen`.
 
 ### Tests
-1109 Flutter unit + widget tests across auth, chat, matchmaking, profile, hello, admin, block, friends, card_shuffle, avatar, word_filter, and screens features (includes WCAG 2.2 AA accessibility tests for all 17 production screens). See [Test Coverage](#quality-gates-definition-of-done) for the full breakdown.
+1111 Flutter unit + widget tests across auth, chat, matchmaking, profile, hello, admin, block, friends, card_shuffle, avatar, word_filter, and screens features (includes WCAG 2.2 AA accessibility tests for all 17 production screens). See [Test Coverage](#quality-gates-definition-of-done) for the full breakdown.
 
 ---
 
@@ -300,6 +300,7 @@ All new rooms (1v1 + group). Doc ID is the 5-char user-facing room ID. CF-only w
 | `createdAt` | timestamp | server timestamp |
 | `paddingUntil` | timestamp? | set when last user leaves; `expireRooms` cron cleans up after |
 | `encryptionKey` | string | hex AES-256 key, generated at room creation |
+| `backgroundTheme` | string? | theme ID chosen by the room creator (`'kao_tapu'` \| `'red_lotus_lake'` \| `'sea_of_cloud'` \| `'lumphini_park'`); null for unthemed rooms; deserialized into `Room.backgroundTheme` and used by both chat screens to show the authoritative background for all participants |
 
 Expired tombstone shape: `{ status: 'expired', expiredAt: Timestamp, users: [] }`
 
@@ -447,7 +448,7 @@ CozyTalk/
 │   │   │   ├── home/                 ← navigation hub stub (presentation only)
 │   │   │   └── friends/              ← friend requests, friend list, permanent direct chat (prototype)
 │   │   └── screens/                  ← legacy design-preview UI (not wired to features layer)
-│   ├── test/                         ← 1092 unit + widget tests
+│   ├── test/                         ← 1111 unit + widget tests
 │   └── .env.example                  ← committed; USE_EMULATOR=true by default
 ├── functions/src/
 │   ├── index.ts                      ← exports 25 functions

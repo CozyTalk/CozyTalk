@@ -16,6 +16,7 @@ class Room {
   final DateTime createdAt;
   final DateTime? paddingUntil;
   final List<double>? roomInterestVector;
+  final String? backgroundTheme;
 
   const Room({
     required this.roomId,
@@ -29,5 +30,6 @@ class Room {
     required this.createdAt,
     this.paddingUntil,
     this.roomInterestVector,
+    this.backgroundTheme,
   });
 }
