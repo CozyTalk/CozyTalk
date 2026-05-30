@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -126,7 +128,6 @@ class _SongPanelBodyState extends ConsumerState<SongPanelBody>
     final track = roomState?.currentTrack;
 
     if (track == null) {
-      // No track: original spinning vinyl row
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: _cardDecoration(),
@@ -156,50 +157,76 @@ class _SongPanelBodyState extends ConsumerState<SongPanelBody>
       );
     }
 
-    // Track playing: video on top, then original title + skip row
+    // SizedBox(height:200) matches the fixed height inside JukeboxWebPlayer,
+    // avoiding layout conflicts that prevented the WebView from rendering.
     return Container(
       decoration: _cardDecoration(),
       clipBehavior: Clip.hardEdge,
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          AspectRatio(
-            aspectRatio: 16 / 9,
+          SizedBox(
+            height: 200,
             child: JukeboxWebPlayer(
               key: ValueKey(currentIndex),
               videoId: track.videoId,
               startedAt: roomState!.startedAt,
               pausedAt: roomState.pausedAt,
               isPlaying: roomState.isPlaying,
-              onTrackEnded: ref.read(jukeboxNotifierProvider.notifier).skip,
+              // Use a closure so the callback is evaluated at fire-time,
+              // not captured once at build-time.
+              onTrackEnded: () =>
+                  ref.read(jukeboxNotifierProvider.notifier).skip(),
             ),
           ),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            child: Row(
+            padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                RotationTransition(
-                  turns: _spinCtrl,
-                  child: SvgPicture.asset(
-                    'assets/images/icons/musicdisk.svg',
-                    width: 44,
-                    height: 44,
+                Text(
+                  track.title,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    height: 1.35,
                   ),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    track.title,
-                    style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      height: 1.35,
+                if (track.artist.isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    track.artist,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 12, color: Colors.black54),
+                  ),
+                ],
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    _PlaybackPosition(
+                      startedAt: roomState.startedAt,
+                      pausedAt: roomState.pausedAt,
+                      isPlaying: roomState.isPlaying,
                     ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                _xBtn(
-                  onTap: () =>
-                      ref.read(jukeboxNotifierProvider.notifier).skip(),
+                    const Spacer(),
+                    _controlBtn(
+                      icon: roomState.isPlaying
+                          ? Icons.pause_rounded
+                          : Icons.play_arrow_rounded,
+                      onTap: () => ref
+                          .read(jukeboxNotifierProvider.notifier)
+                          .setPlaying(!roomState.isPlaying),
+                    ),
+                    const SizedBox(width: 8),
+                    _controlBtn(
+                      icon: Icons.skip_next_rounded,
+                      onTap: () =>
+                          ref.read(jukeboxNotifierProvider.notifier).skip(),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -298,6 +325,21 @@ class _SongPanelBodyState extends ConsumerState<SongPanelBody>
     );
   }
 
+  Widget _controlBtn({required IconData icon, required VoidCallback onTap}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 36,
+        height: 36,
+        decoration: BoxDecoration(
+          color: const Color(0xFFEAC163),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Icon(icon, color: Colors.white, size: 20),
+      ),
+    );
+  }
+
   Widget _inputRow(bool isResolving) {
     return Row(
       children: [
@@ -356,6 +398,76 @@ class _SongPanelBodyState extends ConsumerState<SongPanelBody>
           ),
         ),
       ],
+    );
+  }
+}
+
+// ── Live playback position ─────────────────────────────────────────────────────
+
+class _PlaybackPosition extends StatefulWidget {
+  final int startedAt;
+  final int pausedAt;
+  final bool isPlaying;
+
+  const _PlaybackPosition({
+    required this.startedAt,
+    required this.pausedAt,
+    required this.isPlaying,
+  });
+
+  @override
+  State<_PlaybackPosition> createState() => _PlaybackPositionState();
+}
+
+class _PlaybackPositionState extends State<_PlaybackPosition> {
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _startTimer();
+  }
+
+  @override
+  void didUpdateWidget(_PlaybackPosition old) {
+    super.didUpdateWidget(old);
+    if (old.isPlaying != widget.isPlaying ||
+        old.startedAt != widget.startedAt) {
+      _startTimer();
+    }
+  }
+
+  void _startTimer() {
+    _timer?.cancel();
+    _timer = null;
+    if (widget.isPlaying) {
+      _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+        if (mounted) setState(() {});
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final rawSecs = widget.isPlaying
+        ? (DateTime.now().millisecondsSinceEpoch - widget.startedAt) ~/ 1000
+        : widget.pausedAt ~/ 1000;
+    final secs = rawSecs.clamp(0, 86400);
+    final m = secs ~/ 60;
+    final s = secs % 60;
+    return Text(
+      '${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}',
+      style: const TextStyle(
+        fontSize: 13,
+        fontWeight: FontWeight.w600,
+        color: Colors.black54,
+      ),
     );
   }
 }

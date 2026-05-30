@@ -561,19 +561,21 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
                         ),
                       ),
                     ),
-                    // Slide-down song panel
-                    Positioned(
-                      top: 0,
-                      left: 0,
-                      right: 0,
-                      child: SlideTransition(
-                        position: _songSlide,
-                        child: SongPanelBody(
-                          onClose: _closeSongPanel,
-                          roomId: roomId,
+                    // Slide-down song panel — only mounted while open/animating
+                    // so JukeboxWebPlayer initialises with a visible surface.
+                    if (_songPanelOpen)
+                      Positioned(
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        child: SlideTransition(
+                          position: _songSlide,
+                          child: SongPanelBody(
+                            onClose: _closeSongPanel,
+                            roomId: roomId,
+                          ),
                         ),
                       ),
-                    ),
                   ],
                 ),
               ),
