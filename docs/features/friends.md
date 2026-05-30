@@ -1,6 +1,6 @@
 # Friends Feature
 
-Prototype implementation. `FriendsScreen` (`screens/friends_screen.dart`) is integrated with `friendsNotifierProvider`.
+Prototype implementation. All production screens for the add-friend flow are now integrated: `FriendsScreen`, `FriendChatScreen`, `NotificationScreen`, and the "Add Friend" button in `ChatScreen`/`GroupChatScreen`.
 
 ---
 
@@ -90,9 +90,15 @@ Per-friend enrichment subscriptions are managed by `_updateEnrichmentSubscriptio
 | `friendsNotifierProvider` | `NotifierProvider<FriendsNotifier, FriendsState>` | Friends list + requests + enrichment maps |
 | `friendChatNotifierProvider` | `NotifierProvider<FriendChatNotifier, FriendChatState>` | Single active chat; `enterChat(roomId, name)` starts subscription |
 
-### Production Screen
+### Production Screens
 
 `FriendsScreen` (`screens/friends_screen.dart`) — integrated with `friendsNotifierProvider`. Maps `domain.Friend` → screen `Friend` model via `_toScreenFriend(f, state)`, pulling `isOnline` from `presenceMap`, `lastMessage` from `lastMessageMap`, and `room` (as `RoomInfo`) from `roomMap`. Notes, block state, and unread counts remain local-only state for this prototype.
+
+`FriendChatScreen` (`screens/friend_chat_screen.dart`) — integrated with `friendChatNotifierProvider`. Receives a `Friend` (screen model) from route arguments. Calls `enterChat(chatRoomId, username)` on first frame and `leaveChat()` on dispose. Renders real messages from `FriendChatState.messages`; `isMe` is derived from `senderId == authNotifierProvider.user.uid`. Shows empty state, loading indicator, and sending indicator from state. Errors surface as SnackBar via `ref.listen`.
+
+`NotificationScreen` (`screens/notification_screen.dart`) — integrated with `friendsNotifierProvider.incomingRequests`. Accept/decline wired to notifier.
+
+**"Add Friend" in active chat sessions** — `ChatScreen` and `GroupChatScreen` call `friendsNotifierProvider.sendFriendRequest(AppUser)` when the "Add friend" button in the partner's `UserProfileDialog` is tapped. Partner identity is resolved from `MatchmakingState.partnerUids` via `getUsersByIdsProvider`. `getUsersByIdsProvider` is a `FutureProvider.autoDispose.family<List<AppUser>, List<String>>` in `friends_provider.dart` that reads `users/{uid}` Firestore docs. Errors surface as SnackBar via `ref.listen`. `isLoading` guard prevents duplicate requests.
 
 ### Prototype Screens (dev only)
 
