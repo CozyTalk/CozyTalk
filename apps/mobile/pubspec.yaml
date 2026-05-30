@@ -23,7 +23,8 @@ dependencies:
   firebase_crashlytics: ^5.2.2
   firebase_remote_config: ^6.5.1
 
-  # Local database
+  # Local database — word filter feature (Android; web reads banned_words.json via rootBundle)
+  # Gated by content_filtering_enabled Remote Config flag (default false)
   sqflite: ^2.3.3
 
   # Auth
@@ -84,4 +85,4 @@ flutter:
     - assets/images/cards/
     - assets/images/tuktuk/
     - assets/icebreaker-questions.json
-    - assets/banned_words.json
+    - assets/banned_words.json  # word filter seed; loaded into SQLite on Android, read directly on web
