@@ -15,6 +15,7 @@ import '../dialogs/song_dialog.dart';
 import '../features/jukebox/presentation/providers/jukebox_provider.dart';
 import '../dialogs/user_profile_dialog.dart';
 import '../dialogs/members_list_dialog.dart';
+import '../features/report/presentation/screens/report_sheet.dart';
 import '../shared/avatar_overlay.dart';
 import '../shared/layered_avatar.dart';
 import '../shared/press_bounce_btn.dart';
@@ -335,6 +336,42 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
     );
   }
 
+  void _reportUser(String targetName) {
+    final sessionId = ref.read(matchmakingNotifierProvider).roomId ?? '';
+    if (sessionId.isEmpty) return;
+    // Resolve UID from roomUsers cache — same lookup as _sendFriendRequest.
+    final myUid = ref.read(authNotifierProvider).user?.uid;
+    final roomUsers =
+        ref.read(matchmakingNotifierProvider).currentRoom?.users ?? [];
+    String reportedUid = '';
+    for (final uid in roomUsers) {
+      if (uid == myUid) continue;
+      if ((_memberNameCache[uid] ?? 'User') == targetName) {
+        reportedUid = uid;
+        break;
+      }
+    }
+    if (reportedUid.isEmpty) {
+      final chatState = ref.read(chatNotifierProvider);
+      reportedUid =
+          chatState.messages
+              .cast<chat_entity.ChatMessage?>()
+              .firstWhere(
+                (m) => m?.displayName == targetName,
+                orElse: () => null,
+              )
+              ?.senderId ??
+          '';
+    }
+    if (reportedUid.isEmpty) return;
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) =>
+          ReportSheet(sessionId: sessionId, reportedUserId: reportedUid),
+    );
+  }
+
   void _cancelFriendRequest(String targetName) {
     if (_friendAccepted[targetName] == true) {
       showInfoDialog(
@@ -634,6 +671,7 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
                           friendRequestSent: _friendRequestSent,
                           onAddFriend: _sendFriendRequest,
                           onCancelRequest: _cancelFriendRequest,
+                          onReport: _reportUser,
                         ),
                       ),
                     ),
@@ -913,6 +951,9 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
                                 onCancelRequest: isMe
                                     ? null
                                     : () => _cancelFriendRequest(displayName),
+                                onReport: isMe
+                                    ? null
+                                    : () => _reportUser(displayName),
                               ),
                             ),
                             child: LayeredAvatar(
@@ -1129,6 +1170,7 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
                   initialAdded: _friendRequestSent[msg.sender ?? ''] == true,
                   onAddFriend: () => _sendFriendRequest(msg.sender ?? ''),
                   onCancelRequest: () => _cancelFriendRequest(msg.sender ?? ''),
+                  onReport: () => _reportUser(msg.sender ?? ''),
                 ),
               ),
               child: LayeredAvatar(boxSize: 40),
@@ -1271,6 +1313,7 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
                   initialAdded: _friendRequestSent[msg.sender ?? ''] == true,
                   onAddFriend: () => _sendFriendRequest(msg.sender ?? ''),
                   onCancelRequest: () => _cancelFriendRequest(msg.sender ?? ''),
+                  onReport: () => _reportUser(msg.sender ?? ''),
                 ),
               ),
               child: LayeredAvatar(boxSize: 40),

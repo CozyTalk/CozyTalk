@@ -14,6 +14,7 @@ import '../dialogs/leave_room_dialog.dart';
 import '../dialogs/song_dialog.dart';
 import '../features/jukebox/presentation/providers/jukebox_provider.dart';
 import '../dialogs/user_profile_dialog.dart';
+import '../features/report/presentation/screens/report_sheet.dart';
 import '../shared/avatar_overlay.dart';
 import '../shared/layered_avatar.dart';
 import '../shared/press_bounce_btn.dart';
@@ -255,6 +256,18 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
       title: 'Request Cancelled',
       message:
           'Your friend request to ${name.isNotEmpty ? name : 'your match'} has been cancelled.',
+    );
+  }
+
+  void _reportUser() {
+    final sessionId = ref.read(matchmakingNotifierProvider).roomId ?? '';
+    final reportedUid = _partnerUid ?? '';
+    if (sessionId.isEmpty || reportedUid.isEmpty) return;
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) =>
+          ReportSheet(sessionId: sessionId, reportedUserId: reportedUid),
     );
   }
 
@@ -618,6 +631,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
                       onFriendRequest: _sendFriendRequest,
                       onCancelRequest: _cancelFriendRequest,
                       friendRequestSent: _friendRequestSent,
+                      onReport: _reportUser,
                     ),
                     const SizedBox(width: 20),
                     _StaticAvatar(
@@ -834,6 +848,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
                   initialAdded: _friendRequestSent,
                   onAddFriend: () => _sendFriendRequest(partnerName),
                   onCancelRequest: () => _cancelFriendRequest(partnerName),
+                  onReport: _reportUser,
                 ),
               ),
               child: LayeredAvatar(boxSize: 40),
@@ -940,6 +955,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
                   initialAdded: _friendRequestSent,
                   onAddFriend: () => _sendFriendRequest(partnerName),
                   onCancelRequest: () => _cancelFriendRequest(partnerName),
+                  onReport: _reportUser,
                 ),
               ),
               child: LayeredAvatar(boxSize: 40),
@@ -1359,6 +1375,7 @@ class _StaticAvatar extends StatelessWidget {
     this.boxWidth = 120,
     this.onFriendRequest,
     this.onCancelRequest,
+    this.onReport,
     this.friendRequestSent = false,
   });
 
@@ -1369,6 +1386,7 @@ class _StaticAvatar extends StatelessWidget {
   final AvatarState? avatarState;
   final VoidCallback? onFriendRequest;
   final VoidCallback? onCancelRequest;
+  final VoidCallback? onReport;
   final bool friendRequestSent;
   final double boxWidth;
 
@@ -1395,6 +1413,7 @@ class _StaticAvatar extends StatelessWidget {
                   initialAdded: !isMe && friendRequestSent,
                   onAddFriend: isMe ? null : onFriendRequest,
                   onCancelRequest: isMe ? null : onCancelRequest,
+                  onReport: isMe ? null : onReport,
                 ),
               ),
               child: LayeredAvatar(

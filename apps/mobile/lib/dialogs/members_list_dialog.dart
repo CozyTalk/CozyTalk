@@ -15,6 +15,7 @@ class MembersPanelBody extends StatelessWidget {
   final Map<String, bool> friendRequestSent;
   final void Function(String name) onAddFriend;
   final void Function(String name) onCancelRequest;
+  final void Function(String name)? onReport;
 
   const MembersPanelBody({
     super.key,
@@ -22,6 +23,7 @@ class MembersPanelBody extends StatelessWidget {
     required this.onClose,
     required this.onAddFriend,
     required this.onCancelRequest,
+    this.onReport,
     this.currentUser = 'Me',
     this.avatarState = const AvatarState(),
     this.friendRequestSent = const {},
@@ -119,10 +121,14 @@ class MembersPanelBody extends StatelessWidget {
             GestureDetector(
               onTap: () {
                 onClose();
-                showDialog(
-                  context: context,
-                  builder: (_) => const ReportDialog(),
-                );
+                if (onReport != null) {
+                  onReport!(name);
+                } else {
+                  showDialog(
+                    context: context,
+                    builder: (_) => const ReportDialog(),
+                  );
+                }
               },
               child: Container(
                 width: 38,

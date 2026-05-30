@@ -14,6 +14,10 @@ class UserProfileDialog extends ConsumerStatefulWidget {
   final bool initialAdded;
   final VoidCallback? onAddFriend;
   final VoidCallback? onCancelRequest;
+
+  /// Called after the dialog is closed when the user taps Report.
+  /// If null, falls back to the design-only ReportDialog.
+  final VoidCallback? onReport;
   const UserProfileDialog({
     super.key,
     required this.username,
@@ -22,6 +26,7 @@ class UserProfileDialog extends ConsumerStatefulWidget {
     this.initialAdded = false,
     this.onAddFriend,
     this.onCancelRequest,
+    this.onReport,
   });
 
   @override
@@ -155,10 +160,14 @@ class _UserProfileDialogState extends ConsumerState<UserProfileDialog> {
                             GestureDetector(
                               onTap: () {
                                 Navigator.pop(context);
-                                showDialog(
-                                  context: context,
-                                  builder: (_) => const ReportDialog(),
-                                );
+                                if (widget.onReport != null) {
+                                  widget.onReport!();
+                                } else {
+                                  showDialog(
+                                    context: context,
+                                    builder: (_) => const ReportDialog(),
+                                  );
+                                }
                               },
                               child: Container(
                                 width: 44,
