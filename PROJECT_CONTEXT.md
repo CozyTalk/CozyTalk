@@ -32,7 +32,7 @@ CozyTalk is a **cross-platform stranger chat app** targeting **Android and Web**
 
 ### Cloud Functions (`functions/`)
 - TypeScript, Firebase Functions v2
-- 21 functions exported across two regions (see Cloud Functions table in Firebase Configuration)
+- 19 functions exported across two regions (see Cloud Functions table in Firebase Configuration)
 - Max 10 instances (cost control)
 - Matchmaking and chat logic **must** live here — never on client
 
@@ -145,7 +145,7 @@ Navigation hub `HomeScreen`. Used only when `_useMainUI = true`. No domain/data 
 Initialises Firebase, points to emulators (Auth `9099`, Functions `5001`, Firestore `8080`) when `USE_EMULATOR=true`. No automatic sign-in — `_AuthRouter` widget watches `authNotifierProvider` and routes to `LoginScreen` or `HelloScreen`.
 
 ### Tests
-919 Flutter unit + widget tests across auth, chat, matchmaking, profile, hello, friends, card_shuffle, avatar, word_filter, and screens features. See [Test Coverage](#quality-gates-definition-of-done) for the full breakdown.
+1096 Flutter unit + widget tests across auth, chat, matchmaking, profile, hello, admin, block, friends, card_shuffle, avatar, word_filter, and screens features. See [Test Coverage](#quality-gates-definition-of-done) for the full breakdown.
 
 ---
 
@@ -209,7 +209,7 @@ See `database.rules.json` for the canonical source. All nodes require `auth != n
 | `rooms` | `mode ASC, status ASC, isLocked ASC, memberCount ASC` | Group room picker: available unlocked rooms by fill level |
 | `rooms` | `status ASC, paddingUntil ASC` | `expireRooms` cron: find rooms past their padding window |
 
-### Cloud Functions — deployed (21 total)
+### Cloud Functions — deployed (25 total)
 
 | Function | Trigger | Region | Module |
 |---|---|---|---|
@@ -228,12 +228,16 @@ See `database.rules.json` for the canonical source. All nodes require `auth != n
 | `sendMessage` | callable | us-central1 | chat |
 | `endSession` | callable | us-central1 | chat |
 | `reportSession` | callable | us-central1 | chat |
+| `onFriendshipCreated` | Firestore onCreate `friendships/{friendshipId}` | us-central1 | friends |
 | `onFriendshipDeleted` | Firestore onDelete `friendships/{friendshipId}` | us-central1 | friends |
 | `adminGetDashboard` | callable (admin only) | us-central1 | admin |
 | `adminResolveReport` | callable (admin only) | us-central1 | admin |
 | `adminGetChatLog` | callable (admin only) | us-central1 | admin |
 | `adminBanUser` | callable (admin only) | us-central1 | admin |
 | `adminUnbanUser` | callable (admin only) | us-central1 | admin |
+| `adminGetBlockedUsers` | callable (admin only) | us-central1 | admin |
+| `blockUser` | callable | us-central1 | user |
+| `unblockUser` | callable | us-central1 | user |
 No CF needed for typing — clients write `typing/{roomId}/{uid}` directly via RTDB SDK.
 
 `seedTtlCollections` (`functions/src/dev/`) is a one-time dev HTTP helper; not included in the exported count above.
@@ -294,6 +298,15 @@ All new rooms (1v1 + group). Doc ID is the 5-char user-facing room ID. CF-only w
 | `encryptionKey` | string | hex AES-256 key, generated at room creation |
 
 Expired tombstone shape: `{ status: 'expired', expiredAt: Timestamp, users: [] }`
+
+### `users/{uid}/blocked/{uid}` (Firestore)
+Max 5 entries per user. Owner-only read/write enforced by security rules.
+
+| Field | Type | Notes |
+|---|---|---|
+| `blockedUid` | string | UID of the blocked user |
+| `displayName` | string? | display name snapshot at block time |
+| `blockedAt` | timestamp | server timestamp |
 
 ### `active_sessions/{sessionId}` (Firestore) — Legacy
 **Proto-session backward compat only.** New sessions use `rooms/{roomId}`.
@@ -367,7 +380,7 @@ Presence, typing, and nameQueue data are removed by `leaveRoom` CF on explicit l
 | Phase | Work | Status |
 |---|---|---|
 | **1.0 Frontend & UI** | UI/UX design, Auth screens, Waiting screen, Chat Room UI (bubbles, typing, SVGs, Skip) | Auth complete; main UI screens complete (not yet wired to backend) |
-| **2.0 Backend & Matchmaking** | Matchmaking Cloud Functions (race-condition safe), session cleanup/lifecycle, word censor, reporting | **Largely complete** — 21 CFs exported (matchmaking + chat + friends + admin); Flutter matchmaking + chat + avatar + profile features complete; 99 Jest unit tests + 43 Flutter integration tests passing; word censor + group reporting deferred |
+| **2.0 Backend & Matchmaking** | Matchmaking Cloud Functions (race-condition safe), session cleanup/lifecycle, word censor, reporting | **Largely complete** — 21 CFs exported (matchmaking + chat + friends + admin); Flutter matchmaking + chat + avatar + profile features complete; 105 Jest unit tests + 43 Flutter integration tests passing; word censor + group reporting deferred |
 | **3.0 Logic & Integration** | Wire main UI to matchmaking backend, session state machine, network drop detection, biometric/passkey auth | Not started |
 | **4.0 Testing & Management** | Cross-platform UI tests (Android + Web), accessibility sweeps, performance profiling | Not started |
 
@@ -386,12 +399,12 @@ Presence, typing, and nameQueue data are removed by `leaveRoom` CF on explicit l
 
 | Suite | Count | Location | Requires |
 |---|---|---|---|
-| Flutter unit + widget | 919 tests | `apps/mobile/test/` | Nothing |
-| Cloud Functions Jest | 93 unit tests | `functions/src/**/__tests__/*.test.ts` | `./dev.sh --emulator-only` |
+| Flutter unit + widget | 1096 tests | `apps/mobile/test/` | Nothing |
+| Cloud Functions Jest | 172 unit tests | `functions/src/**/__tests__/*.test.ts` | `./dev.sh --emulator-only` |
 | Cloud Functions Jest (integration) | 7 live tests | `functions/src/matchmaking/__tests__/embeddingService.integration.test.ts` | Vertex AI credentials + `npm run test:embedding` |
 | Flutter integration | 43 tests | `apps/mobile/integration_test/matchmaking_advanced_test.dart` | Emulators + Android device |
 
-**CF Jest unit test breakdown:** `matchmaking.test.ts` (60 tests, 14 describe groups — priority selection, distribution, padding lifecycle, RTDB cleanup, 1v1/group flows, interest matching), `embeddingService.test.ts` (21 tests — cosine similarity, mean vector, mocked Vertex AI), `chat.test.ts` (12 tests — sendMessage, message destruction, TTL, rooms/ path, reportSession). Plus 7 integration tests in `embeddingService.integration.test.ts` (live Vertex AI, requires `npm run test:embedding`). Grand total: 100.
+**CF Jest unit test breakdown:** `matchmaking.test.ts` (82 tests — priority selection, distribution, padding lifecycle, RTDB cleanup, 1v1/group flows, interest matching, background-theme partitioning), `admin.test.ts` (32 tests — dashboard, resolve report, chat log, ban/unban), `embeddingService.test.ts` (21 tests — cosine similarity, mean vector, mocked Vertex AI), `block.test.ts` (20 tests — blockUser, unblockUser, adminGetBlockedUsers, max-5 enforcement, idempotency), `chat.test.ts` (12 tests — sendMessage, message destruction, TTL, rooms/ path, reportSession), `friends.test.ts` (5 tests — onFriendshipCreated/onFriendshipDeleted: message cleanup, RTDB friends node removal, graceful no-users handling). Plus 7 integration tests in `embeddingService.integration.test.ts` (live Vertex AI, requires `npm run test:embedding`). Grand total: 179.
 
 **Flutter word_filter tests (14):** `banned_word_test.dart` (2), `censor_text_test.dart` (3), `banned_word_model_test.dart` (5), `word_filter_repository_impl_test.dart` (2), `word_filter_provider_test.dart` (2).
 

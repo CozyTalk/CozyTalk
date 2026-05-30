@@ -28,7 +28,7 @@ dependencies:
 
   # Auth
   google_sign_in: ^7.2.0
-  flutter_secure_storage: ^10.2.0
+  flutter_secure_storage: ^10.3.0
 
   # Media
   image_picker: ^1.1.2
@@ -49,7 +49,7 @@ dependencies:
   url_launcher: ^6.3.2
 
   cached_network_image: ^3.4.0
-  connectivity_plus: ^6.0.0
+  connectivity_plus: ^7.1.1
 
   # Jukebox
   web: ^1.0.0

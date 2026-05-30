@@ -1,18 +1,22 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import '../features/matchmaking/presentation/providers/matchmaking_provider.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_routes.dart';
 
-class SelectBackgroundScreen extends StatefulWidget {
+class SelectBackgroundScreen extends ConsumerStatefulWidget {
   final String? roomType;
 
   const SelectBackgroundScreen({super.key, this.roomType});
 
   @override
-  State<SelectBackgroundScreen> createState() => _SelectBackgroundScreenState();
+  ConsumerState<SelectBackgroundScreen> createState() =>
+      _SelectBackgroundScreenState();
 }
 
-class _SelectBackgroundScreenState extends State<SelectBackgroundScreen> {
+class _SelectBackgroundScreenState
+    extends ConsumerState<SelectBackgroundScreen> {
   String? selectedLocation;
 
   final List<Map<String, String>> locations = [
@@ -199,6 +203,9 @@ class _SelectBackgroundScreenState extends State<SelectBackgroundScreen> {
                           final selectedLocData = locations.firstWhere(
                             (loc) => loc['id'] == selectedLocation,
                           );
+                          ref
+                              .read(matchmakingNotifierProvider.notifier)
+                              .setBackgroundTheme(selectedLocData['id']);
                           Navigator.pushNamed(
                             context,
                             AppRoutes.findingRoom,

@@ -39,7 +39,8 @@ class _JoinRoomIdScreenState extends State<JoinRoomIdScreen> {
         arguments: {
           'roomName': 'Room $roomCode',
           'bgImage': 'assets/images/backgrounds/kao_tapu.png',
-          'roomType': 'group',
+          'roomType': 'joinById',
+          'roomId': roomCode,
           'isGroup': true,
         },
       );

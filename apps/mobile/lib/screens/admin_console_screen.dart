@@ -628,6 +628,22 @@ class _AdminConsoleScreenState extends ConsumerState<AdminConsoleScreen> {
     );
   }
 
+  Future<void> _viewBlockedUsers(String uid, String displayName) async {
+    await ref.read(feat.adminUsersProvider.notifier).loadBlockedUsers(uid);
+    if (!mounted) return;
+    final usersState = ref.read(feat.adminUsersProvider);
+    // A concurrent loadBlockedUsers for a different user may have overwritten
+    // the state while we awaited — only show the dialog if it still holds ours.
+    if (usersState.blockedUsersUid != uid) return;
+    final entries = usersState.blockedUsersForUid ?? [];
+    showDialog(
+      context: context,
+      barrierColor: Colors.black.withValues(alpha: 0.35),
+      builder: (_) =>
+          _AdminBlockedUsersDialog(userName: displayName, entries: entries),
+    );
+  }
+
   // ─── Body ───
   Widget _buildBody({
     required List<AdminReport> reports,
@@ -648,11 +664,15 @@ class _AdminConsoleScreenState extends ConsumerState<AdminConsoleScreen> {
         query: _query,
         onlineCount: onlineCount,
         onAction: (action, displayUser) async {
-          if (action != 'ban') return;
           final entity = usersState.users
               .where((u) => u.uid == displayUser.userId)
               .firstOrNull;
           if (entity == null) return;
+          if (action == 'viewBlocked') {
+            await _viewBlockedUsers(entity.uid, entity.displayName);
+            return;
+          }
+          if (action != 'ban') return;
           showModalBottomSheet(
             context: context,
             isScrollControlled: true,
@@ -705,6 +725,117 @@ class _AdminConsoleScreenState extends ConsumerState<AdminConsoleScreen> {
         },
       ),
     };
+  }
+}
+
+// ─── Blocked Users Dialog (admin view) ───
+class _AdminBlockedUsersDialog extends StatelessWidget {
+  final String userName;
+  final List<feat.AdminBlockedEntry> entries;
+
+  const _AdminBlockedUsersDialog({
+    required this.userName,
+    required this.entries,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+        side: BorderSide(color: AdminC.border, width: 1.5),
+      ),
+      backgroundColor: Colors.white,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 32),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Blocked by $userName',
+              style: const TextStyle(
+                fontWeight: FontWeight.w800,
+                fontSize: 16,
+                color: AdminC.ink,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              '${entries.length} / 5 blocked',
+              style: const TextStyle(fontSize: 12, color: AdminC.inkSoft),
+            ),
+            const SizedBox(height: 16),
+            if (entries.isEmpty)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 12),
+                child: Center(
+                  child: Text(
+                    'No blocked users',
+                    style: TextStyle(color: AdminC.inkSoft, fontSize: 14),
+                  ),
+                ),
+              )
+            else
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxHeight: 280),
+                child: ListView.separated(
+                  shrinkWrap: true,
+                  itemCount: entries.length,
+                  separatorBuilder: (_, _) => const Divider(height: 1),
+                  itemBuilder: (_, i) {
+                    final e = entries[i];
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.person_off_outlined,
+                            size: 18,
+                            color: AdminC.inkSoft,
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  e.displayName ?? e.uid,
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                    color: AdminC.ink,
+                                  ),
+                                ),
+                                Text(
+                                  e.uid,
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    color: AdminC.inkSoft,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ),
+            const SizedBox(height: 8),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Close'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 
