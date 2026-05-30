@@ -154,10 +154,28 @@ class _MainUIAuthRouter extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    ref.listen(authNotifierProvider.select((s) => s.status), (_, next) {
+    ref.listen<AuthStatus>(authNotifierProvider.select((s) => s.status), (
+      _,
+      next,
+    ) {
       if (next == AuthStatus.authenticated) {
         Navigator.of(context).popUntil((route) => route.isFirst);
       }
+    });
+    ref.listen<String?>(authNotifierProvider.select((s) => s.error), (_, next) {
+      if (next == null) return;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!context.mounted) return;
+        final messenger = ScaffoldMessenger.of(context);
+        messenger.hideCurrentSnackBar();
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(next),
+            backgroundColor: Theme.of(context).colorScheme.error,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      });
     });
     final status = ref.watch(authNotifierProvider.select((s) => s.status));
     return switch (status) {

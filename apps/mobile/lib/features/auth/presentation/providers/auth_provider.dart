@@ -89,7 +89,22 @@ class AuthNotifier extends Notifier<AuthState> {
       );
     });
     ref.onDispose(() => _sub?.cancel());
+    _checkTokenOnStartup();
     return const AuthState();
+  }
+
+  void _checkTokenOnStartup() {
+    Future(() async {
+      if (state.user == null) return;
+      try {
+        await ref.read(authRepositoryProvider).validateToken();
+      } catch (_) {
+        await signOut();
+        state = state.copyWith(
+          error: 'Your session has expired. Please sign in again.',
+        );
+      }
+    });
   }
 
   Future<void> signInAnonymously() async {
