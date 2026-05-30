@@ -14,7 +14,17 @@ class SongPanelBody extends ConsumerStatefulWidget {
   final VoidCallback onClose;
   final String roomId;
 
-  const SongPanelBody({super.key, required this.onClose, required this.roomId});
+  /// True while the panel is visible / animating open.
+  /// Arms the WebView on first reveal so it initialises against a real
+  /// surface. After that it stays alive so audio continues when panel closes.
+  final bool isVisible;
+
+  const SongPanelBody({
+    super.key,
+    required this.onClose,
+    required this.roomId,
+    this.isVisible = false,
+  });
 
   @override
   ConsumerState<SongPanelBody> createState() => _SongPanelBodyState();
@@ -25,6 +35,10 @@ class _SongPanelBodyState extends ConsumerState<SongPanelBody>
   final TextEditingController _inputCtrl = TextEditingController();
   late final AnimationController _spinCtrl;
 
+  // Becomes true the first time isVisible is true.
+  // Once armed, the WebView stays alive so audio continues when panel closes.
+  bool _webViewReady = false;
+
   @override
   void initState() {
     super.initState();
@@ -32,11 +46,20 @@ class _SongPanelBodyState extends ConsumerState<SongPanelBody>
       vsync: this,
       duration: const Duration(seconds: 3),
     )..repeat();
+    if (widget.isVisible) _webViewReady = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         ref.read(jukeboxNotifierProvider.notifier).enterRoom(widget.roomId);
       }
     });
+  }
+
+  @override
+  void didUpdateWidget(SongPanelBody old) {
+    super.didUpdateWidget(old);
+    if (!_webViewReady && widget.isVisible) {
+      setState(() => _webViewReady = true);
+    }
   }
 
   @override
@@ -126,8 +149,10 @@ class _SongPanelBodyState extends ConsumerState<SongPanelBody>
 
   Widget _nowPlayingCard(JukeboxRoomState? roomState, int currentIndex) {
     final track = roomState?.currentTrack;
+    // Non-null alias used after the early return below.
+    final rs = roomState;
 
-    if (track == null) {
+    if (track == null || rs == null) {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: _cardDecoration(),
@@ -157,28 +182,40 @@ class _SongPanelBodyState extends ConsumerState<SongPanelBody>
       );
     }
 
-    // SizedBox(height:200) matches the fixed height inside JukeboxWebPlayer,
-    // avoiding layout conflicts that prevented the WebView from rendering.
     return Container(
       decoration: _cardDecoration(),
       clipBehavior: Clip.hardEdge,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(
-            height: 200,
-            child: JukeboxWebPlayer(
-              key: ValueKey(currentIndex),
-              videoId: track.videoId,
-              startedAt: roomState!.startedAt,
-              pausedAt: roomState.pausedAt,
-              isPlaying: roomState.isPlaying,
-              // Use a closure so the callback is evaluated at fire-time,
-              // not captured once at build-time.
-              onTrackEnded: () =>
-                  ref.read(jukeboxNotifierProvider.notifier).skip(),
+          // WebView is only created once the panel has been opened at least
+          // once (_webViewReady). After that it stays alive across open/close
+          // cycles so audio keeps playing in the background.
+          if (_webViewReady)
+            SizedBox(
+              height: 200,
+              child: JukeboxWebPlayer(
+                key: ValueKey(currentIndex),
+                videoId: track.videoId,
+                startedAt: rs.startedAt,
+                pausedAt: rs.pausedAt,
+                isPlaying: rs.isPlaying,
+                onTrackEnded: () =>
+                    ref.read(jukeboxNotifierProvider.notifier).skip(),
+              ),
+            )
+          else
+            Container(
+              height: 200,
+              color: Colors.black,
+              child: const Center(
+                child: Icon(
+                  Icons.play_circle_outline,
+                  color: Colors.white54,
+                  size: 48,
+                ),
+              ),
             ),
-          ),
           Padding(
             padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
             child: Column(
@@ -207,18 +244,18 @@ class _SongPanelBodyState extends ConsumerState<SongPanelBody>
                 Row(
                   children: [
                     _PlaybackPosition(
-                      startedAt: roomState.startedAt,
-                      pausedAt: roomState.pausedAt,
-                      isPlaying: roomState.isPlaying,
+                      startedAt: rs.startedAt,
+                      pausedAt: rs.pausedAt,
+                      isPlaying: rs.isPlaying,
                     ),
                     const Spacer(),
                     _controlBtn(
-                      icon: roomState.isPlaying
+                      icon: rs.isPlaying
                           ? Icons.pause_rounded
                           : Icons.play_arrow_rounded,
                       onTap: () => ref
                           .read(jukeboxNotifierProvider.notifier)
-                          .setPlaying(!roomState.isPlaying),
+                          .setPlaying(!rs.isPlaying),
                     ),
                     const SizedBox(width: 8),
                     _controlBtn(

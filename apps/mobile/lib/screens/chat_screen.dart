@@ -465,21 +465,22 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
                         behavior: HitTestBehavior.opaque,
                         child: Container(color: Colors.black26),
                       ),
-                    // Slide-down song panel — only mounted while open/animating
-                    // so JukeboxWebPlayer initialises with a visible surface.
-                    if (_songPanelOpen)
-                      Positioned(
-                        top: 0,
-                        left: 0,
-                        right: 0,
-                        child: SlideTransition(
-                          position: _songSlide,
-                          child: SongPanelBody(
-                            onClose: _closeSongPanel,
-                            roomId: roomId,
-                          ),
+                    // Song panel — always in tree so audio survives panel close.
+                    // isVisible arms the WebView on first open so it initialises
+                    // against a real surface (fixes Android off-screen init).
+                    Positioned(
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      child: SlideTransition(
+                        position: _songSlide,
+                        child: SongPanelBody(
+                          onClose: _closeSongPanel,
+                          roomId: roomId,
+                          isVisible: _songPanelOpen,
                         ),
                       ),
+                    ),
                   ],
                 ),
               ),
