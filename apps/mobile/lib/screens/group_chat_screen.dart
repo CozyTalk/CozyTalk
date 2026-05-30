@@ -11,9 +11,9 @@ import '../features/chat/presentation/providers/chat_provider.dart';
 import '../features/matchmaking/presentation/providers/matchmaking_provider.dart';
 import '../theme/app_colors.dart';
 import '../dialogs/leave_room_dialog.dart';
+import '../dialogs/song_dialog.dart';
 import '../features/jukebox/presentation/providers/jukebox_provider.dart';
 import '../features/jukebox/presentation/widgets/jukebox_chat_player.dart';
-import '../features/jukebox/presentation/widgets/jukebox_sheet.dart';
 import '../dialogs/user_profile_dialog.dart';
 import '../dialogs/members_list_dialog.dart';
 import '../shared/avatar_overlay.dart';
@@ -115,6 +115,11 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
   late final AnimationController _panelCtrl;
   late final Animation<Offset> _panelSlide;
 
+  // ── Song panel animation ──
+  bool _songPanelOpen = false;
+  late final AnimationController _songCtrl;
+  late final Animation<Offset> _songSlide;
+
   String _myThoughts = 'Care to share?';
   String _myDisplayName = '';
   String _myInterest = '';
@@ -134,6 +139,14 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
       begin: const Offset(0, -1),
       end: Offset.zero,
     ).animate(CurvedAnimation(parent: _panelCtrl, curve: Curves.easeOutCubic));
+    _songCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 260),
+    );
+    _songSlide = Tween<Offset>(
+      begin: const Offset(0, -1),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(parent: _songCtrl, curve: Curves.easeOutCubic));
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _scrollToBottom();
@@ -152,24 +165,27 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
       if (ref.read(avatarDecorationNotifierProvider).decoration == null) {
         ref.read(avatarDecorationNotifierProvider.notifier).load(authUser.uid);
       }
-      final ownProfile = ref.read(profileNotifierProvider).profile;
-      final ownThoughts = ownProfile?.thoughts;
-      final ownDisplayName = ownProfile?.displayName;
-      final ownInterest = ownProfile?.interest;
-      if (ownThoughts != null && ownThoughts.isNotEmpty) {
-        _myThoughts = ownThoughts;
-      }
-      if (ownDisplayName != null && ownDisplayName.isNotEmpty) {
-        _myDisplayName = ownDisplayName;
-      }
-      if (ownInterest != null && ownInterest.isNotEmpty) {
-        _myInterest = ownInterest;
-      }
-      if (_myThoughts != 'Care to share?' ||
-          _myDisplayName.isNotEmpty ||
-          _myInterest.isNotEmpty) {
-        setState(() {});
-      }
+      // Load own profile (ensures latest data after any edits) then snapshot
+      ref.read(profileNotifierProvider.notifier).load(authUser.uid).then((_) {
+        if (!mounted) return;
+        final own = ref.read(profileNotifierProvider).profile;
+        if (own?.uid == authUser.uid) {
+          bool changed = false;
+          if (own?.thoughts?.isNotEmpty == true) {
+            _myThoughts = own!.thoughts!;
+            changed = true;
+          }
+          if (own?.displayName?.isNotEmpty == true) {
+            _myDisplayName = own!.displayName!;
+            changed = true;
+          }
+          if (own?.interest?.isNotEmpty == true) {
+            _myInterest = own!.interest!;
+            changed = true;
+          }
+          if (changed) setState(() {});
+        }
+      });
     });
     // TODO: show real incoming friend message popup from friendChatNotifierProvider
   }
@@ -178,6 +194,7 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
   void dispose() {
     _typingTimer?.cancel();
     _panelCtrl.dispose();
+    _songCtrl.dispose();
     _jukeboxNotifier.leaveRoom();
     _msgController.dispose();
     _scrollController.dispose();
@@ -186,6 +203,7 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
   }
 
   void _openPanel() {
+    if (_songPanelOpen) _closeSongPanel();
     setState(() => _panelOpen = true);
     _panelCtrl.forward();
   }
@@ -196,17 +214,16 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
     });
   }
 
-  void _openJukebox(String roomId) {
+  void _openSongPanel() {
     if (_panelOpen) _closePanel();
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Theme.of(context).colorScheme.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (_) => JukeboxSheet(roomId: roomId),
-    );
+    setState(() => _songPanelOpen = true);
+    _songCtrl.forward();
+  }
+
+  void _closeSongPanel() {
+    _songCtrl.reverse().then((_) {
+      if (mounted) setState(() => _songPanelOpen = false);
+    });
   }
 
   void _scrollToBottom() {
@@ -456,7 +473,6 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
                           myDisplayName,
                           members,
                           _myInterest,
-                          roomId,
                         ),
                         Expanded(
                           child: Stack(
@@ -488,10 +504,10 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
                         _buildInputBar(),
                       ],
                     ),
-                    // Barrier — tap outside to close members panel
-                    if (_panelOpen)
+                    // Barrier — tap outside to close whichever panel is open
+                    if (_panelOpen || _songPanelOpen)
                       GestureDetector(
-                        onTap: _closePanel,
+                        onTap: _panelOpen ? _closePanel : _closeSongPanel,
                         behavior: HitTestBehavior.opaque,
                         child: AnimatedOpacity(
                           opacity: 1.0,
@@ -516,7 +532,20 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
                         ),
                       ),
                     ),
-                    // Floating YouTube player (native only; web uses headless player)
+                    // Slide-down song panel
+                    Positioned(
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      child: SlideTransition(
+                        position: _songSlide,
+                        child: SongPanelBody(
+                          onClose: _closeSongPanel,
+                          roomId: roomId,
+                        ),
+                      ),
+                    ),
+                    // Floating player (hidden widget; overlay renders the video)
                     JukeboxChatPlayer(roomId: roomId),
                   ],
                 ),
@@ -693,7 +722,6 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
     String myDisplayName,
     List<String> members,
     String myInterest,
-    String roomId,
   ) {
     final count = members.length.clamp(1, 5);
     final preset = _layouts[count];
@@ -835,7 +863,7 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
                     _sideBtn(
                       'Song',
                       'assets/images/icons/song.svg',
-                      () => _openJukebox(roomId),
+                      _openSongPanel,
                     ),
                     const SizedBox(height: 10),
                     _sideBtn(

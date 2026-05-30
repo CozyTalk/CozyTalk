@@ -11,9 +11,9 @@ import '../features/matchmaking/domain/entities/matchmaking_status.dart';
 import '../features/matchmaking/presentation/providers/matchmaking_provider.dart';
 import '../theme/app_colors.dart';
 import '../dialogs/leave_room_dialog.dart';
+import '../dialogs/song_dialog.dart';
 import '../features/jukebox/presentation/providers/jukebox_provider.dart';
 import '../features/jukebox/presentation/widgets/jukebox_chat_player.dart';
-import '../features/jukebox/presentation/widgets/jukebox_sheet.dart';
 import '../dialogs/user_profile_dialog.dart';
 import '../shared/avatar_overlay.dart';
 import '../shared/layered_avatar.dart';
@@ -54,7 +54,8 @@ class ChatScreen extends ConsumerStatefulWidget {
   ConsumerState<ChatScreen> createState() => _ChatScreenState();
 }
 
-class _ChatScreenState extends ConsumerState<ChatScreen> {
+class _ChatScreenState extends ConsumerState<ChatScreen>
+    with SingleTickerProviderStateMixin {
   final TextEditingController _msgController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final FocusNode _focusNode = FocusNode();
@@ -62,6 +63,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   Timer? _typingTimer;
 
   late final JukeboxNotifier _jukeboxNotifier;
+
+  // ── Song panel animation ──
+  bool _songPanelOpen = false;
+  late final AnimationController _songCtrl;
+  late final Animation<Offset> _songSlide;
+
   bool _friendRequestSent = false;
   String? _partnerUid;
   String _myThoughts = 'Care to share?';
@@ -75,6 +82,14 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   void initState() {
     super.initState();
     _jukeboxNotifier = ref.read(jukeboxNotifierProvider.notifier);
+    _songCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 260),
+    );
+    _songSlide = Tween<Offset>(
+      begin: const Offset(0, -1),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(parent: _songCtrl, curve: Curves.easeOutCubic));
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _scrollToBottom();
       final matchState = ref.read(matchmakingNotifierProvider);
@@ -89,33 +104,42 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             currentUserDisplayName: authUser.displayName,
           );
       _jukeboxNotifier.enterRoom(roomId);
+      if (ref.read(avatarDecorationNotifierProvider).decoration == null) {
+        ref.read(avatarDecorationNotifierProvider.notifier).load(authUser.uid);
+      }
+      // Set partnerUid early to prevent currentRoom listener from double-loading
       final room = ref.read(matchmakingNotifierProvider).currentRoom;
       final partnerUid = room?.users.firstWhere(
         (uid) => uid != authUser.uid,
         orElse: () => '',
       );
-      final ownProfile = ref.read(profileNotifierProvider).profile;
-      if (ownProfile?.thoughts?.isNotEmpty == true) {
-        _myThoughts = ownProfile!.thoughts!;
-      }
-      if (ownProfile?.displayName?.isNotEmpty == true) {
-        _myDisplayName = ownProfile!.displayName!;
-      }
-      if (ownProfile?.interest?.isNotEmpty == true) {
-        _myInterest = ownProfile!.interest!;
-      }
-      if (_myThoughts != 'Care to share?' ||
-          _myDisplayName.isNotEmpty ||
-          _myInterest.isNotEmpty) {
-        setState(() {});
-      }
       if (partnerUid != null && partnerUid.isNotEmpty) {
         _partnerUid = partnerUid;
-        ref.read(profileNotifierProvider.notifier).load(partnerUid);
       }
-      if (ref.read(avatarDecorationNotifierProvider).decoration == null) {
-        ref.read(avatarDecorationNotifierProvider.notifier).load(authUser.uid);
-      }
+      // Load own profile (ensures latest data), snapshot, then load partner
+      ref.read(profileNotifierProvider.notifier).load(authUser.uid).then((_) {
+        if (!mounted) return;
+        final own = ref.read(profileNotifierProvider).profile;
+        if (own?.uid == authUser.uid) {
+          bool changed = false;
+          if (own?.thoughts?.isNotEmpty == true) {
+            _myThoughts = own!.thoughts!;
+            changed = true;
+          }
+          if (own?.displayName?.isNotEmpty == true) {
+            _myDisplayName = own!.displayName!;
+            changed = true;
+          }
+          if (own?.interest?.isNotEmpty == true) {
+            _myInterest = own!.interest!;
+            changed = true;
+          }
+          if (changed) setState(() {});
+        }
+        if (_partnerUid != null && _partnerUid!.isNotEmpty) {
+          ref.read(profileNotifierProvider.notifier).load(_partnerUid!);
+        }
+      });
     });
     // TODO: show real incoming friend message popup from friendChatNotifierProvider
   }
@@ -123,6 +147,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   @override
   void dispose() {
     _typingTimer?.cancel();
+    _songCtrl.dispose();
     _jukeboxNotifier.leaveRoom();
     _msgController.dispose();
     _scrollController.dispose();
@@ -130,16 +155,15 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     super.dispose();
   }
 
-  void _openJukebox(String roomId) {
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Theme.of(context).colorScheme.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (_) => JukeboxSheet(roomId: roomId),
-    );
+  void _openSongPanel() {
+    setState(() => _songPanelOpen = true);
+    _songCtrl.forward();
+  }
+
+  void _closeSongPanel() {
+    _songCtrl.reverse().then((_) {
+      if (mounted) setState(() => _songPanelOpen = false);
+    });
   }
 
   void _scrollToBottom() {
@@ -398,7 +422,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                           partnerThought,
                           _myInterest,
                           partnerInterest,
-                          roomId,
                         ),
                         Expanded(
                           child: Stack(
@@ -436,8 +459,28 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                         blocked ? _buildBlockedBar() : _buildInputBar(),
                       ],
                     ),
-                    // Floating YouTube player (native only; web uses headless player)
+                    // Floating YouTube player (hidden widget; overlay renders the video)
                     JukeboxChatPlayer(roomId: roomId),
+                    // Barrier
+                    if (_songPanelOpen)
+                      GestureDetector(
+                        onTap: _closeSongPanel,
+                        behavior: HitTestBehavior.opaque,
+                        child: Container(color: Colors.black26),
+                      ),
+                    // Slide-down song panel
+                    Positioned(
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      child: SlideTransition(
+                        position: _songSlide,
+                        child: SongPanelBody(
+                          onClose: _closeSongPanel,
+                          roomId: roomId,
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -541,7 +584,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     String partnerThought,
     String myInterest,
     String partnerInterest,
-    String roomId,
   ) {
     return SizedBox(
       height: 250,
@@ -600,7 +642,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 _sideBtn(
                   'Song',
                   'assets/images/icons/song.svg',
-                  () => _openJukebox(roomId),
+                  _openSongPanel,
                 ),
                 const SizedBox(height: 10),
                 _sideBtn(

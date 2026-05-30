@@ -1,24 +1,23 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import '../features/jukebox/domain/entities/jukebox_track.dart';
+import '../features/jukebox/presentation/providers/jukebox_provider.dart';
 import '../theme/app_colors.dart';
 
 /// Slide-down song panel — rendered inside a Stack below the header.
-class SongPanelBody extends StatefulWidget {
+class SongPanelBody extends ConsumerStatefulWidget {
   final VoidCallback onClose;
+  final String roomId;
 
-  const SongPanelBody({super.key, required this.onClose});
+  const SongPanelBody({super.key, required this.onClose, required this.roomId});
 
   @override
-  State<SongPanelBody> createState() => _SongPanelBodyState();
+  ConsumerState<SongPanelBody> createState() => _SongPanelBodyState();
 }
 
-class _SongPanelBodyState extends State<SongPanelBody>
+class _SongPanelBodyState extends ConsumerState<SongPanelBody>
     with SingleTickerProviderStateMixin {
-  String _nowPlaying =
-      'ALIE BLACKCOBRA - มือเปล่า (PUT THE GUN DOWN) (Lyric Video)';
-  final List<String> _queue = [
-    'Jeff Satur - ของขวัญปีใหม่ (Golden Night)【Official Music Video】',
-  ];
   final TextEditingController _inputCtrl = TextEditingController();
   late final AnimationController _spinCtrl;
 
@@ -29,6 +28,11 @@ class _SongPanelBodyState extends State<SongPanelBody>
       vsync: this,
       duration: const Duration(seconds: 3),
     )..repeat();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        ref.read(jukeboxNotifierProvider.notifier).enterRoom(widget.roomId);
+      }
+    });
   }
 
   @override
@@ -41,12 +45,44 @@ class _SongPanelBodyState extends State<SongPanelBody>
   void _addSong() {
     final text = _inputCtrl.text.trim();
     if (text.isEmpty) return;
-    setState(() => _queue.add(text));
-    _inputCtrl.clear();
+    ref.read(jukeboxNotifierProvider.notifier).addUrl(text);
   }
 
   @override
   Widget build(BuildContext context) {
+    final state = ref.watch(jukeboxNotifierProvider);
+    final roomState = state.roomState;
+
+    ref.listen<JukeboxUiState>(jukeboxNotifierProvider, (prev, next) {
+      if (next.resolveError != null &&
+          next.resolveError != prev?.resolveError) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(next.resolveError!),
+            backgroundColor: Colors.red.shade700,
+          ),
+        );
+      }
+      if (!next.isResolving &&
+          next.resolveError == null &&
+          next.urlInput.isEmpty &&
+          _inputCtrl.text.isNotEmpty) {
+        _inputCtrl.clear();
+      }
+    });
+
+    final currentTrack = roomState?.currentTrack;
+    final currentIndex = roomState?.currentIndex ?? 0;
+    final queue = roomState?.queue ?? const <JukeboxTrack>[];
+    final upNext = <({int index, JukeboxTrack track})>[
+      for (
+        int i = currentIndex + 1;
+        i < queue.length && i < currentIndex + 4;
+        i++
+      )
+        (index: i, track: queue[i]),
+    ];
+
     return Container(
       color: AppColors.brownDeep,
       padding: const EdgeInsets.fromLTRB(14, 16, 14, 20),
@@ -64,7 +100,7 @@ class _SongPanelBodyState extends State<SongPanelBody>
             ),
           ),
           const SizedBox(height: 10),
-          _nowPlayingCard(),
+          _nowPlayingCard(currentTrack),
           const SizedBox(height: 18),
           // ── Queue ──
           const Text(
@@ -76,16 +112,16 @@ class _SongPanelBodyState extends State<SongPanelBody>
             ),
           ),
           const SizedBox(height: 10),
-          _queueCard(),
+          _queueCard(upNext),
           const SizedBox(height: 14),
           // ── Input ──
-          _inputRow(),
+          _inputRow(state.isResolving),
         ],
       ),
     );
   }
 
-  Widget _nowPlayingCard() {
+  Widget _nowPlayingCard(JukeboxTrack? track) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
@@ -112,7 +148,7 @@ class _SongPanelBodyState extends State<SongPanelBody>
           const SizedBox(width: 12),
           Expanded(
             child: Text(
-              _nowPlaying.isEmpty ? '—' : _nowPlaying,
+              track != null ? track.title : '—',
               style: const TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
@@ -121,13 +157,16 @@ class _SongPanelBodyState extends State<SongPanelBody>
             ),
           ),
           const SizedBox(width: 8),
-          _xBtn(onTap: () => setState(() => _nowPlaying = '')),
+          if (track != null)
+            _xBtn(
+              onTap: () => ref.read(jukeboxNotifierProvider.notifier).skip(),
+            ),
         ],
       ),
     );
   }
 
-  Widget _queueCard() {
+  Widget _queueCard(List<({int index, JukeboxTrack track})> upNext) {
     return Container(
       padding: const EdgeInsets.fromLTRB(14, 14, 14, 4),
       decoration: BoxDecoration(
@@ -141,7 +180,7 @@ class _SongPanelBodyState extends State<SongPanelBody>
           ),
         ],
       ),
-      child: _queue.isEmpty
+      child: upNext.isEmpty
           ? const Padding(
               padding: EdgeInsets.only(bottom: 10),
               child: Center(
@@ -155,42 +194,44 @@ class _SongPanelBodyState extends State<SongPanelBody>
               constraints: const BoxConstraints(maxHeight: 190),
               child: SingleChildScrollView(
                 child: Column(
-                  children: List.generate(
-                    _queue.length,
-                    (i) => Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          SizedBox(
-                            width: 28,
-                            child: Text(
-                              '${i + 1}.',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w900,
-                                fontSize: 15,
-                                color: Colors.black,
+                  children: [
+                    for (int i = 0; i < upNext.length; i++)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            SizedBox(
+                              width: 28,
+                              child: Text(
+                                '${i + 1}.',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w900,
+                                  fontSize: 15,
+                                  color: Colors.black,
+                                ),
                               ),
                             ),
-                          ),
-                          Expanded(
-                            child: Text(
-                              _queue[i],
-                              style: const TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w500,
-                                height: 1.3,
+                            Expanded(
+                              child: Text(
+                                upNext[i].track.title,
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w500,
+                                  height: 1.3,
+                                ),
                               ),
                             ),
-                          ),
-                          const SizedBox(width: 8),
-                          _xBtn(
-                            onTap: () => setState(() => _queue.removeAt(i)),
-                          ),
-                        ],
+                            const SizedBox(width: 8),
+                            _xBtn(
+                              onTap: () => ref
+                                  .read(jukeboxNotifierProvider.notifier)
+                                  .removeFromQueue(upNext[i].index),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                  ),
+                  ],
                 ),
               ),
             ),
@@ -212,7 +253,7 @@ class _SongPanelBodyState extends State<SongPanelBody>
     );
   }
 
-  Widget _inputRow() {
+  Widget _inputRow(bool isResolving) {
     return Row(
       children: [
         Expanded(
@@ -242,20 +283,31 @@ class _SongPanelBodyState extends State<SongPanelBody>
         ),
         const SizedBox(width: 10),
         GestureDetector(
-          onTap: _addSong,
+          onTap: isResolving ? null : _addSong,
           child: Container(
             width: 50,
             height: 50,
             decoration: BoxDecoration(
-              color: const Color(0xFFEAC163),
+              color: isResolving
+                  ? Colors.grey.shade400
+                  : const Color(0xFFEAC163),
               borderRadius: BorderRadius.circular(14),
             ),
             alignment: Alignment.center,
-            child: SvgPicture.asset(
-              'assets/images/icons/sent.svg',
-              width: 24,
-              height: 24,
-            ),
+            child: isResolving
+                ? const SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(
+                      color: Colors.white,
+                      strokeWidth: 2,
+                    ),
+                  )
+                : SvgPicture.asset(
+                    'assets/images/icons/sent.svg',
+                    width: 24,
+                    height: 24,
+                  ),
           ),
         ),
       ],
