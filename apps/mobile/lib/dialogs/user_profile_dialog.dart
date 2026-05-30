@@ -12,6 +12,10 @@ class UserProfileDialog extends ConsumerStatefulWidget {
   final bool initialAdded;
   final VoidCallback? onAddFriend;
   final VoidCallback? onCancelRequest;
+  // Partner-only fields — shown when isMe is false.
+  final AvatarOverlay? partnerMoodOverlay;
+  final AvatarOverlay? partnerAccessoryOverlay;
+  final String? partnerInterest;
   const UserProfileDialog({
     super.key,
     required this.username,
@@ -19,6 +23,9 @@ class UserProfileDialog extends ConsumerStatefulWidget {
     this.initialAdded = false,
     this.onAddFriend,
     this.onCancelRequest,
+    this.partnerMoodOverlay,
+    this.partnerAccessoryOverlay,
+    this.partnerInterest,
   });
 
   @override
@@ -86,10 +93,12 @@ class _UserProfileDialogState extends ConsumerState<UserProfileDialog> {
                           borderRadius: BorderRadius.circular(17),
                           child: LayeredAvatar(
                             boxSize: 100,
-                            moodOverlay: widget.isMe ? avatarState.mood : null,
+                            moodOverlay: widget.isMe
+                                ? avatarState.mood
+                                : widget.partnerMoodOverlay,
                             accessoryOverlay: widget.isMe
                                 ? avatarState.accessory
-                                : null,
+                                : widget.partnerAccessoryOverlay,
                           ),
                         ),
                       ),
@@ -239,7 +248,9 @@ class _UserProfileDialogState extends ConsumerState<UserProfileDialog> {
                               ? (userProfile.interest.isNotEmpty
                                     ? userProfile.interest
                                     : 'No interest set yet.')
-                              : 'I love TikTok very much. TikTok is the best application in the world.',
+                              : (widget.partnerInterest?.isNotEmpty == true
+                                    ? widget.partnerInterest!
+                                    : 'No interest set yet.'),
                           style: const TextStyle(
                             fontSize: 14,
                             color: Colors.black87,

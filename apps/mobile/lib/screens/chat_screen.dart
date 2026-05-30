@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../features/auth/presentation/providers/auth_provider.dart';
+import '../features/avatar/presentation/providers/avatar_decoration_provider.dart';
 import '../features/chat/domain/entities/chat_message.dart' as chat_entity;
 import '../features/chat/domain/entities/session_status.dart';
 import '../features/chat/presentation/providers/chat_provider.dart';
@@ -11,11 +12,13 @@ import '../features/friends/domain/entities/app_user.dart';
 import '../features/friends/presentation/providers/friends_provider.dart';
 import '../features/matchmaking/domain/entities/matchmaking_status.dart';
 import '../features/matchmaking/presentation/providers/matchmaking_provider.dart';
+import '../features/profile/presentation/providers/profile_provider.dart';
 import '../theme/app_colors.dart';
 import '../dialogs/leave_room_dialog.dart';
 import '../dialogs/song_dialog.dart';
 import '../dialogs/user_profile_dialog.dart';
 import '../shared/avatar_overlay.dart';
+import '../shared/friend_request_popup.dart';
 import '../shared/layered_avatar.dart';
 import '../shared/press_bounce_btn.dart';
 import '../shared/user_profile.dart';
@@ -400,12 +403,60 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
     final partnersAsync = ref.watch(getUsersByIdsProvider(partnerUids));
     final partner = partnersAsync.value?.firstOrNull;
 
+    // Partner profile + decoration for real avatar rendering.
+    final partnerDecoration = partner != null
+        ? ref.watch(partnerDecorationProvider(partner.uid)).asData?.value
+        : null;
+    final partnerProfile = partner != null
+        ? ref.watch(partnerProfileProvider(partner.uid)).asData?.value
+        : null;
+    final partnerMoodOverlay =
+        AvatarOverlays.mood[partnerDecoration?.moodKey ?? ''];
+    final partnerAccessoryOverlay =
+        AvatarOverlays.accessory[partnerDecoration?.hatKey ?? ''];
+
     ref.listen<FriendsState>(friendsNotifierProvider, (prev, next) {
       if (next.error != null && next.error != prev?.error) {
         ScaffoldMessenger.of(context)
           ..clearSnackBars()
           ..showSnackBar(SnackBar(content: Text(next.error!)));
         ref.read(friendsNotifierProvider.notifier).clearError();
+      }
+
+      // Show in-room popup when partner sends US a friend request.
+      final prevIds = prev?.incomingRequests.map((r) => r.id).toSet() ?? {};
+      for (final req in next.incomingRequests) {
+        if (!prevIds.contains(req.id) && partnerUids.contains(req.fromUid)) {
+          showFriendRequestPopup(
+            context,
+            requesterName: req.fromDisplayName,
+            onAccept: () =>
+                ref.read(friendsNotifierProvider.notifier).acceptRequest(req),
+            onDecline: () => ref
+                .read(friendsNotifierProvider.notifier)
+                .declineRequest(req.id),
+          );
+        }
+      }
+
+      // Notify USER A when partner accepted their request.
+      if (_friendRequestSent) {
+        for (final uid in partnerUids) {
+          final wasAlreadyFriend =
+              prev?.friends.any((f) => f.friendUid == uid) ?? false;
+          final isNowFriend = next.friends.any((f) => f.friendUid == uid);
+          if (!wasAlreadyFriend && isNowFriend) {
+            final name = next.friends
+                .firstWhere((f) => f.friendUid == uid)
+                .friendDisplayName;
+            showInfoDialog(
+              context,
+              type: InfoDialogType.success,
+              title: "You're now friends!",
+              message: '$name accepted your friend request.',
+            );
+          }
+        }
       }
     });
 
@@ -461,6 +512,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
                           myMood,
                           userProfile.username,
                           partner,
+                          partnerMoodOverlay,
+                          partnerAccessoryOverlay,
+                          partnerProfile?.thoughts,
+                          partnerProfile?.interest,
                         ),
                         Expanded(
                           child: Stack(
@@ -469,6 +524,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
                                 avatarState,
                                 chatState,
                                 partner,
+                                partnerMoodOverlay,
+                                partnerAccessoryOverlay,
+                                partnerProfile?.interest,
                               ),
                               Positioned(
                                 top: 0,
@@ -619,6 +677,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
     String myMood,
     String myUsername,
     AppUser? partner,
+    AvatarOverlay? partnerMoodOverlay,
+    AvatarOverlay? partnerAccessoryOverlay,
+    String? partnerThoughts,
+    String? partnerInterest,
   ) {
     return SizedBox(
       height: 250,
@@ -646,9 +708,14 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
                   children: [
                     _StaticAvatar(
                       username: partner?.displayName ?? '...',
-                      moodText: friendMood,
+                      moodText: partnerThoughts?.isNotEmpty == true
+                          ? partnerThoughts!
+                          : 'Care to share?',
                       isMe: false,
                       boxWidth: eachW,
+                      moodOverlay: partnerMoodOverlay,
+                      accessoryOverlay: partnerAccessoryOverlay,
+                      partnerInterest: partnerInterest,
                       onFriendRequest: partner != null
                           ? () => _sendFriendRequest(partner)
                           : null,
@@ -730,6 +797,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
     AvatarState avatarState,
     ChatState chatState,
     AppUser? partner,
+    AvatarOverlay? partnerMoodOverlay,
+    AvatarOverlay? partnerAccessoryOverlay,
+    String? partnerInterest,
   ) {
     final backendMsgs = chatState.messages
         .map((m) => _toDisplay(m, chatState.currentUserId))
@@ -766,7 +836,14 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
             avatarState: avatarState,
             partner: partner,
           ),
-          'other' => _buildBubble(msg, isMe: false, partner: partner),
+          'other' => _buildBubble(
+            msg,
+            isMe: false,
+            partner: partner,
+            partnerMoodOverlay: partnerMoodOverlay,
+            partnerAccessoryOverlay: partnerAccessoryOverlay,
+            partnerInterest: partnerInterest,
+          ),
           'card' => _buildCard(msg.text),
           'gif' => _buildGifBubble(
             msg,
@@ -774,7 +851,14 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
             avatarState: avatarState,
             partner: partner,
           ),
-          'gif_other' => _buildGifBubble(msg, isMe: false, partner: partner),
+          'gif_other' => _buildGifBubble(
+            msg,
+            isMe: false,
+            partner: partner,
+            partnerMoodOverlay: partnerMoodOverlay,
+            partnerAccessoryOverlay: partnerAccessoryOverlay,
+            partnerInterest: partnerInterest,
+          ),
           _ => const SizedBox.shrink(),
         };
       },
@@ -842,6 +926,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
     required bool isMe,
     AvatarState? avatarState,
     AppUser? partner,
+    AvatarOverlay? partnerMoodOverlay,
+    AvatarOverlay? partnerAccessoryOverlay,
+    String? partnerInterest,
   }) {
     final maxW = MediaQuery.of(context).size.width * 0.62;
     return Padding(
@@ -865,9 +952,16 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
                     onAddFriend: partner != null
                         ? () => _sendFriendRequest(partner)
                         : null,
+                    partnerMoodOverlay: partnerMoodOverlay,
+                    partnerAccessoryOverlay: partnerAccessoryOverlay,
+                    partnerInterest: partnerInterest,
                   ),
                 ),
-                child: LayeredAvatar(boxSize: 40),
+                child: LayeredAvatar(
+                  boxSize: 40,
+                  moodOverlay: partnerMoodOverlay,
+                  accessoryOverlay: partnerAccessoryOverlay,
+                ),
               ),
             ),
             const SizedBox(width: 8),
@@ -929,6 +1023,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
     required bool isMe,
     AvatarState? avatarState,
     AppUser? partner,
+    AvatarOverlay? partnerMoodOverlay,
+    AvatarOverlay? partnerAccessoryOverlay,
+    String? partnerInterest,
   }) {
     final maxW = MediaQuery.of(context).size.width * 0.55;
     final gifWidget = Container(
@@ -985,9 +1082,16 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
                     onAddFriend: partner != null
                         ? () => _sendFriendRequest(partner)
                         : null,
+                    partnerMoodOverlay: partnerMoodOverlay,
+                    partnerAccessoryOverlay: partnerAccessoryOverlay,
+                    partnerInterest: partnerInterest,
                   ),
                 ),
-                child: LayeredAvatar(boxSize: 40),
+                child: LayeredAvatar(
+                  boxSize: 40,
+                  moodOverlay: partnerMoodOverlay,
+                  accessoryOverlay: partnerAccessoryOverlay,
+                ),
               ),
             ),
             const SizedBox(width: 8),
@@ -1417,6 +1521,9 @@ class _StaticAvatar extends StatelessWidget {
     this.boxWidth = 120,
     this.onFriendRequest,
     this.friendRequestSent = false,
+    this.moodOverlay,
+    this.accessoryOverlay,
+    this.partnerInterest,
   });
 
   final String username;
@@ -1426,10 +1533,16 @@ class _StaticAvatar extends StatelessWidget {
   final VoidCallback? onFriendRequest;
   final bool friendRequestSent;
   final double boxWidth;
+  // Real partner overlays (ignored for isMe == true).
+  final AvatarOverlay? moodOverlay;
+  final AvatarOverlay? accessoryOverlay;
+  final String? partnerInterest;
 
   @override
   Widget build(BuildContext context) {
     final s = boxWidth / 120;
+    final resolvedMood = isMe ? avatarState?.mood : moodOverlay;
+    final resolvedAccessory = isMe ? avatarState?.accessory : accessoryOverlay;
     return SizedBox(
       width: boxWidth,
       height: 190 * s,
@@ -1451,12 +1564,15 @@ class _StaticAvatar extends StatelessWidget {
                     isMe: isMe,
                     initialAdded: !isMe && friendRequestSent,
                     onAddFriend: isMe ? null : onFriendRequest,
+                    partnerMoodOverlay: isMe ? null : moodOverlay,
+                    partnerAccessoryOverlay: isMe ? null : accessoryOverlay,
+                    partnerInterest: isMe ? null : partnerInterest,
                   ),
                 ),
                 child: LayeredAvatar(
                   boxSize: 90 * s,
-                  moodOverlay: isMe ? avatarState?.mood : null,
-                  accessoryOverlay: isMe ? avatarState?.accessory : null,
+                  moodOverlay: resolvedMood,
+                  accessoryOverlay: resolvedAccessory,
                 ),
               ),
             ),

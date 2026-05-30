@@ -4,12 +4,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../features/auth/presentation/providers/auth_provider.dart';
+import '../features/avatar/presentation/providers/avatar_decoration_provider.dart';
 import '../features/chat/domain/entities/chat_message.dart' as chat_entity;
 import '../features/chat/domain/entities/session_status.dart';
 import '../features/chat/presentation/providers/chat_provider.dart';
 import '../features/friends/domain/entities/app_user.dart';
 import '../features/friends/presentation/providers/friends_provider.dart';
 import '../features/matchmaking/presentation/providers/matchmaking_provider.dart';
+import '../features/avatar/domain/entities/avatar_decoration.dart';
+import '../features/profile/domain/entities/profile_user.dart';
+import '../features/profile/presentation/providers/profile_provider.dart';
 import '../theme/app_colors.dart';
 import '../dialogs/leave_room_dialog.dart';
 import '../dialogs/song_dialog.dart';
@@ -20,6 +24,7 @@ import '../shared/layered_avatar.dart';
 import '../shared/press_bounce_btn.dart';
 import '../shared/user_profile.dart';
 import '../shared/friend_message_popup.dart';
+import '../shared/friend_request_popup.dart';
 import '../theme/app_routes.dart';
 import '../models/friend.dart';
 import '../shared/gif_picker.dart';
@@ -493,12 +498,58 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
       for (final u in (partnersAsync.value ?? <AppUser>[])) u.uid: u,
     };
 
+    // Per-partner decoration + profile for real avatar rendering.
+    final Map<String, AvatarDecoration?> partnerDecorations = {
+      for (final uid in partnerUids)
+        uid: ref.watch(partnerDecorationProvider(uid)).asData?.value,
+    };
+    final Map<String, ProfileUser?> partnerProfiles = {
+      for (final uid in partnerUids)
+        uid: ref.watch(partnerProfileProvider(uid)).asData?.value,
+    };
+
     ref.listen<FriendsState>(friendsNotifierProvider, (prev, next) {
       if (next.error != null && next.error != prev?.error) {
         ScaffoldMessenger.of(context)
           ..clearSnackBars()
           ..showSnackBar(SnackBar(content: Text(next.error!)));
         ref.read(friendsNotifierProvider.notifier).clearError();
+      }
+
+      // Show in-room popup when any partner sends us a friend request.
+      final prevIds = prev?.incomingRequests.map((r) => r.id).toSet() ?? {};
+      for (final req in next.incomingRequests) {
+        if (!prevIds.contains(req.id) && partnerUids.contains(req.fromUid)) {
+          showFriendRequestPopup(
+            context,
+            requesterName: req.fromDisplayName,
+            onAccept: () =>
+                ref.read(friendsNotifierProvider.notifier).acceptRequest(req),
+            onDecline: () => ref
+                .read(friendsNotifierProvider.notifier)
+                .declineRequest(req.id),
+          );
+        }
+      }
+
+      // Notify when a partner accepted our request.
+      for (final uid in partnerUids) {
+        if (_friendRequestSent[uid] == true) {
+          final wasAlreadyFriend =
+              prev?.friends.any((f) => f.friendUid == uid) ?? false;
+          final isNowFriend = next.friends.any((f) => f.friendUid == uid);
+          if (!wasAlreadyFriend && isNowFriend) {
+            final name = next.friends
+                .firstWhere((f) => f.friendUid == uid)
+                .friendDisplayName;
+            showInfoDialog(
+              context,
+              type: InfoDialogType.success,
+              title: "You're now friends!",
+              message: '$name accepted your friend request.',
+            );
+          }
+        }
       }
     });
 
@@ -557,6 +608,8 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
                           members,
                           roomUsers,
                           partnersMap,
+                          partnerDecorations,
+                          partnerProfiles,
                         ),
                         Expanded(
                           child: Stack(
@@ -565,6 +618,8 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
                                 avatarState,
                                 chatState,
                                 partnersMap,
+                                partnerDecorations,
+                                partnerProfiles,
                               ),
                               Positioned(
                                 top: 0,
@@ -826,6 +881,8 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
     List<String> members,
     List<String> roomUsers,
     Map<String, AppUser> partnersMap,
+    Map<String, AvatarDecoration?> partnerDecorations,
+    Map<String, ProfileUser?> partnerProfiles,
   ) {
     final count = members.length.clamp(1, 5);
     final preset = _layouts[count];
@@ -882,11 +939,23 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
                 final partner = (!isMe && memberUid != null)
                     ? partnersMap[memberUid]
                     : null;
+                final partnerDecoration = (!isMe && memberUid != null)
+                    ? partnerDecorations[memberUid]
+                    : null;
+                final partnerProfile = (!isMe && memberUid != null)
+                    ? partnerProfiles[memberUid]
+                    : null;
+                final partnerMoodOverlay =
+                    AvatarOverlays.mood[partnerDecoration?.moodKey ?? ''];
+                final partnerAccessoryOverlay =
+                    AvatarOverlays.accessory[partnerDecoration?.hatKey ?? ''];
                 final thought = isMe
                     ? (userProfile.thought.isNotEmpty
                           ? userProfile.thought
                           : 'Care to share?')
-                    : 'Hello!';
+                    : (partnerProfile?.thoughts?.isNotEmpty == true
+                          ? partnerProfile!.thoughts!
+                          : 'Hello!');
                 final rawScale = pos.size / 90;
                 final scale = rawScale.clamp(0.78, 1.0);
                 final bubbleW = 84 * scale;
@@ -920,14 +989,25 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
                                   onAddFriend: (!isMe && partner != null)
                                       ? () => _sendFriendRequest(partner)
                                       : null,
+                                  partnerMoodOverlay: isMe
+                                      ? null
+                                      : partnerMoodOverlay,
+                                  partnerAccessoryOverlay: isMe
+                                      ? null
+                                      : partnerAccessoryOverlay,
+                                  partnerInterest: isMe
+                                      ? null
+                                      : partnerProfile?.interest,
                                 ),
                               ),
                               child: LayeredAvatar(
                                 boxSize: pos.size,
-                                moodOverlay: isMe ? avatarState.mood : null,
+                                moodOverlay: isMe
+                                    ? avatarState.mood
+                                    : partnerMoodOverlay,
                                 accessoryOverlay: isMe
                                     ? avatarState.accessory
-                                    : null,
+                                    : partnerAccessoryOverlay,
                               ),
                             ),
                           ),
@@ -1031,6 +1111,8 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
     AvatarState avatarState,
     ChatState chatState,
     Map<String, AppUser> partnersMap,
+    Map<String, AvatarDecoration?> partnerDecorations,
+    Map<String, ProfileUser?> partnerProfiles,
   ) {
     final backendMsgs = chatState.messages
         .map((m) => _toGroupDisplay(m, chatState.currentUserId))
@@ -1066,7 +1148,13 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
           _MsgType.card => _buildCard(msg.text),
           _MsgType.gif => _buildGifBubble(msg, avatarState, isMe: true),
           _MsgType.gifOther => _buildGifBubble(msg, avatarState, isMe: false),
-          _ => _buildChatBubble(msg, avatarState, partnersMap),
+          _ => _buildChatBubble(
+            msg,
+            avatarState,
+            partnersMap,
+            partnerDecorations,
+            partnerProfiles,
+          ),
         };
       },
     );
@@ -1132,6 +1220,8 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
     _GroupMsg msg,
     AvatarState avatarState,
     Map<String, AppUser> partnersMap,
+    Map<String, AvatarDecoration?> partnerDecorations,
+    Map<String, ProfileUser?> partnerProfiles,
   ) {
     final isMe = msg.type == _MsgType.me;
     final maxW = MediaQuery.of(context).size.width * 0.60;
@@ -1154,6 +1244,12 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
                   final partnerByName = partnersMap.values
                       .where((u) => u.displayName == (msg.sender ?? ''))
                       .firstOrNull;
+                  final dec = partnerByName != null
+                      ? partnerDecorations[partnerByName.uid]
+                      : null;
+                  final prof = partnerByName != null
+                      ? partnerProfiles[partnerByName.uid]
+                      : null;
                   showDialog(
                     context: context,
                     builder: (_) => UserProfileDialog(
@@ -1164,10 +1260,30 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
                       onAddFriend: partnerByName != null
                           ? () => _sendFriendRequest(partnerByName)
                           : null,
+                      partnerMoodOverlay:
+                          AvatarOverlays.mood[dec?.moodKey ?? ''],
+                      partnerAccessoryOverlay:
+                          AvatarOverlays.accessory[dec?.hatKey ?? ''],
+                      partnerInterest: prof?.interest,
                     ),
                   );
                 },
-                child: LayeredAvatar(boxSize: 40),
+                child: Builder(
+                  builder: (ctx) {
+                    final pByName = partnersMap.values
+                        .where((u) => u.displayName == (msg.sender ?? ''))
+                        .firstOrNull;
+                    final dec = pByName != null
+                        ? partnerDecorations[pByName.uid]
+                        : null;
+                    return LayeredAvatar(
+                      boxSize: 40,
+                      moodOverlay: AvatarOverlays.mood[dec?.moodKey ?? ''],
+                      accessoryOverlay:
+                          AvatarOverlays.accessory[dec?.hatKey ?? ''],
+                    );
+                  },
+                ),
               ),
             ),
             const SizedBox(width: 8),
