@@ -12,6 +12,7 @@ import 'package:mobile/features/friends/presentation/providers/friends_provider.
 import 'package:mobile/features/matchmaking/domain/entities/matchmaking_status.dart';
 import 'package:mobile/features/matchmaking/domain/entities/room.dart';
 import 'package:mobile/features/matchmaking/presentation/providers/matchmaking_provider.dart';
+import 'package:mobile/features/avatar/presentation/providers/avatar_decoration_provider.dart';
 import 'package:mobile/features/profile/domain/entities/profile_user.dart';
 import 'package:mobile/features/profile/presentation/providers/profile_provider.dart';
 import 'package:mobile/features/jukebox/presentation/providers/jukebox_provider.dart';
@@ -222,6 +223,9 @@ Widget _buildScreen(
   _FakeMatchmakingNotifier? matchFake,
   _FakeProfileNotifier? profileFake,
   _FakeFriendsNotifierForChat? friendsFake,
+  // Per-uid profile overrides for partner/other users.
+  // Keys are UIDs; values are the ProfileUser to return from profileByUidProvider.
+  Map<String, ProfileUser>? partnerProfilesByUid,
   AuthState auth = const AuthState(
     status: AuthStatus.authenticated,
     user: AuthUser(uid: 'u1'),
@@ -243,6 +247,14 @@ Widget _buildScreen(
         () => friendsFake ?? _FakeFriendsNotifierForChat(),
       ),
       jukeboxNotifierProvider.overrideWith(() => _FakeJukeboxNotifier()),
+      // Prevent real Firestore calls for per-uid decoration in tests.
+      avatarDecorationByUidProvider.overrideWith((ref, uid) async => null),
+      // Inject partner profile data so tests don't need Firebase.
+      if (partnerProfilesByUid != null)
+        ...partnerProfilesByUid.entries.map(
+          (e) =>
+              profileByUidProvider(e.key).overrideWith((ref) async => e.value),
+        ),
     ],
     child: MaterialApp(
       onGenerateRoute: (settings) {
@@ -385,13 +397,8 @@ void main() {
     });
 
     testWidgets(
-      'partner displayName from profileNotifierProvider appears in avatar dialog',
+      'partner displayName from profileByUidProvider appears in avatar dialog',
       (tester) async {
-        final profileFake = _FakeProfileNotifier(
-          initial: ProfileState(
-            profile: ProfileUser(uid: 'u2', displayName: 'Alice'),
-          ),
-        );
         final matchFake = _FakeMatchmakingNotifier(
           initial: MatchmakingState(
             roomId: 'room1',
@@ -412,12 +419,16 @@ void main() {
           _buildScreen(
             _FakeChatNotifier(),
             matchFake: matchFake,
-            profileFake: profileFake,
+            partnerProfilesByUid: {
+              'u2': ProfileUser(uid: 'u2', displayName: 'Alice'),
+            },
           ),
         );
         await _pump(tester);
 
-        // The partner avatar in the banner opens a UserProfileDialog on tap
+        // The partner avatar in the banner opens a UserProfileDialog on tap.
+        // profileByUidProvider('u2') is overridden to return Alice immediately
+        // so the dialog should show 'Alice' once the future resolves.
         await tester.tap(find.byType(LayeredAvatar).first);
         await tester.pump();
 
@@ -426,17 +437,8 @@ void main() {
     );
 
     testWidgets(
-      'shows partner thoughts from profileNotifierProvider in thought bubble',
+      'shows partner thoughts from profileByUidProvider in thought bubble',
       (tester) async {
-        final profileFake = _FakeProfileNotifier(
-          initial: ProfileState(
-            profile: ProfileUser(
-              uid: 'u2',
-              displayName: 'Bob',
-              thoughts: 'Love hiking!',
-            ),
-          ),
-        );
         final matchFake = _FakeMatchmakingNotifier(
           initial: MatchmakingState(
             roomId: 'room1',
@@ -457,7 +459,13 @@ void main() {
           _buildScreen(
             _FakeChatNotifier(),
             matchFake: matchFake,
-            profileFake: profileFake,
+            partnerProfilesByUid: {
+              'u2': ProfileUser(
+                uid: 'u2',
+                displayName: 'Bob',
+                thoughts: 'Love hiking!',
+              ),
+            },
           ),
         );
         await _pump(tester);
