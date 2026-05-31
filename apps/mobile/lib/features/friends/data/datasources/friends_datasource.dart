@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart';
 
+import '../../domain/entities/app_user.dart';
 import '../../domain/entities/friend_room_status.dart';
 import '../models/app_user_model.dart';
 import '../models/friend_message_model.dart';
@@ -35,6 +36,9 @@ abstract class FriendsDatasource {
     required String text,
     required String senderDisplayName,
   });
+  Future<List<AppUser>> getUsersByIds(List<String> uids);
+  Future<void> setFriendTyping(String chatRoomId, bool isTyping);
+  Stream<bool> watchFriendTyping(String chatRoomId);
 }
 
 class FriendsDatasourceImpl implements FriendsDatasource {
@@ -241,6 +245,43 @@ class FriendsDatasourceImpl implements FriendsDatasource {
           'text': text,
           'timestamp': FieldValue.serverTimestamp(),
         });
+  }
+
+  @override
+  Future<List<AppUser>> getUsersByIds(List<String> uids) async {
+    if (uids.isEmpty) return [];
+    final docs = await Future.wait(
+      uids.map((uid) => _firestore.collection('users').doc(uid).get()),
+    );
+    return docs.where((d) => d.exists).map((d) {
+      final data = Map<String, dynamic>.from(d.data()!);
+      return AppUser(
+        uid: d.id,
+        displayName: data['displayName'] as String? ?? '',
+      );
+    }).toList();
+  }
+
+  @override
+  Future<void> setFriendTyping(String chatRoomId, bool isTyping) async {
+    final ref = _database.ref('friend_typing/$chatRoomId/$currentUid');
+    if (isTyping) {
+      await ref.set(true);
+      ref.onDisconnect().remove();
+    } else {
+      await ref.remove();
+    }
+  }
+
+  @override
+  Stream<bool> watchFriendTyping(String chatRoomId) {
+    return _database.ref('friend_typing/$chatRoomId').onValue.map((event) {
+      if (!event.snapshot.exists || event.snapshot.value == null) return false;
+      final data = Map<String, dynamic>.from(event.snapshot.value as Map);
+      return data.entries
+          .where((e) => e.key != currentUid)
+          .any((e) => e.value == true);
+    });
   }
 
   static String _makeFriendshipId(String uid1, String uid2) {

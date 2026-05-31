@@ -4,6 +4,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import '../features/auth/presentation/providers/auth_provider.dart';
 import '../features/avatar/presentation/providers/avatar_decoration_provider.dart';
 import '../features/friends/presentation/providers/friends_provider.dart';
+import '../features/matchmaking/presentation/providers/matchmaking_provider.dart';
 import '../features/profile/presentation/providers/profile_provider.dart';
 import '../shared/offline_chip.dart';
 import '../theme/app_colors.dart';
@@ -64,6 +65,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Keep matchmaking interest in sync with profile interest so the two
+    // always use the same value for CF-side embedding.
+    ref.listen<ProfileState>(profileNotifierProvider, (prev, next) {
+      final interest = next.profile?.interest;
+      if (interest != null && interest.isNotEmpty) {
+        ref
+            .read(matchmakingNotifierProvider.notifier)
+            .setInterestText(interest);
+      }
+    });
+
     ref.listen<AvatarDecorationState>(avatarDecorationNotifierProvider, (
       prev,
       next,
@@ -89,10 +101,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       body: Column(
         children: [
           _TopBar(
-            hasNotification: ref
-                .watch(friendsNotifierProvider)
-                .incomingRequests
-                .isNotEmpty,
+            hasNotification: ref.watch(
+              friendsNotifierProvider.select(
+                (s) =>
+                    s.incomingRequests.isNotEmpty ||
+                    s.unreadChatRoomIds.isNotEmpty,
+              ),
+            ),
             onBellTap: () =>
                 Navigator.pushNamed(context, AppRoutes.notification),
             onUserTap: () => Navigator.pushNamed(context, AppRoutes.profile),

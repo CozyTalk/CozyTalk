@@ -72,6 +72,14 @@ void main() async {
     if (!kIsWeb) {
       await FirebaseCrashlytics.instance.setCrashlyticsCollectionEnabled(false);
     }
+    // On web the Firestore SDK keeps an IndexedDB offline cache that can
+    // return stale / empty data when the browser is restarted. Clear it at
+    // startup so all reads go straight to the emulator network.
+    if (kIsWeb) {
+      try {
+        await FirebaseFirestore.instance.clearPersistence();
+      } catch (_) {}
+    }
   } else if (!kIsWeb) {
     FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
     PlatformDispatcher.instance.onError = (error, stack) {
@@ -154,6 +162,8 @@ class _MainUIAuthRouter extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Keep own RTDB presence alive — same as _AuthRouter.
+    ref.watch(ownStatusNotifierProvider);
     ref.listen<AuthStatus>(authNotifierProvider.select((s) => s.status), (
       _,
       next,
