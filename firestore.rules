@@ -65,6 +65,8 @@ service cloud.firestore {
     // ── users/{userId}/blocked ────────────────────────────────────────────────
     match /users/{userId}/blocked/{blockedId} {
       allow read, write: if isOwner(userId);
+      // The blocked user may read their own doc to detect they have been blocked.
+      allow read: if isSignedIn() && request.auth.uid == blockedId;
     }
 
     // ── waiting_pool ─────────────────────────────────────────────────────────

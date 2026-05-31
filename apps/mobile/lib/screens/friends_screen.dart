@@ -4,7 +4,9 @@ import 'package:flutter/material.dart';
 import '../features/friends/domain/entities/friend.dart' as domain;
 import '../features/friends/domain/entities/friend_room_status.dart';
 import '../features/friends/presentation/providers/friends_provider.dart';
+import '../features/block/presentation/providers/block_provider.dart';
 import '../features/avatar/presentation/providers/avatar_decoration_provider.dart';
+import '../features/profile/presentation/providers/profile_provider.dart';
 import '../shared/avatar_overlay.dart';
 import '../shared/connectivity_provider.dart';
 import '../shared/layered_avatar.dart';
@@ -29,9 +31,7 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
   final TextEditingController _searchCtrl = TextEditingController();
   String _query = '';
 
-  // Local-only state — no backend support yet
   final Map<String, String?> _notes = {};
-  final Set<String> _blockedIds = {};
   final Map<String, int> _unreadCounts = {};
   String? _pendingRemoveName;
 
@@ -53,11 +53,14 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
     domain.Friend f,
     FriendsState state,
     Map<String, String> liveNames,
+    Map<String, String> liveInterests,
+    Set<String> blockedUids,
   ) {
     final roomStatus = state.roomMap[f.friendUid];
     final liveName = liveNames[f.friendUid] ?? f.friendDisplayName;
     return Friend(
       friendshipId: f.friendshipId,
+      friendUid: f.friendUid,
       chatRoomId: f.chatRoomId,
       name: liveName,
       username: liveName,
@@ -65,7 +68,8 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
       lastMessage: state.lastMessageMap[f.chatRoomId] ?? '',
       isOnline: state.presenceMap[f.friendUid] ?? false,
       unreadCount: _unreadCounts[f.friendshipId] ?? 0,
-      isBlocked: _blockedIds.contains(f.friendshipId),
+      isBlocked: blockedUids.contains(f.friendUid),
+      interest: liveInterests[f.friendUid] ?? '',
       room: roomStatus != null ? _toRoomInfo(roomStatus) : null,
     );
   }
@@ -121,8 +125,27 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
                   ''],
         ),
     };
+    // Fetch live interest for each friend.
+    final liveInterests = <String, String>{
+      for (final f in state.friends)
+        f.friendUid:
+            ref
+                .watch(partnerProfileProvider(f.friendUid))
+                .asData
+                ?.value
+                ?.interest ??
+            '',
+    };
+    final blockedUids = ref
+        .watch(blockNotifierProvider)
+        .blockedUsers
+        .map((u) => u.uid)
+        .toSet();
     final friends = state.friends
-        .map((f) => _toScreenFriend(f, state, liveNames))
+        .map(
+          (f) =>
+              _toScreenFriend(f, state, liveNames, liveInterests, blockedUids),
+        )
         .toList();
     final filtered = _filtered(friends);
     final isOffline = !ref
@@ -293,11 +316,14 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
                         ),
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(14),
-                          child: Center(
-                            child: LayeredAvatar(
-                              boxSize: 52,
-                              moodOverlay: decoration.mood,
-                              accessoryOverlay: decoration.hat,
+                          child: Padding(
+                            padding: const EdgeInsets.only(top: 10),
+                            child: Center(
+                              child: LayeredAvatar(
+                                boxSize: 48,
+                                moodOverlay: decoration.mood,
+                                accessoryOverlay: decoration.hat,
+                              ),
                             ),
                           ),
                         ),
@@ -453,14 +479,9 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
               context: context,
               username: friend.displayName,
               onConfirm: () {
-                setState(() => _blockedIds.add(friend.friendshipId));
-                showInfoDialog(
-                  context,
-                  type: InfoDialogType.success,
-                  title: 'User Blocked',
-                  message:
-                      '${friend.displayName} has been blocked locally.\nServer-side enforcement is not yet available.',
-                );
+                ref
+                    .read(blockNotifierProvider.notifier)
+                    .block(friend.friendUid, displayName: friend.displayName);
               },
             );
           case 'Unblock':
@@ -468,14 +489,9 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
               context: context,
               username: friend.displayName,
               onConfirm: () {
-                setState(() => _blockedIds.remove(friend.friendshipId));
-                showInfoDialog(
-                  context,
-                  type: InfoDialogType.info,
-                  title: 'User Unblocked',
-                  message:
-                      '${friend.displayName} has been unblocked.\nThey can now contact you again.',
-                );
+                ref
+                    .read(blockNotifierProvider.notifier)
+                    .unblock(friend.friendUid);
               },
             );
           case 'Unfriend':
@@ -495,7 +511,7 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
       itemBuilder: (_) => [
         _popupItem('Edit'),
         _divider(),
-        _popupItem(friend.isBlocked ? 'Unblock' : 'Block'),
+        friend.isBlocked ? _popupItemDisabled('Blocked') : _popupItem('Block'),
         _divider(),
         _popupItem('Unfriend'),
       ],
@@ -508,6 +524,29 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
       height: 1,
       padding: EdgeInsets.zero,
       child: Divider(height: 1, thickness: 1, color: Colors.grey.shade300),
+    );
+  }
+
+  PopupMenuItem<String> _popupItemDisabled(String label) {
+    return PopupMenuItem<String>(
+      enabled: false,
+      padding: EdgeInsets.zero,
+      child: SizedBox(
+        width: 110,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          child: Center(
+            child: Text(
+              label,
+              style: Theme.of(context).textTheme.bodyMedium!.copyWith(
+                fontWeight: FontWeight.w900,
+                fontSize: 14,
+                color: Colors.grey.shade400,
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 

@@ -12,6 +12,7 @@ import '../../domain/repositories/block_repository.dart';
 import '../../domain/usecases/block_user.dart';
 import '../../domain/usecases/unblock_user.dart';
 import '../../domain/usecases/watch_blocked_users.dart';
+import '../../domain/usecases/watch_is_blocked_by.dart';
 
 const _sentinel = Object();
 
@@ -39,6 +40,20 @@ final _blockUserProvider = Provider<BlockUser>(
 final _unblockUserProvider = Provider<UnblockUser>(
   (ref) => UnblockUser(ref.watch(_blockRepositoryProvider)),
 );
+
+final _watchIsBlockedByProvider = Provider<WatchIsBlockedBy>(
+  (ref) => WatchIsBlockedBy(ref.watch(_blockRepositoryProvider)),
+);
+
+/// Streams whether [partnerUid] has blocked the current user.
+final isBlockedByProvider = StreamProvider.family<bool, String>((
+  ref,
+  partnerUid,
+) {
+  final myUid = ref.watch(authNotifierProvider).user?.uid;
+  if (myUid == null) return Stream.value(false);
+  return ref.watch(_watchIsBlockedByProvider).call(partnerUid, myUid);
+});
 
 // ── State ─────────────────────────────────────────────────────────────────
 

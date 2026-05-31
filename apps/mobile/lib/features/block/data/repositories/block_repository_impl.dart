@@ -13,6 +13,10 @@ class BlockRepositoryImpl implements BlockRepository {
       .map((models) => models.map((m) => m.toEntity()).toList());
 
   @override
+  Stream<bool> watchIsBlockedBy(String partnerUid, String myUid) =>
+      _datasource.watchIsBlockedBy(partnerUid, myUid);
+
+  @override
   Future<void> blockUser(
     String ownerUid,
     String targetUid, {

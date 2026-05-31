@@ -3,8 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mobile/features/auth/domain/entities/auth_user.dart';
 import 'package:mobile/features/auth/presentation/providers/auth_provider.dart';
+import 'package:mobile/features/avatar/presentation/providers/avatar_decoration_provider.dart';
 import 'package:mobile/features/block/domain/entities/blocked_user.dart';
 import 'package:mobile/features/block/presentation/providers/block_provider.dart';
+import 'package:mobile/features/friends/presentation/providers/friends_provider.dart';
+import 'package:mobile/features/profile/presentation/providers/profile_provider.dart';
 import 'package:mobile/screens/blocked_screen.dart';
 
 // ─── Fake notifiers ──────────────────────────────────────────────────────────
@@ -72,6 +75,9 @@ Widget _buildScreen({
     overrides: [
       blockNotifierProvider.overrideWith(() => blockFake),
       authNotifierProvider.overrideWith(() => authFake),
+      getUsersByIdsProvider.overrideWith((ref, ids) async => []),
+      partnerProfileProvider.overrideWith((ref, uid) async => null),
+      partnerDecorationProvider.overrideWith((ref, uid) async => null),
     ],
     child: const MaterialApp(home: BlockedScreen()),
   );
@@ -170,10 +176,11 @@ void main() {
       );
       await tester.pump();
 
-      // Friend.displayName returns username (= uid) when note is absent;
-      // the screen passes displayName as 'name' but the widget shows username.
-      expect(find.text('uid-1'), findsOneWidget);
-      expect(find.text('uid-2'), findsOneWidget);
+      // Screen resolves displayName → live name → stored displayName → uid.
+      // No live names in test (getUsersByIdsProvider returns []), so stored
+      // displayName ('Alice', 'Bob') is shown.
+      expect(find.text('Alice'), findsOneWidget);
+      expect(find.text('Bob'), findsOneWidget);
     });
 
     testWidgets('shows "2/5" count when two users are blocked', (tester) async {
