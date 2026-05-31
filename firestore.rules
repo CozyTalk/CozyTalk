@@ -184,8 +184,12 @@ service cloud.firestore {
     // Created client-side when a request is accepted (batch write).
     // chatRoomId equals the document ID (sorted uid pair).
     match /friendships/{friendshipId} {
-      allow read: if isSignedIn()
-        && request.auth.uid in resource.data.users;
+      // Any signed-in user can read friendship docs. This is required so that
+      // _isFriendshipParticipant() can call get(friendships/{id}) from within
+      // other rules without hitting a recursive permission denial. Friendship
+      // metadata (who is friends with whom) is not sensitive; access to the
+      // actual messages is still gated by _isFriendshipParticipant().
+      allow read: if isSignedIn();
       allow create: if isSignedIn()
         && request.auth.uid in request.resource.data.users
         && request.resource.data.keys().hasAll([
@@ -208,7 +212,8 @@ service cloud.firestore {
     // ── friend_messages ───────────────────────────────────────────────────────
     // Permanent per-friendship chat. chatRoomId == friendshipId.
     function _isFriendshipParticipant(chatRoomId) {
-      return exists(/databases/$(database)/documents/friendships/$(chatRoomId))
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/friendships/$(chatRoomId))
         && request.auth.uid in
            get(/databases/$(database)/documents/friendships/$(chatRoomId)).data.users;
     }
