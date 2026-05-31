@@ -4,27 +4,27 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../features/auth/presentation/providers/auth_provider.dart';
+import '../features/avatar/presentation/providers/avatar_decoration_provider.dart';
 import '../features/chat/domain/entities/chat_message.dart' as chat_entity;
 import '../features/chat/domain/entities/session_status.dart';
 import '../features/chat/presentation/providers/chat_provider.dart';
+import '../features/friends/domain/entities/app_user.dart';
+import '../features/friends/presentation/providers/friends_provider.dart';
+import '../features/jukebox/presentation/providers/jukebox_provider.dart';
 import '../features/matchmaking/domain/entities/matchmaking_status.dart';
 import '../features/matchmaking/presentation/providers/matchmaking_provider.dart';
+import '../features/profile/presentation/providers/profile_provider.dart';
+import '../features/report/presentation/screens/report_sheet.dart';
 import '../theme/app_colors.dart';
 import '../dialogs/leave_room_dialog.dart';
 import '../dialogs/song_dialog.dart';
-import '../features/jukebox/presentation/providers/jukebox_provider.dart';
 import '../dialogs/user_profile_dialog.dart';
-import '../features/report/presentation/screens/report_sheet.dart';
 import '../shared/avatar_overlay.dart';
-import '../shared/layered_avatar.dart';
-import '../shared/press_bounce_btn.dart';
+import '../shared/background_theme.dart';
 import '../shared/gif_picker.dart';
 import '../shared/info_dialog.dart';
-import '../features/avatar/presentation/providers/avatar_decoration_provider.dart';
-import '../features/friends/domain/entities/app_user.dart';
-import '../features/friends/presentation/providers/friends_provider.dart';
-import '../features/profile/presentation/providers/profile_provider.dart';
-import '../shared/background_theme.dart';
+import '../shared/layered_avatar.dart';
+import '../shared/press_bounce_btn.dart';
 
 // ── Card assets ────────────────────────────────────────────────────────────
 const _cardAssets = [
@@ -248,7 +248,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
     );
   }
 
-  void _cancelFriendRequest([String name = '']) {
+  void cancelFriendRequest([String name = '']) {
     setState(() => _friendRequestSent = false);
     showInfoDialog(
       context,
@@ -259,7 +259,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
     );
   }
 
-  void _reportUser() {
+  void reportUser() {
     final sessionId = ref.read(matchmakingNotifierProvider).roomId ?? '';
     final reportedUid = _partnerUid ?? '';
     if (sessionId.isEmpty || reportedUid.isEmpty) return;
@@ -271,7 +271,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
     );
   }
 
-  void _shuffleTopic() {
+  void shuffleTopic() {
     final cardPath = _pickCard();
     final seq = ref.read(chatNotifierProvider).messages.length;
     setState(() {
@@ -285,7 +285,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
     ref.read(chatNotifierProvider.notifier).sendMessage('card::$cardPath');
   }
 
-  void _onWillPop() {
+  void onWillPop() {
     final notifier = ref.read(chatNotifierProvider.notifier);
     showDialog(
       context: context,
@@ -296,18 +296,18 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
   // TODO: implement _showLeaveForFriendChat — navigate to /friends/chat with real Friend
   // from friendsNotifierProvider; triggered by incoming friend message popup
 
-  static const _kWarning =
+  final kWarning =
       'Keep it friendly! Please be respectful and protect your personal info.\n'
       'Report any suspicious behavior to help keep our community safe.';
 
-  static String _formatTime(DateTime t) {
+  String formatTime(DateTime t) {
     final tod = TimeOfDay.fromDateTime(t);
     final h = tod.hourOfPeriod == 0 ? 12 : tod.hourOfPeriod;
     final m = tod.minute.toString().padLeft(2, '0');
     return '$h:$m ${tod.period.name}';
   }
 
-  ChatMessage _toDisplay(chat_entity.ChatMessage msg, String? myUid) {
+  ChatMessage toDisplay(chat_entity.ChatMessage msg, String? myUid) {
     final isMe = msg.senderId == myUid;
     if (msg.text.startsWith('card::')) {
       return ChatMessage(type: 'card', text: msg.text.substring(6));
@@ -319,11 +319,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
     return ChatMessage(
       type: isGif ? (isMe ? 'gif' : 'gif_other') : (isMe ? 'me' : 'other'),
       text: msg.text,
-      time: _formatTime(msg.timestamp),
+      time: formatTime(msg.timestamp),
     );
   }
 
-  String? _findPartnerDisplayName(ChatState chatState) {
+  String? findPartnerDisplayName(ChatState chatState) {
     final myUid = chatState.currentUserId ?? '';
     for (final m in chatState.messages) {
       if (m.senderId != myUid) return m.displayName;
@@ -357,7 +357,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
         : null;
     final partnerName = partnerProfile?.displayName?.isNotEmpty == true
         ? partnerProfile!.displayName!
-        : (_findPartnerDisplayName(chatState) ?? '');
+        : (findPartnerDisplayName(chatState) ?? '');
     final partnerThought = partnerProfile?.thoughts ?? 'Care to share?';
     final myUsername = _myDisplayName.isNotEmpty
         ? _myDisplayName
@@ -417,13 +417,13 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (bool didPop, Object? result) {
-        if (!didPop) _onWillPop();
+        if (!didPop) onWillPop();
       },
       child: Scaffold(
         backgroundColor: AppColors.scaffoldBg,
         body: Column(
           children: [
-            _buildHeader(roomName, roomId),
+            buildHeader(roomName, roomId),
             Expanded(
               child: ClipRect(
                 child: Stack(
@@ -431,7 +431,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
                     // Main content
                     Column(
                       children: [
-                        _buildBanner(
+                        buildBanner(
                           bgImage,
                           avatarState,
                           _myThoughts,
@@ -445,7 +445,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
                         Expanded(
                           child: Stack(
                             children: [
-                              _buildMessageList(
+                              buildMessageList(
                                 avatarState,
                                 chatState,
                                 partnerName,
@@ -476,15 +476,17 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
                             ],
                           ),
                         ),
-                        blocked ? _buildBlockedBar() : _buildInputBar(),
+                        blocked ? buildBlockedBar() : buildInputBar(),
                       ],
                     ),
                     // Barrier
                     if (_songPanelOpen)
-                      GestureDetector(
-                        onTap: _closeSongPanel,
-                        behavior: HitTestBehavior.opaque,
-                        child: Container(color: Colors.black26),
+                      ExcludeSemantics(
+                        child: GestureDetector(
+                          onTap: _closeSongPanel,
+                          behavior: HitTestBehavior.opaque,
+                          child: Container(color: Colors.black26),
+                        ),
                       ),
                     // Song panel — always in tree so audio survives panel close.
                     // isVisible arms the WebView on first open so it initialises
@@ -513,7 +515,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
   }
 
   // ── Header ────────────────────────────────────────────────────────────────
-  Widget _buildHeader(String roomName, String roomId) {
+  Widget buildHeader(String roomName, String roomId) {
     return Container(
       width: double.infinity,
       decoration: const BoxDecoration(
@@ -529,12 +531,16 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                _headerBtn(
-                  onTap: _onWillPop,
-                  child: SvgPicture.asset(
-                    'assets/images/icons/Back.svg',
-                    width: 24,
-                    height: 24,
+                Semantics(
+                  label: 'End chat',
+                  button: true,
+                  child: headerBtn(
+                    onTap: onWillPop,
+                    child: SvgPicture.asset(
+                      'assets/images/icons/Back.svg',
+                      width: 24,
+                      height: 24,
+                    ),
                   ),
                 ),
                 const SizedBox(width: 16),
@@ -545,7 +551,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
                     children: [
                       Text(
                         roomName,
-                        style: const TextStyle(
+                        style: Theme.of(context).textTheme.titleLarge!.copyWith(
                           color: Colors.white,
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
@@ -553,7 +559,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
                       ),
                       Text(
                         'Room ID:   $roomId',
-                        style: const TextStyle(
+                        style: Theme.of(context).textTheme.bodySmall!.copyWith(
                           color: Colors.white70,
                           fontSize: 12,
                         ),
@@ -570,7 +576,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
     );
   }
 
-  Widget _headerBtn({required Widget child, required VoidCallback onTap}) {
+  Widget headerBtn({required Widget child, required VoidCallback onTap}) {
     return PressBounceBtn(
       onTap: onTap,
       scale: 0.90,
@@ -596,7 +602,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
   }
 
   // ── Banner ────────────────────────────────────────────────────────────────
-  Widget _buildBanner(
+  Widget buildBanner(
     String bgImage,
     AvatarState avatarState,
     String myThoughts,
@@ -640,9 +646,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
                       avatarState: partnerAvatarState,
                       boxWidth: eachW,
                       onFriendRequest: _sendFriendRequest,
-                      onCancelRequest: _cancelFriendRequest,
+                      onCancelRequest: cancelFriendRequest,
                       friendRequestSent: _friendRequestSent,
-                      onReport: _reportUser,
+                      onReport: reportUser,
                     ),
                     const SizedBox(width: 20),
                     _StaticAvatar(
@@ -664,13 +670,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
             right: 10,
             child: Column(
               children: [
-                _sideBtn(
-                  'Song',
-                  'assets/images/icons/song.svg',
-                  _openSongPanel,
-                ),
+                sideBtn('Song', 'assets/images/icons/song.svg', _openSongPanel),
                 const SizedBox(height: 10),
-                _sideBtn(
+                sideBtn(
                   'Topic',
                   'assets/images/icons/card.svg',
                   _sendTopicCard,
@@ -683,7 +685,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
     );
   }
 
-  Widget _sideBtn(String label, String svgPath, VoidCallback onTap) {
+  Widget sideBtn(String label, String svgPath, VoidCallback onTap) {
     return PressBounceBtn(
       onTap: onTap,
       child: Container(
@@ -705,7 +707,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
             const SizedBox(height: 2),
             Text(
               label,
-              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+              style: Theme.of(context).textTheme.labelSmall!.copyWith(
+                fontSize: 11,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ],
         ),
@@ -714,7 +719,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
   }
 
   // ── Message list ──────────────────────────────────────────────────────────
-  Widget _buildMessageList(
+  Widget buildMessageList(
     AvatarState avatarState,
     ChatState chatState,
     String partnerName,
@@ -723,9 +728,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
     AvatarState partnerAvatarState,
   ) {
     final backendMsgs = chatState.messages
-        .map((m) => _toDisplay(m, chatState.currentUserId))
+        .map((m) => toDisplay(m, chatState.currentUserId))
         .toList();
-    final merged = <ChatMessage>[ChatMessage(type: 'warning', text: _kWarning)];
+    final merged = <ChatMessage>[ChatMessage(type: 'warning', text: kWarning)];
     int localIdx = 0;
     for (int i = 0; i <= backendMsgs.length; i++) {
       while (localIdx < _localMessages.length &&
@@ -749,31 +754,31 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
         }
         final msg = displayMessages[i];
         return switch (msg.type) {
-          'warning' => _buildWarning(msg.text),
-          'system' => _buildSystem(msg),
-          'me' => _buildBubble(
+          'warning' => buildWarning(msg.text),
+          'system' => buildSystem(msg),
+          'me' => buildBubble(
             msg,
             isMe: true,
             avatarState: avatarState,
             partnerName: partnerName,
             interest: myInterest,
           ),
-          'other' => _buildBubble(
+          'other' => buildBubble(
             msg,
             isMe: false,
             avatarState: partnerAvatarState,
             partnerName: partnerName,
             interest: partnerInterest,
           ),
-          'card' => _buildCard(msg.text),
-          'gif' => _buildGifBubble(
+          'card' => buildCard(msg.text),
+          'gif' => buildGifBubble(
             msg,
             isMe: true,
             avatarState: avatarState,
             partnerName: partnerName,
             interest: myInterest,
           ),
-          'gif_other' => _buildGifBubble(
+          'gif_other' => buildGifBubble(
             msg,
             isMe: false,
             avatarState: partnerAvatarState,
@@ -786,7 +791,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
     );
   }
 
-  Widget _buildWarning(String text) {
+  Widget buildWarning(String text) {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -798,8 +803,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
       child: Text(
         text,
         textAlign: TextAlign.center,
-        style: const TextStyle(
-          color: Color(0xFF836151),
+        style: Theme.of(context).textTheme.bodyMedium!.copyWith(
+          color: const Color(0xFF836151),
           fontSize: 13,
           fontWeight: FontWeight.w500,
         ),
@@ -807,14 +812,17 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
     );
   }
 
-  Widget _buildSystem(ChatMessage msg) {
+  Widget buildSystem(ChatMessage msg) {
     return Column(
       children: [
         if (msg.time != null) ...[
           const SizedBox(height: 8),
           Text(
             msg.time!,
-            style: const TextStyle(fontSize: 12, color: Colors.black45),
+            style: Theme.of(context).textTheme.bodySmall!.copyWith(
+              fontSize: 12,
+              color: Colors.black.withValues(alpha: 0.60),
+            ),
           ),
           const SizedBox(height: 6),
         ],
@@ -828,7 +836,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
           ),
           child: Text(
             msg.text,
-            style: const TextStyle(fontSize: 12, color: Colors.black54),
+            style: Theme.of(context).textTheme.bodySmall!.copyWith(
+              fontSize: 12,
+              color: Colors.black54,
+            ),
           ),
         ),
         const SizedBox(height: 8),
@@ -836,7 +847,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
     );
   }
 
-  Widget _buildBubble(
+  Widget buildBubble(
     ChatMessage msg, {
     required bool isMe,
     AvatarState? avatarState,
@@ -862,8 +873,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
                   uid: _partnerUid,
                   initialAdded: _friendRequestSent,
                   onAddFriend: () => _sendFriendRequest(partnerName),
-                  onCancelRequest: () => _cancelFriendRequest(partnerName),
-                  onReport: _reportUser,
+                  onCancelRequest: () => cancelFriendRequest(partnerName),
+                  onReport: reportUser,
                   avatarState: avatarState,
                 ),
               ),
@@ -878,7 +889,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
           if (isMe) ...[
             Text(
               msg.time ?? '',
-              style: const TextStyle(fontSize: 10, color: Colors.black45),
+              style: Theme.of(context).textTheme.labelSmall!.copyWith(
+                fontSize: 10,
+                color: Colors.black.withValues(alpha: 0.60),
+              ),
             ),
             const SizedBox(width: 6),
           ],
@@ -892,14 +906,19 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
             ),
             child: Text(
               msg.text,
-              style: const TextStyle(fontSize: 15, height: 1.6),
+              style: Theme.of(
+                context,
+              ).textTheme.bodyLarge!.copyWith(fontSize: 15, height: 1.6),
             ),
           ),
           if (!isMe) ...[
             const SizedBox(width: 6),
             Text(
               msg.time ?? '',
-              style: const TextStyle(fontSize: 10, color: Colors.black45),
+              style: Theme.of(context).textTheme.labelSmall!.copyWith(
+                fontSize: 10,
+                color: Colors.black.withValues(alpha: 0.60),
+              ),
             ),
           ],
           if (isMe) ...[
@@ -915,11 +934,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
     );
   }
 
-  Widget _buildCard(String assetPath) {
-    return _TopicCard(assetPath: assetPath, onShuffle: _shuffleTopic);
+  Widget buildCard(String assetPath) {
+    return _TopicCard(assetPath: assetPath, onShuffle: shuffleTopic);
   }
 
-  Widget _buildGifBubble(
+  Widget buildGifBubble(
     ChatMessage msg, {
     required bool isMe,
     AvatarState? avatarState,
@@ -955,7 +974,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
     );
     final timestamp = Text(
       msg.time ?? '',
-      style: const TextStyle(fontSize: 10, color: Colors.black45),
+      style: Theme.of(context).textTheme.labelSmall!.copyWith(
+        fontSize: 10,
+        color: Colors.black.withValues(alpha: 0.60),
+      ),
     );
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
@@ -975,8 +997,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
                   uid: _partnerUid,
                   initialAdded: _friendRequestSent,
                   onAddFriend: () => _sendFriendRequest(partnerName),
-                  onCancelRequest: () => _cancelFriendRequest(partnerName),
-                  onReport: _reportUser,
+                  onCancelRequest: () => cancelFriendRequest(partnerName),
+                  onReport: reportUser,
                   avatarState: avatarState,
                 ),
               ),
@@ -1007,7 +1029,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
   }
 
   // ── Blocked bar ───────────────────────────────────────────────────────────
-  Widget _buildBlockedBar() {
+  Widget buildBlockedBar() {
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
       color: const Color(0xFF6B5E5B),
@@ -1031,7 +1053,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
   }
 
   // ── GIF preview strip ─────────────────────────────────────────────────────
-  Widget _buildGifPreview() {
+  Widget buildGifPreview() {
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
       color: const Color(0xFF6B5E5B),
@@ -1057,14 +1079,21 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
             ),
           ),
           const SizedBox(width: 10),
-          const Text(
+          Text(
             'GIF ready to send',
-            style: TextStyle(color: Colors.white70, fontSize: 12),
+            style: Theme.of(context).textTheme.bodySmall!.copyWith(
+              color: Colors.white70,
+              fontSize: 12,
+            ),
           ),
           const Spacer(),
-          GestureDetector(
-            onTap: () => setState(() => _pendingGifUrl = null),
-            child: const Icon(Icons.close, color: Colors.white54, size: 20),
+          Semantics(
+            label: 'Close GIF preview',
+            button: true,
+            child: GestureDetector(
+              onTap: () => setState(() => _pendingGifUrl = null),
+              child: const Icon(Icons.close, color: Colors.white54, size: 20),
+            ),
           ),
         ],
       ),
@@ -1072,17 +1101,17 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
   }
 
   // ── Input bar ─────────────────────────────────────────────────────────────
-  Widget _buildInputBar() {
+  Widget buildInputBar() {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        if (_pendingGifUrl != null) _buildGifPreview(),
-        _buildInputRow(),
+        if (_pendingGifUrl != null) buildGifPreview(),
+        buildInputRow(),
       ],
     );
   }
 
-  Widget _buildInputRow() {
+  Widget buildInputRow() {
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
       color: const Color(0xFF6B5E5B),
@@ -1099,7 +1128,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
                 maxLines: 5,
                 keyboardType: TextInputType.multiline,
                 textInputAction: TextInputAction.newline,
-                style: const TextStyle(fontSize: 15),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodyLarge!.copyWith(fontSize: 15),
                 strutStyle: const StrutStyle(
                   fontSize: 15,
                   height: 1.6,
@@ -1167,20 +1198,24 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
             ),
           ),
           const SizedBox(width: 10),
-          GestureDetector(
-            onTap: _sendMessage,
-            child: Container(
-              width: 50,
-              height: 50,
-              decoration: BoxDecoration(
-                color: const Color(0xFFEAC163),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              alignment: Alignment.center,
-              child: SvgPicture.asset(
-                'assets/images/icons/sent.svg',
-                width: 24,
-                height: 24,
+          Semantics(
+            label: 'Send message',
+            button: true,
+            child: GestureDetector(
+              onTap: _sendMessage,
+              child: Container(
+                width: 50,
+                height: 50,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEAC163),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                alignment: Alignment.center,
+                child: SvgPicture.asset(
+                  'assets/images/icons/sent.svg',
+                  width: 24,
+                  height: 24,
+                ),
               ),
             ),
           ),
@@ -1202,37 +1237,37 @@ class _TopicCard extends StatefulWidget {
 
 class _TopicCardState extends State<_TopicCard>
     with SingleTickerProviderStateMixin {
-  late final AnimationController _ctrl;
-  late final Animation<double> _scale;
-  late final Animation<double> _rotate;
+  late final AnimationController ctrl;
+  late final Animation<double> scale;
+  late final Animation<double> rotate;
 
   @override
   void initState() {
     super.initState();
-    _ctrl = AnimationController(
+    ctrl = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 380),
     );
-    _scale = TweenSequence([
+    scale = TweenSequence([
       TweenSequenceItem(tween: Tween(begin: 1.0, end: 0.90), weight: 35),
       TweenSequenceItem(tween: Tween(begin: 0.90, end: 1.06), weight: 40),
       TweenSequenceItem(tween: Tween(begin: 1.06, end: 1.00), weight: 25),
-    ]).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeOut));
-    _rotate = TweenSequence([
+    ]).animate(CurvedAnimation(parent: ctrl, curve: Curves.easeOut));
+    rotate = TweenSequence([
       TweenSequenceItem(tween: Tween(begin: 0.0, end: -0.04), weight: 30),
       TweenSequenceItem(tween: Tween(begin: -0.04, end: 0.04), weight: 40),
       TweenSequenceItem(tween: Tween(begin: 0.04, end: 0.0), weight: 30),
-    ]).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut));
+    ]).animate(CurvedAnimation(parent: ctrl, curve: Curves.easeInOut));
   }
 
   @override
   void dispose() {
-    _ctrl.dispose();
+    ctrl.dispose();
     super.dispose();
   }
 
-  void _handleShuffle() {
-    _ctrl.forward(from: 0); // animation plays independently
+  void handleShuffle() {
+    ctrl.forward(from: 0); // animation plays independently
     widget.onShuffle(); // new card + scroll fires immediately
   }
 
@@ -1243,10 +1278,10 @@ class _TopicCardState extends State<_TopicCard>
         children: [
           const SizedBox(height: 8),
           AnimatedBuilder(
-            animation: _ctrl,
+            animation: ctrl,
             builder: (_, child) => Transform.rotate(
-              angle: _rotate.value,
-              child: Transform.scale(scale: _scale.value, child: child),
+              angle: rotate.value,
+              child: Transform.scale(scale: scale.value, child: child),
             ),
             child: Image.asset(
               widget.assetPath,
@@ -1264,7 +1299,7 @@ class _TopicCardState extends State<_TopicCard>
           ),
           const SizedBox(height: 8),
           PressBounceBtn(
-            onTap: _handleShuffle,
+            onTap: handleShuffle,
             scale: 0.92,
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 10),
@@ -1302,20 +1337,20 @@ class _TypingIndicator extends StatefulWidget {
 
 class _TypingIndicatorState extends State<_TypingIndicator>
     with TickerProviderStateMixin {
-  late final List<AnimationController> _controllers;
-  late final List<Animation<double>> _anims;
+  late final List<AnimationController> controllers;
+  late final List<Animation<double>> anims;
 
   @override
   void initState() {
     super.initState();
-    _controllers = List.generate(
+    controllers = List.generate(
       3,
       (i) => AnimationController(
         vsync: this,
         duration: const Duration(milliseconds: 380),
       ),
     );
-    _anims = _controllers
+    anims = controllers
         .map(
           (c) => Tween<double>(
             begin: 0,
@@ -1323,16 +1358,16 @@ class _TypingIndicatorState extends State<_TypingIndicator>
           ).animate(CurvedAnimation(parent: c, curve: Curves.easeInOut)),
         )
         .toList();
-    _startLoop();
+    startLoop();
   }
 
-  Future<void> _startLoop() async {
+  Future<void> startLoop() async {
     while (mounted) {
       for (int i = 0; i < 3; i++) {
         if (!mounted) return;
-        await _controllers[i].forward();
+        await controllers[i].forward();
         if (!mounted) return;
-        await _controllers[i].reverse();
+        await controllers[i].reverse();
       }
       await Future.delayed(const Duration(milliseconds: 200));
     }
@@ -1340,7 +1375,7 @@ class _TypingIndicatorState extends State<_TypingIndicator>
 
   @override
   void dispose() {
-    for (final c in _controllers) {
+    for (final c in controllers) {
       c.dispose();
     }
     super.dispose();
@@ -1367,9 +1402,9 @@ class _TypingIndicatorState extends State<_TypingIndicator>
               children: List.generate(
                 3,
                 (i) => AnimatedBuilder(
-                  animation: _anims[i],
+                  animation: anims[i],
                   builder: (_, _) => Transform.translate(
-                    offset: Offset(0, _anims[i].value),
+                    offset: Offset(0, anims[i].value),
                     child: Container(
                       width: 7,
                       height: 7,

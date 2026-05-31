@@ -8,9 +8,10 @@ import {
   INTEREST_SIMILARITY_THRESHOLD,
   meanVector,
 } from "./embeddingService";
+import {getBlockedUids} from "../user/_blockUtils";
 
 export const match1v1Users = onDocumentCreated(
-  {document: "waiting_pool/{uid}", region: "asia-southeast1", minInstances: 1},
+  {document: "waiting_pool/{uid}", region: "asia-southeast1", minInstances: 0},
   async (event) => {
     const data = event.data?.data();
     const triggerUid = event.params.uid;
@@ -39,6 +40,24 @@ export const match1v1Users = onDocumentCreated(
       .get();
 
     let candidates = candidatesSnap.docs.filter((d) => d.id !== triggerUid);
+
+    // Filter out pairs where either party has blocked the other.
+    // Read cost is 1 + N subcollection reads (1 for the trigger user + one per
+    // candidate). With the .limit(20) pool query above that is ≤ 21 reads per
+    // invocation; raising that limit scales this cost linearly.
+    const triggerBlockedUids = await getBlockedUids(db, triggerUid);
+    const blockChecks = await Promise.all(
+      candidates.map(async (c) => {
+        const cBlockedUids = await getBlockedUids(db, c.id);
+        return {
+          doc: c,
+          blocked:
+            triggerBlockedUids.includes(c.id) ||
+            cBlockedUids.includes(triggerUid),
+        };
+      }),
+    );
+    candidates = blockChecks.filter((r) => !r.blocked).map((r) => r.doc);
 
     // Themed users match same-theme OR unthemed candidates (unthemed = flexible,
     // adopts the room's theme). Unthemed triggers match anyone. The only pairing

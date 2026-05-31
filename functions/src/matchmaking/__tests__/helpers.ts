@@ -54,8 +54,12 @@ export const resetEmulatorData = async (): Promise<void> => {
       "http://127.0.0.1:8080/emulator/v1/projects/cozytalk-5d984/databases/(default)/documents",
       {method: "DELETE"},
     ),
+    // RTDB emulator requires admin auth to delete at the root.
+    // Without the header the DELETE is silently rejected, leaving stale
+    // rooms/pool_presence entries that break subsequent matchmaking tests.
     fetch("http://127.0.0.1:9000/.json?ns=cozytalk-5d984-default-rtdb", {
       method: "DELETE",
+      headers: {Authorization: "Bearer owner"},
     }),
   ]);
 };

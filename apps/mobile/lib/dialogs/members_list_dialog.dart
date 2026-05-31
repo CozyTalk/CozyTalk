@@ -9,16 +9,17 @@ import 'report_dialog.dart';
 /// Rendered inside a Stack in GroupChatScreen so the header stays on top.
 class MembersPanelBody extends StatelessWidget {
   final List<String> members;
+  // Parallel list of UIDs matching members (null for self slot).
+  final List<String?> memberUids;
   final VoidCallback onClose;
   final String currentUser;
   final AvatarState avatarState;
+  // Keyed by UID.
   final Map<String, bool> friendRequestSent;
-  final void Function(String name) onAddFriend;
-  final void Function(String name) onCancelRequest;
+  // Called with the UID of the member to add.
+  final void Function(String uid) onAddFriend;
+  final void Function(String uid)? onCancelRequest;
   final void Function(String name)? onReport;
-
-  /// Per-member avatar overlays keyed by the same display-name strings in
-  /// [members]. Entries for the current user override [avatarState].
   final Map<String, AvatarState> memberAvatarStates;
 
   const MembersPanelBody({
@@ -26,8 +27,9 @@ class MembersPanelBody extends StatelessWidget {
     required this.members,
     required this.onClose,
     required this.onAddFriend,
-    required this.onCancelRequest,
+    this.onCancelRequest,
     this.onReport,
+    this.memberUids = const [],
     this.currentUser = 'Me',
     this.avatarState = const AvatarState(),
     this.friendRequestSent = const {},
@@ -41,14 +43,21 @@ class MembersPanelBody extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       child: Column(
         mainAxisSize: MainAxisSize.min,
-        children: members.map((name) => _buildRow(context, name)).toList(),
+        children: List.generate(
+          members.length,
+          (i) => _buildRow(
+            context,
+            members[i],
+            i < memberUids.length ? memberUids[i] : null,
+          ),
+        ),
       ),
     );
   }
 
-  Widget _buildRow(BuildContext context, String name) {
+  Widget _buildRow(BuildContext context, String name, String? uid) {
     final bool isMe = name == currentUser;
-    final bool isAdded = friendRequestSent[name] == true;
+    final bool isAdded = uid != null && friendRequestSent[uid] == true;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
@@ -94,7 +103,9 @@ class MembersPanelBody extends StatelessWidget {
           if (!isMe) ...[
             // Add / Cancel friend request
             GestureDetector(
-              onTap: () => isAdded ? onCancelRequest(name) : onAddFriend(name),
+              onTap: () {
+                if (uid != null && !isAdded) onAddFriend(uid);
+              },
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
                 width: 38,

@@ -4,6 +4,11 @@ import {FieldValue, Timestamp} from "firebase-admin/firestore";
 import * as logger from "firebase-functions/logger";
 import {PADDING_MINUTES} from "./_utils";
 import {meanVector} from "./embeddingService";
+import {
+  getBlockedUids,
+  removeFromBlockList,
+  type BlockListEntry,
+} from "../user/_blockUtils";
 
 export const leaveRoom = onCall(
   {invoker: "public", cors: true},
@@ -40,6 +45,8 @@ export const leaveRoom = onCall(
       return {success: true};
     }
 
+    const leaverBlockedUids = await getBlockedUids(db, uid);
+
     let newCount = 0;
     let requeueUid: string | null = null;
     let requeueInterestVector: number[] | null = null;
@@ -62,6 +69,10 @@ export const leaveRoom = onCall(
       const update: Record<string, unknown> = {
         users: FieldValue.arrayRemove(uid),
         memberCount: newCount,
+        blockList: removeFromBlockList(
+          (d.blockList as BlockListEntry[] | undefined) ?? [],
+          leaverBlockedUids,
+        ),
       };
 
       if (newCount === 0) {

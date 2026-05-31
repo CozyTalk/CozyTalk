@@ -72,6 +72,14 @@ void main() async {
     if (!kIsWeb) {
       await FirebaseCrashlytics.instance.setCrashlyticsCollectionEnabled(false);
     }
+    // On web the Firestore SDK keeps an IndexedDB offline cache that can
+    // return stale / empty data when the browser is restarted. Clear it at
+    // startup so all reads go straight to the emulator network.
+    if (kIsWeb) {
+      try {
+        await FirebaseFirestore.instance.clearPersistence();
+      } catch (_) {}
+    }
   } else if (!kIsWeb) {
     FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
     PlatformDispatcher.instance.onError = (error, stack) {
@@ -154,14 +162,41 @@ class _MainUIAuthRouter extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    ref.listen(authNotifierProvider.select((s) => s.status), (_, next) {
+    // Keep own RTDB presence alive — same as _AuthRouter.
+    ref.watch(ownStatusNotifierProvider);
+    ref.listen<AuthStatus>(authNotifierProvider.select((s) => s.status), (
+      _,
+      next,
+    ) {
       if (next == AuthStatus.authenticated) {
         Navigator.of(context).popUntil((route) => route.isFirst);
       }
     });
-    final status = ref.watch(authNotifierProvider.select((s) => s.status));
+    ref.listen<String?>(authNotifierProvider.select((s) => s.error), (_, next) {
+      if (next == null) return;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!context.mounted) return;
+        final messenger = ScaffoldMessenger.of(context);
+        messenger.hideCurrentSnackBar();
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(next),
+            backgroundColor: Theme.of(context).colorScheme.error,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      });
+    });
+    final authState = ref.watch(authNotifierProvider);
+    final status = authState.status;
+    if (status == AuthStatus.authenticated) {
+      final email = (authState.user?.email ?? '').toLowerCase();
+      if (email.isNotEmpty && email.endsWith('@cozytalk.com')) {
+        return const AdminConsoleScreen();
+      }
+      return const HomeScreen();
+    }
     return switch (status) {
-      AuthStatus.authenticated => const HomeScreen(),
       AuthStatus.idle => const Scaffold(
         body: Center(child: CircularProgressIndicator()),
       ),
@@ -170,6 +205,7 @@ class _MainUIAuthRouter extends ConsumerWidget {
   }
 }
 
+// ignore: unused_element
 class _AuthRouter extends ConsumerWidget {
   const _AuthRouter();
 

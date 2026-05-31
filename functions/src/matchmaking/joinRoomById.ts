@@ -2,6 +2,12 @@ import {onCall, HttpsError} from "firebase-functions/v2/https";
 import * as admin from "firebase-admin";
 import {FieldValue} from "firebase-admin/firestore";
 import * as logger from "firebase-functions/logger";
+import {
+  getBlockedUids,
+  isBlockedByRoom,
+  mergeIntoBlockList,
+  type BlockListEntry,
+} from "../user/_blockUtils";
 
 const ROOM_ID_PATTERN = /^[A-Za-z0-9]{5}$/;
 
@@ -28,6 +34,8 @@ export const joinRoomById = onCall(
     let roomMode: string;
     let roomType: string;
     let alreadyMember = false;
+
+    const callerBlockedUids = await getBlockedUids(db, uid);
 
     await db.runTransaction(async (tx) => {
       const snap = await tx.get(roomRef);
@@ -58,11 +66,26 @@ export const joinRoomById = onCall(
         throw new HttpsError("resource-exhausted", "Room is full.");
       }
 
+      const roomBlockList = (d.blockList as BlockListEntry[] | undefined) ?? [];
+      if (isBlockedByRoom(roomBlockList, uid)) {
+        throw new HttpsError(
+          "permission-denied",
+          "You are blocked from this room.",
+        );
+      }
+      if ((d.users as string[]).some((u) => callerBlockedUids.includes(u))) {
+        throw new HttpsError(
+          "permission-denied",
+          "A room member is on your block list.",
+        );
+      }
+
       tx.update(roomRef, {
         users: FieldValue.arrayUnion(uid),
         memberCount: FieldValue.increment(1),
         status: "active",
         paddingUntil: null,
+        blockList: mergeIntoBlockList(roomBlockList, uid, callerBlockedUids),
       });
     });
 

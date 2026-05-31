@@ -1,41 +1,43 @@
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../features/avatar/presentation/providers/avatar_decoration_provider.dart';
+import '../features/block/presentation/providers/block_provider.dart';
+import '../features/friends/presentation/providers/friends_provider.dart';
+import '../features/profile/presentation/providers/profile_provider.dart';
+import '../shared/avatar_overlay.dart';
 import '../theme/app_colors.dart';
 import '../models/friend.dart';
 import '../shared/layered_avatar.dart';
 import 'friend_profile_dialog.dart';
 import 'block_dialogs.dart';
 
-class BlockedScreen extends StatefulWidget {
+class BlockedScreen extends ConsumerStatefulWidget {
   const BlockedScreen({super.key});
 
   @override
-  State<BlockedScreen> createState() => _BlockedScreenState();
+  ConsumerState<BlockedScreen> createState() => _BlockedScreenState();
 }
 
-class _BlockedScreenState extends State<BlockedScreen> {
+class _BlockedScreenState extends ConsumerState<BlockedScreen> {
   static const int _maxBlocked = 5;
-  final List<Friend> _blocked = [
-    Friend(
-      name: 'Somchai',
-      username: 'somchai99',
-      lastMessage: '',
-      isOnline: false,
-      avatar: 'assets/images/UserAvatar.png',
-      interest: '',
-    ),
-    Friend(
-      name: 'Somying',
-      username: 'somying55',
-      lastMessage: '',
-      isOnline: false,
-      avatar: 'assets/images/UserAvatar.png',
-      interest: '',
-    ),
-  ];
+  final Map<String, String?> _notes = {};
 
   @override
   Widget build(BuildContext context) {
+    final blockState = ref.watch(blockNotifierProvider);
+    final blocked = blockState.blockedUsers;
+
+    final liveNamesAsync = ref.watch(
+      getUsersByIdsProvider(
+        (blocked.map((u) => u.uid).toList()..sort()).join(','),
+      ),
+    );
+    final liveNames = <String, String>{
+      for (final u in (liveNamesAsync.value ?? [])) u.uid: u.displayName,
+    };
+
     return Scaffold(
       backgroundColor: AppColors.scaffoldBg,
       body: Column(
@@ -46,29 +48,67 @@ class _BlockedScreenState extends State<BlockedScreen> {
             child: Align(
               alignment: Alignment.centerRight,
               child: Text(
-                '${_blocked.length}/$_maxBlocked',
-                style: const TextStyle(
+                '${blocked.length}/$_maxBlocked',
+                style: Theme.of(context).textTheme.bodyLarge!.copyWith(
                   fontSize: 15,
                   fontWeight: FontWeight.w700,
-                  color: Colors.grey,
+                  color: const Color(0xFF757575),
                 ),
               ),
             ),
           ),
           Expanded(
-            child: _blocked.isEmpty
-                ? const Center(
+            child: blocked.isEmpty
+                ? Center(
                     child: Text(
                       'No blocked users',
-                      style: TextStyle(color: Colors.grey, fontSize: 16),
+                      style: Theme.of(context).textTheme.titleMedium!.copyWith(
+                        color: const Color(0xFF757575),
+                        fontSize: 16,
+                      ),
                     ),
                   )
                 : ListView.separated(
                     padding: const EdgeInsets.symmetric(horizontal: 20),
-                    itemCount: _blocked.length,
+                    itemCount: blocked.length,
                     separatorBuilder: (_, _) => const SizedBox(height: 16),
-                    itemBuilder: (context, i) =>
-                        _buildBlockedCard(context, _blocked[i], i),
+                    itemBuilder: (context, i) {
+                      final user = blocked[i];
+                      final note = _notes[user.uid];
+                      final displayName =
+                          liveNames[user.uid] ?? user.displayName ?? user.uid;
+                      final interest =
+                          ref
+                              .watch(profileByUidProvider(user.uid))
+                              .asData
+                              ?.value
+                              ?.interest ??
+                          '';
+                      final decoration = ref
+                          .watch(avatarDecorationByUidProvider(user.uid))
+                          .asData
+                          ?.value;
+                      final moodOverlay =
+                          AvatarOverlays.mood[decoration?.moodKey ?? ''];
+                      final accessoryOverlay =
+                          AvatarOverlays.accessory[decoration?.hatKey ?? ''];
+                      final friend = Friend(
+                        friendUid: user.uid,
+                        name: displayName,
+                        username: displayName,
+                        note: note,
+                        lastMessage: '',
+                        isOnline: false,
+                        interest: interest,
+                      );
+                      return _buildBlockedCard(
+                        context,
+                        friend,
+                        user.uid,
+                        moodOverlay,
+                        accessoryOverlay,
+                      );
+                    },
                   ),
           ),
         ],
@@ -91,35 +131,42 @@ class _BlockedScreenState extends State<BlockedScreen> {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              GestureDetector(
-                onTap: () => Navigator.pop(context),
-                child: Container(
-                  width: 48,
-                  height: 48,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.08),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
+              Semantics(
+                label: 'Go back',
+                button: true,
+                child: GestureDetector(
+                  onTap: () => Navigator.pop(context),
+                  child: Container(
+                    width: 48,
+                    height: 48,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.08),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                      border: Border.all(
+                        color: Colors.grey.shade300,
+                        width: 1.5,
                       ),
-                    ],
-                    border: Border.all(color: Colors.grey.shade300, width: 1.5),
-                  ),
-                  child: SvgPicture.asset(
-                    'assets/images/icons/Back.svg',
-                    width: 26,
-                    height: 26,
+                    ),
+                    child: SvgPicture.asset(
+                      'assets/images/icons/Back.svg',
+                      width: 26,
+                      height: 26,
+                    ),
                   ),
                 ),
               ),
               const SizedBox(width: 16),
-              const Text(
+              Text(
                 'Blocked',
-                style: TextStyle(
+                style: Theme.of(context).textTheme.headlineSmall!.copyWith(
                   fontSize: 24,
                   fontWeight: FontWeight.w900,
                   color: Colors.white,
@@ -133,7 +180,13 @@ class _BlockedScreenState extends State<BlockedScreen> {
   }
 
   // ─── Blocked User Card ───
-  Widget _buildBlockedCard(BuildContext context, Friend friend, int index) {
+  Widget _buildBlockedCard(
+    BuildContext context,
+    Friend friend,
+    String targetUid,
+    AvatarOverlay? moodOverlay,
+    AvatarOverlay? accessoryOverlay,
+  ) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -151,43 +204,54 @@ class _BlockedScreenState extends State<BlockedScreen> {
       child: Row(
         children: [
           // ── Avatar (tappable → profile dialog) ──
-          GestureDetector(
-            onTap: () => showFriendProfileDialog(
-              context: context,
-              friend: friend,
-              onNoteSaved: (note) =>
-                  setState(() => friend.note = note.isNotEmpty ? note : null),
-            ),
-            child: Container(
-              width: 60,
-              height: 60,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.05),
-                    blurRadius: 5,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-                border: Border.all(color: Colors.grey.shade200, width: 1.5),
+          Semantics(
+            label: 'View user profile',
+            button: true,
+            child: GestureDetector(
+              onTap: () => showFriendProfileDialog(
+                context: context,
+                friend: friend,
+                onNoteSaved: (note) => setState(
+                  () => _notes[targetUid] = note.isNotEmpty ? note : null,
+                ),
               ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(14),
-                child: Padding(
-                  padding: const EdgeInsets.only(top: 8),
-                  child: Center(child: LayeredAvatar(boxSize: 44)),
+              child: Container(
+                width: 60,
+                height: 60,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.05),
+                      blurRadius: 5,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                  border: Border.all(color: Colors.grey.shade200, width: 1.5),
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(14),
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 10),
+                    child: Center(
+                      child: LayeredAvatar(
+                        boxSize: 42,
+                        moodOverlay: moodOverlay,
+                        accessoryOverlay: accessoryOverlay,
+                      ),
+                    ),
+                  ),
                 ),
               ),
             ),
           ),
           const SizedBox(width: 16),
-          // ── Username ──
+          // ── Display name ──
           Expanded(
             child: Text(
               friend.displayName,
-              style: const TextStyle(
+              style: Theme.of(context).textTheme.titleMedium!.copyWith(
                 fontWeight: FontWeight.w900,
                 fontSize: 16,
                 color: Colors.black,
@@ -199,7 +263,8 @@ class _BlockedScreenState extends State<BlockedScreen> {
             onTap: () => showConfirmUnblockDialog(
               context: context,
               username: friend.displayName,
-              onConfirm: () => setState(() => _blocked.removeAt(index)),
+              onConfirm: () =>
+                  ref.read(blockNotifierProvider.notifier).unblock(targetUid),
             ),
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -215,9 +280,9 @@ class _BlockedScreenState extends State<BlockedScreen> {
                   ),
                 ],
               ),
-              child: const Text(
+              child: Text(
                 'Unblock',
-                style: TextStyle(
+                style: Theme.of(context).textTheme.bodyMedium!.copyWith(
                   color: Colors.black,
                   fontSize: 13,
                   fontWeight: FontWeight.w900,

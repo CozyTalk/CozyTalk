@@ -15,6 +15,7 @@ import '../../domain/entities/friend_room_status.dart';
 import '../../domain/repositories/friends_repository.dart';
 import '../../domain/usecases/accept_friend_request.dart';
 import '../../domain/usecases/decline_friend_request.dart';
+import '../../domain/usecases/get_users_by_ids.dart';
 import '../../domain/usecases/remove_friend.dart';
 import '../../domain/usecases/send_friend_request.dart';
 import '../../domain/usecases/watch_all_users.dart';
@@ -80,6 +81,17 @@ final friendsNotifierProvider = NotifierProvider<FriendsNotifier, FriendsState>(
   FriendsNotifier.new,
 );
 
+/// Family argument is a **sorted comma-joined UID string** so that the same
+/// set of UIDs always maps to the same cache entry regardless of list identity.
+/// Callers: sort uids and join with ',' before passing.
+final getUsersByIdsProvider = FutureProvider.autoDispose
+    .family<List<AppUser>, String>((ref, uidsCsv) {
+      if (uidsCsv.isEmpty) return Future.value([]);
+      return GetUsersByIds(ref.watch(friendsRepositoryProvider))(
+        uidsCsv.split(','),
+      );
+    });
+
 const _sentinel = Object();
 
 class FriendsState {
@@ -94,6 +106,8 @@ class FriendsState {
   final Map<String, String> lastMessageMap;
   // keyed by friendUid
   final Map<String, FriendRoomStatus?> roomMap;
+  // chatRoomIds that received a new message while the DM was not open.
+  final Set<String> unreadChatRoomIds;
 
   const FriendsState({
     this.allUsers = const [],
@@ -104,6 +118,7 @@ class FriendsState {
     this.presenceMap = const {},
     this.lastMessageMap = const {},
     this.roomMap = const {},
+    this.unreadChatRoomIds = const {},
   });
 
   FriendsState copyWith({
@@ -115,6 +130,7 @@ class FriendsState {
     Map<String, bool>? presenceMap,
     Map<String, String>? lastMessageMap,
     Map<String, FriendRoomStatus?>? roomMap,
+    Set<String>? unreadChatRoomIds,
   }) => FriendsState(
     allUsers: allUsers ?? this.allUsers,
     friends: friends ?? this.friends,
@@ -124,6 +140,7 @@ class FriendsState {
     presenceMap: presenceMap ?? this.presenceMap,
     lastMessageMap: lastMessageMap ?? this.lastMessageMap,
     roomMap: roomMap ?? this.roomMap,
+    unreadChatRoomIds: unreadChatRoomIds ?? this.unreadChatRoomIds,
   );
 }
 
@@ -135,6 +152,8 @@ class FriendsNotifier extends Notifier<FriendsState> {
   final Map<String, StreamSubscription<bool>> _presenceSubs = {};
   final Map<String, StreamSubscription<String>> _lastMessageSubs = {};
   final Map<String, StreamSubscription<FriendRoomStatus?>> _roomSubs = {};
+  // Tracks chatRoomIds whose first lastMessage emission has been processed.
+  final Set<String> _initializedRooms = {};
 
   @override
   FriendsState build() {
@@ -231,10 +250,20 @@ class FriendsNotifier extends Notifier<FriendsState> {
         _lastMessageSubs[f.chatRoomId] = ref
             .read(_watchFriendLastMessageProvider)(f.chatRoomId)
             .listen((msg) {
-              state = state.copyWith(
-                lastMessageMap: Map<String, String>.from(state.lastMessageMap)
-                  ..[f.chatRoomId] = msg,
-              );
+              final isNew = _initializedRooms.contains(f.chatRoomId);
+              _initializedRooms.add(f.chatRoomId);
+              final newLastMsg = Map<String, String>.from(state.lastMessageMap)
+                ..[f.chatRoomId] = msg;
+              if (isNew && msg.isNotEmpty) {
+                // A new message arrived after the initial load — mark unread.
+                state = state.copyWith(
+                  lastMessageMap: newLastMsg,
+                  unreadChatRoomIds: Set<String>.from(state.unreadChatRoomIds)
+                    ..add(f.chatRoomId),
+                );
+              } else {
+                state = state.copyWith(lastMessageMap: newLastMsg);
+              }
             }, onError: (_) {});
       }
 
@@ -253,8 +282,14 @@ class FriendsNotifier extends Notifier<FriendsState> {
 
   Future<void> sendFriendRequest(AppUser toUser) async {
     if (state.isLoading) return;
-    final myDisplayName =
-        ref.read(authNotifierProvider).user?.displayName ?? 'Anonymous';
+    final authUser = ref.read(authNotifierProvider).user;
+    if (authUser?.email == null) {
+      state = state.copyWith(
+        error: 'Please sign in with an account to add friends.',
+      );
+      return;
+    }
+    final myDisplayName = authUser?.displayName ?? 'Anonymous';
     state = state.copyWith(isLoading: true, error: null);
     try {
       await ref.read(_sendFriendRequestProvider)(
@@ -321,4 +356,12 @@ class FriendsNotifier extends Notifier<FriendsState> {
   }
 
   void clearError() => state = state.copyWith(error: null);
+
+  void markChatAsRead(String chatRoomId) {
+    if (!state.unreadChatRoomIds.contains(chatRoomId)) return;
+    state = state.copyWith(
+      unreadChatRoomIds: Set<String>.from(state.unreadChatRoomIds)
+        ..remove(chatRoomId),
+    );
+  }
 }

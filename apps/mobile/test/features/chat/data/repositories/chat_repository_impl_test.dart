@@ -11,6 +11,7 @@ class _FakeChatDatasource implements ChatDatasource {
   final String keyHex;
   final List<ChatMessageModel> messages;
   final List<TypingUser> typingUsers;
+  final Set<String> presenceUids;
 
   int sendMessageCount = 0;
   int endSessionCount = 0;
@@ -21,10 +22,14 @@ class _FakeChatDatasource implements ChatDatasource {
     required this.keyHex,
     this.messages = const [],
     this.typingUsers = const [],
+    this.presenceUids = const {},
   });
 
   @override
   Future<String> fetchSessionKey(String sessionId) async => keyHex;
+
+  @override
+  Future<String?> fetchRoomBackground(String sessionId) async => null;
 
   @override
   Stream<List<ChatMessageModel>> watchRawMessages(String sessionId) =>
@@ -33,6 +38,10 @@ class _FakeChatDatasource implements ChatDatasource {
   @override
   Stream<List<TypingUser>> watchTypingUsers(String sessionId) =>
       Stream.value(typingUsers);
+
+  @override
+  Stream<Set<String>> watchPresence(String sessionId) =>
+      Stream.value(presenceUids);
 
   @override
   Future<void> sendMessage({
@@ -197,6 +206,20 @@ void main() {
       });
     });
 
+    group('watchPresence', () {
+      test('delegates to datasource and returns uid set', () async {
+        final datasource = _FakeChatDatasource(
+          keyHex: _testKeyHex,
+          presenceUids: {'u1', 'u2'},
+        );
+        final repo = ChatRepositoryImpl(datasource);
+
+        final result = await repo.watchPresence('session-1').first;
+        expect(result, containsAll(['u1', 'u2']));
+        expect(result.length, 2);
+      });
+    });
+
     group('sendMessage', () {
       test('delegates to datasource', () async {
         final datasource = _FakeChatDatasource(keyHex: _testKeyHex);
@@ -230,6 +253,16 @@ void main() {
 
         await repo.endSession(sessionId: 'room-1');
         expect(datasource.endSessionCount, 1);
+      });
+    });
+
+    group('fetchRoomBackground', () {
+      test('delegates to datasource', () async {
+        final datasource = _FakeChatDatasource(keyHex: _testKeyHex);
+        final repo = ChatRepositoryImpl(datasource);
+
+        final result = await repo.fetchRoomBackground('room-1');
+        expect(result, isNull);
       });
     });
   });

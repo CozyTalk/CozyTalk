@@ -96,6 +96,17 @@ fi
 
 # ── Load .env from apps/mobile ────────────────────────────────────────────────
 ENV_FILE="$ROOT_DIR/apps/mobile/.env"
+ENV_EXAMPLE="$ROOT_DIR/apps/mobile/.env.example"
+
+if [[ ! -f "$ENV_FILE" ]]; then
+  if [[ -f "$ENV_EXAMPLE" ]]; then
+    cp "$ENV_EXAMPLE" "$ENV_FILE"
+    warn "apps/mobile/.env not found — created from .env.example"
+    info "Open ${BOLD}apps/mobile/.env${RESET} and set your ${BOLD}GIPHY_API_KEY${RESET}, then re-run."
+    printf "\n"
+  fi
+fi
+
 if [[ -f "$ENV_FILE" ]]; then
   while IFS= read -r line || [[ -n "$line" ]]; do
     [[ "$line" =~ ^\s*# ]] && continue
@@ -106,6 +117,12 @@ if [[ -f "$ENV_FILE" ]]; then
       [[ -z "${!k:-}" ]] && export "$k=$v"
     fi
   done < "$ENV_FILE"
+fi
+
+if [[ -z "${GIPHY_API_KEY:-}" ]]; then
+  warn "GIPHY_API_KEY is not set — GIF picker will be disabled."
+  info "Get a key at ${BOLD}https://developers.giphy.com/${RESET} and add it to ${BOLD}apps/mobile/.env${RESET}"
+  printf "\n"
 fi
 
 # ── Build Flutter args ────────────────────────────────────────────────────────

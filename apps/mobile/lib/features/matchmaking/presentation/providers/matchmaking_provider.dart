@@ -92,6 +92,9 @@ class MatchmakingState {
   final String? error;
   final String interestText;
   final String? backgroundTheme;
+  // UIDs of all room members excluding the current user; populated when the
+  // room subscription fires. Cleared on idle/cancel.
+  final List<String> partnerUids;
 
   const MatchmakingState({
     this.status = MatchmakingStatus.idle,
@@ -101,6 +104,7 @@ class MatchmakingState {
     this.error,
     this.interestText = '',
     this.backgroundTheme,
+    this.partnerUids = const [],
   });
 
   MatchmakingState copyWith({
@@ -111,6 +115,7 @@ class MatchmakingState {
     Object? error = _sentinel,
     String? interestText,
     Object? backgroundTheme = _sentinel,
+    List<String>? partnerUids,
   }) => MatchmakingState(
     status: status ?? this.status,
     roomId: roomId == _sentinel ? this.roomId : roomId as String?,
@@ -123,6 +128,7 @@ class MatchmakingState {
     backgroundTheme: backgroundTheme == _sentinel
         ? this.backgroundTheme
         : backgroundTheme as String?,
+    partnerUids: partnerUids ?? this.partnerUids,
   );
 }
 
@@ -257,6 +263,7 @@ class MatchmakingNotifier extends Notifier<MatchmakingState> {
         ref.read(_leaveRoomProvider)(result.roomId).catchError((_) async {});
         return;
       }
+      _subscribeToRoom(result.roomId);
       state = state.copyWith(
         status: MatchmakingStatus.matched,
         roomId: result.roomId,
@@ -264,7 +271,6 @@ class MatchmakingNotifier extends Notifier<MatchmakingState> {
         isNewRoom: false,
         error: null,
       );
-      _subscribeToRoom(result.roomId);
     } catch (e) {
       state = state.copyWith(
         status: MatchmakingStatus.error,
@@ -385,6 +391,7 @@ class MatchmakingNotifier extends Notifier<MatchmakingState> {
                 roomId: null,
                 currentRoom: null,
                 error: null,
+                partnerUids: [],
               );
               return;
             }
@@ -396,7 +403,15 @@ class MatchmakingNotifier extends Notifier<MatchmakingState> {
               _requeue1v1();
               return;
             }
-            state = state.copyWith(currentRoom: room);
+            final currentUid =
+                ref.read(_matchmakingDatasourceProvider).getCurrentUserId() ??
+                '';
+            state = state.copyWith(
+              currentRoom: room,
+              partnerUids: room.users
+                  .where((uid) => uid != currentUid)
+                  .toList(),
+            );
           },
           onError: (Object e) {
             // If we're no longer matched (user left voluntarily), this is a
@@ -414,6 +429,7 @@ class MatchmakingNotifier extends Notifier<MatchmakingState> {
                   : 'Connection error. Please try again.',
               roomId: null,
               currentRoom: null,
+              partnerUids: [],
             );
           },
         );
@@ -439,6 +455,7 @@ class MatchmakingNotifier extends Notifier<MatchmakingState> {
       currentRoom: null,
       error: 'Partner left — searching for new match…',
       isNewRoom: false,
+      partnerUids: [],
     );
     _subscribeToMatch(uid, skipRoomId: previousRoomId);
   }

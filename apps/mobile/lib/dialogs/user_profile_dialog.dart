@@ -20,17 +20,12 @@ class UserProfileDialog extends ConsumerStatefulWidget {
   /// If null, falls back to the design-only ReportDialog.
   final VoidCallback? onReport;
 
-  /// Pre-resolved avatar overlays for this user. When provided it is used
-  /// directly for both own and partner avatars, avoiding a dependency on the
-  /// timing of [avatarDecorationNotifierProvider] loading.
+  /// Pre-resolved avatar overlays for this user.
   final AvatarState? avatarState;
 
-  /// UID of the user being displayed. When provided for [isMe] == false the
-  /// dialog watches [profileByUidProvider] and [avatarDecorationByUidProvider]
-  /// directly so username, interest, and overlays are always up to date even
-  /// if the caller has not pre-loaded them yet.
+  /// UID of the user being displayed. When provided the dialog watches
+  /// [profileByUidProvider] and [avatarDecorationByUidProvider] directly.
   final String? uid;
-
   const UserProfileDialog({
     super.key,
     required this.username,
@@ -173,44 +168,48 @@ class _UserProfileDialogState extends ConsumerState<UserProfileDialog> {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             // Add friend / cancel request
-                            GestureDetector(
-                              onTap: _friendAdded
-                                  ? () {
-                                      Navigator.pop(context);
-                                      widget.onCancelRequest?.call();
-                                    }
-                                  : () {
-                                      setState(() => _friendAdded = true);
-                                      Navigator.pop(context);
-                                      widget.onAddFriend?.call();
-                                    },
-                              child: AnimatedContainer(
-                                duration: const Duration(milliseconds: 200),
-                                width: 44,
-                                height: 44,
-                                decoration: BoxDecoration(
-                                  color: _friendAdded
-                                      ? Colors.grey.shade200
-                                      : const Color(0xFFDCEBCE),
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(
+                            Semantics(
+                              label: 'Add friend',
+                              button: true,
+                              child: GestureDetector(
+                                onTap: _friendAdded
+                                    ? () {
+                                        Navigator.pop(context);
+                                        widget.onCancelRequest?.call();
+                                      }
+                                    : () {
+                                        setState(() => _friendAdded = true);
+                                        Navigator.pop(context);
+                                        widget.onAddFriend?.call();
+                                      },
+                                child: AnimatedContainer(
+                                  duration: const Duration(milliseconds: 200),
+                                  width: 44,
+                                  height: 44,
+                                  decoration: BoxDecoration(
                                     color: _friendAdded
-                                        ? Colors.grey.shade400
-                                        : const Color(0xFFC7D2B5),
-                                    width: 1,
+                                        ? Colors.grey.shade200
+                                        : const Color(0xFFDCEBCE),
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: _friendAdded
+                                          ? Colors.grey.shade400
+                                          : const Color(0xFFC7D2B5),
+                                      width: 1,
+                                    ),
                                   ),
-                                ),
-                                child: Center(
-                                  child: SvgPicture.asset(
-                                    'assets/images/icons/add_friend.svg',
-                                    width: 24,
-                                    height: 24,
-                                    colorFilter: _friendAdded
-                                        ? ColorFilter.mode(
-                                            Colors.grey.shade500,
-                                            BlendMode.srcIn,
-                                          )
-                                        : null,
+                                  child: Center(
+                                    child: SvgPicture.asset(
+                                      'assets/images/icons/add_friend.svg',
+                                      width: 24,
+                                      height: 24,
+                                      colorFilter: _friendAdded
+                                          ? ColorFilter.mode(
+                                              Colors.grey.shade500,
+                                              BlendMode.srcIn,
+                                            )
+                                          : null,
+                                    ),
                                   ),
                                 ),
                               ),

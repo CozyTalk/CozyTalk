@@ -4,7 +4,12 @@ import 'package:flutter/material.dart';
 import '../features/friends/domain/entities/friend.dart' as domain;
 import '../features/friends/domain/entities/friend_room_status.dart';
 import '../features/friends/presentation/providers/friends_provider.dart';
+import '../features/block/presentation/providers/block_provider.dart';
+import '../features/avatar/presentation/providers/avatar_decoration_provider.dart';
+import '../features/profile/presentation/providers/profile_provider.dart';
+import '../shared/avatar_overlay.dart';
 import '../shared/connectivity_provider.dart';
+import '../shared/layered_avatar.dart';
 import '../shared/info_dialog.dart';
 import '../shared/offline_card.dart';
 import '../theme/app_colors.dart';
@@ -26,9 +31,7 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
   final TextEditingController _searchCtrl = TextEditingController();
   String _query = '';
 
-  // Local-only state — no backend support yet
   final Map<String, String?> _notes = {};
-  final Set<String> _blockedIds = {};
   final Map<String, int> _unreadCounts = {};
   String? _pendingRemoveName;
 
@@ -46,18 +49,27 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
     super.dispose();
   }
 
-  Friend _toScreenFriend(domain.Friend f, FriendsState state) {
+  Friend _toScreenFriend(
+    domain.Friend f,
+    FriendsState state,
+    Map<String, String> liveNames,
+    Map<String, String> liveInterests,
+    Set<String> blockedUids,
+  ) {
     final roomStatus = state.roomMap[f.friendUid];
+    final liveName = liveNames[f.friendUid] ?? f.friendDisplayName;
     return Friend(
       friendshipId: f.friendshipId,
+      friendUid: f.friendUid,
       chatRoomId: f.chatRoomId,
-      name: f.friendDisplayName,
-      username: f.friendDisplayName,
+      name: liveName,
+      username: liveName,
       note: _notes[f.friendshipId],
       lastMessage: state.lastMessageMap[f.chatRoomId] ?? '',
       isOnline: state.presenceMap[f.friendUid] ?? false,
       unreadCount: _unreadCounts[f.friendshipId] ?? 0,
-      isBlocked: _blockedIds.contains(f.friendshipId),
+      isBlocked: blockedUids.contains(f.friendUid),
+      interest: liveInterests[f.friendUid] ?? '',
       room: roomStatus != null ? _toRoomInfo(roomStatus) : null,
     );
   }
@@ -85,8 +97,55 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(friendsNotifierProvider);
+    // Fetch live display names for all friends to override stale friendship-doc names.
+    final friendUids = state.friends.map((f) => f.friendUid).toList();
+    final liveNamesAsync = ref.watch(
+      getUsersByIdsProvider(([...friendUids]..sort()).join(',')),
+    );
+    final liveNames = <String, String>{
+      for (final u in (liveNamesAsync.value ?? [])) u.uid: u.displayName,
+    };
+    // Fetch decoration (moodKey, hatKey) for each friend — keyed by friendshipId.
+    final decorationMap = <String, ({AvatarOverlay? mood, AvatarOverlay? hat})>{
+      for (final f in state.friends)
+        f.friendshipId: (
+          mood:
+              AvatarOverlays.mood[ref
+                      .watch(avatarDecorationByUidProvider(f.friendUid))
+                      .asData
+                      ?.value
+                      ?.moodKey ??
+                  ''],
+          hat:
+              AvatarOverlays.accessory[ref
+                      .watch(avatarDecorationByUidProvider(f.friendUid))
+                      .asData
+                      ?.value
+                      ?.hatKey ??
+                  ''],
+        ),
+    };
+    // Fetch live interest for each friend.
+    final liveInterests = <String, String>{
+      for (final f in state.friends)
+        f.friendUid:
+            ref
+                .watch(profileByUidProvider(f.friendUid))
+                .asData
+                ?.value
+                ?.interest ??
+            '',
+    };
+    final blockedUids = ref
+        .watch(blockNotifierProvider)
+        .blockedUsers
+        .map((u) => u.uid)
+        .toSet();
     final friends = state.friends
-        .map((f) => _toScreenFriend(f, state))
+        .map(
+          (f) =>
+              _toScreenFriend(f, state, liveNames, liveInterests, blockedUids),
+        )
         .toList();
     final filtered = _filtered(friends);
     final isOffline = !ref
@@ -138,7 +197,11 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
                   final friend = filtered[index - 1];
                   return Padding(
                     padding: const EdgeInsets.only(top: 16),
-                    child: _buildFriendCard(friend),
+                    child: _buildFriendCard(
+                      friend,
+                      decorationMap[friend.friendshipId] ??
+                          (mood: null, hat: null),
+                    ),
                   );
                 },
               ),
@@ -176,14 +239,20 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
           Expanded(
             child: TextField(
               controller: _searchCtrl,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 hintText: 'Search your friends...',
-                hintStyle: TextStyle(color: Colors.grey, fontSize: 14),
+                hintStyle: Theme.of(context).textTheme.bodyMedium!.copyWith(
+                  color: const Color(0xFF757575),
+                  fontSize: 14,
+                ),
                 border: InputBorder.none,
                 isDense: true,
                 contentPadding: EdgeInsets.zero,
               ),
-              style: const TextStyle(fontSize: 14, color: Colors.black87),
+              style: Theme.of(context).textTheme.bodyMedium!.copyWith(
+                fontSize: 14,
+                color: Colors.black87,
+              ),
             ),
           ),
         ],
@@ -191,7 +260,10 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
     );
   }
 
-  Widget _buildFriendCard(Friend friend) {
+  Widget _buildFriendCard(
+    Friend friend,
+    ({AvatarOverlay? mood, AvatarOverlay? hat}) decoration,
+  ) {
     final showRoom = friend.room != null && friend.isOnline;
     return GestureDetector(
       onTap: () {
@@ -244,11 +316,14 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
                         ),
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(14),
-                          child: const Center(
-                            child: Icon(
-                              Icons.person,
-                              color: Colors.grey,
-                              size: 35,
+                          child: Padding(
+                            padding: const EdgeInsets.only(top: 10),
+                            child: Center(
+                              child: LayeredAvatar(
+                                boxSize: 48,
+                                moodOverlay: decoration.mood,
+                                accessoryOverlay: decoration.hat,
+                              ),
                             ),
                           ),
                         ),
@@ -283,24 +358,26 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
                       children: [
                         Text(
                           friend.displayName,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w900,
-                            fontSize: 16,
-                            color: Colors.black,
-                          ),
+                          style: Theme.of(context).textTheme.titleMedium!
+                              .copyWith(
+                                fontWeight: FontWeight.w900,
+                                fontSize: 16,
+                                color: Colors.black,
+                              ),
                         ),
                         const SizedBox(height: 4),
                         Text(
                           friend.lastMessage,
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: friend.unreadCount > 0
-                                ? Colors.black
-                                : Colors.grey.shade500,
-                            fontWeight: friend.unreadCount > 0
-                                ? FontWeight.w600
-                                : FontWeight.normal,
-                          ),
+                          style: Theme.of(context).textTheme.bodyMedium!
+                              .copyWith(
+                                fontSize: 14,
+                                color: friend.unreadCount > 0
+                                    ? Colors.black
+                                    : Colors.grey.shade600,
+                                fontWeight: friend.unreadCount > 0
+                                    ? FontWeight.w600
+                                    : FontWeight.normal,
+                              ),
                         ),
                       ],
                     ),
@@ -359,7 +436,7 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
       ),
       child: Text(
         '$count',
-        style: const TextStyle(
+        style: Theme.of(context).textTheme.bodySmall!.copyWith(
           color: Colors.white,
           fontSize: 12,
           fontWeight: FontWeight.bold,
@@ -402,14 +479,9 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
               context: context,
               username: friend.displayName,
               onConfirm: () {
-                setState(() => _blockedIds.add(friend.friendshipId));
-                showInfoDialog(
-                  context,
-                  type: InfoDialogType.success,
-                  title: 'User Blocked',
-                  message:
-                      '${friend.displayName} has been blocked locally.\nServer-side enforcement is not yet available.',
-                );
+                ref
+                    .read(blockNotifierProvider.notifier)
+                    .block(friend.friendUid, displayName: friend.displayName);
               },
             );
           case 'Unblock':
@@ -417,14 +489,9 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
               context: context,
               username: friend.displayName,
               onConfirm: () {
-                setState(() => _blockedIds.remove(friend.friendshipId));
-                showInfoDialog(
-                  context,
-                  type: InfoDialogType.info,
-                  title: 'User Unblocked',
-                  message:
-                      '${friend.displayName} has been unblocked.\nThey can now contact you again.',
-                );
+                ref
+                    .read(blockNotifierProvider.notifier)
+                    .unblock(friend.friendUid);
               },
             );
           case 'Unfriend':
@@ -444,7 +511,7 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
       itemBuilder: (_) => [
         _popupItem('Edit'),
         _divider(),
-        _popupItem(friend.isBlocked ? 'Unblock' : 'Block'),
+        friend.isBlocked ? _popupItemDisabled('Blocked') : _popupItem('Block'),
         _divider(),
         _popupItem('Unfriend'),
       ],
@@ -460,6 +527,29 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
     );
   }
 
+  PopupMenuItem<String> _popupItemDisabled(String label) {
+    return PopupMenuItem<String>(
+      enabled: false,
+      padding: EdgeInsets.zero,
+      child: SizedBox(
+        width: 110,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          child: Center(
+            child: Text(
+              label,
+              style: Theme.of(context).textTheme.bodyMedium!.copyWith(
+                fontWeight: FontWeight.w900,
+                fontSize: 14,
+                color: Colors.grey.shade400,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   PopupMenuItem<String> _popupItem(String label) {
     return PopupMenuItem<String>(
       value: label,
@@ -471,7 +561,7 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
           child: Center(
             child: Text(
               label,
-              style: const TextStyle(
+              style: Theme.of(context).textTheme.bodyMedium!.copyWith(
                 fontWeight: FontWeight.w900,
                 fontSize: 14,
                 color: Colors.black,
@@ -497,24 +587,28 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: Row(
               children: [
-                GestureDetector(
-                  onTap: () => Navigator.pop(context),
-                  child: Container(
-                    width: 48,
-                    height: 48,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: Colors.grey.shade300,
-                        width: 1.5,
+                Semantics(
+                  label: 'Go back',
+                  button: true,
+                  child: GestureDetector(
+                    onTap: () => Navigator.pop(context),
+                    child: Container(
+                      width: 48,
+                      height: 48,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: Colors.grey.shade300,
+                          width: 1.5,
+                        ),
                       ),
-                    ),
-                    child: SvgPicture.asset(
-                      'assets/images/icons/Back.svg',
-                      width: 26,
-                      height: 26,
+                      child: SvgPicture.asset(
+                        'assets/images/icons/Back.svg',
+                        width: 26,
+                        height: 26,
+                      ),
                     ),
                   ),
                 ),

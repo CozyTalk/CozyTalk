@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mobile/features/friends/data/datasources/friends_datasource.dart';
 import 'package:mobile/features/friends/data/models/app_user_model.dart';
+import 'package:mobile/features/friends/domain/entities/app_user.dart';
 import 'package:mobile/features/friends/data/models/friend_message_model.dart';
 import 'package:mobile/features/friends/data/models/friend_model.dart';
 import 'package:mobile/features/friends/data/models/friend_request_model.dart';
@@ -120,6 +121,15 @@ class _FakeFriendsDatasource implements FriendsDatasource {
     lastText = text;
     lastSenderDisplayName = senderDisplayName;
   }
+
+  @override
+  Future<List<AppUser>> getUsersByIds(List<String> uids) async => [];
+
+  @override
+  Future<void> setFriendTyping(String chatRoomId, bool isTyping) async {}
+
+  @override
+  Stream<bool> watchFriendTyping(String chatRoomId) => Stream.value(false);
 }
 
 void main() {

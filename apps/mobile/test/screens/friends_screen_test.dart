@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mobile/features/avatar/presentation/providers/avatar_decoration_provider.dart';
+import 'package:mobile/features/block/presentation/providers/block_provider.dart';
 import 'package:mobile/features/friends/domain/entities/friend.dart' as domain;
 import 'package:mobile/features/friends/domain/entities/friend_room_status.dart';
 import 'package:mobile/features/friends/presentation/providers/friends_provider.dart';
+import 'package:mobile/features/profile/presentation/providers/profile_provider.dart';
 import 'package:mobile/screens/friends_screen.dart';
 import 'package:mobile/screens/widgets.dart';
 import 'package:mobile/shared/connectivity_provider.dart';
+import 'package:mobile/shared/layered_avatar.dart';
 import 'package:mobile/shared/network_info.dart';
 import 'package:mobile/shared/offline_card.dart';
 import '../shared/fake_network_info.dart';
@@ -53,6 +57,17 @@ class _LoadingToIdleFriendsNotifier extends FriendsNotifier {
   void clearError() {}
 }
 
+class _FakeBlockNotifier extends BlockNotifier {
+  @override
+  BlockState build() => const BlockState();
+
+  @override
+  Future<void> block(String targetUid, {String? displayName}) async {}
+
+  @override
+  Future<void> unblock(String targetUid) async {}
+}
+
 final _fakeDomainFriend = domain.Friend(
   friendshipId: 'fship1',
   friendUid: 'uid1',
@@ -70,6 +85,10 @@ Widget _build({
     overrides: [
       networkInfoProvider.overrideWithValue(networkInfo),
       friendsNotifierProvider.overrideWith(() => fake),
+      avatarDecorationByUidProvider.overrideWith((ref, uid) async => null),
+      getUsersByIdsProvider.overrideWith((ref, csv) async => []),
+      blockNotifierProvider.overrideWith(() => _FakeBlockNotifier()),
+      profileByUidProvider.overrideWith((ref, uid) async => null),
     ],
     child: const MaterialApp(home: FriendsScreen()),
   );
@@ -227,9 +246,7 @@ void main() {
       expect(find.byType(FriendRoomCard), findsNothing);
     });
 
-    testWidgets('shows generic person icon placeholder for each friend card', (
-      tester,
-    ) async {
+    testWidgets('shows LayeredAvatar for each friend card', (tester) async {
       final fake = _FakeFriendsNotifier(
         initial: FriendsState(friends: [_fakeDomainFriend]),
       );
@@ -237,7 +254,7 @@ void main() {
         _build(networkInfo: FakeNetworkInfo(isOnline: true), notifier: fake),
       );
       await tester.pump();
-      expect(find.byIcon(Icons.person), findsOneWidget);
+      expect(find.byType(LayeredAvatar), findsOneWidget);
     });
 
     testWidgets(
@@ -251,6 +268,12 @@ void main() {
                 FakeNetworkInfo(isOnline: true),
               ),
               friendsNotifierProvider.overrideWith(() => notifier),
+              avatarDecorationByUidProvider.overrideWith(
+                (ref, uid) async => null,
+              ),
+              getUsersByIdsProvider.overrideWith((ref, csv) async => []),
+              blockNotifierProvider.overrideWith(() => _FakeBlockNotifier()),
+              profileByUidProvider.overrideWith((ref, uid) async => null),
             ],
             child: const MaterialApp(home: FriendsScreen()),
           ),
@@ -294,6 +317,21 @@ void main() {
         find.textContaining('will no longer be able to contact'),
         findsNothing,
       );
+    });
+
+    group('accessibility', () {
+      testWidgets('interactive elements have semantic labels', (tester) async {
+        final handle = tester.ensureSemantics();
+        try {
+          await tester.pumpWidget(
+            _build(networkInfo: FakeNetworkInfo(isOnline: true)),
+          );
+          await tester.pumpAndSettle();
+          expect(find.bySemanticsLabel('Go back'), findsOneWidget);
+        } finally {
+          handle.dispose();
+        }
+      });
     });
   });
 }
