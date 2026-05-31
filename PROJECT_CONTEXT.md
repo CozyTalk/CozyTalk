@@ -148,7 +148,7 @@ Navigation hub `HomeScreen`. Used only when `_useMainUI = true`. No domain/data 
 Initialises Firebase, points to emulators (Auth `9099`, Functions `5001`, Firestore `8080`) when `USE_EMULATOR=true`. No automatic sign-in — `_AuthRouter` widget watches `authNotifierProvider` and routes to `LoginScreen` or `HelloScreen`.
 
 ### Tests
-1200 Flutter unit + widget tests across auth, chat, matchmaking, profile, hello, admin, block, friends, card_shuffle, avatar, word_filter, and screens features (includes WCAG 2.2 AA accessibility tests for all 17 production screens). See [Test Coverage](#quality-gates-definition-of-done) for the full breakdown.
+1201 Flutter unit + widget tests across auth, chat, matchmaking, profile, hello, admin, block, friends, card_shuffle, avatar, word_filter, and screens features (includes WCAG 2.2 AA accessibility tests for all 17 production screens). See [Test Coverage](#quality-gates-definition-of-done) for the full breakdown.
 
 ---
 
@@ -404,11 +404,7 @@ Presence, typing, and nameQueue data are removed by `leaveRoom` CF on explicit l
 
 | Suite | Count | Location | Requires |
 |---|---|---|---|
-<<<<<<< HEAD
-| Flutter unit + widget | 1200 tests | `apps/mobile/test/` | Nothing |
-=======
-| Flutter unit + widget | 1115 tests | `apps/mobile/test/` | Nothing |
->>>>>>> 53ffdc7a4deba892d5c968e72dcfa6c13cdd3499
+| Flutter unit + widget | 1201 tests | `apps/mobile/test/` | Nothing |
 | Cloud Functions Jest | 172 unit tests | `functions/src/**/__tests__/*.test.ts` | `./dev.sh --emulator-only` |
 | Cloud Functions Jest (integration) | 7 live tests | `functions/src/matchmaking/__tests__/embeddingService.integration.test.ts` | Vertex AI credentials + `npm run test:embedding` |
 | Flutter integration | 43 tests | `apps/mobile/integration_test/matchmaking_advanced_test.dart` | Emulators + Android device |
@@ -452,7 +448,7 @@ CozyTalk/
 │   │   │   ├── home/                 ← navigation hub stub (presentation only)
 │   │   │   └── friends/              ← friend requests, friend list, permanent direct chat (prototype)
 │   │   └── screens/                  ← legacy design-preview UI (not wired to features layer)
-│   ├── test/                         ← 1200 unit + widget tests
+│   ├── test/                         ← 1201 unit + widget tests
 │   └── .env.example                  ← committed; USE_EMULATOR=true by default
 ├── functions/src/
 │   ├── index.ts                      ← exports 25 functions
