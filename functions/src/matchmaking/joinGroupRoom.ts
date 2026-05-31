@@ -14,6 +14,32 @@ import {
   INTEREST_SIMILARITY_THRESHOLD,
 } from "./embeddingService";
 
+/**
+ * Sets an RTDB value with up to 3 attempts. The Firestore transaction that
+ * joins the user has already committed at call time; a permanent RTDB failure
+ * would leave the user in Firestore users[] with no RTDB entry for
+ * cleanupMember to fire on. Three fast retries cover transient blips without
+ * meaningfully delaying the response.
+ * @param {admin.database.Database} rtdb - RTDB instance.
+ * @param {string} path - RTDB path to write.
+ * @return {Promise<void>}
+ */
+async function _rtdbSetWithRetry(
+  rtdb: admin.database.Database,
+  path: string,
+): Promise<void> {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      await rtdb.ref(path).set(true);
+      return;
+    } catch (err) {
+      if (attempt === 2) {
+        logger.warn("RTDB member write failed after 3 attempts", {path, err});
+      }
+    }
+  }
+}
+
 export const joinGroupRoom = onCall(
   {invoker: "public", cors: true, memory: "512MiB"},
   async (request) => {
@@ -66,6 +92,7 @@ export const joinGroupRoom = onCall(
 
         try {
           await db.runTransaction(async (tx) => {
+            joined = false; // reset on every retry so a stale true never leaks
             const roomSnap = await tx.get(roomRef);
             if (!roomSnap.exists) return;
 
@@ -116,7 +143,7 @@ export const joinGroupRoom = onCall(
         }
 
         if (joined) {
-          await rtdb.ref(`rooms/${doc.id}/members/${uid}`).set(true);
+          await _rtdbSetWithRetry(rtdb, `rooms/${doc.id}/members/${uid}`);
           logger.info("User joined existing group room", {
             uid,
             roomId: doc.id,
@@ -220,7 +247,7 @@ export const joinGroupRoom = onCall(
 
     const roomId = await createRoomWithRetry(db, newRoomData);
 
-    await rtdb.ref(`rooms/${roomId}/members/${uid}`).set(true);
+    await _rtdbSetWithRetry(rtdb, `rooms/${roomId}/members/${uid}`);
     logger.info("Created new group room", {
       uid,
       roomId,
@@ -249,6 +276,7 @@ export const joinGroupRoom = onCall(
 
       try {
         await db.runTransaction(async (tx) => {
+          merged = false; // reset on every retry
           const [targetSnap, mySnap] = await Promise.all([
             tx.get(targetRef),
             tx.get(myRoomRef),
@@ -290,7 +318,7 @@ export const joinGroupRoom = onCall(
       if (merged) {
         await Promise.all([
           rtdb.ref(`rooms/${roomId}/members/${uid}`).remove(),
-          rtdb.ref(`rooms/${mergeTarget.id}/members/${uid}`).set(true),
+          _rtdbSetWithRetry(rtdb, `rooms/${mergeTarget.id}/members/${uid}`),
         ]);
         logger.info("Merged into existing group room after creation", {
           uid,

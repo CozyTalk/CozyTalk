@@ -45,6 +45,13 @@ export const leaveRoom = onCall(
     let requeueInterestVector: number[] | null = null;
     let requeueBackgroundTheme: string | null = null;
     await db.runTransaction(async (tx) => {
+      // Reset on every retry so a stale value from a conflicting attempt never
+      // leaks into post-transaction side-effects (RTDB cleanup, re-queue).
+      newCount = 0;
+      requeueUid = null;
+      requeueInterestVector = null;
+      requeueBackgroundTheme = null;
+
       const snap = await tx.get(roomRef);
       if (!snap.exists) return;
 

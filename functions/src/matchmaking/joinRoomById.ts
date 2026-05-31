@@ -25,34 +25,10 @@ export const joinRoomById = onCall(
     const rtdb = admin.database();
     const roomRef = db.collection("rooms").doc(roomId);
 
-    // Pre-flight read for fast, readable error messages.
-    const roomSnap = await roomRef.get();
-    if (!roomSnap.exists) {
-      throw new HttpsError("not-found", "Room not found.");
-    }
+    let roomMode: string;
+    let roomType: string;
+    let alreadyMember = false;
 
-    const data = roomSnap.data()!;
-    if (data.status === "expired") {
-      throw new HttpsError("failed-precondition", "Room has expired.");
-    }
-    if (data.status === "padding") {
-      throw new HttpsError(
-        "failed-precondition",
-        "Room is no longer available.",
-      );
-    }
-    if (data.isLocked) {
-      throw new HttpsError("failed-precondition", "Room is locked.");
-    }
-    if ((data.users as string[]).includes(uid)) {
-      // Idempotent — user already in room, just confirm.
-      return {roomId, mode: data.mode, roomType: data.roomType};
-    }
-    if (data.memberCount >= data.maxUsers) {
-      throw new HttpsError("resource-exhausted", "Room is full.");
-    }
-
-    // Atomic join — verifies count again in case of concurrent joins.
     await db.runTransaction(async (tx) => {
       const snap = await tx.get(roomRef);
       if (!snap.exists) throw new HttpsError("not-found", "Room not found.");
@@ -70,6 +46,14 @@ export const joinRoomById = onCall(
       if (d.isLocked) {
         throw new HttpsError("failed-precondition", "Room is locked.");
       }
+
+      roomMode = d.mode as string;
+      roomType = d.roomType as string;
+
+      if ((d.users as string[]).includes(uid)) {
+        alreadyMember = true;
+        return;
+      }
       if (d.memberCount >= d.maxUsers) {
         throw new HttpsError("resource-exhausted", "Room is full.");
       }
@@ -82,8 +66,29 @@ export const joinRoomById = onCall(
       });
     });
 
-    await rtdb.ref(`rooms/${roomId}/members/${uid}`).set(true);
+    if (!alreadyMember) {
+      // Retry the RTDB write up to 3 times. The Firestore transaction has already
+      // committed at this point; a permanent failure here would leave the user in
+      // users[] with no RTDB entry for cleanupMember to fire on. Three fast
+      // retries cover transient connectivity blips without meaningfully delaying
+      // the response.
+      let rtdbOk = false;
+      for (let attempt = 0; attempt < 3 && !rtdbOk; attempt++) {
+        try {
+          await rtdb.ref(`rooms/${roomId}/members/${uid}`).set(true);
+          rtdbOk = true;
+        } catch (rtdbErr) {
+          if (attempt === 2) {
+            logger.warn("RTDB member write failed after 3 attempts", {
+              uid,
+              roomId,
+              err: rtdbErr,
+            });
+          }
+        }
+      }
+    }
     logger.info("User joined room by ID", {uid, roomId});
-    return {roomId, mode: data.mode, roomType: data.roomType};
+    return {roomId, mode: roomMode!, roomType: roomType!};
   },
 );
