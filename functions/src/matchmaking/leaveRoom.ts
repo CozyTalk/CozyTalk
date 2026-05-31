@@ -4,7 +4,11 @@ import {FieldValue, Timestamp} from "firebase-admin/firestore";
 import * as logger from "firebase-functions/logger";
 import {PADDING_MINUTES} from "./_utils";
 import {meanVector} from "./embeddingService";
-import {getBlockedUids, removeFromBlockList, type BlockListEntry} from "../user/_blockUtils";
+import {
+  getBlockedUids,
+  removeFromBlockList,
+  type BlockListEntry,
+} from "../user/_blockUtils";
 
 export const leaveRoom = onCall(
   {invoker: "public", cors: true},
@@ -48,6 +52,13 @@ export const leaveRoom = onCall(
     let requeueInterestVector: number[] | null = null;
     let requeueBackgroundTheme: string | null = null;
     await db.runTransaction(async (tx) => {
+      // Reset on every retry so a stale value from a conflicting attempt never
+      // leaks into post-transaction side-effects (RTDB cleanup, re-queue).
+      newCount = 0;
+      requeueUid = null;
+      requeueInterestVector = null;
+      requeueBackgroundTheme = null;
+
       const snap = await tx.get(roomRef);
       if (!snap.exists) return;
 

@@ -10,25 +10,20 @@ import '../features/chat/domain/entities/session_status.dart';
 import '../features/chat/presentation/providers/chat_provider.dart';
 import '../features/friends/domain/entities/app_user.dart';
 import '../features/friends/presentation/providers/friends_provider.dart';
+import '../features/jukebox/presentation/providers/jukebox_provider.dart';
 import '../features/matchmaking/presentation/providers/matchmaking_provider.dart';
-import '../features/avatar/domain/entities/avatar_decoration.dart';
-import '../features/profile/domain/entities/profile_user.dart';
 import '../features/profile/presentation/providers/profile_provider.dart';
+import '../features/report/presentation/screens/report_sheet.dart';
 import '../theme/app_colors.dart';
 import '../dialogs/leave_room_dialog.dart';
+import '../dialogs/members_list_dialog.dart';
 import '../dialogs/song_dialog.dart';
 import '../dialogs/user_profile_dialog.dart';
-import '../dialogs/members_list_dialog.dart';
 import '../shared/avatar_overlay.dart';
-import '../shared/layered_avatar.dart';
-import '../shared/press_bounce_btn.dart';
-import '../shared/user_profile.dart';
-import '../shared/friend_message_popup.dart';
-import '../shared/friend_request_popup.dart';
-import '../theme/app_routes.dart';
-import '../models/friend.dart';
 import '../shared/gif_picker.dart';
 import '../shared/info_dialog.dart';
+import '../shared/layered_avatar.dart';
+import '../shared/press_bounce_btn.dart';
 import '../theme/room_themes.dart';
 
 // ── Card assets ────────────────────────────────────────────────────────────
@@ -109,12 +104,12 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
     with TickerProviderStateMixin {
   // Keyed by partner UID after integration (was display name before).
   final Map<String, bool> _friendRequestSent = {};
-  final Map<String, String> _knownNames = {};
   final TextEditingController _msgController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final FocusNode _focusNode = FocusNode();
   Timer? _typingTimer;
-  Timer? _friendMsgTimer;
+
+  late final JukeboxNotifier _jukeboxNotifier;
 
   // ── Members panel animation ──
   bool _panelOpen = false;
@@ -126,6 +121,22 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
   late final AnimationController _songCtrl;
   late final Animation<Offset> _songSlide;
 
+  String _myThoughts = 'Care to share?';
+  String _myDisplayName = '';
+  String _myInterest = '';
+  // Accumulates uid→displayName from messages + typing events so names persist
+  // even before a member sends their first message.
+  final Map<String, String> _memberNameCache = {};
+  // uid→interest loaded from Firestore profiles.
+  final Map<String, String> _memberInterestCache = {};
+  // uid→thoughts (status message) loaded from Firestore profiles.
+  final Map<String, String> _memberThoughtsCache = {};
+  // displayName→uid reverse index so bubble taps can resolve interest.
+  final Map<String, String> _uidByDisplayName = {};
+  // Pending hop-in UIDs whose display names aren't known yet.
+  // Key = uid, value = seq (message count) at the moment they were detected,
+  // so the hop-in bubble is inserted at the right position once the name arrives.
+  final Map<String, int> _pendingJoinUids = {};
   final List<({_GroupMsg msg, int seq})> _localMessages = [];
   final List<_GroupMsg> _optimisticMessages = [];
   String? _pendingGifUrl;
@@ -133,6 +144,7 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
   @override
   void initState() {
     super.initState();
+    _jukeboxNotifier = ref.read(jukeboxNotifierProvider.notifier);
     _panelCtrl = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 260),
@@ -141,7 +153,6 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
       begin: const Offset(0, -1),
       end: Offset.zero,
     ).animate(CurvedAnimation(parent: _panelCtrl, curve: Curves.easeOutCubic));
-
     _songCtrl = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 260),
@@ -150,6 +161,7 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
       begin: const Offset(0, -1),
       end: Offset.zero,
     ).animate(CurvedAnimation(parent: _songCtrl, curve: Curves.easeOutCubic));
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _scrollToBottom();
       final matchState = ref.read(matchmakingNotifierProvider);
@@ -163,24 +175,61 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
             currentUserId: authUser.uid,
             currentUserDisplayName: authUser.displayName,
           );
+      _jukeboxNotifier.enterRoom(roomId);
+      if (ref.read(avatarDecorationNotifierProvider).decoration == null) {
+        ref.read(avatarDecorationNotifierProvider.notifier).load(authUser.uid);
+      }
+      // Load profiles for all members already in the room.
+      final initialUsers =
+          ref.read(matchmakingNotifierProvider).currentRoom?.users ?? [];
+      if (initialUsers.isNotEmpty) _loadMemberProfiles(initialUsers);
+
+      // Load own profile (ensures latest data after any edits) then snapshot
+      ref.read(profileNotifierProvider.notifier).load(authUser.uid).then((_) {
+        if (!mounted) return;
+        final own = ref.read(profileNotifierProvider).profile;
+        if (own?.uid == authUser.uid) {
+          bool changed = false;
+          if (own?.thoughts?.isNotEmpty == true) {
+            _myThoughts = own!.thoughts!;
+            changed = true;
+          }
+          if (own?.displayName?.isNotEmpty == true) {
+            _myDisplayName = own!.displayName!;
+            changed = true;
+            // Flush a deferred self hop-in that was parked because _myDisplayName
+            // was empty when the currentRoom.users listener first fired.
+            // _loadMemberProfiles skips self, and the message/typing listeners
+            // gate on _memberInterestCache which is never set for self, so this
+            // is the only path that can resolve a pending self hop-in.
+            if (_pendingJoinUids.containsKey(authUser.uid)) {
+              _localMessages.add((
+                msg: _GroupMsg(
+                  type: _MsgType.system,
+                  text: '$_myDisplayName hop in',
+                ),
+                seq: _pendingJoinUids[authUser.uid]!,
+              ));
+              _pendingJoinUids.remove(authUser.uid);
+            }
+          }
+          if (own?.interest?.isNotEmpty == true) {
+            _myInterest = own!.interest!;
+            changed = true;
+          }
+          if (changed) setState(() {});
+        }
+      });
     });
-    _friendMsgTimer = Timer(const Duration(seconds: 3), () {
-      if (!mounted) return;
-      showFriendMessagePopup(
-        context,
-        friendName: 'Nong Prae',
-        message: 'Hey! Are you free tonight? 🍕',
-        onTap: () => _showLeaveForFriendChat(),
-      );
-    });
+    // TODO: show real incoming friend message popup from friendChatNotifierProvider
   }
 
   @override
   void dispose() {
     _typingTimer?.cancel();
-    _friendMsgTimer?.cancel();
     _panelCtrl.dispose();
     _songCtrl.dispose();
+    _jukeboxNotifier.leaveRoom();
     _msgController.dispose();
     _scrollController.dispose();
     _focusNode.dispose();
@@ -209,6 +258,43 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
     _songCtrl.reverse().then((_) {
       if (mounted) setState(() => _songPanelOpen = false);
     });
+  }
+
+  // Fetches Firestore profiles for the given UIDs and populates the interest
+  // and reverse-name caches. Always prefers the profile username over any
+  // auth display name that may have arrived via messages first.
+  Future<void> _loadMemberProfiles(List<String> uids) async {
+    if (!mounted) return;
+    final myUid = ref.read(authNotifierProvider).user?.uid ?? '';
+    for (final uid in uids) {
+      // Re-check before every ref.read — the widget may be disposed between
+      // iterations because each profileByUidProvider await suspends the loop.
+      if (!mounted) return;
+      if (uid == myUid || _memberInterestCache.containsKey(uid)) continue;
+      try {
+        final profile = await ref.read(profileByUidProvider(uid).future);
+        if (!mounted || profile == null) continue;
+        final name = profile.displayName ?? '';
+        setState(() {
+          _memberInterestCache[uid] = profile.interest ?? '';
+          _memberThoughtsCache[uid] = profile.thoughts ?? '';
+          if (name.isNotEmpty) {
+            // Always overwrite with profile username — it's the value the user
+            // set intentionally, unlike the auth display name (often a Gmail).
+            _memberNameCache[uid] = name;
+            _uidByDisplayName[name] = uid;
+            // Flush any hop-in that was waiting for this member's name.
+            if (_pendingJoinUids.containsKey(uid)) {
+              _localMessages.add((
+                msg: _GroupMsg(type: _MsgType.system, text: '$name hop in'),
+                seq: _pendingJoinUids[uid]!,
+              ));
+              _pendingJoinUids.remove(uid);
+            }
+          }
+        });
+      } catch (_) {}
+    }
   }
 
   void _scrollToBottom() {
@@ -261,41 +347,107 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
   }
 
   void _sendTopicCard() {
-    final seq = ref.read(chatNotifierProvider).messages.length;
-    setState(() {
-      _localMessages.add((
-        msg: _GroupMsg(type: _MsgType.card, text: _pickCard()),
-        seq: seq,
-      ));
-    });
+    final cardPath = _pickCard();
+    setState(
+      () => _optimisticMessages.add(
+        _GroupMsg(type: _MsgType.card, text: cardPath),
+      ),
+    );
     _scrollToBottom();
+    ref.read(chatNotifierProvider.notifier).sendMessage('card::$cardPath');
   }
 
   void _sendGif(String url) {
     setState(() => _pendingGifUrl = url);
   }
 
-  void _sendFriendRequest(AppUser partner) {
-    final uid = partner.uid;
-    final friendsState = ref.read(friendsNotifierProvider);
-    final alreadyFriend = friendsState.friends.any((f) => f.friendUid == uid);
-    if (friendsState.isLoading ||
-        _friendRequestSent[uid] == true ||
-        alreadyFriend) {
-      return;
+  void _sendFriendRequest(String targetName) {
+    if (_friendRequestSent[targetName] == true) return;
+    setState(() => _friendRequestSent[targetName] = true);
+
+    // Primary: match by name inside roomUsers — works even before first message.
+    final myUid = ref.read(authNotifierProvider).user?.uid;
+    final roomUsers =
+        ref.read(matchmakingNotifierProvider).currentRoom?.users ?? [];
+    String? targetUid;
+    for (final uid in roomUsers) {
+      if (uid == myUid) continue;
+      if ((_memberNameCache[uid] ?? 'User') == targetName) {
+        targetUid = uid;
+        break;
+      }
     }
-    setState(() => _friendRequestSent[uid] = true);
-    ref.read(friendsNotifierProvider.notifier).sendFriendRequest(partner);
+    // Fallback: scan messages (handles edge cases where roomUsers is empty).
+    if (targetUid == null) {
+      final chatState = ref.read(chatNotifierProvider);
+      targetUid = chatState.messages
+          .cast<chat_entity.ChatMessage?>()
+          .firstWhere((m) => m?.displayName == targetName, orElse: () => null)
+          ?.senderId;
+    }
+
+    if (targetUid != null) {
+      ref
+          .read(friendsNotifierProvider.notifier)
+          .sendFriendRequest(AppUser(uid: targetUid, displayName: targetName));
+    }
     showInfoDialog(
       context,
       type: InfoDialogType.info,
       title: 'Friend Request Sent',
       message:
-          'Your friend request has been sent to ${partner.displayName}.\nWaiting for them to accept.',
+          'Your friend request has been sent to $targetName.\nWaiting for them to accept.',
     );
   }
 
-  void _shuffleTopic() {
+  void reportUser(String targetName) {
+    final sessionId = ref.read(matchmakingNotifierProvider).roomId ?? '';
+    if (sessionId.isEmpty) return;
+    // Resolve UID from roomUsers cache — same lookup as _sendFriendRequest.
+    final myUid = ref.read(authNotifierProvider).user?.uid;
+    final roomUsers =
+        ref.read(matchmakingNotifierProvider).currentRoom?.users ?? [];
+    String reportedUid = '';
+    for (final uid in roomUsers) {
+      if (uid == myUid) continue;
+      if ((_memberNameCache[uid] ?? 'User') == targetName) {
+        reportedUid = uid;
+        break;
+      }
+    }
+    if (reportedUid.isEmpty) {
+      final chatState = ref.read(chatNotifierProvider);
+      reportedUid =
+          chatState.messages
+              .cast<chat_entity.ChatMessage?>()
+              .firstWhere(
+                (m) => m?.displayName == targetName,
+                orElse: () => null,
+              )
+              ?.senderId ??
+          '';
+    }
+    if (reportedUid.isEmpty) return;
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) =>
+          ReportSheet(sessionId: sessionId, reportedUserId: reportedUid),
+    );
+  }
+
+  void cancelFriendRequest(String targetName) {
+    setState(() => _friendRequestSent[targetName] = false);
+    showInfoDialog(
+      context,
+      type: InfoDialogType.info,
+      title: 'Request Cancelled',
+      message: 'Your friend request to $targetName has been cancelled.',
+    );
+  }
+
+  void shuffleTopic() {
+    final cardPath = _pickCard();
     final seq = ref.read(chatNotifierProvider).messages.length;
     setState(() {
       _localMessages.add((
@@ -305,139 +457,34 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
         ),
         seq: seq,
       ));
-      _localMessages.add((
-        msg: _GroupMsg(type: _MsgType.card, text: _pickCard()),
-        seq: seq,
-      ));
+      _optimisticMessages.add(_GroupMsg(type: _MsgType.card, text: cardPath));
     });
     _scrollToBottom();
+    ref.read(chatNotifierProvider.notifier).sendMessage('card::$cardPath');
   }
 
-  void _showLeaveForFriendChat() {
-    if (!mounted) return;
-    final mockFriend = Friend(
-      name: 'Nong Prae',
-      username: 'kaitom',
-      lastMessage: 'Hey! Are you free tonight? 🍕',
-      isOnline: true,
-      avatar: 'assets/images/UserAvatar.png',
-      interest: 'Cats',
-    );
-    showDialog(
-      context: context,
-      builder: (dialogCtx) => Dialog(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        insetPadding: const EdgeInsets.symmetric(horizontal: 32),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(24, 22, 24, 20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text(
-                'Leave this room?',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w800,
-                  color: Colors.black,
-                  decoration: TextDecoration.none,
-                ),
-              ),
-              const SizedBox(height: 10),
-              const Text(
-                'You will leave this room and won\'t\nbe able to come back.',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 15,
-                  height: 1.3,
-                  color: Colors.black87,
-                  decoration: TextDecoration.none,
-                  fontWeight: FontWeight.w400,
-                ),
-              ),
-              const SizedBox(height: 20),
-              Row(
-                children: [
-                  Expanded(
-                    child: SizedBox(
-                      height: 42,
-                      child: ElevatedButton(
-                        onPressed: () => Navigator.pop(dialogCtx),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFD9D5D1),
-                          foregroundColor: Colors.black,
-                          elevation: 0,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(18),
-                            side: const BorderSide(color: Color(0xFFC8C3BE)),
-                          ),
-                        ),
-                        child: const Text(
-                          'Stay',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: SizedBox(
-                      height: 42,
-                      child: ElevatedButton(
-                        onPressed: () {
-                          Navigator.pop(dialogCtx);
-                          Navigator.popUntil(context, (route) => route.isFirst);
-                          Navigator.pushNamed(context, AppRoutes.friends);
-                          Navigator.pushNamed(
-                            context,
-                            AppRoutes.friendChat,
-                            arguments: mockFriend,
-                          );
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFD86A3B),
-                          foregroundColor: Colors.white,
-                          elevation: 0,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(18),
-                          ),
-                        ),
-                        child: const Text(
-                          'Leave',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
+  // TODO: implement _showLeaveForFriendChat — navigate to /friends/chat with real Friend
+  // from friendsNotifierProvider; triggered by incoming friend message popup
 
-  static const _kWarning =
+  final kWarning =
       'Keep it friendly! Please be respectful and protect your personal info.\n'
       'Report any suspicious behavior to help keep our community safe.';
 
-  static String _formatTime(DateTime t) {
+  String formatTime(DateTime t) {
     final tod = TimeOfDay.fromDateTime(t);
     final h = tod.hourOfPeriod == 0 ? 12 : tod.hourOfPeriod;
     final m = tod.minute.toString().padLeft(2, '0');
     return '$h:$m ${tod.period.name}';
   }
 
-  _GroupMsg _toGroupDisplay(chat_entity.ChatMessage msg, String? myUid) {
+  _GroupMsg toGroupDisplay(chat_entity.ChatMessage msg, String? myUid) {
     final isMe = msg.senderId == myUid;
+    if (msg.text.startsWith('card::')) {
+      return _GroupMsg(type: _MsgType.card, text: msg.text.substring(6));
+    }
+    if (msg.text.startsWith('system::')) {
+      return _GroupMsg(type: _MsgType.system, text: msg.text.substring(8));
+    }
     final isGif = msg.text.contains('giphy.com');
     return _GroupMsg(
       type: isGif
@@ -445,7 +492,7 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
           : (isMe ? _MsgType.me : _MsgType.other),
       text: msg.text,
       sender: isMe ? 'Me' : msg.displayName,
-      time: _formatTime(msg.timestamp),
+      time: formatTime(msg.timestamp),
     );
   }
 
@@ -453,17 +500,17 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
   Widget build(BuildContext context) {
     final args =
         ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
-    final roomId = args?['roomId'] as String? ?? 'ABP8C';
     final maxMembers = args?['maxMembers'] as int? ?? 5;
 
-    final avatarState = ref.watch(avatarProvider);
-    final userProfile = ref.watch(userProfileProvider);
-    final myThoughts = ref.watch(
-      profileNotifierProvider.select((s) => s.profile?.thoughts ?? ''),
+    final decoState = ref.watch(avatarDecorationNotifierProvider);
+    final avatarState = AvatarState(
+      mood: AvatarOverlays.mood[decoState.decoration?.moodKey ?? ''],
+      accessory: AvatarOverlays.accessory[decoState.decoration?.hatKey ?? ''],
     );
     final chatState = ref.watch(chatNotifierProvider);
     final roomType = args?['roomType'] as String?;
     final matchState = ref.watch(matchmakingNotifierProvider);
+    final roomId = matchState.roomId ?? args?['roomId'] as String? ?? 'ABP8C';
     final liveThemeId = matchState.currentRoom?.backgroundTheme;
     final liveTheme = resolveRoomTheme(liveThemeId, mode: 'group');
     final roomName = liveThemeId != null
@@ -471,107 +518,187 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
         : (args?['roomName'] as String? ?? 'Group Room');
     final bgImage = liveThemeId != null
         ? liveTheme.thumbnail
-        : (args?['bgImage'] as String? ?? 'assets/images/group_doodle.png');
+        : (args?['bgImage'] as String? ??
+              'assets/images/backgrounds/kao_tapu.png');
     final isLocked = matchState.currentRoom?.isLocked ?? (roomType == 'create');
 
     final myUid =
         chatState.currentUserId ??
         ref.watch(authNotifierProvider).user?.uid ??
         '';
-    for (final m in chatState.messages) {
-      _knownNames[m.senderId] = m.displayName;
-    }
-    for (final u in chatState.typingUsers) {
-      _knownNames[u.uid] = u.displayName;
-    }
-    final presenceMembers = chatState.presenceMembers;
+    final myDisplayName = _myDisplayName.isNotEmpty
+        ? _myDisplayName
+        : (ref.watch(authNotifierProvider).user?.displayName ?? '');
+
     final roomUsers = matchState.currentRoom?.users ?? [];
     // Filter to live users only. When presenceMembers is null (subscription not
     // yet delivered), fall back to the full list to avoid an empty banner flash.
+    final presenceMembers = chatState.presenceMembers;
     final liveUsers = presenceMembers == null
         ? roomUsers
         : roomUsers.where((uid) => presenceMembers.contains(uid)).toList();
     final members = liveUsers.isEmpty
         ? ['Me']
-        : liveUsers
-              .map((uid) => uid == myUid ? 'Me' : (_knownNames[uid] ?? 'User'))
+        : roomUsers
+              .map(
+                (uid) =>
+                    uid == myUid ? 'Me' : (_memberNameCache[uid] ?? 'User'),
+              )
               .toList();
 
-    final partnerUids = matchState.partnerUids;
-    final partnersAsync = ref.watch(
-      getUsersByIdsProvider(([...partnerUids]..sort()).join(',')),
-    );
-    final Map<String, AppUser> partnersMap = {
-      for (final u in (partnersAsync.value ?? <AppUser>[])) u.uid: u,
-    };
-
-    // UIDs that are already friends with the current user.
-    final alreadyFriendUids = ref.watch(
-      friendsNotifierProvider.select(
-        (s) => s.friends.map((f) => f.friendUid).toSet(),
-      ),
-    );
-
-    // Per-partner decoration + profile for real avatar rendering.
-    final Map<String, AvatarDecoration?> partnerDecorations = {
-      for (final uid in partnerUids)
-        uid: ref.watch(partnerDecorationProvider(uid)).asData?.value,
-    };
-    final Map<String, ProfileUser?> partnerProfiles = {
-      for (final uid in partnerUids)
-        uid: ref.watch(partnerProfileProvider(uid)).asData?.value,
-    };
-
-    ref.listen<FriendsState>(friendsNotifierProvider, (prev, next) {
-      if (next.error != null && next.error != prev?.error) {
-        ScaffoldMessenger.of(context)
-          ..clearSnackBars()
-          ..showSnackBar(SnackBar(content: Text(next.error!)));
-        ref.read(friendsNotifierProvider.notifier).clearError();
+    // Load each non-self member's avatar decoration reactively. The provider
+    // is autoDispose+family so each slot is independent and cleans up on leave.
+    final memberAvatarStates = <String, AvatarState>{};
+    // Display-name keyed variant for MembersPanelBody (which works with names).
+    final memberAvatarByName = <String, AvatarState>{};
+    for (final uid in roomUsers) {
+      final displayName = uid == myUid
+          ? 'Me'
+          : (_memberNameCache[uid] ?? 'User');
+      if (uid == myUid) {
+        memberAvatarByName[displayName] = avatarState;
+        continue;
       }
-
-      // Show in-room popup when any partner sends us a friend request.
-      final prevIds = prev?.incomingRequests.map((r) => r.id).toSet() ?? {};
-      for (final req in next.incomingRequests) {
-        if (!prevIds.contains(req.id) && partnerUids.contains(req.fromUid)) {
-          showFriendRequestPopup(
-            context,
-            requesterName: req.fromDisplayName,
-            onAccept: () =>
-                ref.read(friendsNotifierProvider.notifier).acceptRequest(req),
-            onDecline: () => ref
-                .read(friendsNotifierProvider.notifier)
-                .declineRequest(req.id),
-          );
-        }
-      }
-
-      // Notify when a partner accepted our request.
-      for (final uid in partnerUids) {
-        if (_friendRequestSent[uid] == true) {
-          final wasAlreadyFriend =
-              prev?.friends.any((f) => f.friendUid == uid) ?? false;
-          final isNowFriend = next.friends.any((f) => f.friendUid == uid);
-          if (!wasAlreadyFriend && isNowFriend) {
-            final name = next.friends
-                .firstWhere((f) => f.friendUid == uid)
-                .friendDisplayName;
-            showInfoDialog(
-              context,
-              type: InfoDialogType.success,
-              title: "You're now friends!",
-              message: '$name accepted your friend request.',
-            );
-          }
-        }
-      }
-    });
+      final deco = ref.watch(avatarDecorationByUidProvider(uid)).asData?.value;
+      final state = AvatarState(
+        mood: AvatarOverlays.mood[deco?.moodKey ?? ''],
+        accessory: AvatarOverlays.accessory[deco?.hatKey ?? ''],
+      );
+      memberAvatarStates[uid] = state;
+      memberAvatarByName[displayName] = state;
+    }
 
     ref.listen(chatNotifierProvider.select((s) => s.status), (_, next) {
       if (next == SessionStatus.disconnected) {
         Navigator.of(context).popUntil((route) => route.isFirst);
       }
     });
+
+    // Accumulate names from incoming messages into the persistent cache.
+    // Also flush any pending hop-in bubbles that were waiting for a name.
+    ref.listen(chatNotifierProvider.select((s) => s.messages), (_, msgs) {
+      bool changed = false;
+      for (final m in msgs) {
+        // Skip email-like strings — Firebase Auth may use the Gmail address as
+        // the displayName before the user sets a profile username. The profile
+        // load (which always wins) will overwrite with the real username once
+        // it arrives. Showing 'User' is better than showing an email address.
+        if (m.senderId != myUid &&
+            m.displayName.isNotEmpty &&
+            !m.displayName.contains('@') &&
+            !_memberInterestCache.containsKey(m.senderId)) {
+          _memberNameCache[m.senderId] = m.displayName;
+          _uidByDisplayName[m.displayName] = m.senderId;
+          changed = true;
+        }
+      }
+      for (final uid in List<String>.from(_pendingJoinUids.keys)) {
+        final name = _memberNameCache[uid];
+        if (name != null &&
+            name.isNotEmpty &&
+            _memberInterestCache.containsKey(uid)) {
+          _localMessages.add((
+            msg: _GroupMsg(type: _MsgType.system, text: '$name hop in'),
+            seq: _pendingJoinUids[uid]!,
+          ));
+          _pendingJoinUids.remove(uid);
+          changed = true;
+        }
+      }
+      if (changed) setState(() {});
+    });
+
+    // Accumulate names from typing events (transient, but populates early).
+    // Also flush pending hop-ins whose name just became known.
+    ref.listen(chatNotifierProvider.select((s) => s.typingUsers), (_, users) {
+      bool changed = false;
+      for (final u in users) {
+        if (u.displayName.isNotEmpty &&
+            !u.displayName.contains('@') &&
+            !_memberInterestCache.containsKey(u.uid)) {
+          _memberNameCache[u.uid] = u.displayName;
+          _uidByDisplayName[u.displayName] = u.uid;
+          changed = true;
+        }
+      }
+      for (final uid in List<String>.from(_pendingJoinUids.keys)) {
+        final name = _memberNameCache[uid];
+        if (name != null &&
+            name.isNotEmpty &&
+            _memberInterestCache.containsKey(uid)) {
+          _localMessages.add((
+            msg: _GroupMsg(type: _MsgType.system, text: '$name hop in'),
+            seq: _pendingJoinUids[uid]!,
+          ));
+          _pendingJoinUids.remove(uid);
+          changed = true;
+        }
+      }
+      if (changed) setState(() {});
+    });
+
+    // Detect new members joining (including self) and show hop-in bubbles.
+    // Self is included so the current user sees their own name appear when they
+    // first enter the room, and sees pre-existing members' names too (the
+    // listener fires with prevSet = {} on the initial users snapshot).
+    ref.listen(
+      matchmakingNotifierProvider.select(
+        (s) => s.currentRoom?.users ?? const <String>[],
+      ),
+      (prev, next) {
+        final prevSet = (prev ?? const []).toSet();
+        final newUidList = next.where((uid) => !prevSet.contains(uid)).toList();
+        if (newUidList.isEmpty) return;
+        // Load Firestore profiles for non-self newcomers so interest/thoughts
+        // are available on tap and the correct username overwrites any interim
+        // auth display name.
+        _loadMemberProfiles(newUidList.where((uid) => uid != myUid).toList());
+        bool changed = false;
+        for (final uid in newUidList) {
+          final seq = ref.read(chatNotifierProvider).messages.length;
+          if (uid == myUid) {
+            // Own hop-in. Prefer _myDisplayName (Firestore profile — always
+            // reflects the latest username change). Firebase Auth displayName
+            // is NOT updated by updateDisplayName, so it may be stale or null
+            // for anonymous users. If neither is ready, park in _pendingJoinUids
+            // so the initState profile-load callback can flush it with the
+            // correct, fresh name.
+            final name = _myDisplayName.isNotEmpty ? _myDisplayName : '';
+            if (name.isNotEmpty) {
+              _localMessages.add((
+                msg: _GroupMsg(type: _MsgType.system, text: '$name hop in'),
+                seq: seq,
+              ));
+              changed = true;
+            } else {
+              _pendingJoinUids[uid] = seq;
+            }
+          } else {
+            final name = _memberNameCache[uid];
+            // Only show hop-in immediately when we already have the profile
+            // username (indicated by _memberInterestCache having an entry).
+            // Otherwise park in _pendingJoinUids; _loadMemberProfiles will
+            // flush it once the Firestore profile arrives, ensuring we never
+            // display a Gmail / auth display-name.
+            if (name != null &&
+                name.isNotEmpty &&
+                _memberInterestCache.containsKey(uid)) {
+              _localMessages.add((
+                msg: _GroupMsg(type: _MsgType.system, text: '$name hop in'),
+                seq: seq,
+              ));
+              changed = true;
+            } else {
+              _pendingJoinUids[uid] = seq;
+            }
+          }
+        }
+        if (changed) {
+          setState(() {});
+          _scrollToBottom();
+        }
+      },
+    );
 
     ref.listen(chatNotifierProvider.select((s) => s.messages.length), (
       prev,
@@ -605,7 +732,7 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
         body: Column(
           children: [
             // ── Header always rendered last in layout = visually on top ──
-            _buildHeader(roomName, roomId, isLocked),
+            buildHeader(roomName, roomId, isLocked),
             // ── Content + slide-down panel clipped together ──
             Expanded(
               child: ClipRect(
@@ -614,29 +741,23 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
                     // Main content
                     Column(
                       children: [
-                        _buildBanner(
+                        buildBanner(
                           bgImage,
                           maxMembers,
                           avatarState,
-                          userProfile,
-                          myThoughts,
+                          myDisplayName,
                           members,
+                          _myInterest,
                           roomUsers,
-                          partnersMap,
-                          partnerDecorations,
-                          partnerProfiles,
-                          alreadyFriendUids,
+                          memberAvatarStates,
                         ),
                         Expanded(
                           child: Stack(
                             children: [
-                              _buildMessageList(
+                              buildMessageList(
                                 avatarState,
                                 chatState,
-                                partnersMap,
-                                partnerDecorations,
-                                partnerProfiles,
-                                alreadyFriendUids,
+                                memberAvatarStates,
                               ),
                               Positioned(
                                 top: 0,
@@ -661,7 +782,7 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
                             ],
                           ),
                         ),
-                        _buildInputBar(),
+                        buildInputBar(),
                       ],
                     ),
                     // Barrier — tap outside to close whichever panel is open
@@ -689,26 +810,26 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
                           memberUids: roomUsers,
                           onClose: _closePanel,
                           avatarState: avatarState,
-                          friendRequestSent: {
-                            ..._friendRequestSent,
-                            for (final uid in alreadyFriendUids) uid: true,
-                          },
-                          onAddFriend: (uid) {
-                            if (alreadyFriendUids.contains(uid)) return;
-                            final p = partnersMap[uid];
-                            if (p != null) _sendFriendRequest(p);
-                          },
+                          friendRequestSent: _friendRequestSent,
+                          onAddFriend: _sendFriendRequest,
+                          onCancelRequest: cancelFriendRequest,
+                          onReport: reportUser,
+                          memberAvatarStates: memberAvatarByName,
                         ),
                       ),
                     ),
-                    // Slide-down song panel
+                    // Song panel — always in tree so audio survives panel close.
                     Positioned(
                       top: 0,
                       left: 0,
                       right: 0,
                       child: SlideTransition(
                         position: _songSlide,
-                        child: SongPanelBody(onClose: _closeSongPanel),
+                        child: SongPanelBody(
+                          onClose: _closeSongPanel,
+                          roomId: roomId,
+                          isVisible: _songPanelOpen,
+                        ),
                       ),
                     ),
                   ],
@@ -722,7 +843,7 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
   }
 
   // ── Header ────────────────────────────────────────────────────────────────
-  Widget _buildHeader(String roomName, String roomId, bool isLocked) {
+  Widget buildHeader(String roomName, String roomId, bool isLocked) {
     return Container(
       width: double.infinity,
       decoration: const BoxDecoration(
@@ -742,7 +863,7 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
                 Semantics(
                   label: 'End chat',
                   button: true,
-                  child: _headerBtn(
+                  child: headerBtn(
                     onTap: () => showDialog(
                       context: context,
                       builder: (_) => LeaveRoomDialog(
@@ -851,7 +972,7 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
                 Semantics(
                   label: 'View member list',
                   button: true,
-                  child: _headerBtn(
+                  child: headerBtn(
                     onTap: _panelOpen ? _closePanel : _openPanel,
                     child: SvgPicture.asset(
                       'assets/images/icons/memberlist.svg',
@@ -868,7 +989,7 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
     );
   }
 
-  Widget _headerBtn({required Widget child, required VoidCallback onTap}) {
+  Widget headerBtn({required Widget child, required VoidCallback onTap}) {
     return PressBounceBtn(
       onTap: onTap,
       scale: 0.90,
@@ -894,18 +1015,15 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
   }
 
   // ── Banner with dynamic avatars ────────────────────────────────────────────
-  Widget _buildBanner(
+  Widget buildBanner(
     String bgImage,
     int maxMembers,
     AvatarState avatarState,
-    UserProfileState userProfile,
-    String myThoughts,
+    String myDisplayName,
     List<String> members,
+    String myInterest,
     List<String> roomUsers,
-    Map<String, AppUser> partnersMap,
-    Map<String, AvatarDecoration?> partnerDecorations,
-    Map<String, ProfileUser?> partnerProfiles,
-    Set<String> alreadyFriendUids,
+    Map<String, AvatarState> memberAvatarStates,
   ) {
     final count = members.length.clamp(1, 5);
     final preset = _layouts[count];
@@ -957,26 +1075,15 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
                 final pos = preset[i];
                 final username = members[i];
                 final isMe = username == 'Me';
-                final displayName = isMe ? userProfile.username : username;
-                final memberUid = (i < roomUsers.length) ? roomUsers[i] : null;
-                final partner = (!isMe && memberUid != null)
-                    ? partnersMap[memberUid]
-                    : null;
-                final partnerDecoration = (!isMe && memberUid != null)
-                    ? partnerDecorations[memberUid]
-                    : null;
-                final partnerProfile = (!isMe && memberUid != null)
-                    ? partnerProfiles[memberUid]
-                    : null;
-                final partnerMoodOverlay =
-                    AvatarOverlays.mood[partnerDecoration?.moodKey ?? ''];
-                final partnerAccessoryOverlay =
-                    AvatarOverlays.accessory[partnerDecoration?.hatKey ?? ''];
+                final displayName = isMe ? myDisplayName : username;
+                final memberUid = i < roomUsers.length ? roomUsers[i] : null;
                 final thought = isMe
-                    ? (myThoughts.isNotEmpty ? myThoughts : 'Care to share?')
-                    : (partnerProfile?.thoughts?.isNotEmpty == true
-                          ? partnerProfile!.thoughts!
-                          : 'Hello!');
+                    ? _myThoughts
+                    : (memberUid != null &&
+                              _memberThoughtsCache[memberUid]?.isNotEmpty ==
+                                  true
+                          ? _memberThoughtsCache[memberUid]!
+                          : 'Care to share?');
                 final rawScale = pos.size / 90;
                 final scale = rawScale.clamp(0.78, 1.0);
                 final bubbleW = 84 * scale;
@@ -994,51 +1101,50 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
                           bottom: 0,
                           left: 0,
                           right: 0,
-                          child: Semantics(
-                            label: 'View user profile',
-                            button: true,
-                            child: GestureDetector(
-                              onTap: () => showDialog(
-                                context: context,
-                                builder: (_) => UserProfileDialog(
-                                  username: displayName,
-                                  isMe: isMe,
-                                  initialAdded:
-                                      !isMe &&
-                                      memberUid != null &&
-                                      ((_friendRequestSent[memberUid] ==
-                                              true) ||
-                                          alreadyFriendUids.contains(
-                                            memberUid,
-                                          )),
-                                  onAddFriend:
-                                      (!isMe &&
-                                          partner != null &&
-                                          !(alreadyFriendUids.contains(
-                                            memberUid,
-                                          )))
-                                      ? () => _sendFriendRequest(partner)
-                                      : null,
-                                  partnerMoodOverlay: isMe
-                                      ? null
-                                      : partnerMoodOverlay,
-                                  partnerAccessoryOverlay: isMe
-                                      ? null
-                                      : partnerAccessoryOverlay,
-                                  partnerInterest: isMe
-                                      ? null
-                                      : partnerProfile?.interest,
-                                ),
+                          child: GestureDetector(
+                            onTap: () => showDialog(
+                              context: context,
+                              builder: (_) => UserProfileDialog(
+                                username: displayName,
+                                isMe: isMe,
+                                interest: isMe
+                                    ? myInterest
+                                    : (memberUid != null
+                                          ? _memberInterestCache[memberUid]
+                                          : null),
+                                initialAdded:
+                                    !isMe &&
+                                    (_friendRequestSent[displayName] == true),
+                                onAddFriend: isMe
+                                    ? null
+                                    : () => _sendFriendRequest(displayName),
+                                onCancelRequest: isMe
+                                    ? null
+                                    : () => cancelFriendRequest(displayName),
+                                onReport: isMe
+                                    ? null
+                                    : () => reportUser(displayName),
+                                avatarState: isMe
+                                    ? avatarState
+                                    : (memberUid != null
+                                          ? memberAvatarStates[memberUid]
+                                          : null),
+                                uid: isMe ? null : memberUid,
                               ),
-                              child: LayeredAvatar(
-                                boxSize: pos.size,
-                                moodOverlay: isMe
-                                    ? avatarState.mood
-                                    : partnerMoodOverlay,
-                                accessoryOverlay: isMe
-                                    ? avatarState.accessory
-                                    : partnerAccessoryOverlay,
-                              ),
+                            ),
+                            child: LayeredAvatar(
+                              boxSize: pos.size,
+                              moodOverlay: isMe
+                                  ? avatarState.mood
+                                  : (memberUid != null
+                                        ? memberAvatarStates[memberUid]?.mood
+                                        : null),
+                              accessoryOverlay: isMe
+                                  ? avatarState.accessory
+                                  : (memberUid != null
+                                        ? memberAvatarStates[memberUid]
+                                              ?.accessory
+                                        : null),
                             ),
                           ),
                         ),
@@ -1082,13 +1188,13 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
                 right: 10,
                 child: Column(
                   children: [
-                    _sideBtn(
+                    sideBtn(
                       'Song',
                       'assets/images/icons/song.svg',
                       _openSongPanel,
                     ),
                     const SizedBox(height: 10),
-                    _sideBtn(
+                    sideBtn(
                       'Topic',
                       'assets/images/icons/card.svg',
                       _sendTopicCard,
@@ -1103,7 +1209,7 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
     );
   }
 
-  Widget _sideBtn(String label, String svgPath, VoidCallback onTap) {
+  Widget sideBtn(String label, String svgPath, VoidCallback onTap) {
     return PressBounceBtn(
       onTap: onTap,
       child: Container(
@@ -1137,19 +1243,16 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
   }
 
   // ── Message list ──────────────────────────────────────────────────────────
-  Widget _buildMessageList(
+  Widget buildMessageList(
     AvatarState avatarState,
     ChatState chatState,
-    Map<String, AppUser> partnersMap,
-    Map<String, AvatarDecoration?> partnerDecorations,
-    Map<String, ProfileUser?> partnerProfiles,
-    Set<String> alreadyFriendUids,
+    Map<String, AvatarState> memberAvatarStates,
   ) {
     final backendMsgs = chatState.messages
-        .map((m) => _toGroupDisplay(m, chatState.currentUserId))
+        .map((m) => toGroupDisplay(m, chatState.currentUserId))
         .toList();
     final merged = <_GroupMsg>[
-      const _GroupMsg(type: _MsgType.warning, text: _kWarning),
+      _GroupMsg(type: _MsgType.warning, text: kWarning),
     ];
     int localIdx = 0;
     for (int i = 0; i <= backendMsgs.length; i++) {
@@ -1174,25 +1277,28 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
         }
         final msg = displayMessages[i];
         return switch (msg.type) {
-          _MsgType.warning => _buildWarning(msg.text),
-          _MsgType.system => _buildSystem(msg),
-          _MsgType.card => _buildCard(msg.text),
-          _MsgType.gif => _buildGifBubble(msg, avatarState, isMe: true),
-          _MsgType.gifOther => _buildGifBubble(msg, avatarState, isMe: false),
-          _ => _buildChatBubble(
+          _MsgType.warning => buildWarning(msg.text),
+          _MsgType.system => buildSystem(msg),
+          _MsgType.card => buildCard(msg.text),
+          _MsgType.gif => buildGifBubble(
             msg,
             avatarState,
-            partnersMap,
-            partnerDecorations,
-            partnerProfiles,
-            alreadyFriendUids,
+            memberAvatarStates,
+            isMe: true,
           ),
+          _MsgType.gifOther => buildGifBubble(
+            msg,
+            avatarState,
+            memberAvatarStates,
+            isMe: false,
+          ),
+          _ => buildChatBubble(msg, avatarState, memberAvatarStates),
         };
       },
     );
   }
 
-  Widget _buildWarning(String text) {
+  Widget buildWarning(String text) {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -1213,7 +1319,7 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
     );
   }
 
-  Widget _buildSystem(_GroupMsg msg) {
+  Widget buildSystem(_GroupMsg msg) {
     return Column(
       children: [
         if (msg.time != null) ...[
@@ -1248,13 +1354,10 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
     );
   }
 
-  Widget _buildChatBubble(
+  Widget buildChatBubble(
     _GroupMsg msg,
     AvatarState avatarState,
-    Map<String, AppUser> partnersMap,
-    Map<String, AvatarDecoration?> partnerDecorations,
-    Map<String, ProfileUser?> partnerProfiles,
-    Set<String> alreadyFriendUids,
+    Map<String, AvatarState> memberAvatarStates,
   ) {
     final isMe = msg.type == _MsgType.me;
     final maxW = MediaQuery.of(context).size.width * 0.60;
@@ -1269,58 +1372,42 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
         children: [
           // Avatar (others only)
           if (!isMe) ...[
-            Semantics(
-              label: 'View user profile',
-              button: true,
-              child: GestureDetector(
-                onTap: () {
-                  final partnerByName = partnersMap.values
-                      .where((u) => u.displayName == (msg.sender ?? ''))
-                      .firstOrNull;
-                  final dec = partnerByName != null
-                      ? partnerDecorations[partnerByName.uid]
-                      : null;
-                  final prof = partnerByName != null
-                      ? partnerProfiles[partnerByName.uid]
-                      : null;
-                  showDialog(
-                    context: context,
-                    builder: (_) => UserProfileDialog(
-                      username: msg.sender ?? '',
-                      initialAdded:
-                          partnerByName != null &&
-                          ((_friendRequestSent[partnerByName.uid] == true) ||
-                              alreadyFriendUids.contains(partnerByName.uid)),
-                      onAddFriend:
-                          (partnerByName != null &&
-                              !alreadyFriendUids.contains(partnerByName.uid))
-                          ? () => _sendFriendRequest(partnerByName)
-                          : null,
-                      partnerMoodOverlay:
-                          AvatarOverlays.mood[dec?.moodKey ?? ''],
-                      partnerAccessoryOverlay:
-                          AvatarOverlays.accessory[dec?.hatKey ?? ''],
-                      partnerInterest: prof?.interest,
-                    ),
-                  );
-                },
-                child: Builder(
-                  builder: (ctx) {
-                    final pByName = partnersMap.values
-                        .where((u) => u.displayName == (msg.sender ?? ''))
-                        .firstOrNull;
-                    final dec = pByName != null
-                        ? partnerDecorations[pByName.uid]
-                        : null;
-                    return LayeredAvatar(
-                      boxSize: 40,
-                      moodOverlay: AvatarOverlays.mood[dec?.moodKey ?? ''],
-                      accessoryOverlay:
-                          AvatarOverlays.accessory[dec?.hatKey ?? ''],
-                    );
-                  },
-                ),
-              ),
+            Builder(
+              builder: (ctx) {
+                final senderUid = _uidByDisplayName[msg.sender ?? ''];
+                final memberState = senderUid != null
+                    ? memberAvatarStates[senderUid]
+                    : null;
+                return GestureDetector(
+                  onTap: () => showDialog(
+                    context: ctx,
+                    builder: (_) {
+                      final profileName = senderUid != null
+                          ? (_memberNameCache[senderUid] ?? msg.sender ?? '')
+                          : (msg.sender ?? '');
+                      return UserProfileDialog(
+                        username: profileName,
+                        interest: senderUid != null
+                            ? _memberInterestCache[senderUid]
+                            : null,
+                        avatarState: memberState,
+                        uid: senderUid,
+                        initialAdded:
+                            _friendRequestSent[msg.sender ?? ''] == true,
+                        onAddFriend: () => _sendFriendRequest(msg.sender ?? ''),
+                        onCancelRequest: () =>
+                            cancelFriendRequest(msg.sender ?? ''),
+                        onReport: () => reportUser(msg.sender ?? ''),
+                      );
+                    },
+                  ),
+                  child: LayeredAvatar(
+                    boxSize: 40,
+                    moodOverlay: memberState?.mood,
+                    accessoryOverlay: memberState?.accessory,
+                  ),
+                );
+              },
             ),
             const SizedBox(width: 8),
           ],
@@ -1404,13 +1491,14 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
     );
   }
 
-  Widget _buildCard(String assetPath) {
-    return _TopicCard(assetPath: assetPath, onShuffle: _shuffleTopic);
+  Widget buildCard(String assetPath) {
+    return _TopicCard(assetPath: assetPath, onShuffle: shuffleTopic);
   }
 
-  Widget _buildGifBubble(
+  Widget buildGifBubble(
     _GroupMsg msg,
-    AvatarState avatarState, {
+    AvatarState avatarState,
+    Map<String, AvatarState> memberAvatarStates, {
     required bool isMe,
   }) {
     final maxW = MediaQuery.of(context).size.width * 0.55;
@@ -1458,7 +1546,30 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           if (!isMe) ...[
-            LayeredAvatar(boxSize: 40),
+            GestureDetector(
+              onTap: () => showDialog(
+                context: context,
+                builder: (_) {
+                  final senderUid = _uidByDisplayName[msg.sender ?? ''];
+                  return UserProfileDialog(
+                    username: msg.sender ?? '',
+                    interest: senderUid != null
+                        ? _memberInterestCache[senderUid]
+                        : null,
+                    avatarState: senderUid != null
+                        ? memberAvatarStates[senderUid]
+                        : null,
+                    uid: senderUid,
+                    initialAdded: _friendRequestSent[msg.sender ?? ''] == true,
+                    onAddFriend: () => _sendFriendRequest(msg.sender ?? ''),
+                    onCancelRequest: () =>
+                        cancelFriendRequest(msg.sender ?? ''),
+                    onReport: () => reportUser(msg.sender ?? ''),
+                  );
+                },
+              ),
+              child: LayeredAvatar(boxSize: 40),
+            ),
             const SizedBox(width: 8),
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1496,20 +1607,20 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
   }
 
   // ── Input bar ─────────────────────────────────────────────────────────────
-  Widget _buildInputBar() {
+  Widget buildInputBar() {
     return Container(
       color: const Color(0xFF6B5E5B),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (_pendingGifUrl != null) _buildGifPreview(),
-          _buildInputRow(),
+          if (_pendingGifUrl != null) buildGifPreview(),
+          buildInputRow(),
         ],
       ),
     );
   }
 
-  Widget _buildGifPreview() {
+  Widget buildGifPreview() {
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 10, 16, 0),
       padding: const EdgeInsets.all(8),
@@ -1557,7 +1668,7 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
     );
   }
 
-  Widget _buildInputRow() {
+  Widget buildInputRow() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
       child: Row(
@@ -1682,37 +1793,37 @@ class _TopicCard extends StatefulWidget {
 
 class _TopicCardState extends State<_TopicCard>
     with SingleTickerProviderStateMixin {
-  late final AnimationController _ctrl;
-  late final Animation<double> _scale;
-  late final Animation<double> _rotate;
+  late final AnimationController ctrl;
+  late final Animation<double> scale;
+  late final Animation<double> rotate;
 
   @override
   void initState() {
     super.initState();
-    _ctrl = AnimationController(
+    ctrl = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 380),
     );
-    _scale = TweenSequence([
+    scale = TweenSequence([
       TweenSequenceItem(tween: Tween(begin: 1.0, end: 0.90), weight: 35),
       TweenSequenceItem(tween: Tween(begin: 0.90, end: 1.06), weight: 40),
       TweenSequenceItem(tween: Tween(begin: 1.06, end: 1.00), weight: 25),
-    ]).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeOut));
-    _rotate = TweenSequence([
+    ]).animate(CurvedAnimation(parent: ctrl, curve: Curves.easeOut));
+    rotate = TweenSequence([
       TweenSequenceItem(tween: Tween(begin: 0.0, end: -0.04), weight: 30),
       TweenSequenceItem(tween: Tween(begin: -0.04, end: 0.04), weight: 40),
       TweenSequenceItem(tween: Tween(begin: 0.04, end: 0.0), weight: 30),
-    ]).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut));
+    ]).animate(CurvedAnimation(parent: ctrl, curve: Curves.easeInOut));
   }
 
   @override
   void dispose() {
-    _ctrl.dispose();
+    ctrl.dispose();
     super.dispose();
   }
 
-  void _handleShuffle() {
-    _ctrl.forward(from: 0);
+  void handleShuffle() {
+    ctrl.forward(from: 0);
     widget.onShuffle();
   }
 
@@ -1723,10 +1834,10 @@ class _TopicCardState extends State<_TopicCard>
         children: [
           const SizedBox(height: 8),
           AnimatedBuilder(
-            animation: _ctrl,
+            animation: ctrl,
             builder: (_, child) => Transform.rotate(
-              angle: _rotate.value,
-              child: Transform.scale(scale: _scale.value, child: child),
+              angle: rotate.value,
+              child: Transform.scale(scale: scale.value, child: child),
             ),
             child: Image.asset(
               widget.assetPath,
@@ -1744,7 +1855,7 @@ class _TopicCardState extends State<_TopicCard>
           ),
           const SizedBox(height: 8),
           PressBounceBtn(
-            onTap: _handleShuffle,
+            onTap: handleShuffle,
             scale: 0.92,
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 10),
@@ -1782,20 +1893,20 @@ class _GroupTypingIndicator extends StatefulWidget {
 
 class _GroupTypingIndicatorState extends State<_GroupTypingIndicator>
     with TickerProviderStateMixin {
-  late final List<AnimationController> _controllers;
-  late final List<Animation<double>> _anims;
+  late final List<AnimationController> controllers;
+  late final List<Animation<double>> anims;
 
   @override
   void initState() {
     super.initState();
-    _controllers = List.generate(
+    controllers = List.generate(
       3,
       (i) => AnimationController(
         vsync: this,
         duration: const Duration(milliseconds: 380),
       ),
     );
-    _anims = _controllers
+    anims = controllers
         .map(
           (c) => Tween<double>(
             begin: 0,
@@ -1803,16 +1914,16 @@ class _GroupTypingIndicatorState extends State<_GroupTypingIndicator>
           ).animate(CurvedAnimation(parent: c, curve: Curves.easeInOut)),
         )
         .toList();
-    _startLoop();
+    startLoop();
   }
 
-  Future<void> _startLoop() async {
+  Future<void> startLoop() async {
     while (mounted) {
       for (int i = 0; i < 3; i++) {
         if (!mounted) return;
-        await _controllers[i].forward();
+        await controllers[i].forward();
         if (!mounted) return;
-        await _controllers[i].reverse();
+        await controllers[i].reverse();
       }
       await Future.delayed(const Duration(milliseconds: 200));
     }
@@ -1820,7 +1931,7 @@ class _GroupTypingIndicatorState extends State<_GroupTypingIndicator>
 
   @override
   void dispose() {
-    for (final c in _controllers) {
+    for (final c in controllers) {
       c.dispose();
     }
     super.dispose();
@@ -1847,9 +1958,9 @@ class _GroupTypingIndicatorState extends State<_GroupTypingIndicator>
               children: List.generate(
                 3,
                 (i) => AnimatedBuilder(
-                  animation: _anims[i],
+                  animation: anims[i],
                   builder: (_, _) => Transform.translate(
-                    offset: Offset(0, _anims[i].value),
+                    offset: Offset(0, anims[i].value),
                     child: Container(
                       width: 7,
                       height: 7,

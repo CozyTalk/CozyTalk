@@ -37,7 +37,10 @@ export const adminGetBlockedUsers = onCall(
       };
     });
 
-    logger.info("adminGetBlockedUsers", {targetUid: uid, count: blockedUsers.length});
+    logger.info("adminGetBlockedUsers", {
+      targetUid: uid,
+      count: blockedUsers.length,
+    });
     return {blockedUsers};
   },
 );

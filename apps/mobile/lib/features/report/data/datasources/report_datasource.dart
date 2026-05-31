@@ -37,14 +37,19 @@ class ReportDatasourceImpl implements ReportDatasource {
 
     final imageUrls = await _uploadImages(sessionId, uid, contextImagePaths);
 
-    await _functions.httpsCallable('reportSession').call({
-      'sessionId': sessionId,
-      'reportedUserId': reportedUserId,
-      'reportType': reportType,
-      'reason': reason,
-      if (contextText != null) 'contextText': contextText,
-      'contextImageUrls': imageUrls,
-    });
+    await _functions
+        .httpsCallable(
+          'reportSession',
+          options: HttpsCallableOptions(timeout: const Duration(seconds: 30)),
+        )
+        .call({
+          'sessionId': sessionId,
+          'reportedUserId': reportedUserId,
+          'reportType': reportType,
+          'reason': reason,
+          if (contextText != null) 'contextText': contextText,
+          'contextImageUrls': imageUrls,
+        });
   }
 
   Future<List<String>> _uploadImages(

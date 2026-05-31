@@ -76,8 +76,8 @@ Widget _buildScreen({
       blockNotifierProvider.overrideWith(() => blockFake),
       authNotifierProvider.overrideWith(() => authFake),
       getUsersByIdsProvider.overrideWith((ref, ids) async => []),
-      partnerProfileProvider.overrideWith((ref, uid) async => null),
-      partnerDecorationProvider.overrideWith((ref, uid) async => null),
+      profileByUidProvider.overrideWith((ref, uid) async => null),
+      avatarDecorationByUidProvider.overrideWith((ref, uid) async => null),
     ],
     child: const MaterialApp(home: BlockedScreen()),
   );
