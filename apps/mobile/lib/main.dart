@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:firebase_database/firebase_database.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:firebase_remote_config/firebase_remote_config.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -41,7 +42,7 @@ import 'screens/admin_console_screen.dart';
 const _useEmulator = bool.fromEnvironment('USE_EMULATOR', defaultValue: true);
 
 // TOGGLE: flip to true for legacy UI home (design preview), false for chatroom backend testing
-const _useMainUI = false;
+const _useMainUI = true;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -69,6 +70,7 @@ void main() async {
     ).useFunctionsEmulator('127.0.0.1', 5001);
     FirebaseFirestore.instance.useFirestoreEmulator('127.0.0.1', 8080);
     FirebaseDatabase.instance.useDatabaseEmulator('127.0.0.1', 9000);
+    await FirebaseStorage.instance.useStorageEmulator('127.0.0.1', 9199);
     if (!kIsWeb) {
       await FirebaseCrashlytics.instance.setCrashlyticsCollectionEnabled(false);
     }
