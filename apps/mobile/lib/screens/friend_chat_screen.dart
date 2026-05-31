@@ -87,8 +87,8 @@ class _FriendChatScreenState extends ConsumerState<FriendChatScreen> {
     _scrollToBottom();
   }
 
-  void _sendGif(String label) {
-    _chatNotifier.sendMessage('[GIF] $label');
+  void _sendGif(String gifUrl) {
+    _chatNotifier.sendMessage(gifUrl);
     _scrollToBottom();
   }
 
@@ -485,6 +485,7 @@ class _FriendChatScreenState extends ConsumerState<FriendChatScreen> {
   // ─── Message bubble ───
   Widget _buildMessageBubble(FriendMessage message, String currentUid) {
     final isMe = message.senderId == currentUid;
+    final isGif = message.text.contains('giphy.com');
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Column(
@@ -496,7 +497,7 @@ class _FriendChatScreenState extends ConsumerState<FriendChatScreen> {
             constraints: BoxConstraints(
               maxWidth: MediaQuery.of(context).size.width * 0.65,
             ),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            clipBehavior: Clip.hardEdge,
             decoration: BoxDecoration(
               color: isMe ? const Color(0xFFF6D4E5) : const Color(0xFFDEF1C2),
               borderRadius: BorderRadius.only(
@@ -509,18 +510,44 @@ class _FriendChatScreenState extends ConsumerState<FriendChatScreen> {
                     ? const Radius.circular(4)
                     : const Radius.circular(18),
               ),
-              border: Border.all(
-                color: isMe ? const Color(0xFFF0BFD6) : const Color(0xFFC7D2B5),
-                width: 1.5,
-              ),
+              border: isGif
+                  ? null
+                  : Border.all(
+                      color: isMe
+                          ? const Color(0xFFF0BFD6)
+                          : const Color(0xFFC7D2B5),
+                      width: 1.5,
+                    ),
             ),
-            child: Text(
-              message.text,
-              style: Theme.of(context).textTheme.bodyLarge!.copyWith(
-                fontSize: 15,
-                color: Colors.black87,
-              ),
-            ),
+            child: isGif
+                ? Image.network(
+                    message.text,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, _, _) => const Padding(
+                      padding: EdgeInsets.all(12),
+                      child: Text(
+                        'GIF',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 15,
+                          color: Color(0xFF4A3228),
+                        ),
+                      ),
+                    ),
+                  )
+                : Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
+                    child: Text(
+                      message.text,
+                      style: Theme.of(context).textTheme.bodyLarge!.copyWith(
+                        fontSize: 15,
+                        color: Colors.black87,
+                      ),
+                    ),
+                  ),
           ),
           const SizedBox(height: 4),
           Text(
