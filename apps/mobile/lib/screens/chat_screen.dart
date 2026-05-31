@@ -209,7 +209,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
 
   void _sendFriendRequest(AppUser partner) {
     final friendsState = ref.read(friendsNotifierProvider);
-    if (friendsState.isLoading || _friendRequestSent) return;
+    final alreadyFriend = friendsState.friends.any(
+      (f) => f.friendUid == partner.uid,
+    );
+    if (friendsState.isLoading || _friendRequestSent || alreadyFriend) return;
     setState(() => _friendRequestSent = true);
     ref.read(friendsNotifierProvider.notifier).sendFriendRequest(partner);
     showInfoDialog(
@@ -406,6 +409,15 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
     );
     final partner = partnersAsync.value?.firstOrNull;
 
+    // True when this partner is already in the current user's friends list.
+    final isAlreadyFriend =
+        partner != null &&
+        ref.watch(
+          friendsNotifierProvider.select(
+            (s) => s.friends.any((f) => f.friendUid == partner.uid),
+          ),
+        );
+
     // Partner profile + decoration for real avatar rendering.
     final partnerDecoration = partner != null
         ? ref.watch(partnerDecorationProvider(partner.uid)).asData?.value
@@ -519,6 +531,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
                           partnerAccessoryOverlay,
                           partnerProfile?.thoughts,
                           partnerProfile?.interest,
+                          isAlreadyFriend,
                         ),
                         Expanded(
                           child: Stack(
@@ -530,6 +543,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
                                 partnerMoodOverlay,
                                 partnerAccessoryOverlay,
                                 partnerProfile?.interest,
+                                isAlreadyFriend,
                               ),
                               Positioned(
                                 top: 0,
@@ -684,6 +698,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
     AvatarOverlay? partnerAccessoryOverlay,
     String? partnerThoughts,
     String? partnerInterest,
+    bool isAlreadyFriend,
   ) {
     return SizedBox(
       height: 250,
@@ -719,10 +734,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
                       moodOverlay: partnerMoodOverlay,
                       accessoryOverlay: partnerAccessoryOverlay,
                       partnerInterest: partnerInterest,
-                      onFriendRequest: partner != null
+                      onFriendRequest: (partner != null && !isAlreadyFriend)
                           ? () => _sendFriendRequest(partner)
                           : null,
-                      friendRequestSent: _friendRequestSent,
+                      friendRequestSent: _friendRequestSent || isAlreadyFriend,
                     ),
                     const SizedBox(width: 20),
                     _StaticAvatar(
@@ -803,6 +818,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
     AvatarOverlay? partnerMoodOverlay,
     AvatarOverlay? partnerAccessoryOverlay,
     String? partnerInterest,
+    bool isAlreadyFriend,
   ) {
     final backendMsgs = chatState.messages
         .map((m) => _toDisplay(m, chatState.currentUserId))
@@ -846,6 +862,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
             partnerMoodOverlay: partnerMoodOverlay,
             partnerAccessoryOverlay: partnerAccessoryOverlay,
             partnerInterest: partnerInterest,
+            isAlreadyFriend: isAlreadyFriend,
           ),
           'card' => _buildCard(msg.text),
           'gif' => _buildGifBubble(
@@ -861,6 +878,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
             partnerMoodOverlay: partnerMoodOverlay,
             partnerAccessoryOverlay: partnerAccessoryOverlay,
             partnerInterest: partnerInterest,
+            isAlreadyFriend: isAlreadyFriend,
           ),
           _ => const SizedBox.shrink(),
         };
@@ -932,6 +950,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
     AvatarOverlay? partnerMoodOverlay,
     AvatarOverlay? partnerAccessoryOverlay,
     String? partnerInterest,
+    bool isAlreadyFriend = false,
   }) {
     final maxW = MediaQuery.of(context).size.width * 0.62;
     return Padding(
@@ -951,8 +970,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
                   context: context,
                   builder: (_) => UserProfileDialog(
                     username: partner?.displayName ?? '...',
-                    initialAdded: _friendRequestSent,
-                    onAddFriend: partner != null
+                    initialAdded: _friendRequestSent || isAlreadyFriend,
+                    onAddFriend: (partner != null && !isAlreadyFriend)
                         ? () => _sendFriendRequest(partner)
                         : null,
                     partnerMoodOverlay: partnerMoodOverlay,
@@ -1029,6 +1048,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
     AvatarOverlay? partnerMoodOverlay,
     AvatarOverlay? partnerAccessoryOverlay,
     String? partnerInterest,
+    bool isAlreadyFriend = false,
   }) {
     final maxW = MediaQuery.of(context).size.width * 0.55;
     final gifWidget = Container(
@@ -1081,8 +1101,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
                   context: context,
                   builder: (_) => UserProfileDialog(
                     username: partner?.displayName ?? '...',
-                    initialAdded: _friendRequestSent,
-                    onAddFriend: partner != null
+                    initialAdded: _friendRequestSent || isAlreadyFriend,
+                    onAddFriend: (partner != null && !isAlreadyFriend)
                         ? () => _sendFriendRequest(partner)
                         : null,
                     partnerMoodOverlay: partnerMoodOverlay,

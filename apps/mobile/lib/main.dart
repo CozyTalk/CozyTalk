@@ -72,6 +72,14 @@ void main() async {
     if (!kIsWeb) {
       await FirebaseCrashlytics.instance.setCrashlyticsCollectionEnabled(false);
     }
+    // On web the Firestore SDK keeps an IndexedDB offline cache that can
+    // return stale / empty data when the browser is restarted. Clear it at
+    // startup so all reads go straight to the emulator network.
+    if (kIsWeb) {
+      try {
+        await FirebaseFirestore.instance.clearPersistence();
+      } catch (_) {}
+    }
   } else if (!kIsWeb) {
     FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
     PlatformDispatcher.instance.onError = (error, stack) {

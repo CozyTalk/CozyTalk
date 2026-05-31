@@ -284,7 +284,12 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
   void _sendFriendRequest(AppUser partner) {
     final uid = partner.uid;
     final friendsState = ref.read(friendsNotifierProvider);
-    if (friendsState.isLoading || _friendRequestSent[uid] == true) return;
+    final alreadyFriend = friendsState.friends.any((f) => f.friendUid == uid);
+    if (friendsState.isLoading ||
+        _friendRequestSent[uid] == true ||
+        alreadyFriend) {
+      return;
+    }
     setState(() => _friendRequestSent[uid] = true);
     ref.read(friendsNotifierProvider.notifier).sendFriendRequest(partner);
     showInfoDialog(
@@ -503,6 +508,13 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
       for (final u in (partnersAsync.value ?? <AppUser>[])) u.uid: u,
     };
 
+    // UIDs that are already friends with the current user.
+    final alreadyFriendUids = ref.watch(
+      friendsNotifierProvider.select(
+        (s) => s.friends.map((f) => f.friendUid).toSet(),
+      ),
+    );
+
     // Per-partner decoration + profile for real avatar rendering.
     final Map<String, AvatarDecoration?> partnerDecorations = {
       for (final uid in partnerUids)
@@ -616,6 +628,7 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
                           partnersMap,
                           partnerDecorations,
                           partnerProfiles,
+                          alreadyFriendUids,
                         ),
                         Expanded(
                           child: Stack(
@@ -626,6 +639,7 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
                                 partnersMap,
                                 partnerDecorations,
                                 partnerProfiles,
+                                alreadyFriendUids,
                               ),
                               Positioned(
                                 top: 0,
@@ -678,8 +692,12 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
                           memberUids: roomUsers,
                           onClose: _closePanel,
                           avatarState: avatarState,
-                          friendRequestSent: _friendRequestSent,
+                          friendRequestSent: {
+                            ..._friendRequestSent,
+                            for (final uid in alreadyFriendUids) uid: true,
+                          },
                           onAddFriend: (uid) {
+                            if (alreadyFriendUids.contains(uid)) return;
                             final p = partnersMap[uid];
                             if (p != null) _sendFriendRequest(p);
                           },
@@ -890,6 +908,7 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
     Map<String, AppUser> partnersMap,
     Map<String, AvatarDecoration?> partnerDecorations,
     Map<String, ProfileUser?> partnerProfiles,
+    Set<String> alreadyFriendUids,
   ) {
     final count = members.length.clamp(1, 5);
     final preset = _layouts[count];
@@ -990,8 +1009,17 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
                                   initialAdded:
                                       !isMe &&
                                       memberUid != null &&
-                                      (_friendRequestSent[memberUid] == true),
-                                  onAddFriend: (!isMe && partner != null)
+                                      ((_friendRequestSent[memberUid] ==
+                                              true) ||
+                                          alreadyFriendUids.contains(
+                                            memberUid,
+                                          )),
+                                  onAddFriend:
+                                      (!isMe &&
+                                          partner != null &&
+                                          !(alreadyFriendUids.contains(
+                                            memberUid,
+                                          )))
                                       ? () => _sendFriendRequest(partner)
                                       : null,
                                   partnerMoodOverlay: isMe
@@ -1118,6 +1146,7 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
     Map<String, AppUser> partnersMap,
     Map<String, AvatarDecoration?> partnerDecorations,
     Map<String, ProfileUser?> partnerProfiles,
+    Set<String> alreadyFriendUids,
   ) {
     final backendMsgs = chatState.messages
         .map((m) => _toGroupDisplay(m, chatState.currentUserId))
@@ -1159,6 +1188,7 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
             partnersMap,
             partnerDecorations,
             partnerProfiles,
+            alreadyFriendUids,
           ),
         };
       },
@@ -1227,6 +1257,7 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
     Map<String, AppUser> partnersMap,
     Map<String, AvatarDecoration?> partnerDecorations,
     Map<String, ProfileUser?> partnerProfiles,
+    Set<String> alreadyFriendUids,
   ) {
     final isMe = msg.type == _MsgType.me;
     final maxW = MediaQuery.of(context).size.width * 0.60;
@@ -1261,8 +1292,11 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
                       username: msg.sender ?? '',
                       initialAdded:
                           partnerByName != null &&
-                          (_friendRequestSent[partnerByName.uid] == true),
-                      onAddFriend: partnerByName != null
+                          ((_friendRequestSent[partnerByName.uid] == true) ||
+                              alreadyFriendUids.contains(partnerByName.uid)),
+                      onAddFriend:
+                          (partnerByName != null &&
+                              !alreadyFriendUids.contains(partnerByName.uid))
                           ? () => _sendFriendRequest(partnerByName)
                           : null,
                       partnerMoodOverlay:
