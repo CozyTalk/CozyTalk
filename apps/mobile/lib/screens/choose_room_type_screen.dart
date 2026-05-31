@@ -332,7 +332,9 @@ class _ChooseRoomTypeScreenState extends ConsumerState<ChooseRoomTypeScreen> {
                             const SizedBox(width: 8),
                             Text(
                               'User online ~ $onlineCount',
-                              style: const TextStyle(fontWeight: FontWeight.w600),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
                           ],
                         ),

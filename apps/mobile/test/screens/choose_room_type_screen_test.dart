@@ -6,9 +6,7 @@ import 'package:mobile/screens/choose_room_type_screen.dart';
 
 Widget _buildScreen() {
   return ProviderScope(
-    overrides: [
-      onlineCountProvider.overrideWith((ref) => Stream.value(0)),
-    ],
+    overrides: [onlineCountProvider.overrideWith((ref) => Stream.value(0))],
     child: const MaterialApp(home: ChooseRoomTypeScreen()),
   );
 }
