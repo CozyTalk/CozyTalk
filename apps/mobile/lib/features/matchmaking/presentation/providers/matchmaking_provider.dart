@@ -179,9 +179,16 @@ class MatchmakingNotifier extends Notifier<MatchmakingState> {
         interestText: interest,
         backgroundTheme: state.backgroundTheme,
       );
+      final initialRoom = await _fetchRoom(result.roomId);
+      if (state.status != MatchmakingStatus.searching) {
+        // User cancelled while we were fetching — leave the room we already joined.
+        ref.read(_leaveRoomProvider)(result.roomId).catchError((_) async {});
+        return;
+      }
       state = state.copyWith(
         status: MatchmakingStatus.matched,
         roomId: result.roomId,
+        currentRoom: initialRoom,
         isNewRoom: result.isNewRoom,
         error: null,
       );
@@ -210,9 +217,15 @@ class MatchmakingNotifier extends Notifier<MatchmakingState> {
       final roomId = await ref
           .read(_createCustomRoomProvider)
           .call(backgroundTheme: state.backgroundTheme);
+      final initialRoom = await _fetchRoom(roomId);
+      if (state.status != MatchmakingStatus.creating) {
+        ref.read(_leaveRoomProvider)(roomId).catchError((_) async {});
+        return;
+      }
       state = state.copyWith(
         status: MatchmakingStatus.matched,
         roomId: roomId,
+        currentRoom: initialRoom,
         isNewRoom: false,
         error: null,
       );
@@ -239,9 +252,15 @@ class MatchmakingNotifier extends Notifier<MatchmakingState> {
     );
     try {
       final result = await ref.read(_joinRoomByIdProvider)(roomId);
+      final initialRoom = await _fetchRoom(result.roomId);
+      if (state.status != MatchmakingStatus.searching) {
+        ref.read(_leaveRoomProvider)(result.roomId).catchError((_) async {});
+        return;
+      }
       state = state.copyWith(
         status: MatchmakingStatus.matched,
         roomId: result.roomId,
+        currentRoom: initialRoom,
         isNewRoom: false,
         error: null,
       );
@@ -427,7 +446,7 @@ class MatchmakingNotifier extends Notifier<MatchmakingState> {
   void _subscribeToMatch(String uid, {String? skipRoomId}) {
     _matchSub?.cancel();
     _matchSub = ref.read(_watch1v1MatchProvider)(uid).listen(
-      (roomId) {
+      (roomId) async {
         if (roomId == null) return;
         // Skip the old room — the pool entry hasn't been updated yet by the
         // backend. Once it flips to 'waiting' the stream emits null, and the
@@ -441,10 +460,14 @@ class MatchmakingNotifier extends Notifier<MatchmakingState> {
             .read(_matchmakingDatasourceProvider)
             .registerRoomPresence(roomId)
             .catchError((_) {});
+        final initialRoom = await _fetchRoom(roomId);
+        // Guard: user may have cancelled while we were fetching.
+        if (state.status != MatchmakingStatus.waiting1v1) return;
         _subscribeToRoom(roomId);
         state = state.copyWith(
           status: MatchmakingStatus.matched,
           roomId: roomId,
+          currentRoom: initialRoom,
           isNewRoom: false,
           error: null,
         );
@@ -454,6 +477,20 @@ class MatchmakingNotifier extends Notifier<MatchmakingState> {
         error: _message(e),
       ),
     );
+  }
+
+  // One-shot Firestore read so currentRoom (incl. backgroundTheme) is populated
+  // before the matched state is broadcast to listeners. Falls back to null on
+  // any error so a fetch failure is never fatal.
+  Future<Room?> _fetchRoom(String roomId) async {
+    try {
+      return await ref
+          .read(_watchRoomProvider)(roomId)
+          .first
+          .timeout(const Duration(seconds: 5));
+    } catch (_) {
+      return null;
+    }
   }
 
   void _cancelSubscriptions() {

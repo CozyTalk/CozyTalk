@@ -53,6 +53,13 @@ final profileNotifierProvider = NotifierProvider<ProfileNotifier, ProfileState>(
   ProfileNotifier.new,
 );
 
+/// Loads any user's profile by UID without disturbing [profileNotifierProvider].
+/// Auto-disposes when no longer watched.
+final profileByUidProvider = FutureProvider.autoDispose
+    .family<ProfileUser?, String>(
+      (ref, uid) => ref.read(_getProfileProvider)(uid),
+    );
+
 const _sentinel = Object();
 
 class ProfileState {

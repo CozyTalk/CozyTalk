@@ -24,6 +24,7 @@ import '../shared/info_dialog.dart';
 import '../features/friends/domain/entities/app_user.dart';
 import '../features/friends/presentation/providers/friends_provider.dart';
 import '../features/profile/presentation/providers/profile_provider.dart';
+import '../shared/background_theme.dart';
 
 // ── Card assets ────────────────────────────────────────────────────────────
 const _cardAssets = [
@@ -126,6 +127,12 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
   // Accumulates uid→displayName from messages + typing events so names persist
   // even before a member sends their first message.
   final Map<String, String> _memberNameCache = {};
+  // uid→interest loaded from Firestore profiles.
+  final Map<String, String> _memberInterestCache = {};
+  // uid→thoughts (status message) loaded from Firestore profiles.
+  final Map<String, String> _memberThoughtsCache = {};
+  // displayName→uid reverse index so bubble taps can resolve interest.
+  final Map<String, String> _uidByDisplayName = {};
   // Pending hop-in UIDs whose display names aren't known yet.
   // Key = uid, value = seq (message count) at the moment they were detected,
   // so the hop-in bubble is inserted at the right position once the name arrives.
@@ -172,6 +179,11 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
       if (ref.read(avatarDecorationNotifierProvider).decoration == null) {
         ref.read(avatarDecorationNotifierProvider.notifier).load(authUser.uid);
       }
+      // Load profiles for all members already in the room.
+      final initialUsers =
+          ref.read(matchmakingNotifierProvider).currentRoom?.users ?? [];
+      if (initialUsers.isNotEmpty) _loadMemberProfiles(initialUsers);
+
       // Load own profile (ensures latest data after any edits) then snapshot
       ref.read(profileNotifierProvider.notifier).load(authUser.uid).then((_) {
         if (!mounted) return;
@@ -185,6 +197,21 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
           if (own?.displayName?.isNotEmpty == true) {
             _myDisplayName = own!.displayName!;
             changed = true;
+            // Flush a deferred self hop-in that was parked because _myDisplayName
+            // was empty when the currentRoom.users listener first fired.
+            // _loadMemberProfiles skips self, and the message/typing listeners
+            // gate on _memberInterestCache which is never set for self, so this
+            // is the only path that can resolve a pending self hop-in.
+            if (_pendingJoinUids.containsKey(authUser.uid)) {
+              _localMessages.add((
+                msg: _GroupMsg(
+                  type: _MsgType.system,
+                  text: '$_myDisplayName hop in',
+                ),
+                seq: _pendingJoinUids[authUser.uid]!,
+              ));
+              _pendingJoinUids.remove(authUser.uid);
+            }
           }
           if (own?.interest?.isNotEmpty == true) {
             _myInterest = own!.interest!;
@@ -231,6 +258,43 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
     _songCtrl.reverse().then((_) {
       if (mounted) setState(() => _songPanelOpen = false);
     });
+  }
+
+  // Fetches Firestore profiles for the given UIDs and populates the interest
+  // and reverse-name caches. Always prefers the profile username over any
+  // auth display name that may have arrived via messages first.
+  Future<void> _loadMemberProfiles(List<String> uids) async {
+    if (!mounted) return;
+    final myUid = ref.read(authNotifierProvider).user?.uid ?? '';
+    for (final uid in uids) {
+      // Re-check before every ref.read — the widget may be disposed between
+      // iterations because each profileByUidProvider await suspends the loop.
+      if (!mounted) return;
+      if (uid == myUid || _memberInterestCache.containsKey(uid)) continue;
+      try {
+        final profile = await ref.read(profileByUidProvider(uid).future);
+        if (!mounted || profile == null) continue;
+        final name = profile.displayName ?? '';
+        setState(() {
+          _memberInterestCache[uid] = profile.interest ?? '';
+          _memberThoughtsCache[uid] = profile.thoughts ?? '';
+          if (name.isNotEmpty) {
+            // Always overwrite with profile username — it's the value the user
+            // set intentionally, unlike the auth display name (often a Gmail).
+            _memberNameCache[uid] = name;
+            _uidByDisplayName[name] = uid;
+            // Flush any hop-in that was waiting for this member's name.
+            if (_pendingJoinUids.containsKey(uid)) {
+              _localMessages.add((
+                msg: _GroupMsg(type: _MsgType.system, text: '$name hop in'),
+                seq: _pendingJoinUids[uid]!,
+              ));
+              _pendingJoinUids.remove(uid);
+            }
+          }
+        });
+      } catch (_) {}
+    }
   }
 
   void _scrollToBottom() {
@@ -447,9 +511,6 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
     final args =
         ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
     final roomName = args?['roomName'] as String? ?? 'Koh Tapu';
-    final roomId = args?['roomId'] as String? ?? 'ABP8C';
-    final bgImage =
-        args?['bgImage'] as String? ?? 'assets/images/backgrounds/kao_tapu.png';
     final maxMembers = args?['maxMembers'] as int? ?? 5;
 
     final decoState = ref.watch(avatarDecorationNotifierProvider);
@@ -460,6 +521,11 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
     final chatState = ref.watch(chatNotifierProvider);
     final roomType = args?['roomType'] as String?;
     final matchState = ref.watch(matchmakingNotifierProvider);
+    final roomId = matchState.roomId ?? args?['roomId'] as String? ?? 'ABP8C';
+    final bgImage =
+        backgroundThemeAsset(matchState.currentRoom?.backgroundTheme) ??
+        args?['bgImage'] as String? ??
+        'assets/images/backgrounds/kao_tapu.png';
     final isLocked = matchState.currentRoom?.isLocked ?? (roomType == 'create');
 
     final myUid =
@@ -469,6 +535,7 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
     final myDisplayName = _myDisplayName.isNotEmpty
         ? _myDisplayName
         : (ref.watch(authNotifierProvider).user?.displayName ?? '');
+
     final roomUsers = matchState.currentRoom?.users ?? [];
     final members = roomUsers.isEmpty
         ? ['Me']
@@ -478,6 +545,28 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
                     uid == myUid ? 'Me' : (_memberNameCache[uid] ?? 'User'),
               )
               .toList();
+
+    // Load each non-self member's avatar decoration reactively. The provider
+    // is autoDispose+family so each slot is independent and cleans up on leave.
+    final memberAvatarStates = <String, AvatarState>{};
+    // Display-name keyed variant for MembersPanelBody (which works with names).
+    final memberAvatarByName = <String, AvatarState>{};
+    for (final uid in roomUsers) {
+      final displayName = uid == myUid
+          ? 'Me'
+          : (_memberNameCache[uid] ?? 'User');
+      if (uid == myUid) {
+        memberAvatarByName[displayName] = avatarState;
+        continue;
+      }
+      final deco = ref.watch(avatarDecorationByUidProvider(uid)).asData?.value;
+      final state = AvatarState(
+        mood: AvatarOverlays.mood[deco?.moodKey ?? ''],
+        accessory: AvatarOverlays.accessory[deco?.hatKey ?? ''],
+      );
+      memberAvatarStates[uid] = state;
+      memberAvatarByName[displayName] = state;
+    }
 
     ref.listen(chatNotifierProvider.select((s) => s.status), (_, next) {
       if (next == SessionStatus.disconnected) {
@@ -490,16 +579,24 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
     ref.listen(chatNotifierProvider.select((s) => s.messages), (_, msgs) {
       bool changed = false;
       for (final m in msgs) {
+        // Skip email-like strings — Firebase Auth may use the Gmail address as
+        // the displayName before the user sets a profile username. The profile
+        // load (which always wins) will overwrite with the real username once
+        // it arrives. Showing 'User' is better than showing an email address.
         if (m.senderId != myUid &&
             m.displayName.isNotEmpty &&
-            _memberNameCache[m.senderId] != m.displayName) {
+            !m.displayName.contains('@') &&
+            !_memberInterestCache.containsKey(m.senderId)) {
           _memberNameCache[m.senderId] = m.displayName;
+          _uidByDisplayName[m.displayName] = m.senderId;
           changed = true;
         }
       }
       for (final uid in List<String>.from(_pendingJoinUids.keys)) {
         final name = _memberNameCache[uid];
-        if (name != null && name.isNotEmpty) {
+        if (name != null &&
+            name.isNotEmpty &&
+            _memberInterestCache.containsKey(uid)) {
           _localMessages.add((
             msg: _GroupMsg(type: _MsgType.system, text: '$name hop in'),
             seq: _pendingJoinUids[uid]!,
@@ -517,14 +614,18 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
       bool changed = false;
       for (final u in users) {
         if (u.displayName.isNotEmpty &&
-            _memberNameCache[u.uid] != u.displayName) {
+            !u.displayName.contains('@') &&
+            !_memberInterestCache.containsKey(u.uid)) {
           _memberNameCache[u.uid] = u.displayName;
+          _uidByDisplayName[u.displayName] = u.uid;
           changed = true;
         }
       }
       for (final uid in List<String>.from(_pendingJoinUids.keys)) {
         final name = _memberNameCache[uid];
-        if (name != null && name.isNotEmpty) {
+        if (name != null &&
+            name.isNotEmpty &&
+            _memberInterestCache.containsKey(uid)) {
           _localMessages.add((
             msg: _GroupMsg(type: _MsgType.system, text: '$name hop in'),
             seq: _pendingJoinUids[uid]!,
@@ -536,28 +637,60 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
       if (changed) setState(() {});
     });
 
-    // Detect new members joining and show a "hop in" system bubble.
+    // Detect new members joining (including self) and show hop-in bubbles.
+    // Self is included so the current user sees their own name appear when they
+    // first enter the room, and sees pre-existing members' names too (the
+    // listener fires with prevSet = {} on the initial users snapshot).
     ref.listen(
       matchmakingNotifierProvider.select(
         (s) => s.currentRoom?.users ?? const <String>[],
       ),
       (prev, next) {
         final prevSet = (prev ?? const []).toSet();
-        final newUids = next.where(
-          (uid) => uid != myUid && !prevSet.contains(uid),
-        );
+        final newUidList = next.where((uid) => !prevSet.contains(uid)).toList();
+        if (newUidList.isEmpty) return;
+        // Load Firestore profiles for non-self newcomers so interest/thoughts
+        // are available on tap and the correct username overwrites any interim
+        // auth display name.
+        _loadMemberProfiles(newUidList.where((uid) => uid != myUid).toList());
         bool changed = false;
-        for (final uid in newUids) {
-          final name = _memberNameCache[uid];
+        for (final uid in newUidList) {
           final seq = ref.read(chatNotifierProvider).messages.length;
-          if (name != null && name.isNotEmpty) {
-            _localMessages.add((
-              msg: _GroupMsg(type: _MsgType.system, text: '$name hop in'),
-              seq: seq,
-            ));
-            changed = true;
+          if (uid == myUid) {
+            // Own hop-in. Prefer _myDisplayName (Firestore profile — always
+            // reflects the latest username change). Firebase Auth displayName
+            // is NOT updated by updateDisplayName, so it may be stale or null
+            // for anonymous users. If neither is ready, park in _pendingJoinUids
+            // so the initState profile-load callback can flush it with the
+            // correct, fresh name.
+            final name = _myDisplayName.isNotEmpty ? _myDisplayName : '';
+            if (name.isNotEmpty) {
+              _localMessages.add((
+                msg: _GroupMsg(type: _MsgType.system, text: '$name hop in'),
+                seq: seq,
+              ));
+              changed = true;
+            } else {
+              _pendingJoinUids[uid] = seq;
+            }
           } else {
-            _pendingJoinUids[uid] = seq;
+            final name = _memberNameCache[uid];
+            // Only show hop-in immediately when we already have the profile
+            // username (indicated by _memberInterestCache having an entry).
+            // Otherwise park in _pendingJoinUids; _loadMemberProfiles will
+            // flush it once the Firestore profile arrives, ensuring we never
+            // display a Gmail / auth display-name.
+            if (name != null &&
+                name.isNotEmpty &&
+                _memberInterestCache.containsKey(uid)) {
+              _localMessages.add((
+                msg: _GroupMsg(type: _MsgType.system, text: '$name hop in'),
+                seq: seq,
+              ));
+              changed = true;
+            } else {
+              _pendingJoinUids[uid] = seq;
+            }
           }
         }
         if (changed) {
@@ -615,11 +748,17 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
                           myDisplayName,
                           members,
                           _myInterest,
+                          roomUsers,
+                          memberAvatarStates,
                         ),
                         Expanded(
                           child: Stack(
                             children: [
-                              _buildMessageList(avatarState, chatState),
+                              _buildMessageList(
+                                avatarState,
+                                chatState,
+                                memberAvatarStates,
+                              ),
                               Positioned(
                                 top: 0,
                                 left: 0,
@@ -672,6 +811,7 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
                           onAddFriend: _sendFriendRequest,
                           onCancelRequest: _cancelFriendRequest,
                           onReport: _reportUser,
+                          memberAvatarStates: memberAvatarByName,
                         ),
                       ),
                     ),
@@ -864,6 +1004,8 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
     String myDisplayName,
     List<String> members,
     String myInterest,
+    List<String> roomUsers,
+    Map<String, AvatarState> memberAvatarStates,
   ) {
     final count = members.length.clamp(1, 5);
     final preset = _layouts[count];
@@ -916,8 +1058,14 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
                 final username = members[i];
                 final isMe = username == 'Me';
                 final displayName = isMe ? myDisplayName : username;
-                // TODO: load each non-self member's thoughts from their Firestore profile
-                final thought = isMe ? _myThoughts : 'Care to share?';
+                final memberUid = i < roomUsers.length ? roomUsers[i] : null;
+                final thought = isMe
+                    ? _myThoughts
+                    : (memberUid != null &&
+                              _memberThoughtsCache[memberUid]?.isNotEmpty ==
+                                  true
+                          ? _memberThoughtsCache[memberUid]!
+                          : 'Care to share?');
                 final rawScale = pos.size / 90;
                 final scale = rawScale.clamp(0.78, 1.0);
                 final bubbleW = 84 * scale;
@@ -941,7 +1089,11 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
                               builder: (_) => UserProfileDialog(
                                 username: displayName,
                                 isMe: isMe,
-                                interest: isMe ? myInterest : null,
+                                interest: isMe
+                                    ? myInterest
+                                    : (memberUid != null
+                                          ? _memberInterestCache[memberUid]
+                                          : null),
                                 initialAdded:
                                     !isMe &&
                                     (_friendRequestSent[displayName] == true),
@@ -954,14 +1106,27 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
                                 onReport: isMe
                                     ? null
                                     : () => _reportUser(displayName),
+                                avatarState: isMe
+                                    ? avatarState
+                                    : (memberUid != null
+                                          ? memberAvatarStates[memberUid]
+                                          : null),
+                                uid: isMe ? null : memberUid,
                               ),
                             ),
                             child: LayeredAvatar(
                               boxSize: pos.size,
-                              moodOverlay: isMe ? avatarState.mood : null,
+                              moodOverlay: isMe
+                                  ? avatarState.mood
+                                  : (memberUid != null
+                                        ? memberAvatarStates[memberUid]?.mood
+                                        : null),
                               accessoryOverlay: isMe
                                   ? avatarState.accessory
-                                  : null,
+                                  : (memberUid != null
+                                        ? memberAvatarStates[memberUid]
+                                              ?.accessory
+                                        : null),
                             ),
                           ),
                         ),
@@ -1057,7 +1222,11 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
   }
 
   // ── Message list ──────────────────────────────────────────────────────────
-  Widget _buildMessageList(AvatarState avatarState, ChatState chatState) {
+  Widget _buildMessageList(
+    AvatarState avatarState,
+    ChatState chatState,
+    Map<String, AvatarState> memberAvatarStates,
+  ) {
     final backendMsgs = chatState.messages
         .map((m) => _toGroupDisplay(m, chatState.currentUserId))
         .toList();
@@ -1090,9 +1259,19 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
           _MsgType.warning => _buildWarning(msg.text),
           _MsgType.system => _buildSystem(msg),
           _MsgType.card => _buildCard(msg.text),
-          _MsgType.gif => _buildGifBubble(msg, avatarState, isMe: true),
-          _MsgType.gifOther => _buildGifBubble(msg, avatarState, isMe: false),
-          _ => _buildChatBubble(msg, avatarState),
+          _MsgType.gif => _buildGifBubble(
+            msg,
+            avatarState,
+            memberAvatarStates,
+            isMe: true,
+          ),
+          _MsgType.gifOther => _buildGifBubble(
+            msg,
+            avatarState,
+            memberAvatarStates,
+            isMe: false,
+          ),
+          _ => _buildChatBubble(msg, avatarState, memberAvatarStates),
         };
       },
     );
@@ -1148,7 +1327,11 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
     );
   }
 
-  Widget _buildChatBubble(_GroupMsg msg, AvatarState avatarState) {
+  Widget _buildChatBubble(
+    _GroupMsg msg,
+    AvatarState avatarState,
+    Map<String, AvatarState> memberAvatarStates,
+  ) {
     final isMe = msg.type == _MsgType.me;
     final maxW = MediaQuery.of(context).size.width * 0.60;
 
@@ -1165,13 +1348,27 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
             GestureDetector(
               onTap: () => showDialog(
                 context: context,
-                builder: (_) => UserProfileDialog(
-                  username: msg.sender ?? '',
-                  initialAdded: _friendRequestSent[msg.sender ?? ''] == true,
-                  onAddFriend: () => _sendFriendRequest(msg.sender ?? ''),
-                  onCancelRequest: () => _cancelFriendRequest(msg.sender ?? ''),
-                  onReport: () => _reportUser(msg.sender ?? ''),
-                ),
+                builder: (_) {
+                  final senderUid = _uidByDisplayName[msg.sender ?? ''];
+                  final profileName = senderUid != null
+                      ? (_memberNameCache[senderUid] ?? msg.sender ?? '')
+                      : (msg.sender ?? '');
+                  return UserProfileDialog(
+                    username: profileName,
+                    interest: senderUid != null
+                        ? _memberInterestCache[senderUid]
+                        : null,
+                    avatarState: senderUid != null
+                        ? memberAvatarStates[senderUid]
+                        : null,
+                    uid: senderUid,
+                    initialAdded: _friendRequestSent[msg.sender ?? ''] == true,
+                    onAddFriend: () => _sendFriendRequest(msg.sender ?? ''),
+                    onCancelRequest: () =>
+                        _cancelFriendRequest(msg.sender ?? ''),
+                    onReport: () => _reportUser(msg.sender ?? ''),
+                  );
+                },
               ),
               child: LayeredAvatar(boxSize: 40),
             ),
@@ -1260,7 +1457,8 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
 
   Widget _buildGifBubble(
     _GroupMsg msg,
-    AvatarState avatarState, {
+    AvatarState avatarState,
+    Map<String, AvatarState> memberAvatarStates, {
     required bool isMe,
   }) {
     final maxW = MediaQuery.of(context).size.width * 0.55;
@@ -1308,13 +1506,24 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
             GestureDetector(
               onTap: () => showDialog(
                 context: context,
-                builder: (_) => UserProfileDialog(
-                  username: msg.sender ?? '',
-                  initialAdded: _friendRequestSent[msg.sender ?? ''] == true,
-                  onAddFriend: () => _sendFriendRequest(msg.sender ?? ''),
-                  onCancelRequest: () => _cancelFriendRequest(msg.sender ?? ''),
-                  onReport: () => _reportUser(msg.sender ?? ''),
-                ),
+                builder: (_) {
+                  final senderUid = _uidByDisplayName[msg.sender ?? ''];
+                  return UserProfileDialog(
+                    username: msg.sender ?? '',
+                    interest: senderUid != null
+                        ? _memberInterestCache[senderUid]
+                        : null,
+                    avatarState: senderUid != null
+                        ? memberAvatarStates[senderUid]
+                        : null,
+                    uid: senderUid,
+                    initialAdded: _friendRequestSent[msg.sender ?? ''] == true,
+                    onAddFriend: () => _sendFriendRequest(msg.sender ?? ''),
+                    onCancelRequest: () =>
+                        _cancelFriendRequest(msg.sender ?? ''),
+                    onReport: () => _reportUser(msg.sender ?? ''),
+                  );
+                },
               ),
               child: LayeredAvatar(boxSize: 40),
             ),

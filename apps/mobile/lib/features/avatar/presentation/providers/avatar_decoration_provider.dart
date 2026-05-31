@@ -50,6 +50,14 @@ final avatarDecorationNotifierProvider =
       AvatarDecorationNotifier.new,
     );
 
+/// Loads any user's avatar decoration by UID without disturbing
+/// [avatarDecorationNotifierProvider]. Auto-disposes when no longer watched.
+final avatarDecorationByUidProvider = FutureProvider.autoDispose
+    .family<AvatarDecoration?, String>((ref, uid) async {
+      if (uid.isEmpty) return null;
+      return ref.read(_getAvatarDecorationProvider)(uid);
+    });
+
 enum AvatarDecorationStatus { idle, loading, saving, error }
 
 const _sentinel = Object();

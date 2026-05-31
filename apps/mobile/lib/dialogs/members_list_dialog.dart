@@ -17,6 +17,10 @@ class MembersPanelBody extends StatelessWidget {
   final void Function(String name) onCancelRequest;
   final void Function(String name)? onReport;
 
+  /// Per-member avatar overlays keyed by the same display-name strings in
+  /// [members]. Entries for the current user override [avatarState].
+  final Map<String, AvatarState> memberAvatarStates;
+
   const MembersPanelBody({
     super.key,
     required this.members,
@@ -27,6 +31,7 @@ class MembersPanelBody extends StatelessWidget {
     this.currentUser = 'Me',
     this.avatarState = const AvatarState(),
     this.friendRequestSent = const {},
+    this.memberAvatarStates = const {},
   });
 
   @override
@@ -63,13 +68,17 @@ class MembersPanelBody extends StatelessWidget {
         children: [
           ClipRRect(
             borderRadius: BorderRadius.circular(12),
-            child: isMe
-                ? LayeredAvatar(
-                    boxSize: 46,
-                    moodOverlay: avatarState.mood,
-                    accessoryOverlay: avatarState.accessory,
-                  )
-                : LayeredAvatar(boxSize: 46),
+            child: LayeredAvatar(
+              boxSize: 46,
+              moodOverlay:
+                  (memberAvatarStates[name] ??
+                          (isMe ? avatarState : const AvatarState()))
+                      .mood,
+              accessoryOverlay:
+                  (memberAvatarStates[name] ??
+                          (isMe ? avatarState : const AvatarState()))
+                      .accessory,
+            ),
           ),
           const SizedBox(width: 14),
           Expanded(

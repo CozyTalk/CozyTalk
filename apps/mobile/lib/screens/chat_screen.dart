@@ -24,6 +24,7 @@ import '../features/avatar/presentation/providers/avatar_decoration_provider.dar
 import '../features/friends/domain/entities/app_user.dart';
 import '../features/friends/presentation/providers/friends_provider.dart';
 import '../features/profile/presentation/providers/profile_provider.dart';
+import '../shared/background_theme.dart';
 
 // ── Card assets ────────────────────────────────────────────────────────────
 const _cardAssets = [
@@ -136,9 +137,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
           }
           if (changed) setState(() {});
         }
-        if (_partnerUid != null && _partnerUid!.isNotEmpty) {
-          ref.read(profileNotifierProvider.notifier).load(_partnerUid!);
-        }
+        // Partner profile is loaded reactively via profileByUidProvider(_partnerUid)
+        // in build() — no explicit load() needed here.
       });
     });
     // TODO: show real incoming friend message popup from friendChatNotifierProvider
@@ -336,8 +336,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
     final args =
         ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
     final roomName = args?['roomName'] as String? ?? 'Red Lotus Lake';
-    final roomId = args?['roomId'] as String? ?? 'AWD3V';
+    final matchState = ref.watch(matchmakingNotifierProvider);
+    final roomId = matchState.roomId ?? args?['roomId'] as String? ?? 'AWD3V';
     final bgImage =
+        backgroundThemeAsset(matchState.currentRoom?.backgroundTheme) ??
         args?['bgImage'] as String? ??
         'assets/images/backgrounds/red_lotus_lake.png';
     final blocked = args?['isBlocked'] as bool? ?? _isBlocked;
@@ -348,22 +350,26 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
       accessory: AvatarOverlays.accessory[decoState.decoration?.hatKey ?? ''],
     );
     final chatState = ref.watch(chatNotifierProvider);
-    final profileState = ref.watch(profileNotifierProvider);
-    final isPartnerProfileLoaded = profileState.profile?.uid == _partnerUid;
-    final partnerName = isPartnerProfileLoaded
-        ? (profileState.profile?.displayName ??
-              _findPartnerDisplayName(chatState) ??
-              '')
+    // Partner profile lives in its own auto-disposing slot to avoid racing with
+    // the shared profileNotifierProvider that own-profile editing uses.
+    final partnerProfile = _partnerUid != null
+        ? ref.watch(profileByUidProvider(_partnerUid!)).asData?.value
+        : null;
+    final partnerName = partnerProfile?.displayName?.isNotEmpty == true
+        ? partnerProfile!.displayName!
         : (_findPartnerDisplayName(chatState) ?? '');
-    final partnerThought = isPartnerProfileLoaded
-        ? (profileState.profile?.thoughts ?? 'Care to share?')
-        : 'Care to share?';
+    final partnerThought = partnerProfile?.thoughts ?? 'Care to share?';
     final myUsername = _myDisplayName.isNotEmpty
         ? _myDisplayName
         : (ref.watch(authNotifierProvider).user?.displayName ?? '');
-    final partnerInterest = isPartnerProfileLoaded
-        ? (profileState.profile?.interest ?? '')
-        : '';
+    final partnerInterest = partnerProfile?.interest ?? '';
+    final partnerDecoration = _partnerUid != null
+        ? ref.watch(avatarDecorationByUidProvider(_partnerUid!)).asData?.value
+        : null;
+    final partnerAvatarState = AvatarState(
+      mood: AvatarOverlays.mood[partnerDecoration?.moodKey ?? ''],
+      accessory: AvatarOverlays.accessory[partnerDecoration?.hatKey ?? ''],
+    );
 
     ref.listen(chatNotifierProvider.select((s) => s.status), (_, next) {
       if (next == SessionStatus.disconnected) {
@@ -371,18 +377,18 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
       }
     });
 
-    // Fallback: load partner profile if currentRoom became available after initState
+    // Fallback: set _partnerUid if currentRoom arrived after initState or changed.
+    // profileByUidProvider(_partnerUid) in build() reacts automatically on setState.
     ref.listen(matchmakingNotifierProvider.select((s) => s.currentRoom), (
       _,
       room,
     ) {
-      if (room == null || _partnerUid != null) return;
+      if (room == null) return;
       final myUid = ref.read(authNotifierProvider).user?.uid;
       if (myUid == null) return;
       final uid = room.users.firstWhere((u) => u != myUid, orElse: () => '');
-      if (uid.isEmpty) return;
-      _partnerUid = uid;
-      ref.read(profileNotifierProvider.notifier).load(uid);
+      if (uid.isEmpty || uid == _partnerUid) return;
+      setState(() => _partnerUid = uid);
     });
 
     ref.listen(matchmakingNotifierProvider.select((s) => s.status), (
@@ -434,6 +440,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
                           partnerThought,
                           _myInterest,
                           partnerInterest,
+                          partnerAvatarState,
                         ),
                         Expanded(
                           child: Stack(
@@ -444,6 +451,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
                                 partnerName,
                                 _myInterest,
                                 partnerInterest,
+                                partnerAvatarState,
                               ),
                               Positioned(
                                 top: 0,
@@ -597,6 +605,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
     String partnerThought,
     String myInterest,
     String partnerInterest,
+    AvatarState partnerAvatarState,
   ) {
     return SizedBox(
       height: 250,
@@ -626,7 +635,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
                       username: partnerName,
                       moodText: partnerThought,
                       isMe: false,
+                      uid: _partnerUid,
                       interest: partnerInterest,
+                      avatarState: partnerAvatarState,
                       boxWidth: eachW,
                       onFriendRequest: _sendFriendRequest,
                       onCancelRequest: _cancelFriendRequest,
@@ -709,6 +720,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
     String partnerName,
     String myInterest,
     String partnerInterest,
+    AvatarState partnerAvatarState,
   ) {
     final backendMsgs = chatState.messages
         .map((m) => _toDisplay(m, chatState.currentUserId))
@@ -749,6 +761,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
           'other' => _buildBubble(
             msg,
             isMe: false,
+            avatarState: partnerAvatarState,
             partnerName: partnerName,
             interest: partnerInterest,
           ),
@@ -763,6 +776,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
           'gif_other' => _buildGifBubble(
             msg,
             isMe: false,
+            avatarState: partnerAvatarState,
             partnerName: partnerName,
             interest: partnerInterest,
           ),
@@ -845,13 +859,19 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
                 builder: (_) => UserProfileDialog(
                   username: partnerName,
                   interest: interest,
+                  uid: _partnerUid,
                   initialAdded: _friendRequestSent,
                   onAddFriend: () => _sendFriendRequest(partnerName),
                   onCancelRequest: () => _cancelFriendRequest(partnerName),
                   onReport: _reportUser,
+                  avatarState: avatarState,
                 ),
               ),
-              child: LayeredAvatar(boxSize: 40),
+              child: LayeredAvatar(
+                boxSize: 40,
+                moodOverlay: avatarState?.mood,
+                accessoryOverlay: avatarState?.accessory,
+              ),
             ),
             const SizedBox(width: 8),
           ],
@@ -952,13 +972,19 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
                 builder: (_) => UserProfileDialog(
                   username: partnerName,
                   interest: interest,
+                  uid: _partnerUid,
                   initialAdded: _friendRequestSent,
                   onAddFriend: () => _sendFriendRequest(partnerName),
                   onCancelRequest: () => _cancelFriendRequest(partnerName),
                   onReport: _reportUser,
+                  avatarState: avatarState,
                 ),
               ),
-              child: LayeredAvatar(boxSize: 40),
+              child: LayeredAvatar(
+                boxSize: 40,
+                moodOverlay: avatarState?.mood,
+                accessoryOverlay: avatarState?.accessory,
+              ),
             ),
             const SizedBox(width: 8),
             gifWidget,
@@ -1370,6 +1396,7 @@ class _StaticAvatar extends StatelessWidget {
     required this.username,
     required this.moodText,
     required this.isMe,
+    this.uid,
     this.interest,
     this.avatarState,
     this.boxWidth = 120,
@@ -1382,6 +1409,7 @@ class _StaticAvatar extends StatelessWidget {
   final String username;
   final String moodText;
   final bool isMe;
+  final String? uid;
   final String? interest;
   final AvatarState? avatarState;
   final VoidCallback? onFriendRequest;
@@ -1410,16 +1438,18 @@ class _StaticAvatar extends StatelessWidget {
                   username: username,
                   interest: interest,
                   isMe: isMe,
+                  uid: isMe ? null : uid,
                   initialAdded: !isMe && friendRequestSent,
                   onAddFriend: isMe ? null : onFriendRequest,
                   onCancelRequest: isMe ? null : onCancelRequest,
                   onReport: isMe ? null : onReport,
+                  avatarState: avatarState,
                 ),
               ),
               child: LayeredAvatar(
                 boxSize: 90 * s,
-                moodOverlay: isMe ? avatarState?.mood : null,
-                accessoryOverlay: isMe ? avatarState?.accessory : null,
+                moodOverlay: avatarState?.mood,
+                accessoryOverlay: avatarState?.accessory,
               ),
             ),
           ),
