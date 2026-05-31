@@ -1,3 +1,4 @@
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -29,7 +30,7 @@ class _HelloScreenState extends ConsumerState<HelloScreen> {
     final state = ref.watch(helloNotifierProvider);
     return Scaffold(
       appBar: AppBar(title: const Text('CozyTalk')),
-      body: Padding(
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -97,6 +98,13 @@ class _HelloScreenState extends ConsumerState<HelloScreen> {
               ),
               icon: const Icon(Icons.people_outline),
               label: const Text('Test Friends'),
+            ),
+            const SizedBox(height: 8),
+            ElevatedButton.icon(
+              onPressed: () => FirebaseCrashlytics.instance.crash(),
+              icon: const Icon(Icons.bug_report),
+              label: const Text('Test Crashlytics'),
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
             ),
             const SizedBox(height: 32),
             if (state.isLoading)
