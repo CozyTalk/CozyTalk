@@ -433,6 +433,36 @@ void main() {
       );
     });
 
+    testWidgets('uses currentRoom backgroundTheme for room name', (
+      tester,
+    ) async {
+      final room = Room(
+        roomId: 'GRP02',
+        roomType: RoomType.public,
+        mode: RoomMode.group,
+        status: RoomStatus.active,
+        maxUsers: 5,
+        memberCount: 3,
+        users: const ['u1', 'u2', 'u3'],
+        isLocked: false,
+        createdAt: DateTime(2025),
+        backgroundTheme: 'sea_of_cloud',
+      );
+      final matchFake = _FakeMatchmakingNotifier(
+        initial: MatchmakingState(
+          status: MatchmakingStatus.matched,
+          roomId: 'GRP02',
+          currentRoom: room,
+        ),
+      );
+      await tester.pumpWidget(
+        _buildScreen(_FakeChatNotifier(), matchFake: matchFake),
+      );
+      await _pump(tester);
+      expect(find.text('The Sea of Cloud'), findsOneWidget);
+      expect(find.text('Test Group'), findsNothing);
+    });
+
     group('accessibility', () {
       testWidgets('interactive elements have semantic labels', (tester) async {
         final handle = tester.ensureSemantics();
