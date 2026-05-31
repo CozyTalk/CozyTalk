@@ -183,12 +183,14 @@ class AdminReportsTab extends StatefulWidget {
   final void Function(AdminReport) onOpen;
   final String query;
   final bool isLoading;
+  final String? error;
   const AdminReportsTab({
     super.key,
     required this.reports,
     required this.onOpen,
     required this.query,
     this.isLoading = false,
+    this.error,
   });
 
   @override
@@ -214,6 +216,37 @@ class _AdminReportsTabState extends State<AdminReportsTab> {
 
     if (widget.isLoading) {
       return const Center(child: CircularProgressIndicator());
+    }
+
+    if (widget.error != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.error_outline_rounded, color: AdminC.red, size: 36),
+              const SizedBox(height: 12),
+              Text(
+                'Could not load reports',
+                style: Theme.of(context).textTheme.bodyLarge!.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: AdminC.ink,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                widget.error!,
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.bodySmall!.copyWith(
+                  color: AdminC.inkSoft,
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
     }
 
     return ListView(

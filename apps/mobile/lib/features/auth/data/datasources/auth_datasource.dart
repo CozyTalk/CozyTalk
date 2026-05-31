@@ -81,9 +81,10 @@ class AuthDatasourceImpl implements AuthDatasource {
         final displayName = (user.displayName?.trim().isNotEmpty ?? false)
             ? user.displayName!
             : _anonymousName(user.uid, {});
+        final role = _roleForEmail(user.email);
         await _firestore.collection('users').doc(user.uid).set({
           'uid': user.uid,
-          'role': 'user',
+          'role': role,
           'displayName': displayName,
           'interest': '',
           'moodKey': 'Happy',
@@ -115,9 +116,10 @@ class AuthDatasourceImpl implements AuthDatasource {
       );
       final user = credential.user!;
       final displayName = _anonymousName(user.uid, {});
+      final role = _roleForEmail(email);
       await _firestore.collection('users').doc(user.uid).set({
         'uid': user.uid,
-        'role': 'user',
+        'role': role,
         'displayName': displayName,
         'interest': '',
         'moodKey': 'Happy',
@@ -145,6 +147,14 @@ class AuthDatasourceImpl implements AuthDatasource {
         password: password,
       );
       final user = credential.user!;
+      // Ensure existing admin accounts always carry the correct role in case
+      // the document was created before this check existed or after an
+      // emulator reset.
+      if (_roleForEmail(email) == 'admin') {
+        await _firestore.collection('users').doc(user.uid).set({
+          'role': 'admin',
+        }, SetOptions(merge: true));
+      }
       return AuthUserModel(
         uid: user.uid,
         email: user.email,
@@ -165,6 +175,9 @@ class AuthDatasourceImpl implements AuthDatasource {
     await user.getIdToken(true);
   }
 }
+
+String _roleForEmail(String? email) =>
+    (email?.endsWith('@cozytalk.com') ?? false) ? 'admin' : 'user';
 
 // UID-derived seed ensures the same user gets the same name in an empty room; steps forward on collision.
 String _anonymousName(String uid, Set<String> taken) {

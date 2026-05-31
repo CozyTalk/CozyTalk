@@ -341,6 +341,7 @@ class _AdminConsoleScreenState extends ConsumerState<AdminConsoleScreen> {
                   reportCounts: reportCounts,
                   reportsLoading:
                       reportsState.status == feat.AdminReportsStatus.loading,
+                  reportsError: reportsState.error,
                 ),
               ),
             ],
@@ -674,6 +675,7 @@ class _AdminConsoleScreenState extends ConsumerState<AdminConsoleScreen> {
     required int onlineCount,
     required Map<String, int> reportCounts,
     required bool reportsLoading,
+    required String? reportsError,
   }) {
     return switch (_tab) {
       0 => AdminReportsTab(
@@ -681,6 +683,7 @@ class _AdminConsoleScreenState extends ConsumerState<AdminConsoleScreen> {
         onOpen: _openReport,
         query: _query,
         isLoading: reportsLoading,
+        error: reportsError,
       ),
       1 => AdminUsersTab(
         users: users,
