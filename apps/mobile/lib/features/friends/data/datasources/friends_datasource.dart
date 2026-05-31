@@ -163,7 +163,7 @@ class FriendsDatasourceImpl implements FriendsDatasource {
       if (roomId == null) return null;
       return FriendRoomStatus(
         roomId: roomId,
-        memberCount: (data['memberCount'] as num?)?.toInt() ?? 0,
+        memberCount: (data['memberCount'] as num?)?.toInt() ?? 1,
         maxUsers: (data['maxUsers'] as num?)?.toInt() ?? 5,
         isLocked: data['isLocked'] as bool? ?? false,
         mode: data['roomMode'] as String? ?? 'group',

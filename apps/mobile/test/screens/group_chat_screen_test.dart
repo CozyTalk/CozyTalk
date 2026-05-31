@@ -430,5 +430,40 @@ void main() {
         expect(friendsFake.lastRequestTarget?.uid, 'u2');
       }
     });
+
+    testWidgets('uses currentRoom backgroundTheme for room name', (
+      tester,
+    ) async {
+      final room = Room(
+        roomId: 'GRP02',
+        roomType: RoomType.public,
+        mode: RoomMode.group,
+        status: RoomStatus.active,
+        maxUsers: 5,
+        memberCount: 3,
+        users: const ['u1', 'u2', 'u3'],
+        isLocked: false,
+        createdAt: DateTime(2025),
+        backgroundTheme: 'sea_of_cloud',
+      );
+      final matchFake = _FakeMatchmakingNotifier(
+        initial: MatchmakingState(
+          status: MatchmakingStatus.matched,
+          roomId: 'GRP02',
+          currentRoom: room,
+        ),
+      );
+      final friendsFake = _FakeFriendsNotifierForGroup();
+      await tester.pumpWidget(
+        _buildScreen(
+          _FakeChatNotifier(),
+          matchFake: matchFake,
+          friendsFake: friendsFake,
+        ),
+      );
+      await _pump(tester);
+      expect(find.text('The Sea of Cloud'), findsOneWidget);
+      expect(find.text('Test Group'), findsNothing);
+    });
   });
 }
