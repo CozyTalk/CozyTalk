@@ -128,7 +128,12 @@ class _ReportDialogState extends ConsumerState<ReportDialog> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                if (_step < 3) ...[_buildHeader(), const SizedBox(height: 12)],
+                if (_step < 3) ...[
+                  _buildHeader(),
+                  const SizedBox(height: 16),
+                  _buildProgressBar(),
+                  const SizedBox(height: 16),
+                ],
                 if (_step == 1) _buildStep1(),
                 if (_step == 2) _buildStep2(reportState),
                 if (_step == 3) _buildStep3(),
@@ -136,6 +141,139 @@ class _ReportDialogState extends ConsumerState<ReportDialog> {
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  // ── Progress bar ──────────────────────────────────────────────────────────
+  Widget _buildProgressBar() {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _stepNode(1, 'Reason'),
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.only(top: 14),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 300),
+              height: 2,
+              margin: const EdgeInsets.symmetric(horizontal: 6),
+              decoration: BoxDecoration(
+                color: _step >= 2 ? Colors.black87 : Colors.grey.shade200,
+                borderRadius: BorderRadius.circular(1),
+              ),
+            ),
+          ),
+        ),
+        _stepNode(2, 'Details'),
+      ],
+    );
+  }
+
+  Widget _stepNode(int step, String label) {
+    final bool isDone = _step > step;
+    final bool isActive = _step == step;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          width: 28,
+          height: 28,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: (isDone || isActive) ? Colors.black87 : Colors.grey.shade200,
+            border: Border.all(
+              color: (isDone || isActive)
+                  ? Colors.black87
+                  : Colors.grey.shade300,
+            ),
+          ),
+          child: Center(
+            child: isDone
+                ? const Icon(Icons.check, size: 14, color: Colors.white)
+                : Text(
+                    '$step',
+                    style: TextStyle(
+                      color: isActive ? Colors.white : Colors.grey,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 11,
+            color: isActive ? Colors.black87 : Colors.black38,
+            fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ── Step 1 history summary shown on step 2 ────────────────────────────────
+  Widget _buildSelectionSummary() {
+    if (_selectedOptions.isEmpty) return const SizedBox.shrink();
+    const shortLabels = {
+      0: 'Harassment or Bullying',
+      1: 'Spam & Scams',
+      2: 'Exposing private info',
+      3: 'Others',
+    };
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade50,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.black.withValues(alpha: 0.07)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Selected reason',
+            style: TextStyle(
+              fontSize: 11,
+              color: Colors.black45,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: _selectedOptions.map((i) {
+              final label = i == 3 && _othersCtrl.text.trim().isNotEmpty
+                  ? _othersCtrl.text.trim()
+                  : (shortLabels[i] ?? 'Others');
+              return Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFDEF1C2),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: const Color(0xFFC7D2B5)),
+                ),
+                child: Text(
+                  label,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black87,
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        ],
       ),
     );
   }
@@ -212,6 +350,7 @@ class _ReportDialogState extends ConsumerState<ReportDialog> {
     final charCount = _contextCtrl.text.length;
     return Column(
       children: [
+        _buildSelectionSummary(),
         _inputCard(
           label: 'Additional Context',
           trailing: '$charCount/200',
