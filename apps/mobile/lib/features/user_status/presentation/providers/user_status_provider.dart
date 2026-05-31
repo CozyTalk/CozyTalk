@@ -69,6 +69,7 @@ class OwnStatusNotifier extends Notifier<void> {
   int? _lastReportedMemberCount;
   bool? _lastReportedIsLocked;
   String? _lastReportedBackgroundTheme;
+  Room? _lastReportedRoomFingerprint;
 
   @override
   void build() {
@@ -93,6 +94,7 @@ class OwnStatusNotifier extends Notifier<void> {
         _lastReportedMemberCount = null;
         _lastReportedIsLocked = null;
         _lastReportedBackgroundTheme = null;
+        _lastReportedRoomFingerprint = null;
         ref.read(_setOnlineProvider)().catchError((e) {
           debugPrint('[OwnStatus] setOnline (after leave) failed: $e');
         });
@@ -102,7 +104,8 @@ class OwnStatusNotifier extends Notifier<void> {
       // User is matched — write user_status. Falls back to defaults when
       // currentRoom hasn't streamed in yet so the RTDB node updates
       // immediately on match instead of waiting for the Firestore room
-      // subscription.
+      // subscription. Re-fires on any room data change so the friend's
+      // "currently in" card stays accurate.
       if (next.status != MatchmakingStatus.matched || next.roomId == null) {
         return;
       }
@@ -113,15 +116,16 @@ class OwnStatusNotifier extends Notifier<void> {
       final isLocked = room?.isLocked ?? false;
       final backgroundTheme = room?.backgroundTheme;
 
-      final roomChanged = next.roomId != _lastReportedRoomId;
-      final memberCountChanged = memberCount != _lastReportedMemberCount;
-      final isLockedChanged = isLocked != _lastReportedIsLocked;
-      final backgroundThemeChanged =
-          backgroundTheme != _lastReportedBackgroundTheme;
-      if (!roomChanged &&
-          !memberCountChanged &&
-          !isLockedChanged &&
-          !backgroundThemeChanged) {
+      // Skip only when the EXACT same snapshot was last written. Comparing
+      // currentRoom directly (Freezed value equality) catches every room
+      // update, including transitions from null → non-null when the
+      // Firestore subscription fires for the first time.
+      final sameRoomId = next.roomId == _lastReportedRoomId;
+      final sameSnapshot =
+          memberCount == _lastReportedMemberCount &&
+          isLocked == _lastReportedIsLocked &&
+          backgroundTheme == _lastReportedBackgroundTheme;
+      if (sameRoomId && sameSnapshot && _lastReportedRoomFingerprint == room) {
         return;
       }
 
@@ -129,6 +133,7 @@ class OwnStatusNotifier extends Notifier<void> {
       _lastReportedMemberCount = memberCount;
       _lastReportedIsLocked = isLocked;
       _lastReportedBackgroundTheme = backgroundTheme;
+      _lastReportedRoomFingerprint = room;
 
       ref
           .read(_setInRoomProvider)(

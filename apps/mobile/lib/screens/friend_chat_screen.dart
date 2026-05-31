@@ -280,6 +280,8 @@ class _FriendChatScreenState extends ConsumerState<FriendChatScreen> {
                   'roomType': 'joinById',
                   'roomId': room.roomId,
                   'isGroup': true,
+                  'roomName': room.name,
+                  'bgImage': room.thumbnail,
                 },
               )
             : null,
