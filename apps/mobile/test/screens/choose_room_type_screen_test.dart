@@ -77,6 +77,62 @@ void main() {
       expect(find.text('User online ~ 42'), findsOneWidget);
     });
 
+    group('join-group dialog', () {
+      testWidgets('shows Random Match and Room ID options', (tester) async {
+        await tester.pumpWidget(_buildScreen());
+        await tester.tap(find.text('Group'));
+        await tester.pump();
+        await tester.tap(find.widgetWithText(ElevatedButton, 'Join Room'));
+        await tester.pumpAndSettle();
+        expect(find.text('Random Match'), findsOneWidget);
+        expect(find.text('Room ID'), findsOneWidget);
+      });
+
+      testWidgets('tapping Random Match dismisses dialog', (tester) async {
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              onlineCountProvider.overrideWith((ref) => Stream.value(0)),
+            ],
+            child: MaterialApp(
+              home: const ChooseRoomTypeScreen(),
+              onGenerateRoute: (_) =>
+                  MaterialPageRoute<void>(builder: (_) => const SizedBox()),
+            ),
+          ),
+        );
+        await tester.tap(find.text('Group'));
+        await tester.pump();
+        await tester.tap(find.widgetWithText(ElevatedButton, 'Join Room'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Random Match'));
+        await tester.pumpAndSettle();
+        expect(find.text('Random Match'), findsNothing);
+      });
+
+      testWidgets('tapping Room ID dismisses dialog', (tester) async {
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              onlineCountProvider.overrideWith((ref) => Stream.value(0)),
+            ],
+            child: MaterialApp(
+              home: const ChooseRoomTypeScreen(),
+              onGenerateRoute: (_) =>
+                  MaterialPageRoute<void>(builder: (_) => const SizedBox()),
+            ),
+          ),
+        );
+        await tester.tap(find.text('Group'));
+        await tester.pump();
+        await tester.tap(find.widgetWithText(ElevatedButton, 'Join Room'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Room ID'));
+        await tester.pumpAndSettle();
+        expect(find.text('Room ID'), findsNothing);
+      });
+    });
+
     group('accessibility', () {
       testWidgets('interactive elements have semantic labels', (tester) async {
         final handle = tester.ensureSemantics();
