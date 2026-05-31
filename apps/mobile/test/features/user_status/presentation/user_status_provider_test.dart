@@ -19,6 +19,9 @@ class _FakeUserStatusRepository implements UserStatusRepository {
   Stream<UserStatus> watchStatus(String uid) => const Stream.empty();
 
   @override
+  Stream<int> watchOnlineCount() => Stream.value(0);
+
+  @override
   Future<void> setOnline() async => setOnlineCount++;
 
   @override

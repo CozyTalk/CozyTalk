@@ -137,11 +137,18 @@ void main() {
       await repo.clearStatus();
       expect(ds.clearCount, 1);
     });
+
+    test('watchOnlineCount delegates to datasource', () async {
+      ds.onlineCountReturn = Stream.value(7);
+      final result = await repo.watchOnlineCount().first;
+      expect(result, 7);
+    });
   });
 }
 
 class _FakeDatasource implements UserStatusDatasource {
   Stream<UserStatusModel?> watchReturn = Stream.value(null);
+  Stream<int> onlineCountReturn = Stream.value(0);
   int setOnlineCount = 0;
   String? lastRoomId;
   String? lastMode;
@@ -153,6 +160,9 @@ class _FakeDatasource implements UserStatusDatasource {
 
   @override
   Stream<UserStatusModel?> watchStatus(String uid) => watchReturn;
+
+  @override
+  Stream<int> watchOnlineCount() => onlineCountReturn;
 
   @override
   Future<void> setOnline() async => setOnlineCount++;

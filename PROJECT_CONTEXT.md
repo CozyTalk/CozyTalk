@@ -148,7 +148,7 @@ Navigation hub `HomeScreen`. Used only when `_useMainUI = true`. No domain/data 
 Initialises Firebase, points to emulators (Auth `9099`, Functions `5001`, Firestore `8080`) when `USE_EMULATOR=true`. No automatic sign-in — `_AuthRouter` widget watches `authNotifierProvider` and routes to `LoginScreen` or `HelloScreen`.
 
 ### Tests
-1198 Flutter unit + widget tests across auth, chat, matchmaking, profile, hello, admin, block, friends, card_shuffle, avatar, word_filter, and screens features (includes WCAG 2.2 AA accessibility tests for all 17 production screens). See [Test Coverage](#quality-gates-definition-of-done) for the full breakdown.
+Comprehensive Flutter unit + widget tests across auth, chat, matchmaking, profile, hello, admin, block, friends, card_shuffle, avatar, word_filter, and screens features (includes WCAG 2.2 AA accessibility tests for all 17 production screens). See [Test Coverage](#quality-gates-definition-of-done) for the full breakdown.
 
 ---
 
@@ -404,14 +404,14 @@ Presence, typing, and nameQueue data are removed by `leaveRoom` CF on explicit l
 
 | Suite | Count | Location | Requires |
 |---|---|---|---|
-| Flutter unit + widget | 1198 tests | `apps/mobile/test/` | Nothing |
-| Cloud Functions Jest | 172 unit tests | `functions/src/**/__tests__/*.test.ts` | `./dev.sh --emulator-only` |
+| Flutter unit + widget | comprehensive | `apps/mobile/test/` | Nothing |
+| Cloud Functions Jest | comprehensive | `functions/src/**/__tests__/*.test.ts` | `./dev.sh --emulator-only` |
 | Cloud Functions Jest (integration) | 7 live tests | `functions/src/matchmaking/__tests__/embeddingService.integration.test.ts` | Vertex AI credentials + `npm run test:embedding` |
-| Flutter integration | 43 tests | `apps/mobile/integration_test/matchmaking_advanced_test.dart` | Emulators + Android device |
+| Flutter integration | manual | `apps/mobile/integration_test/matchmaking_advanced_test.dart` | Emulators + Android device |
 
-**CF Jest unit test breakdown:** `matchmaking.test.ts` (82 tests — priority selection, distribution, padding lifecycle, RTDB cleanup, 1v1/group flows, interest matching, background-theme partitioning), `admin.test.ts` (32 tests — dashboard, resolve report, chat log, ban/unban), `embeddingService.test.ts` (21 tests — cosine similarity, mean vector, mocked Vertex AI), `block.test.ts` (20 tests — blockUser, unblockUser, adminGetBlockedUsers, max-5 enforcement, idempotency), `chat.test.ts` (12 tests — sendMessage, message destruction, TTL, rooms/ path, reportSession), `friends.test.ts` (5 tests — onFriendshipCreated/onFriendshipDeleted: message cleanup, RTDB friends node removal, graceful no-users handling). Plus 7 integration tests in `embeddingService.integration.test.ts` (live Vertex AI, requires `npm run test:embedding`). Grand total: 179.
+**CF Jest unit test breakdown:** `matchmaking.test.ts` (priority selection, distribution, padding lifecycle, RTDB cleanup, 1v1/group flows, interest matching, background-theme partitioning), `admin.test.ts` (dashboard, resolve report, chat log, ban/unban), `embeddingService.test.ts` (cosine similarity, mean vector, mocked Vertex AI), `block.test.ts` (blockUser, unblockUser, adminGetBlockedUsers, max-5 enforcement, idempotency), `chat.test.ts` (sendMessage, message destruction, TTL, rooms/ path, reportSession), `friends.test.ts` (onFriendshipCreated/onFriendshipDeleted: message cleanup, RTDB friends node removal, graceful no-users handling). Integration tests in `embeddingService.integration.test.ts` (live Vertex AI, requires `npm run test:embedding`).
 
-**Flutter word_filter tests (14):** `banned_word_test.dart` (2), `censor_text_test.dart` (3), `banned_word_model_test.dart` (5), `word_filter_repository_impl_test.dart` (2), `word_filter_provider_test.dart` (2).
+**Flutter word_filter tests:** `banned_word_test.dart`, `censor_text_test.dart`, `banned_word_model_test.dart`, `word_filter_repository_impl_test.dart`, `word_filter_provider_test.dart`.
 
 **Jest vs Flutter integration:** Jest tests run on the host (no Android clock skew) so timing bounds are tight (≤35s padding). Flutter integration tests use ≤60s bounds to account for Android emulator clock offset.
 
@@ -448,7 +448,7 @@ CozyTalk/
 │   │   │   ├── home/                 ← navigation hub stub (presentation only)
 │   │   │   └── friends/              ← friend requests, friend list, permanent direct chat (prototype)
 │   │   └── screens/                  ← legacy design-preview UI (not wired to features layer)
-│   ├── test/                         ← 1198 unit + widget tests
+│   ├── test/                         ← unit + widget tests
 │   └── .env.example                  ← committed; USE_EMULATOR=true by default
 ├── functions/src/
 │   ├── index.ts                      ← exports 25 functions

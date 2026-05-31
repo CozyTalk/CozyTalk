@@ -95,11 +95,14 @@ class AuthNotifier extends Notifier<AuthState> {
 
   void _checkTokenOnStartup() {
     Future(() async {
+      if (!ref.mounted) return;
       if (state.user == null) return;
       try {
         await ref.read(authRepositoryProvider).validateToken();
       } catch (_) {
+        if (!ref.mounted) return;
         await signOut();
+        if (!ref.mounted) return;
         state = state.copyWith(
           error: 'Your session has expired. Please sign in again.',
         );

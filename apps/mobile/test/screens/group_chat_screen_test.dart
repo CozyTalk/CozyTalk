@@ -453,8 +453,13 @@ void main() {
           currentRoom: room,
         ),
       );
+      final friendsFake = _FakeFriendsNotifierForGroup();
       await tester.pumpWidget(
-        _buildScreen(_FakeChatNotifier(), matchFake: matchFake),
+        _buildScreen(
+          _FakeChatNotifier(),
+          matchFake: matchFake,
+          friendsFake: friendsFake,
+        ),
       );
       await _pump(tester);
       expect(find.text('The Sea of Cloud'), findsOneWidget);
