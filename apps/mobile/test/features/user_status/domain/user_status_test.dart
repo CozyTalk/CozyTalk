@@ -3,6 +3,7 @@ import 'package:mobile/features/user_status/domain/entities/user_status.dart';
 import 'package:mobile/features/user_status/domain/usecases/clear_status.dart';
 import 'package:mobile/features/user_status/domain/usecases/set_in_room.dart';
 import 'package:mobile/features/user_status/domain/usecases/set_online.dart';
+import 'package:mobile/features/user_status/domain/usecases/watch_online_count.dart';
 import 'package:mobile/features/user_status/domain/usecases/watch_user_status.dart';
 import 'package:mobile/features/user_status/domain/repositories/user_status_repository.dart';
 
@@ -20,6 +21,7 @@ class _FakeUserStatusRepository implements UserStatusRepository {
   bool? lastIsLocked;
   String? lastBackgroundTheme;
   int clearCount = 0;
+  Stream<int> onlineCountReturn = Stream.value(0);
 
   void givenStatus(UserStatus value) => _returnValue = value;
   void givenError(Exception error) => _error = error;
@@ -30,6 +32,9 @@ class _FakeUserStatusRepository implements UserStatusRepository {
     if (_error != null) return Stream.error(_error!);
     return Stream.value(_returnValue!);
   }
+
+  @override
+  Stream<int> watchOnlineCount() => onlineCountReturn;
 
   @override
   Future<void> setOnline() async {
@@ -240,6 +245,22 @@ void main() {
     test('propagates exception', () async {
       repo.givenError(Exception('fail'));
       await expectLater(usecase(), throwsA(isA<Exception>()));
+    });
+  });
+
+  group('WatchOnlineCount usecase', () {
+    late _FakeUserStatusRepository repo;
+    late WatchOnlineCount usecase;
+
+    setUp(() {
+      repo = _FakeUserStatusRepository();
+      usecase = WatchOnlineCount(repo);
+    });
+
+    test('returns online count stream from repository', () async {
+      repo.onlineCountReturn = Stream.value(42);
+      final result = await usecase().first;
+      expect(result, 42);
     });
   });
 }

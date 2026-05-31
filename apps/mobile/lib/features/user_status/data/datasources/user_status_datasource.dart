@@ -5,6 +5,7 @@ import '../models/user_status_model.dart';
 
 abstract class UserStatusDatasource {
   Stream<UserStatusModel?> watchStatus(String uid);
+  Stream<int> watchOnlineCount();
   Future<void> setOnline();
   Future<void> setInRoom({
     required String roomId,
@@ -30,6 +31,14 @@ class UserStatusDatasourceImpl implements UserStatusDatasource {
       return UserStatusModel.fromJson(
         Map<String, dynamic>.from(event.snapshot.value as Map),
       );
+    });
+  }
+
+  @override
+  Stream<int> watchOnlineCount() {
+    return _db.ref('user_status').onValue.map((event) {
+      if (!event.snapshot.exists || event.snapshot.value == null) return 0;
+      return event.snapshot.children.length;
     });
   }
 

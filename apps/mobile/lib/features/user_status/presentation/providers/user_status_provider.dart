@@ -14,6 +14,7 @@ import '../../domain/repositories/user_status_repository.dart';
 import '../../domain/usecases/clear_status.dart';
 import '../../domain/usecases/set_in_room.dart';
 import '../../domain/usecases/set_online.dart';
+import '../../domain/usecases/watch_online_count.dart';
 import '../../domain/usecases/watch_user_status.dart';
 
 // ── DI chain ─────────────────────────────────────────────────────────────────
@@ -45,7 +46,17 @@ final _clearStatusProvider = Provider<ClearStatus>(
   (ref) => ClearStatus(ref.watch(_userStatusRepositoryProvider)),
 );
 
+final _watchOnlineCountUsecaseProvider = Provider<WatchOnlineCount>(
+  (ref) => WatchOnlineCount(ref.watch(_userStatusRepositoryProvider)),
+);
+
 // ── Public API ────────────────────────────────────────────────────────────────
+
+/// Streams the live count of online users from RTDB user_status/.
+/// Counts all children — both 'online' and 'in_room' statuses.
+final onlineCountProvider = StreamProvider<int>((ref) {
+  return ref.watch(_watchOnlineCountUsecaseProvider)();
+});
 
 /// Watches real-time status for any user by uid.
 /// Emits [UserOnlineStatus.offline] when the RTDB node is absent.

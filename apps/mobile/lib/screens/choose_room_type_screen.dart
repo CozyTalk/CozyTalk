@@ -1,16 +1,19 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import '../features/user_status/presentation/providers/user_status_provider.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_routes.dart';
 
-class ChooseRoomTypeScreen extends StatefulWidget {
+class ChooseRoomTypeScreen extends ConsumerStatefulWidget {
   const ChooseRoomTypeScreen({super.key});
 
   @override
-  State<ChooseRoomTypeScreen> createState() => _ChooseRoomTypeScreenState();
+  ConsumerState<ChooseRoomTypeScreen> createState() =>
+      _ChooseRoomTypeScreenState();
 }
 
-class _ChooseRoomTypeScreenState extends State<ChooseRoomTypeScreen> {
+class _ChooseRoomTypeScreenState extends ConsumerState<ChooseRoomTypeScreen> {
   String? selectedType;
 
   void handleJoin() {
@@ -264,6 +267,7 @@ class _ChooseRoomTypeScreenState extends State<ChooseRoomTypeScreen> {
   @override
   Widget build(BuildContext context) {
     final bool isSelectedAny = selectedType != null;
+    final onlineCount = ref.watch(onlineCountProvider).value ?? 0;
 
     return Scaffold(
       backgroundColor: AppColors.scaffoldBg,
@@ -326,9 +330,11 @@ class _ChooseRoomTypeScreenState extends State<ChooseRoomTypeScreen> {
                               ),
                             ),
                             const SizedBox(width: 8),
-                            const Text(
-                              'User online ~ 234',
-                              style: TextStyle(fontWeight: FontWeight.w600),
+                            Text(
+                              'User online ~ $onlineCount',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
                           ],
                         ),
