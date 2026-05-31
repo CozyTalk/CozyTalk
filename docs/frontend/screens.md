@@ -42,6 +42,7 @@ All admin screens are wired to `features/admin/` via `adminReportsProvider`, `ad
 
 | Class | File | Notes |
 |---|---|---|
+| `ReportDialog` | `dialogs/report_dialog.dart` | `ConsumerStatefulWidget`; 2-step flow — step 1: choose reason (checkboxes), step 2: additional context + image attach; progress bar with animated step dots and connecting line; step 2 shows a summary chip of the step-1 selection; submits via `reportNotifierProvider`; step 3 shows thank-you screen; image upload skipped on web (`kIsWeb` guard) until Storage CORS is configured |
 | `ThoughtBubbleDialog` | `screens/thought_bubble_dialog.dart` | |
 | `FriendProfileDialog` | `screens/friend_profile_dialog.dart` | `ConsumerStatefulWidget`; shows live avatar decoration (`partnerDecorationProvider`) and live interest (`partnerProfileProvider`); note edit (max 20 chars) |
 | `RemoveFriendDialog` | `screens/remove_friend_dialog.dart` | private class |
