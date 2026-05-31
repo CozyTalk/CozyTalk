@@ -8,6 +8,7 @@ import 'package:mobile/features/chat/domain/entities/chat_message.dart'
 import 'package:mobile/features/chat/domain/entities/session_status.dart';
 import 'package:mobile/features/chat/presentation/providers/chat_provider.dart';
 import 'package:mobile/features/matchmaking/domain/entities/matchmaking_status.dart';
+import 'package:mobile/features/matchmaking/domain/entities/room.dart';
 import 'package:mobile/features/matchmaking/presentation/providers/matchmaking_provider.dart';
 import 'package:mobile/screens/chat_screen.dart';
 import 'package:mobile/shared/avatar_overlay.dart';
@@ -335,6 +336,55 @@ void main() {
       expect(
         find.byWidgetPredicate(
           (w) => w is Row && w.mainAxisAlignment == MainAxisAlignment.end,
+        ),
+        findsNothing,
+      );
+    });
+
+    testWidgets('uses currentRoom backgroundTheme over route arg bgImage', (
+      tester,
+    ) async {
+      final room = Room(
+        roomId: 'TEST1',
+        roomType: RoomType.public,
+        mode: RoomMode.oneToOne,
+        status: RoomStatus.active,
+        maxUsers: 2,
+        memberCount: 2,
+        users: const ['u1', 'u2'],
+        isLocked: false,
+        createdAt: DateTime(2025),
+        backgroundTheme: 'sea_of_cloud',
+      );
+      final matchFake = _FakeMatchmakingNotifier(
+        initial: MatchmakingState(
+          status: MatchmakingStatus.matched,
+          roomId: 'TEST1',
+          currentRoom: room,
+        ),
+      );
+      await tester.pumpWidget(
+        _buildScreen(_FakeChatNotifier(), matchFake: matchFake),
+      );
+      await _pump(tester);
+
+      expect(
+        find.byWidgetPredicate(
+          (w) =>
+              w is Image &&
+              w.image is AssetImage &&
+              (w.image as AssetImage).assetName ==
+                  'assets/images/backgrounds/sea_of_cloud.png',
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.byWidgetPredicate(
+          (w) =>
+              w is Image &&
+              w.image is AssetImage &&
+              (w.image as AssetImage).assetName ==
+                  'assets/images/backgrounds/red_lotus_lake.png',
         ),
         findsNothing,
       );

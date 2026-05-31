@@ -75,6 +75,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       return const _DisconnectedScreen();
     }
 
+    if (state.status == SessionStatus.chatting && !state.isRoomLoaded) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('CozyTalk'),

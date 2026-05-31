@@ -11,8 +11,10 @@ import '../models/chat_message_model.dart';
 
 abstract class ChatDatasource {
   Future<String> fetchSessionKey(String sessionId);
+  Future<String?> fetchRoomBackground(String sessionId);
   Stream<List<ChatMessageModel>> watchRawMessages(String sessionId);
   Stream<List<TypingUser>> watchTypingUsers(String sessionId);
+  Stream<Set<String>> watchPresence(String sessionId);
   Future<void> sendMessage({required String sessionId, required String text});
   Future<void> setTyping({
     required String sessionId,
@@ -22,7 +24,6 @@ abstract class ChatDatasource {
     String? photoUrl,
   });
   Future<void> endSession({required String sessionId});
-
   Future<String> joinProtoSession({
     required String sessionId,
     required String uid,
@@ -36,6 +37,15 @@ class ChatDatasourceImpl implements ChatDatasource {
   final FirebaseAuth _auth;
 
   ChatDatasourceImpl(this._firestore, this._db, this._functions, this._auth);
+
+  @override
+  Future<String?> fetchRoomBackground(String sessionId) async {
+    if (sessionId.startsWith('proto-')) return null;
+    final doc = await _firestore.collection('rooms').doc(sessionId).get();
+    if (!doc.exists || doc.data() == null) return null;
+    final data = Map<String, dynamic>.from(doc.data()!);
+    return data['backgroundTheme'] as String?;
+  }
 
   @override
   Future<String> fetchSessionKey(String sessionId) async {
@@ -89,6 +99,14 @@ class ChatDatasourceImpl implements ChatDatasource {
             return ChatMessageModel.fromJson(data);
           }).toList(),
         );
+  }
+
+  @override
+  Stream<Set<String>> watchPresence(String sessionId) {
+    return _db.ref('presence/$sessionId').onValue.map((event) {
+      final raw = event.snapshot.value as Map? ?? {};
+      return raw.keys.cast<String>().toSet();
+    });
   }
 
   @override

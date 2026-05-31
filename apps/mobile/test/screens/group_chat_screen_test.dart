@@ -342,6 +342,55 @@ void main() {
       },
     );
 
+    testWidgets('uses currentRoom backgroundTheme over route arg bgImage', (
+      tester,
+    ) async {
+      final room = Room(
+        roomId: 'GRP01',
+        roomType: RoomType.public,
+        mode: RoomMode.group,
+        status: RoomStatus.active,
+        maxUsers: 5,
+        memberCount: 2,
+        users: const ['u1', 'u2'],
+        isLocked: false,
+        createdAt: DateTime(2025),
+        backgroundTheme: 'lumphini_park',
+      );
+      final matchFake = _FakeMatchmakingNotifier(
+        initial: MatchmakingState(
+          status: MatchmakingStatus.matched,
+          roomId: 'GRP01',
+          currentRoom: room,
+        ),
+      );
+      await tester.pumpWidget(
+        _buildScreen(_FakeChatNotifier(), matchFake: matchFake),
+      );
+      await _pump(tester);
+
+      expect(
+        find.byWidgetPredicate(
+          (w) =>
+              w is Image &&
+              w.image is AssetImage &&
+              (w.image as AssetImage).assetName ==
+                  'assets/images/backgrounds/lumphini_park.png',
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.byWidgetPredicate(
+          (w) =>
+              w is Image &&
+              w.image is AssetImage &&
+              (w.image as AssetImage).assetName ==
+                  'assets/images/backgrounds/kao_tapu.png',
+        ),
+        findsNothing,
+      );
+    });
+
     group('accessibility', () {
       testWidgets('interactive elements have semantic labels', (tester) async {
         final handle = tester.ensureSemantics();

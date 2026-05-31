@@ -17,7 +17,8 @@ features/chat/
 │       ├── send_message.dart          SendMessage
 │       ├── set_typing.dart            SetTyping
 │       ├── watch_messages.dart        WatchMessages
-│       └── watch_partner_typing.dart  WatchTypingUsers
+│       ├── watch_partner_typing.dart  WatchTypingUsers
+│       └── watch_presence.dart        WatchPresence
 ├── data/
 │   ├── datasources/chat_datasource.dart        ChatDatasourceImpl (Firestore + RTDB + CFs)
 │   ├── models/chat_message_model.dart          @freezed ChatMessageModel + toEntity()
@@ -37,7 +38,7 @@ features/chat/
 
 `SessionStatus` enum: `idle | searching | chatting | disconnected`
 
-`ChatState` — `status` (SessionStatus), `messages` (List\<ChatMessage\>), `sessionId` (String?), `currentUserId` (String?), `currentUserDisplayName` (String?), `currentUserPhotoUrl` (String?), `typingUsers` (List\<TypingUser\>), `isSending` (bool)
+`ChatState` — `status` (SessionStatus), `messages` (List\<ChatMessage\>), `sessionId` (String?), `currentUserId` (String?), `currentUserDisplayName` (String?), `currentUserPhotoUrl` (String?), `typingUsers` (List\<TypingUser\>), `presenceMembers` (Set\<String\>? — UIDs currently live in RTDB `presence/{sessionId}`; null until first event delivered), `isSending` (bool)
 
 ## Key Behavior
 
@@ -47,13 +48,14 @@ features/chat/
   - real session: calls `sendMessage` / `endSession` CFs
 - RTDB paths used: `typing/{sessionId}/{uid}`, `presence/{sessionId}/{uid}`
 - `onDisconnect().remove()` set on `presence` path in proto sessions only; for real sessions the `endSession` CF handles RTDB cleanup server-side
+- `ChatNotifier` subscribes to `presence/{sessionId}` via `WatchPresence` use case; result stored in `ChatState.presenceMembers` as a `Set<String>` of live UIDs. `GroupChatScreen` uses this to filter Firestore `roomUsers` — only UIDs present in RTDB are rendered in the banner, suppressing phantom members whose `cleanupMember` CF hasn't yet run.
 - Message encryption: AES-256-GCM, 12-byte random IV per message (`crypto.randomBytes(12)` in CF)
 - `_cancelSubscriptions()` does NOT cancel `onDisconnect` hooks — intentional
 
 ## Production Screens
 
 - `screens/chat_screen.dart` — `ChatScreen` (ConsumerStatefulWidget, ⚠️ partial — uses `shared/` providers only, not wired to `chatNotifierProvider`). AppBar has Jukebox music button (`Icons.queue_music_rounded`) and `JukeboxChatPlayer` is mounted in the Column body for audio lifecycle management.
-- `screens/group_chat_screen.dart` — `GroupChatScreen` (not yet integrated)
+- `screens/group_chat_screen.dart` — `GroupChatScreen` (ConsumerStatefulWidget, integrated). Banner member list filtered by `chatState.presenceMembers` — only shows UIDs confirmed live in RTDB, falling back to the full Firestore `roomUsers` list while the subscription delivers its first event.
 
 ## Privacy
 
