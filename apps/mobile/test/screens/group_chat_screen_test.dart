@@ -204,7 +204,7 @@ Widget _buildScreen(
       ),
       avatarProvider.overrideWith(() => _FakeAvatarNotifier()),
       userProfileProvider.overrideWith(() => _FakeUserProfileNotifier()),
-      getUsersByIdsProvider.overrideWith((ref, uids) async => partnerUsers),
+      getUsersByIdsProvider.overrideWith((ref, csv) async => partnerUsers),
       friendsNotifierProvider.overrideWith(
         () => friendsFake ?? _FakeFriendsNotifier(),
       ),

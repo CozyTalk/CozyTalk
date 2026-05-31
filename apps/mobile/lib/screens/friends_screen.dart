@@ -4,7 +4,10 @@ import 'package:flutter/material.dart';
 import '../features/friends/domain/entities/friend.dart' as domain;
 import '../features/friends/domain/entities/friend_room_status.dart';
 import '../features/friends/presentation/providers/friends_provider.dart';
+import '../features/avatar/presentation/providers/avatar_decoration_provider.dart';
+import '../shared/avatar_overlay.dart';
 import '../shared/connectivity_provider.dart';
+import '../shared/layered_avatar.dart';
 import '../shared/info_dialog.dart';
 import '../shared/offline_card.dart';
 import '../theme/app_colors.dart';
@@ -92,9 +95,31 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
     final state = ref.watch(friendsNotifierProvider);
     // Fetch live display names for all friends to override stale friendship-doc names.
     final friendUids = state.friends.map((f) => f.friendUid).toList();
-    final liveNamesAsync = ref.watch(getUsersByIdsProvider(friendUids));
+    final liveNamesAsync = ref.watch(
+      getUsersByIdsProvider(([...friendUids]..sort()).join(',')),
+    );
     final liveNames = <String, String>{
       for (final u in (liveNamesAsync.value ?? [])) u.uid: u.displayName,
+    };
+    // Fetch decoration (moodKey, hatKey) for each friend — keyed by friendshipId.
+    final decorationMap = <String, ({AvatarOverlay? mood, AvatarOverlay? hat})>{
+      for (final f in state.friends)
+        f.friendshipId: (
+          mood:
+              AvatarOverlays.mood[ref
+                      .watch(partnerDecorationProvider(f.friendUid))
+                      .asData
+                      ?.value
+                      ?.moodKey ??
+                  ''],
+          hat:
+              AvatarOverlays.accessory[ref
+                      .watch(partnerDecorationProvider(f.friendUid))
+                      .asData
+                      ?.value
+                      ?.hatKey ??
+                  ''],
+        ),
     };
     final friends = state.friends
         .map((f) => _toScreenFriend(f, state, liveNames))
@@ -149,7 +174,11 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
                   final friend = filtered[index - 1];
                   return Padding(
                     padding: const EdgeInsets.only(top: 16),
-                    child: _buildFriendCard(friend),
+                    child: _buildFriendCard(
+                      friend,
+                      decorationMap[friend.friendshipId] ??
+                          (mood: null, hat: null),
+                    ),
                   );
                 },
               ),
@@ -208,7 +237,10 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
     );
   }
 
-  Widget _buildFriendCard(Friend friend) {
+  Widget _buildFriendCard(
+    Friend friend,
+    ({AvatarOverlay? mood, AvatarOverlay? hat}) decoration,
+  ) {
     final showRoom = friend.room != null && friend.isOnline;
     return GestureDetector(
       onTap: () {
@@ -261,11 +293,11 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
                         ),
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(14),
-                          child: const Center(
-                            child: Icon(
-                              Icons.person,
-                              color: Colors.grey,
-                              size: 35,
+                          child: Center(
+                            child: LayeredAvatar(
+                              boxSize: 52,
+                              moodOverlay: decoration.mood,
+                              accessoryOverlay: decoration.hat,
                             ),
                           ),
                         ),

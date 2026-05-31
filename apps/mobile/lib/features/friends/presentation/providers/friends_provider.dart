@@ -81,10 +81,16 @@ final friendsNotifierProvider = NotifierProvider<FriendsNotifier, FriendsState>(
   FriendsNotifier.new,
 );
 
+/// Family argument is a **sorted comma-joined UID string** so that the same
+/// set of UIDs always maps to the same cache entry regardless of list identity.
+/// Callers: sort uids and join with ',' before passing.
 final getUsersByIdsProvider = FutureProvider.autoDispose
-    .family<List<AppUser>, List<String>>(
-      (ref, uids) => GetUsersByIds(ref.watch(friendsRepositoryProvider))(uids),
-    );
+    .family<List<AppUser>, String>((ref, uidsCsv) {
+      if (uidsCsv.isEmpty) return Future.value([]);
+      return GetUsersByIds(ref.watch(friendsRepositoryProvider))(
+        uidsCsv.split(','),
+      );
+    });
 
 const _sentinel = Object();
 

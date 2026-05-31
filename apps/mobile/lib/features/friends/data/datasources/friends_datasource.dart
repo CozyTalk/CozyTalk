@@ -264,9 +264,10 @@ class FriendsDatasourceImpl implements FriendsDatasource {
 
   @override
   Future<void> setFriendTyping(String chatRoomId, bool isTyping) async {
-    final ref = _database.ref('typing/$chatRoomId/$currentUid');
+    final ref = _database.ref('friend_typing/$chatRoomId/$currentUid');
     if (isTyping) {
       await ref.set(true);
+      ref.onDisconnect().remove();
     } else {
       await ref.remove();
     }
@@ -274,7 +275,7 @@ class FriendsDatasourceImpl implements FriendsDatasource {
 
   @override
   Stream<bool> watchFriendTyping(String chatRoomId) {
-    return _database.ref('typing/$chatRoomId').onValue.map((event) {
+    return _database.ref('friend_typing/$chatRoomId').onValue.map((event) {
       if (!event.snapshot.exists || event.snapshot.value == null) return false;
       final data = Map<String, dynamic>.from(event.snapshot.value as Map);
       return data.entries

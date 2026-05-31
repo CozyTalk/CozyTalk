@@ -76,6 +76,15 @@
         }
       }
     },
+    "friend_typing": {
+      "$friendship_id": {
+        "$uid": {
+          ".read": "auth != null",
+          ".write": "auth != null && auth.uid == $uid",
+          ".validate": "!newData.exists() || newData.isBoolean()"
+        }
+      }
+    },
     "jukebox": {
       "$room_id": {
         ".read":  "auth != null && (root.child('rooms').child($room_id).child('members').child(auth.uid).exists() || root.child('presence').child($room_id).child(auth.uid).exists())",

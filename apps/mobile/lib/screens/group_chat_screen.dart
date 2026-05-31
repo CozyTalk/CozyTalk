@@ -460,6 +460,9 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
 
     final avatarState = ref.watch(avatarProvider);
     final userProfile = ref.watch(userProfileProvider);
+    final myThoughts = ref.watch(
+      profileNotifierProvider.select((s) => s.profile?.thoughts ?? ''),
+    );
     final chatState = ref.watch(chatNotifierProvider);
     final roomType = args?['roomType'] as String?;
     final matchState = ref.watch(matchmakingNotifierProvider);
@@ -493,7 +496,9 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
               .toList();
 
     final partnerUids = matchState.partnerUids;
-    final partnersAsync = ref.watch(getUsersByIdsProvider(partnerUids));
+    final partnersAsync = ref.watch(
+      getUsersByIdsProvider(([...partnerUids]..sort()).join(',')),
+    );
     final Map<String, AppUser> partnersMap = {
       for (final u in (partnersAsync.value ?? <AppUser>[])) u.uid: u,
     };
@@ -605,6 +610,7 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
                           maxMembers,
                           avatarState,
                           userProfile,
+                          myThoughts,
                           members,
                           roomUsers,
                           partnersMap,
@@ -878,6 +884,7 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
     int maxMembers,
     AvatarState avatarState,
     UserProfileState userProfile,
+    String myThoughts,
     List<String> members,
     List<String> roomUsers,
     Map<String, AppUser> partnersMap,
@@ -950,9 +957,7 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
                 final partnerAccessoryOverlay =
                     AvatarOverlays.accessory[partnerDecoration?.hatKey ?? ''];
                 final thought = isMe
-                    ? (userProfile.thought.isNotEmpty
-                          ? userProfile.thought
-                          : 'Care to share?')
+                    ? (myThoughts.isNotEmpty ? myThoughts : 'Care to share?')
                     : (partnerProfile?.thoughts?.isNotEmpty == true
                           ? partnerProfile!.thoughts!
                           : 'Hello!');

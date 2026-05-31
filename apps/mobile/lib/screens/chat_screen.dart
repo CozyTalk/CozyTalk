@@ -393,14 +393,17 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
         _kThemeAssets[matchState.currentRoom?.backgroundTheme] ??
         args?['bgImage'] as String? ??
         'assets/images/backgrounds/red_lotus_lake.png';
-    final myMood = userProfile.thought.isNotEmpty
-        ? userProfile.thought
-        : 'Care to share?';
+    final myThoughts = ref.watch(
+      profileNotifierProvider.select((s) => s.profile?.thoughts ?? ''),
+    );
+    final myMood = myThoughts.isNotEmpty ? myThoughts : 'Care to share?';
 
     final partnerUids = ref.watch(
       matchmakingNotifierProvider.select((s) => s.partnerUids),
     );
-    final partnersAsync = ref.watch(getUsersByIdsProvider(partnerUids));
+    final partnersAsync = ref.watch(
+      getUsersByIdsProvider(([...partnerUids]..sort()).join(',')),
+    );
     final partner = partnersAsync.value?.firstOrNull;
 
     // Partner profile + decoration for real avatar rendering.
