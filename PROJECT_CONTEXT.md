@@ -148,7 +148,7 @@ Navigation hub `HomeScreen`. Used only when `_useMainUI = true`. No domain/data 
 Initialises Firebase, points to emulators (Auth `9099`, Functions `5001`, Firestore `8080`) when `USE_EMULATOR=true`. No automatic sign-in — `_AuthRouter` widget watches `authNotifierProvider` and routes to `LoginScreen` or `HelloScreen`.
 
 ### Tests
-1118 Flutter unit + widget tests across auth, chat, matchmaking, profile, hello, admin, block, friends, card_shuffle, avatar, word_filter, and screens features (includes WCAG 2.2 AA accessibility tests for all 17 production screens). See [Test Coverage](#quality-gates-definition-of-done) for the full breakdown.
+1200 Flutter unit + widget tests across auth, chat, matchmaking, profile, hello, admin, block, friends, card_shuffle, avatar, word_filter, and screens features (includes WCAG 2.2 AA accessibility tests for all 17 production screens). See [Test Coverage](#quality-gates-definition-of-done) for the full breakdown.
 
 ---
 
@@ -197,7 +197,7 @@ See `database.rules.json` for the canonical source. All nodes require `auth != n
 | `typing/{roomId}/{uid}` | `{ isTyping: bool, displayName: string, photoUrl?: string }` | Read: room member; Write: owner | `displayName` max 100 chars; `photoUrl` optional max 500 chars; unknown fields rejected |
 | `presence/{roomId}/{uid}` | string (displayName) | Read: room member; Write: owner | Max 30 chars; `onDisconnect().remove()` |
 | `nameQueue/{roomId}` | any | Read/Write: room member only | Transient display name exchange on room join |
-| `user_status/{uid}` | `{ status, roomId?, roomMode? }` | Read/Write: owner only | `status`: `'online'`\|`'in_room'`; `roomId` 5 chars; `roomMode` `'1v1'`\|`'group'` |
+| `user_status/{uid}` | `{ status, roomId?, roomMode?, maxUsers?, memberCount?, isLocked?, backgroundTheme? }` | Read: any signed-in user; Write: owner | `status`: `'online'`\|`'in_room'`; `roomId` 5 chars; `roomMode` `'1v1'`\|`'group'`; the `maxUsers`/`memberCount`/`isLocked`/`backgroundTheme` fields are only present when `status == 'in_room'` and let friends render the "currently in" card without reading Firestore `rooms/{roomId}` |
 | `pool_presence/{uid}` | boolean | Read/Write: owner | Tracks whether user is actively in the waiting pool |
 | `jukebox/{roomId}` | `{ isPlaying, currentIndex, startedAt, queue[] }` | Read/Write: room member | Synced music queue; cleared by `endSession` CF |
 
@@ -405,7 +405,7 @@ Presence, typing, and nameQueue data are removed by `leaveRoom` CF on explicit l
 | Suite | Count | Location | Requires |
 |---|---|---|---|
 <<<<<<< HEAD
-| Flutter unit + widget | 1118 tests | `apps/mobile/test/` | Nothing |
+| Flutter unit + widget | 1200 tests | `apps/mobile/test/` | Nothing |
 =======
 | Flutter unit + widget | 1115 tests | `apps/mobile/test/` | Nothing |
 >>>>>>> 53ffdc7a4deba892d5c968e72dcfa6c13cdd3499
@@ -452,7 +452,7 @@ CozyTalk/
 │   │   │   ├── home/                 ← navigation hub stub (presentation only)
 │   │   │   └── friends/              ← friend requests, friend list, permanent direct chat (prototype)
 │   │   └── screens/                  ← legacy design-preview UI (not wired to features layer)
-│   ├── test/                         ← 1118 unit + widget tests
+│   ├── test/                         ← 1200 unit + widget tests
 │   └── .env.example                  ← committed; USE_EMULATOR=true by default
 ├── functions/src/
 │   ├── index.ts                      ← exports 25 functions

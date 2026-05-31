@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart';
+import 'package:flutter/foundation.dart';
 
 import '../../domain/entities/app_user.dart';
 import '../../domain/entities/friend_room_status.dart';
@@ -150,25 +151,23 @@ class FriendsDatasourceImpl implements FriendsDatasource {
 
   @override
   Stream<FriendRoomStatus?> watchFriendRoom(String friendUid) {
-    return _database.ref('user_status/$friendUid').onValue.asyncMap((
-      event,
-    ) async {
+    return _database.ref('user_status/$friendUid').onValue.map((event) {
       if (!event.snapshot.exists || event.snapshot.value == null) {
+        debugPrint('[watchFriendRoom] $friendUid: node missing');
         return null;
       }
       final data = Map<String, dynamic>.from(event.snapshot.value as Map);
+      debugPrint('[watchFriendRoom] $friendUid: $data');
       if (data['status'] != 'in_room') return null;
       final roomId = data['roomId'] as String?;
       if (roomId == null) return null;
-      final doc = await _firestore.collection('rooms').doc(roomId).get();
-      if (!doc.exists) return null;
-      final roomData = Map<String, dynamic>.from(doc.data()!);
       return FriendRoomStatus(
         roomId: roomId,
-        memberCount: (roomData['memberCount'] as num?)?.toInt() ?? 0,
-        maxUsers: (roomData['maxUsers'] as num?)?.toInt() ?? 2,
-        isLocked: roomData['isLocked'] as bool? ?? false,
-        mode: roomData['mode'] as String? ?? '1v1',
+        memberCount: (data['memberCount'] as num?)?.toInt() ?? 0,
+        maxUsers: (data['maxUsers'] as num?)?.toInt() ?? 5,
+        isLocked: data['isLocked'] as bool? ?? false,
+        mode: data['roomMode'] as String? ?? 'group',
+        backgroundTheme: data['backgroundTheme'] as String?,
       );
     });
   }

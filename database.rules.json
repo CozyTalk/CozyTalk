@@ -55,6 +55,18 @@
         "roomMode": {
           ".validate": "newData.isString() && (newData.val() == '1v1' || newData.val() == 'group')"
         },
+        "maxUsers": {
+          ".validate": "newData.isNumber() && newData.val() >= 2 && newData.val() <= 5"
+        },
+        "memberCount": {
+          ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 5"
+        },
+        "isLocked": {
+          ".validate": "newData.isBoolean()"
+        },
+        "backgroundTheme": {
+          ".validate": "newData.isString() && newData.val().length <= 50"
+        },
         "$other": {
           ".validate": false
         }

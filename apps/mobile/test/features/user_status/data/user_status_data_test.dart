@@ -97,9 +97,40 @@ void main() {
     });
 
     test('setInRoom delegates to datasource', () async {
-      await repo.setInRoom(roomId: 'abc12', mode: 'group');
+      await repo.setInRoom(
+        roomId: 'abc12',
+        mode: 'group',
+        maxUsers: 5,
+        memberCount: 1,
+        isLocked: false,
+      );
       expect(ds.lastRoomId, 'abc12');
       expect(ds.lastMode, 'group');
+    });
+
+    test('setInRoom forwards maxUsers, memberCount, isLocked', () async {
+      await repo.setInRoom(
+        roomId: 'abc12',
+        mode: 'group',
+        maxUsers: 5,
+        memberCount: 3,
+        isLocked: true,
+      );
+      expect(ds.lastMaxUsers, 5);
+      expect(ds.lastMemberCount, 3);
+      expect(ds.lastIsLocked, isTrue);
+    });
+
+    test('setInRoom forwards backgroundTheme to datasource', () async {
+      await repo.setInRoom(
+        roomId: 'abc12',
+        mode: 'group',
+        maxUsers: 5,
+        memberCount: 1,
+        isLocked: false,
+        backgroundTheme: 'lumphini_park',
+      );
+      expect(ds.lastBackgroundTheme, 'lumphini_park');
     });
 
     test('clearStatus delegates to datasource', () async {
@@ -114,6 +145,10 @@ class _FakeDatasource implements UserStatusDatasource {
   int setOnlineCount = 0;
   String? lastRoomId;
   String? lastMode;
+  int? lastMaxUsers;
+  int? lastMemberCount;
+  bool? lastIsLocked;
+  String? lastBackgroundTheme;
   int clearCount = 0;
 
   @override
@@ -123,9 +158,20 @@ class _FakeDatasource implements UserStatusDatasource {
   Future<void> setOnline() async => setOnlineCount++;
 
   @override
-  Future<void> setInRoom({required String roomId, required String mode}) async {
+  Future<void> setInRoom({
+    required String roomId,
+    required String mode,
+    required int maxUsers,
+    required int memberCount,
+    required bool isLocked,
+    String? backgroundTheme,
+  }) async {
     lastRoomId = roomId;
     lastMode = mode;
+    lastMaxUsers = maxUsers;
+    lastMemberCount = memberCount;
+    lastIsLocked = isLocked;
+    lastBackgroundTheme = backgroundTheme;
   }
 
   @override

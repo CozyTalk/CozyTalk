@@ -12,6 +12,8 @@ import '../features/profile/presentation/providers/profile_provider.dart';
 import '../shared/avatar_overlay.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_routes.dart';
+import '../theme/room_themes.dart';
+import '../features/friends/domain/entities/friend_room_status.dart';
 import '../models/friend.dart';
 import '../dialogs/report_dialog.dart';
 import '../shared/gif_picker.dart';
@@ -202,68 +204,85 @@ class _FriendChatScreenState extends ConsumerState<FriendChatScreen> {
           ),
           if (chatState.isLoading)
             const LinearProgressIndicator()
-          else if (_friend.room != null && _friend.isOnline)
-            Container(
-              margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.grey.shade200, width: 1.5),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.06),
-                    blurRadius: 8,
-                    offset: const Offset(0, 3),
-                  ),
-                ],
-              ),
-              child: FriendRoomCard(
-                room: _friend.room!,
-                showLabel: true,
-                backgroundColor: Colors.white,
-                onJoin: _friend.room!.canJoin
-                    ? () => Navigator.pushNamed(
-                        context,
-                        AppRoutes.groupChatScreen,
-                        arguments: {
-                          'roomName': _friend.room!.name,
-                          'bgImage': _friend.room!.thumbnail,
-                        },
-                      )
-                    : null,
-              ),
-            ),
+          else
+            _buildRoomBanner(context, partnerUid, isOnline),
           Expanded(
-            child: chatState.messages.isEmpty && !chatState.isLoading
-                ? const Center(
-                    child: Text(
-                      'No messages yet. Say hello!',
-                      style: TextStyle(color: Colors.grey),
-                    ),
-                  )
-                : ListView(
-                    controller: _scrollCtrl,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
-                    ),
-                    children: [
-                      _buildDateLabel(),
-                      _buildSafetyNotice(),
-                      const SizedBox(height: 8),
-                      ...chatState.messages.map(
-                        (m) => _buildMessageBubble(m, currentUid),
-                      ),
-                      if (chatState.isPartnerTyping)
-                        const Padding(
-                          padding: EdgeInsets.only(top: 6),
-                          child: _FriendTypingIndicator(),
-                        ),
-                    ],
+            child: ListView(
+              controller: _scrollCtrl,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              children: [
+                _buildDateLabel(),
+                _buildSafetyNotice(),
+                const SizedBox(height: 8),
+                ...chatState.messages.map(
+                  (m) => _buildMessageBubble(m, currentUid),
+                ),
+                if (chatState.isPartnerTyping)
+                  const Padding(
+                    padding: EdgeInsets.only(top: 6),
+                    child: _FriendTypingIndicator(),
                   ),
+              ],
+            ),
           ),
           isBlocked ? _buildBlockedBar() : _buildInputBar(chatState),
         ],
+      ),
+    );
+  }
+
+  // ─── Room banner ───
+  RoomInfo _toRoomInfo(FriendRoomStatus s) {
+    final theme = resolveRoomTheme(s.backgroundTheme, mode: s.mode);
+    return RoomInfo(
+      roomId: s.roomId,
+      name: theme.title,
+      thumbnail: theme.thumbnail,
+      current: s.memberCount,
+      max: s.maxUsers,
+      isLocked: s.isLocked,
+    );
+  }
+
+  Widget _buildRoomBanner(
+    BuildContext context,
+    String partnerUid,
+    bool isOnline,
+  ) {
+    final roomStatus = ref.watch(
+      friendsNotifierProvider.select((s) => s.roomMap[partnerUid]),
+    );
+    if (roomStatus == null || !isOnline) return const SizedBox.shrink();
+    final room = _toRoomInfo(roomStatus);
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey.shade200, width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.06),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: FriendRoomCard(
+        room: room,
+        showLabel: true,
+        backgroundColor: Colors.white,
+        onJoin: room.canJoin
+            ? () => Navigator.pushNamed(
+                context,
+                AppRoutes.findingRoom,
+                arguments: {
+                  'roomType': 'joinById',
+                  'roomId': room.roomId,
+                  'isGroup': true,
+                },
+              )
+            : null,
       ),
     );
   }

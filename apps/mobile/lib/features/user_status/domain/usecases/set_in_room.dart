@@ -5,6 +5,19 @@ class SetInRoom {
 
   SetInRoom(this._repository);
 
-  Future<void> call({required String roomId, required String mode}) =>
-      _repository.setInRoom(roomId: roomId, mode: mode);
+  Future<void> call({
+    required String roomId,
+    required String mode,
+    required int maxUsers,
+    required int memberCount,
+    required bool isLocked,
+    String? backgroundTheme,
+  }) => _repository.setInRoom(
+    roomId: roomId,
+    mode: mode,
+    maxUsers: maxUsers,
+    memberCount: memberCount,
+    isLocked: isLocked,
+    backgroundTheme: backgroundTheme,
+  );
 }

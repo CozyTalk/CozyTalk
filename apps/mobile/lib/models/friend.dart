@@ -1,4 +1,5 @@
 class RoomInfo {
+  final String roomId;
   final String name;
   final String thumbnail;
   final int current;
@@ -6,6 +7,7 @@ class RoomInfo {
   final bool isLocked;
 
   const RoomInfo({
+    required this.roomId,
     required this.name,
     required this.thumbnail,
     required this.current,
