@@ -1368,31 +1368,42 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
         children: [
           // Avatar (others only)
           if (!isMe) ...[
-            GestureDetector(
-              onTap: () => showDialog(
-                context: context,
-                builder: (_) {
-                  final senderUid = _uidByDisplayName[msg.sender ?? ''];
-                  final profileName = senderUid != null
-                      ? (_memberNameCache[senderUid] ?? msg.sender ?? '')
-                      : (msg.sender ?? '');
-                  return UserProfileDialog(
-                    username: profileName,
-                    interest: senderUid != null
-                        ? _memberInterestCache[senderUid]
-                        : null,
-                    avatarState: senderUid != null
-                        ? memberAvatarStates[senderUid]
-                        : null,
-                    uid: senderUid,
-                    initialAdded: _friendRequestSent[msg.sender ?? ''] == true,
-                    onAddFriend: () => _sendFriendRequest(msg.sender ?? ''),
-                    onCancelRequest: () =>
-                        cancelFriendRequest(msg.sender ?? ''),
-                    onReport: () => reportUser(msg.sender ?? ''),
-                  );
-                },
-              ),
+            Builder(
+              builder: (ctx) {
+                final senderUid = _uidByDisplayName[msg.sender ?? ''];
+                final memberState = senderUid != null
+                    ? memberAvatarStates[senderUid]
+                    : null;
+                return GestureDetector(
+                  onTap: () => showDialog(
+                    context: ctx,
+                    builder: (_) {
+                      final profileName = senderUid != null
+                          ? (_memberNameCache[senderUid] ?? msg.sender ?? '')
+                          : (msg.sender ?? '');
+                      return UserProfileDialog(
+                        username: profileName,
+                        interest: senderUid != null
+                            ? _memberInterestCache[senderUid]
+                            : null,
+                        avatarState: memberState,
+                        uid: senderUid,
+                        initialAdded:
+                            _friendRequestSent[msg.sender ?? ''] == true,
+                        onAddFriend: () => _sendFriendRequest(msg.sender ?? ''),
+                        onCancelRequest: () =>
+                            cancelFriendRequest(msg.sender ?? ''),
+                        onReport: () => reportUser(msg.sender ?? ''),
+                      );
+                    },
+                  ),
+                  child: LayeredAvatar(
+                    boxSize: 40,
+                    moodOverlay: memberState?.mood,
+                    accessoryOverlay: memberState?.accessory,
+                  ),
+                );
+              },
             ),
             const SizedBox(width: 8),
           ],

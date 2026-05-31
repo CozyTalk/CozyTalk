@@ -573,10 +573,21 @@ void main() {
     group('Add Friend', () {
       _FakeMatchmakingNotifier matchWithPartnerFake() =>
           _FakeMatchmakingNotifier(
-            initial: const MatchmakingState(
+            initial: MatchmakingState(
               status: MatchmakingStatus.matched,
               roomId: 'room-1',
-              partnerUids: ['partner-uid'],
+              partnerUids: const ['partner-uid'],
+              currentRoom: Room(
+                roomId: 'room-1',
+                roomType: RoomType.public,
+                mode: RoomMode.oneToOne,
+                status: RoomStatus.active,
+                maxUsers: 2,
+                memberCount: 2,
+                users: const ['u1', 'partner-uid'],
+                isLocked: false,
+                createdAt: DateTime(2025),
+              ),
             ),
           );
 

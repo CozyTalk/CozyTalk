@@ -371,6 +371,15 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
       accessory: AvatarOverlays.accessory[partnerDecoration?.hatKey ?? ''],
     );
 
+    ref.listen<FriendsState>(friendsNotifierProvider, (prev, next) {
+      if (next.error != null && next.error != prev?.error) {
+        ScaffoldMessenger.of(context)
+          ..clearSnackBars()
+          ..showSnackBar(SnackBar(content: Text(next.error!)));
+        ref.read(friendsNotifierProvider.notifier).clearError();
+      }
+    });
+
     ref.listen(chatNotifierProvider.select((s) => s.status), (_, next) {
       if (next == SessionStatus.disconnected) {
         Navigator.of(context).popUntil((route) => route.isFirst);
@@ -864,24 +873,28 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           if (!isMe) ...[
-            GestureDetector(
-              onTap: () => showDialog(
-                context: context,
-                builder: (_) => UserProfileDialog(
-                  username: partnerName,
-                  interest: interest,
-                  uid: _partnerUid,
-                  initialAdded: _friendRequestSent,
-                  onAddFriend: () => _sendFriendRequest(partnerName),
-                  onCancelRequest: () => cancelFriendRequest(partnerName),
-                  onReport: reportUser,
-                  avatarState: avatarState,
+            Semantics(
+              label: 'View user profile',
+              button: true,
+              child: GestureDetector(
+                onTap: () => showDialog(
+                  context: context,
+                  builder: (_) => UserProfileDialog(
+                    username: partnerName,
+                    interest: interest,
+                    uid: _partnerUid,
+                    initialAdded: _friendRequestSent,
+                    onAddFriend: () => _sendFriendRequest(partnerName),
+                    onCancelRequest: () => cancelFriendRequest(partnerName),
+                    onReport: reportUser,
+                    avatarState: avatarState,
+                  ),
                 ),
-              ),
-              child: LayeredAvatar(
-                boxSize: 40,
-                moodOverlay: avatarState?.mood,
-                accessoryOverlay: avatarState?.accessory,
+                child: LayeredAvatar(
+                  boxSize: 40,
+                  moodOverlay: avatarState?.mood,
+                  accessoryOverlay: avatarState?.accessory,
+                ),
               ),
             ),
             const SizedBox(width: 8),
@@ -988,24 +1001,28 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           if (!isMe) ...[
-            GestureDetector(
-              onTap: () => showDialog(
-                context: context,
-                builder: (_) => UserProfileDialog(
-                  username: partnerName,
-                  interest: interest,
-                  uid: _partnerUid,
-                  initialAdded: _friendRequestSent,
-                  onAddFriend: () => _sendFriendRequest(partnerName),
-                  onCancelRequest: () => cancelFriendRequest(partnerName),
-                  onReport: reportUser,
-                  avatarState: avatarState,
+            Semantics(
+              label: 'View user profile',
+              button: true,
+              child: GestureDetector(
+                onTap: () => showDialog(
+                  context: context,
+                  builder: (_) => UserProfileDialog(
+                    username: partnerName,
+                    interest: interest,
+                    uid: _partnerUid,
+                    initialAdded: _friendRequestSent,
+                    onAddFriend: () => _sendFriendRequest(partnerName),
+                    onCancelRequest: () => cancelFriendRequest(partnerName),
+                    onReport: reportUser,
+                    avatarState: avatarState,
+                  ),
                 ),
-              ),
-              child: LayeredAvatar(
-                boxSize: 40,
-                moodOverlay: avatarState?.mood,
-                accessoryOverlay: avatarState?.accessory,
+                child: LayeredAvatar(
+                  boxSize: 40,
+                  moodOverlay: avatarState?.mood,
+                  accessoryOverlay: avatarState?.accessory,
+                ),
               ),
             ),
             const SizedBox(width: 8),
@@ -1466,25 +1483,29 @@ class _StaticAvatar extends StatelessWidget {
             bottom: 0,
             left: 0,
             right: 0,
-            child: GestureDetector(
-              onTap: () => showDialog(
-                context: context,
-                builder: (_) => UserProfileDialog(
-                  username: username,
-                  interest: interest,
-                  isMe: isMe,
-                  uid: isMe ? null : uid,
-                  initialAdded: !isMe && friendRequestSent,
-                  onAddFriend: isMe ? null : onFriendRequest,
-                  onCancelRequest: isMe ? null : onCancelRequest,
-                  onReport: isMe ? null : onReport,
-                  avatarState: avatarState,
+            child: Semantics(
+              label: isMe ? null : 'View user profile',
+              button: !isMe,
+              child: GestureDetector(
+                onTap: () => showDialog(
+                  context: context,
+                  builder: (_) => UserProfileDialog(
+                    username: username,
+                    interest: interest,
+                    isMe: isMe,
+                    uid: isMe ? null : uid,
+                    initialAdded: !isMe && friendRequestSent,
+                    onAddFriend: isMe ? null : onFriendRequest,
+                    onCancelRequest: isMe ? null : onCancelRequest,
+                    onReport: isMe ? null : onReport,
+                    avatarState: avatarState,
+                  ),
                 ),
-              ),
-              child: LayeredAvatar(
-                boxSize: 90 * s,
-                moodOverlay: avatarState?.mood,
-                accessoryOverlay: avatarState?.accessory,
+                child: LayeredAvatar(
+                  boxSize: 90 * s,
+                  moodOverlay: avatarState?.mood,
+                  accessoryOverlay: avatarState?.accessory,
+                ),
               ),
             ),
           ),
