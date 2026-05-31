@@ -170,6 +170,52 @@ void main() {
       expect(find.text('Red Lotus Lake'), findsOneWidget);
     });
 
+    testWidgets('Random Theme button is always enabled', (tester) async {
+      await tester.pumpWidget(_build());
+      final btn = tester.widget<OutlinedButton>(
+        find.widgetWithText(OutlinedButton, 'Random Theme'),
+      );
+      expect(btn.onPressed, isNotNull);
+    });
+
+    testWidgets(
+      'Random Theme highlights a valid card then navigates to findingRoom',
+      (tester) async {
+        tester.view.physicalSize = const Size(800, 1600);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.reset);
+
+        final fake = _FakeMatchmakingNotifier();
+        await tester.pumpWidget(_build(roomType: '1v1', fake: fake));
+        await tester.pump();
+
+        await tester.tap(find.widgetWithText(OutlinedButton, 'Random Theme'));
+        await tester.pump();
+
+        // Card is highlighted immediately
+        const validIds = {
+          'kao_tapu',
+          'red_lotus_lake',
+          'sea_of_cloud',
+          'lumphini_park',
+        };
+        expect(
+          validIds.any((id) {
+            final btn = tester.widget<ElevatedButton>(
+              find.widgetWithText(ElevatedButton, "Let's go!"),
+            );
+            return btn.onPressed != null;
+          }),
+          isTrue,
+        );
+
+        // After delay, navigates to findingRoom
+        await tester.pumpAndSettle();
+        expect(find.text('finding-room'), findsOneWidget);
+        expect(validIds, contains(fake.lastBackgroundTheme));
+      },
+    );
+
     group('accessibility', () {
       testWidgets('interactive elements have semantic labels', (tester) async {
         final handle = tester.ensureSemantics();

@@ -77,8 +77,8 @@ npm install && npm run build && npm test   # npm test requires emulators first
 .\dev.ps1 [...]                           # Windows
 ```
 
-Jest: 172 unit (matchmaking 82, admin 32, embeddingService 21, block 20, chat 12, friends 5). The 7 Vertex AI integration tests run separately via `jest.integration.config.js` — excluded from `npm test`.
-Flutter: 1200 unit + widget tests.
+Jest: unit tests across matchmaking, admin, embeddingService, block, chat, and friends suites. The Vertex AI integration tests run separately via `jest.integration.config.js` — excluded from `npm test`.
+Flutter: comprehensive unit + widget test suite.
 
 ---
 
@@ -316,7 +316,7 @@ Every code change that affects a documented behaviour **must** be accompanied by
 | The navigation system or app mode (`_useMainUI`) | `CLAUDE.md` §8, `docs/frontend/screens.md` |
 | The matchmaking CF logic or tests | `MATCHMAKING_CONTEXT_AWARE.md` |
 | Any package added or removed | `PROJECT_CONTEXT.md` tech stack table + `CLAUDE.md` §2 |
-| Test counts (Jest or Flutter) | `PROJECT_CONTEXT.md` test coverage table + `CLAUDE.md` §4 |
+| New test file added or removed | `PROJECT_CONTEXT.md` test coverage table (no counts — describe coverage scope only) |
 
 **Hard rules:**
 - Docs must describe what the code **actually does right now** — not what was planned, not what it used to do.
