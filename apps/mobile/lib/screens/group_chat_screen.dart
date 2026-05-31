@@ -20,11 +20,11 @@ import '../dialogs/members_list_dialog.dart';
 import '../dialogs/song_dialog.dart';
 import '../dialogs/user_profile_dialog.dart';
 import '../shared/avatar_overlay.dart';
-import '../shared/background_theme.dart';
 import '../shared/gif_picker.dart';
 import '../shared/info_dialog.dart';
 import '../shared/layered_avatar.dart';
 import '../shared/press_bounce_btn.dart';
+import '../theme/room_themes.dart';
 
 // ── Card assets ────────────────────────────────────────────────────────────
 const _cardAssets = [
@@ -499,7 +499,6 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
   Widget build(BuildContext context) {
     final args =
         ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
-    final roomName = args?['roomName'] as String? ?? 'Koh Tapu';
     final maxMembers = args?['maxMembers'] as int? ?? 5;
 
     final decoState = ref.watch(avatarDecorationNotifierProvider);
@@ -511,10 +510,15 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
     final roomType = args?['roomType'] as String?;
     final matchState = ref.watch(matchmakingNotifierProvider);
     final roomId = matchState.roomId ?? args?['roomId'] as String? ?? 'ABP8C';
-    final bgImage =
-        backgroundThemeAsset(matchState.currentRoom?.backgroundTheme) ??
-        args?['bgImage'] as String? ??
-        'assets/images/backgrounds/kao_tapu.png';
+    final liveThemeId = matchState.currentRoom?.backgroundTheme;
+    final liveTheme = resolveRoomTheme(liveThemeId, mode: 'group');
+    final roomName = liveThemeId != null
+        ? liveTheme.title
+        : (args?['roomName'] as String? ?? 'Group Room');
+    final bgImage = liveThemeId != null
+        ? liveTheme.thumbnail
+        : (args?['bgImage'] as String? ??
+              'assets/images/backgrounds/kao_tapu.png');
     final isLocked = matchState.currentRoom?.isLocked ?? (roomType == 'create');
 
     final myUid =
