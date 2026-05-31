@@ -97,6 +97,7 @@ class AdminDatasourceImpl implements AdminDatasource {
           for (final doc in snap.docs) {
             try {
               final data = Map<String, dynamic>.from(doc.data());
+              data['id'] = doc.id;
               data['reporterId'] ??= '';
               data['reportedUserId'] ??= '';
               data['sessionId'] ??= '';
