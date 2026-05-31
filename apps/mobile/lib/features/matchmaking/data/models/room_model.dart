@@ -20,6 +20,7 @@ abstract class RoomModel with _$RoomModel {
     required int createdAt,
     int? paddingUntil,
     List<double>? roomInterestVector,
+    String? backgroundTheme,
   }) = _RoomModel;
 
   factory RoomModel.fromJson(Map<String, dynamic> json) =>
@@ -85,6 +86,7 @@ extension RoomModelX on RoomModel {
           ? DateTime.fromMillisecondsSinceEpoch(paddingUntil!)
           : null,
       roomInterestVector: roomInterestVector,
+      backgroundTheme: backgroundTheme,
     );
   }
 }

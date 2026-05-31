@@ -17,6 +17,7 @@ class FakeChatRepository implements ChatRepository {
 
   Stream<List<ChatMessage>> messagesStream = const Stream.empty();
   Stream<List<TypingUser>> typingStream = const Stream.empty();
+  Stream<Set<String>> presenceStream = const Stream.empty();
 
   @override
   Stream<List<ChatMessage>> watchMessages(String sessionId) {
@@ -28,6 +29,12 @@ class FakeChatRepository implements ChatRepository {
   Stream<List<TypingUser>> watchTypingUsers(String sessionId) {
     lastSessionId = sessionId;
     return typingStream;
+  }
+
+  @override
+  Stream<Set<String>> watchPresence(String sessionId) {
+    lastSessionId = sessionId;
+    return presenceStream;
   }
 
   @override
@@ -56,6 +63,9 @@ class FakeChatRepository implements ChatRepository {
     lastDisplayName = displayName;
     lastPhotoUrl = photoUrl;
   }
+
+  @override
+  Future<String?> fetchRoomBackground(String sessionId) async => null;
 
   @override
   Future<void> endSession({required String sessionId}) async {

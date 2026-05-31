@@ -12,6 +12,10 @@ class UserProfileDialog extends ConsumerStatefulWidget {
   final bool initialAdded;
   final VoidCallback? onAddFriend;
   final VoidCallback? onCancelRequest;
+  // Partner-only fields — shown when isMe is false.
+  final AvatarOverlay? partnerMoodOverlay;
+  final AvatarOverlay? partnerAccessoryOverlay;
+  final String? partnerInterest;
   const UserProfileDialog({
     super.key,
     required this.username,
@@ -19,6 +23,9 @@ class UserProfileDialog extends ConsumerStatefulWidget {
     this.initialAdded = false,
     this.onAddFriend,
     this.onCancelRequest,
+    this.partnerMoodOverlay,
+    this.partnerAccessoryOverlay,
+    this.partnerInterest,
   });
 
   @override
@@ -86,10 +93,12 @@ class _UserProfileDialogState extends ConsumerState<UserProfileDialog> {
                           borderRadius: BorderRadius.circular(17),
                           child: LayeredAvatar(
                             boxSize: 100,
-                            moodOverlay: widget.isMe ? avatarState.mood : null,
+                            moodOverlay: widget.isMe
+                                ? avatarState.mood
+                                : widget.partnerMoodOverlay,
                             accessoryOverlay: widget.isMe
                                 ? avatarState.accessory
-                                : null,
+                                : widget.partnerAccessoryOverlay,
                           ),
                         ),
                       ),
@@ -100,44 +109,48 @@ class _UserProfileDialogState extends ConsumerState<UserProfileDialog> {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             // Add friend / cancel request
-                            GestureDetector(
-                              onTap: _friendAdded
-                                  ? () {
-                                      Navigator.pop(context);
-                                      widget.onCancelRequest?.call();
-                                    }
-                                  : () {
-                                      setState(() => _friendAdded = true);
-                                      Navigator.pop(context);
-                                      widget.onAddFriend?.call();
-                                    },
-                              child: AnimatedContainer(
-                                duration: const Duration(milliseconds: 200),
-                                width: 44,
-                                height: 44,
-                                decoration: BoxDecoration(
-                                  color: _friendAdded
-                                      ? Colors.grey.shade200
-                                      : const Color(0xFFDCEBCE),
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(
+                            Semantics(
+                              label: 'Add friend',
+                              button: true,
+                              child: GestureDetector(
+                                onTap: _friendAdded
+                                    ? () {
+                                        Navigator.pop(context);
+                                        widget.onCancelRequest?.call();
+                                      }
+                                    : () {
+                                        setState(() => _friendAdded = true);
+                                        Navigator.pop(context);
+                                        widget.onAddFriend?.call();
+                                      },
+                                child: AnimatedContainer(
+                                  duration: const Duration(milliseconds: 200),
+                                  width: 44,
+                                  height: 44,
+                                  decoration: BoxDecoration(
                                     color: _friendAdded
-                                        ? Colors.grey.shade400
-                                        : const Color(0xFFC7D2B5),
-                                    width: 1,
+                                        ? Colors.grey.shade200
+                                        : const Color(0xFFDCEBCE),
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: _friendAdded
+                                          ? Colors.grey.shade400
+                                          : const Color(0xFFC7D2B5),
+                                      width: 1,
+                                    ),
                                   ),
-                                ),
-                                child: Center(
-                                  child: SvgPicture.asset(
-                                    'assets/images/icons/add_friend.svg',
-                                    width: 24,
-                                    height: 24,
-                                    colorFilter: _friendAdded
-                                        ? ColorFilter.mode(
-                                            Colors.grey.shade500,
-                                            BlendMode.srcIn,
-                                          )
-                                        : null,
+                                  child: Center(
+                                    child: SvgPicture.asset(
+                                      'assets/images/icons/add_friend.svg',
+                                      width: 24,
+                                      height: 24,
+                                      colorFilter: _friendAdded
+                                          ? ColorFilter.mode(
+                                              Colors.grey.shade500,
+                                              BlendMode.srcIn,
+                                            )
+                                          : null,
+                                    ),
                                   ),
                                 ),
                               ),
@@ -235,7 +248,9 @@ class _UserProfileDialogState extends ConsumerState<UserProfileDialog> {
                               ? (userProfile.interest.isNotEmpty
                                     ? userProfile.interest
                                     : 'No interest set yet.')
-                              : 'I love TikTok very much. TikTok is the best application in the world.',
+                              : (widget.partnerInterest?.isNotEmpty == true
+                                    ? widget.partnerInterest!
+                                    : 'No interest set yet.'),
                           style: const TextStyle(
                             fontSize: 14,
                             color: Colors.black87,

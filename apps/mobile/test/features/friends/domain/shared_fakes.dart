@@ -10,7 +10,11 @@ class FakeFriendsRepository implements FriendsRepository {
   List<Friend> friends = [];
   List<FriendRequest> requests = [];
   List<FriendMessage> messages = [];
+  List<AppUser> usersById = [];
   Exception? error;
+
+  int getUsersByIdsCallCount = 0;
+  List<String>? lastGetUsersByIds;
 
   int sendFriendRequestCount = 0;
   String? lastToUid;
@@ -134,5 +138,19 @@ class FakeFriendsRepository implements FriendsRepository {
     lastChatRoomId = chatRoomId;
     lastText = text;
     lastSenderDisplayName = senderDisplayName;
+  }
+
+  @override
+  Future<void> setFriendTyping(String chatRoomId, bool isTyping) async {}
+
+  @override
+  Stream<bool> watchFriendTyping(String chatRoomId) => Stream.value(false);
+
+  @override
+  Future<List<AppUser>> getUsersByIds(List<String> uids) async {
+    if (error != null) throw error!;
+    getUsersByIdsCallCount++;
+    lastGetUsersByIds = uids;
+    return usersById;
   }
 }

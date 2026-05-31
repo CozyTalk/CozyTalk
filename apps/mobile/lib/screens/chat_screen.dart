@@ -4,16 +4,21 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../features/auth/presentation/providers/auth_provider.dart';
+import '../features/avatar/presentation/providers/avatar_decoration_provider.dart';
 import '../features/chat/domain/entities/chat_message.dart' as chat_entity;
 import '../features/chat/domain/entities/session_status.dart';
 import '../features/chat/presentation/providers/chat_provider.dart';
+import '../features/friends/domain/entities/app_user.dart';
+import '../features/friends/presentation/providers/friends_provider.dart';
 import '../features/matchmaking/domain/entities/matchmaking_status.dart';
 import '../features/matchmaking/presentation/providers/matchmaking_provider.dart';
+import '../features/profile/presentation/providers/profile_provider.dart';
 import '../theme/app_colors.dart';
 import '../dialogs/leave_room_dialog.dart';
 import '../dialogs/song_dialog.dart';
 import '../dialogs/user_profile_dialog.dart';
 import '../shared/avatar_overlay.dart';
+import '../shared/friend_request_popup.dart';
 import '../shared/layered_avatar.dart';
 import '../shared/press_bounce_btn.dart';
 import '../shared/user_profile.dart';
@@ -21,8 +26,14 @@ import '../shared/friend_message_popup.dart';
 import '../theme/app_routes.dart';
 import '../models/friend.dart';
 import '../shared/gif_picker.dart';
-import '../shared/friend_request_popup.dart';
 import '../shared/info_dialog.dart';
+
+const _kThemeAssets = <String, String>{
+  'kao_tapu': 'assets/images/backgrounds/kao_tapu.png',
+  'red_lotus_lake': 'assets/images/backgrounds/red_lotus_lake.png',
+  'sea_of_cloud': 'assets/images/backgrounds/sea_of_cloud.png',
+  'lumphini_park': 'assets/images/backgrounds/lumphini_park.png',
+};
 
 // ── Card assets ────────────────────────────────────────────────────────────
 const _cardAssets = [
@@ -69,7 +80,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
 
   String friendMood = 'I love TikTok very much.';
   bool _friendRequestSent = false;
-  bool _friendAccepted = false;
   final List<({ChatMessage msg, int seq})> _localMessages = [];
   final List<ChatMessage> _optimisticMessages = [];
   String? _pendingGifUrl;
@@ -197,53 +207,20 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
     setState(() => _pendingGifUrl = url);
   }
 
-  void _sendFriendRequest([String name = 'kaitom']) {
-    if (_friendRequestSent) return;
+  void _sendFriendRequest(AppUser partner) {
+    final friendsState = ref.read(friendsNotifierProvider);
+    final alreadyFriend = friendsState.friends.any(
+      (f) => f.friendUid == partner.uid,
+    );
+    if (friendsState.isLoading || _friendRequestSent || alreadyFriend) return;
     setState(() => _friendRequestSent = true);
+    ref.read(friendsNotifierProvider.notifier).sendFriendRequest(partner);
     showInfoDialog(
       context,
       type: InfoDialogType.info,
       title: 'Friend Request Sent',
       message:
-          'Your friend request has been sent to $name.\nWaiting for them to accept.',
-    );
-    Future.delayed(const Duration(milliseconds: 1500), () {
-      if (!mounted) return;
-      showFriendRequestPopup(
-        context,
-        requesterName: name,
-        onAccept: () {
-          setState(() => _friendAccepted = true);
-          showInfoDialog(
-            context,
-            type: InfoDialogType.success,
-            title: "You're now friends! 🎉",
-            message:
-                'You and $name are now friends.\nYou can find them in your friends list.',
-          );
-        },
-        onDecline: () => setState(() => _friendRequestSent = false),
-      );
-    });
-  }
-
-  void _cancelFriendRequest([String name = 'kaitom']) {
-    if (_friendAccepted) {
-      showInfoDialog(
-        context,
-        type: InfoDialogType.warning,
-        title: 'Cannot Cancel Request',
-        message:
-            '$name has already accepted your friend request.\nYou are now friends!',
-      );
-      return;
-    }
-    setState(() => _friendRequestSent = false);
-    showInfoDialog(
-      context,
-      type: InfoDialogType.info,
-      title: 'Request Cancelled',
-      message: 'Your friend request to $name has been cancelled.',
+          'Your friend request has been sent to ${partner.displayName}.\nWaiting for them to accept.',
     );
   }
 
@@ -409,17 +386,94 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
         ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
     final roomName = args?['roomName'] as String? ?? 'Red Lotus Lake';
     final roomId = args?['roomId'] as String? ?? 'AWD3V';
-    final bgImage =
-        args?['bgImage'] as String? ??
-        'assets/images/backgrounds/red_lotus_lake.png';
     final blocked = args?['isBlocked'] as bool? ?? _isBlocked;
 
     final avatarState = ref.watch(avatarProvider);
     final userProfile = ref.watch(userProfileProvider);
     final chatState = ref.watch(chatNotifierProvider);
-    final myMood = userProfile.thought.isNotEmpty
-        ? userProfile.thought
-        : 'Care to share?';
+    final matchState = ref.watch(matchmakingNotifierProvider);
+    final bgImage =
+        _kThemeAssets[matchState.currentRoom?.backgroundTheme] ??
+        args?['bgImage'] as String? ??
+        'assets/images/backgrounds/red_lotus_lake.png';
+    final myThoughts = ref.watch(
+      profileNotifierProvider.select((s) => s.profile?.thoughts ?? ''),
+    );
+    final myMood = myThoughts.isNotEmpty ? myThoughts : 'Care to share?';
+
+    final partnerUids = ref.watch(
+      matchmakingNotifierProvider.select((s) => s.partnerUids),
+    );
+    final partnersAsync = ref.watch(
+      getUsersByIdsProvider(([...partnerUids]..sort()).join(',')),
+    );
+    final partner = partnersAsync.value?.firstOrNull;
+
+    // True when this partner is already in the current user's friends list.
+    final isAlreadyFriend =
+        partner != null &&
+        ref.watch(
+          friendsNotifierProvider.select(
+            (s) => s.friends.any((f) => f.friendUid == partner.uid),
+          ),
+        );
+
+    // Partner profile + decoration for real avatar rendering.
+    final partnerDecoration = partner != null
+        ? ref.watch(partnerDecorationProvider(partner.uid)).asData?.value
+        : null;
+    final partnerProfile = partner != null
+        ? ref.watch(partnerProfileProvider(partner.uid)).asData?.value
+        : null;
+    final partnerMoodOverlay =
+        AvatarOverlays.mood[partnerDecoration?.moodKey ?? ''];
+    final partnerAccessoryOverlay =
+        AvatarOverlays.accessory[partnerDecoration?.hatKey ?? ''];
+
+    ref.listen<FriendsState>(friendsNotifierProvider, (prev, next) {
+      if (next.error != null && next.error != prev?.error) {
+        ScaffoldMessenger.of(context)
+          ..clearSnackBars()
+          ..showSnackBar(SnackBar(content: Text(next.error!)));
+        ref.read(friendsNotifierProvider.notifier).clearError();
+      }
+
+      // Show in-room popup when partner sends US a friend request.
+      final prevIds = prev?.incomingRequests.map((r) => r.id).toSet() ?? {};
+      for (final req in next.incomingRequests) {
+        if (!prevIds.contains(req.id) && partnerUids.contains(req.fromUid)) {
+          showFriendRequestPopup(
+            context,
+            requesterName: req.fromDisplayName,
+            onAccept: () =>
+                ref.read(friendsNotifierProvider.notifier).acceptRequest(req),
+            onDecline: () => ref
+                .read(friendsNotifierProvider.notifier)
+                .declineRequest(req.id),
+          );
+        }
+      }
+
+      // Notify USER A when partner accepted their request.
+      if (_friendRequestSent) {
+        for (final uid in partnerUids) {
+          final wasAlreadyFriend =
+              prev?.friends.any((f) => f.friendUid == uid) ?? false;
+          final isNowFriend = next.friends.any((f) => f.friendUid == uid);
+          if (!wasAlreadyFriend && isNowFriend) {
+            final name = next.friends
+                .firstWhere((f) => f.friendUid == uid)
+                .friendDisplayName;
+            showInfoDialog(
+              context,
+              type: InfoDialogType.success,
+              title: "You're now friends!",
+              message: '$name accepted your friend request.',
+            );
+          }
+        }
+      }
+    });
 
     ref.listen(chatNotifierProvider.select((s) => s.status), (_, next) {
       if (next == SessionStatus.disconnected) {
@@ -472,11 +526,25 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
                           avatarState,
                           myMood,
                           userProfile.username,
+                          partner,
+                          partnerMoodOverlay,
+                          partnerAccessoryOverlay,
+                          partnerProfile?.thoughts,
+                          partnerProfile?.interest,
+                          isAlreadyFriend,
                         ),
                         Expanded(
                           child: Stack(
                             children: [
-                              _buildMessageList(avatarState, chatState),
+                              _buildMessageList(
+                                avatarState,
+                                chatState,
+                                partner,
+                                partnerMoodOverlay,
+                                partnerAccessoryOverlay,
+                                partnerProfile?.interest,
+                                isAlreadyFriend,
+                              ),
                               Positioned(
                                 top: 0,
                                 left: 0,
@@ -505,10 +573,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
                     ),
                     // Barrier
                     if (_songPanelOpen)
-                      GestureDetector(
-                        onTap: _closeSongPanel,
-                        behavior: HitTestBehavior.opaque,
-                        child: Container(color: Colors.black26),
+                      ExcludeSemantics(
+                        child: GestureDetector(
+                          onTap: _closeSongPanel,
+                          behavior: HitTestBehavior.opaque,
+                          child: Container(color: Colors.black26),
+                        ),
                       ),
                     // Slide-down song panel
                     Positioned(
@@ -547,12 +617,16 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                _headerBtn(
-                  onTap: _onWillPop,
-                  child: SvgPicture.asset(
-                    'assets/images/icons/Back.svg',
-                    width: 24,
-                    height: 24,
+                Semantics(
+                  label: 'End chat',
+                  button: true,
+                  child: _headerBtn(
+                    onTap: _onWillPop,
+                    child: SvgPicture.asset(
+                      'assets/images/icons/Back.svg',
+                      width: 24,
+                      height: 24,
+                    ),
                   ),
                 ),
                 const SizedBox(width: 16),
@@ -563,7 +637,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
                     children: [
                       Text(
                         roomName,
-                        style: const TextStyle(
+                        style: Theme.of(context).textTheme.titleLarge!.copyWith(
                           color: Colors.white,
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
@@ -571,7 +645,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
                       ),
                       Text(
                         'Room ID:   $roomId',
-                        style: const TextStyle(
+                        style: Theme.of(context).textTheme.bodySmall!.copyWith(
                           color: Colors.white70,
                           fontSize: 12,
                         ),
@@ -619,6 +693,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
     AvatarState avatarState,
     String myMood,
     String myUsername,
+    AppUser? partner,
+    AvatarOverlay? partnerMoodOverlay,
+    AvatarOverlay? partnerAccessoryOverlay,
+    String? partnerThoughts,
+    String? partnerInterest,
+    bool isAlreadyFriend,
   ) {
     return SizedBox(
       height: 250,
@@ -645,13 +725,19 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     _StaticAvatar(
-                      username: 'kaitom',
-                      moodText: friendMood,
+                      username: partner?.displayName ?? '...',
+                      moodText: partnerThoughts?.isNotEmpty == true
+                          ? partnerThoughts!
+                          : 'Care to share?',
                       isMe: false,
                       boxWidth: eachW,
-                      onFriendRequest: _sendFriendRequest,
-                      onCancelRequest: _cancelFriendRequest,
-                      friendRequestSent: _friendRequestSent,
+                      moodOverlay: partnerMoodOverlay,
+                      accessoryOverlay: partnerAccessoryOverlay,
+                      partnerInterest: partnerInterest,
+                      onFriendRequest: (partner != null && !isAlreadyFriend)
+                          ? () => _sendFriendRequest(partner)
+                          : null,
+                      friendRequestSent: _friendRequestSent || isAlreadyFriend,
                     ),
                     const SizedBox(width: 20),
                     _StaticAvatar(
@@ -713,7 +799,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
             const SizedBox(height: 2),
             Text(
               label,
-              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+              style: Theme.of(context).textTheme.labelSmall!.copyWith(
+                fontSize: 11,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ],
         ),
@@ -722,7 +811,15 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
   }
 
   // ── Message list ──────────────────────────────────────────────────────────
-  Widget _buildMessageList(AvatarState avatarState, ChatState chatState) {
+  Widget _buildMessageList(
+    AvatarState avatarState,
+    ChatState chatState,
+    AppUser? partner,
+    AvatarOverlay? partnerMoodOverlay,
+    AvatarOverlay? partnerAccessoryOverlay,
+    String? partnerInterest,
+    bool isAlreadyFriend,
+  ) {
     final backendMsgs = chatState.messages
         .map((m) => _toDisplay(m, chatState.currentUserId))
         .toList();
@@ -752,11 +849,37 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
         return switch (msg.type) {
           'warning' => _buildWarning(msg.text),
           'system' => _buildSystem(msg),
-          'me' => _buildBubble(msg, isMe: true, avatarState: avatarState),
-          'other' => _buildBubble(msg, isMe: false),
+          'me' => _buildBubble(
+            msg,
+            isMe: true,
+            avatarState: avatarState,
+            partner: partner,
+          ),
+          'other' => _buildBubble(
+            msg,
+            isMe: false,
+            partner: partner,
+            partnerMoodOverlay: partnerMoodOverlay,
+            partnerAccessoryOverlay: partnerAccessoryOverlay,
+            partnerInterest: partnerInterest,
+            isAlreadyFriend: isAlreadyFriend,
+          ),
           'card' => _buildCard(msg.text),
-          'gif' => _buildGifBubble(msg, isMe: true, avatarState: avatarState),
-          'gif_other' => _buildGifBubble(msg, isMe: false),
+          'gif' => _buildGifBubble(
+            msg,
+            isMe: true,
+            avatarState: avatarState,
+            partner: partner,
+          ),
+          'gif_other' => _buildGifBubble(
+            msg,
+            isMe: false,
+            partner: partner,
+            partnerMoodOverlay: partnerMoodOverlay,
+            partnerAccessoryOverlay: partnerAccessoryOverlay,
+            partnerInterest: partnerInterest,
+            isAlreadyFriend: isAlreadyFriend,
+          ),
           _ => const SizedBox.shrink(),
         };
       },
@@ -775,8 +898,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
       child: Text(
         text,
         textAlign: TextAlign.center,
-        style: const TextStyle(
-          color: Color(0xFF836151),
+        style: Theme.of(context).textTheme.bodyMedium!.copyWith(
+          color: const Color(0xFF836151),
           fontSize: 13,
           fontWeight: FontWeight.w500,
         ),
@@ -791,7 +914,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
           const SizedBox(height: 8),
           Text(
             msg.time!,
-            style: const TextStyle(fontSize: 12, color: Colors.black45),
+            style: Theme.of(context).textTheme.bodySmall!.copyWith(
+              fontSize: 12,
+              color: Colors.black.withValues(alpha: 0.60),
+            ),
           ),
           const SizedBox(height: 6),
         ],
@@ -805,7 +931,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
           ),
           child: Text(
             msg.text,
-            style: const TextStyle(fontSize: 12, color: Colors.black54),
+            style: Theme.of(context).textTheme.bodySmall!.copyWith(
+              fontSize: 12,
+              color: Colors.black54,
+            ),
           ),
         ),
         const SizedBox(height: 8),
@@ -817,6 +946,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
     ChatMessage msg, {
     required bool isMe,
     AvatarState? avatarState,
+    AppUser? partner,
+    AvatarOverlay? partnerMoodOverlay,
+    AvatarOverlay? partnerAccessoryOverlay,
+    String? partnerInterest,
+    bool isAlreadyFriend = false,
   }) {
     final maxW = MediaQuery.of(context).size.width * 0.62;
     return Padding(
@@ -828,24 +962,39 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           if (!isMe) ...[
-            GestureDetector(
-              onTap: () => showDialog(
-                context: context,
-                builder: (_) => UserProfileDialog(
-                  username: 'kaitom',
-                  initialAdded: _friendRequestSent,
-                  onAddFriend: () => _sendFriendRequest(),
-                  onCancelRequest: () => _cancelFriendRequest(),
+            Semantics(
+              label: 'View user profile',
+              button: true,
+              child: GestureDetector(
+                onTap: () => showDialog(
+                  context: context,
+                  builder: (_) => UserProfileDialog(
+                    username: partner?.displayName ?? '...',
+                    initialAdded: _friendRequestSent || isAlreadyFriend,
+                    onAddFriend: (partner != null && !isAlreadyFriend)
+                        ? () => _sendFriendRequest(partner)
+                        : null,
+                    partnerMoodOverlay: partnerMoodOverlay,
+                    partnerAccessoryOverlay: partnerAccessoryOverlay,
+                    partnerInterest: partnerInterest,
+                  ),
+                ),
+                child: LayeredAvatar(
+                  boxSize: 40,
+                  moodOverlay: partnerMoodOverlay,
+                  accessoryOverlay: partnerAccessoryOverlay,
                 ),
               ),
-              child: LayeredAvatar(boxSize: 40),
             ),
             const SizedBox(width: 8),
           ],
           if (isMe) ...[
             Text(
               msg.time ?? '',
-              style: const TextStyle(fontSize: 10, color: Colors.black45),
+              style: Theme.of(context).textTheme.labelSmall!.copyWith(
+                fontSize: 10,
+                color: Colors.black.withValues(alpha: 0.60),
+              ),
             ),
             const SizedBox(width: 6),
           ],
@@ -859,14 +1008,19 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
             ),
             child: Text(
               msg.text,
-              style: const TextStyle(fontSize: 15, height: 1.6),
+              style: Theme.of(
+                context,
+              ).textTheme.bodyLarge!.copyWith(fontSize: 15, height: 1.6),
             ),
           ),
           if (!isMe) ...[
             const SizedBox(width: 6),
             Text(
               msg.time ?? '',
-              style: const TextStyle(fontSize: 10, color: Colors.black45),
+              style: Theme.of(context).textTheme.labelSmall!.copyWith(
+                fontSize: 10,
+                color: Colors.black.withValues(alpha: 0.60),
+              ),
             ),
           ],
           if (isMe) ...[
@@ -890,6 +1044,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
     ChatMessage msg, {
     required bool isMe,
     AvatarState? avatarState,
+    AppUser? partner,
+    AvatarOverlay? partnerMoodOverlay,
+    AvatarOverlay? partnerAccessoryOverlay,
+    String? partnerInterest,
+    bool isAlreadyFriend = false,
   }) {
     final maxW = MediaQuery.of(context).size.width * 0.55;
     final gifWidget = Container(
@@ -920,7 +1079,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
     );
     final timestamp = Text(
       msg.time ?? '',
-      style: const TextStyle(fontSize: 10, color: Colors.black45),
+      style: Theme.of(context).textTheme.labelSmall!.copyWith(
+        fontSize: 10,
+        color: Colors.black.withValues(alpha: 0.60),
+      ),
     );
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
@@ -931,17 +1093,29 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           if (!isMe) ...[
-            GestureDetector(
-              onTap: () => showDialog(
-                context: context,
-                builder: (_) => UserProfileDialog(
-                  username: 'kaitom',
-                  initialAdded: _friendRequestSent,
-                  onAddFriend: () => _sendFriendRequest(),
-                  onCancelRequest: () => _cancelFriendRequest(),
+            Semantics(
+              label: 'View user profile',
+              button: true,
+              child: GestureDetector(
+                onTap: () => showDialog(
+                  context: context,
+                  builder: (_) => UserProfileDialog(
+                    username: partner?.displayName ?? '...',
+                    initialAdded: _friendRequestSent || isAlreadyFriend,
+                    onAddFriend: (partner != null && !isAlreadyFriend)
+                        ? () => _sendFriendRequest(partner)
+                        : null,
+                    partnerMoodOverlay: partnerMoodOverlay,
+                    partnerAccessoryOverlay: partnerAccessoryOverlay,
+                    partnerInterest: partnerInterest,
+                  ),
+                ),
+                child: LayeredAvatar(
+                  boxSize: 40,
+                  moodOverlay: partnerMoodOverlay,
+                  accessoryOverlay: partnerAccessoryOverlay,
                 ),
               ),
-              child: LayeredAvatar(boxSize: 40),
             ),
             const SizedBox(width: 8),
             gifWidget,
@@ -1014,14 +1188,21 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
             ),
           ),
           const SizedBox(width: 10),
-          const Text(
+          Text(
             'GIF ready to send',
-            style: TextStyle(color: Colors.white70, fontSize: 12),
+            style: Theme.of(context).textTheme.bodySmall!.copyWith(
+              color: Colors.white70,
+              fontSize: 12,
+            ),
           ),
           const Spacer(),
-          GestureDetector(
-            onTap: () => setState(() => _pendingGifUrl = null),
-            child: const Icon(Icons.close, color: Colors.white54, size: 20),
+          Semantics(
+            label: 'Close GIF preview',
+            button: true,
+            child: GestureDetector(
+              onTap: () => setState(() => _pendingGifUrl = null),
+              child: const Icon(Icons.close, color: Colors.white54, size: 20),
+            ),
           ),
         ],
       ),
@@ -1056,7 +1237,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
                 maxLines: 5,
                 keyboardType: TextInputType.multiline,
                 textInputAction: TextInputAction.newline,
-                style: const TextStyle(fontSize: 15),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodyLarge!.copyWith(fontSize: 15),
                 strutStyle: const StrutStyle(
                   fontSize: 15,
                   height: 1.6,
@@ -1124,20 +1307,24 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
             ),
           ),
           const SizedBox(width: 10),
-          GestureDetector(
-            onTap: _sendMessage,
-            child: Container(
-              width: 50,
-              height: 50,
-              decoration: BoxDecoration(
-                color: const Color(0xFFEAC163),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              alignment: Alignment.center,
-              child: SvgPicture.asset(
-                'assets/images/icons/sent.svg',
-                width: 24,
-                height: 24,
+          Semantics(
+            label: 'Send message',
+            button: true,
+            child: GestureDetector(
+              onTap: _sendMessage,
+              child: Container(
+                width: 50,
+                height: 50,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEAC163),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                alignment: Alignment.center,
+                child: SvgPicture.asset(
+                  'assets/images/icons/sent.svg',
+                  width: 24,
+                  height: 24,
+                ),
               ),
             ),
           ),
@@ -1356,8 +1543,10 @@ class _StaticAvatar extends StatelessWidget {
     this.avatarState,
     this.boxWidth = 120,
     this.onFriendRequest,
-    this.onCancelRequest,
     this.friendRequestSent = false,
+    this.moodOverlay,
+    this.accessoryOverlay,
+    this.partnerInterest,
   });
 
   final String username;
@@ -1365,13 +1554,18 @@ class _StaticAvatar extends StatelessWidget {
   final bool isMe;
   final AvatarState? avatarState;
   final VoidCallback? onFriendRequest;
-  final VoidCallback? onCancelRequest;
   final bool friendRequestSent;
   final double boxWidth;
+  // Real partner overlays (ignored for isMe == true).
+  final AvatarOverlay? moodOverlay;
+  final AvatarOverlay? accessoryOverlay;
+  final String? partnerInterest;
 
   @override
   Widget build(BuildContext context) {
     final s = boxWidth / 120;
+    final resolvedMood = isMe ? avatarState?.mood : moodOverlay;
+    final resolvedAccessory = isMe ? avatarState?.accessory : accessoryOverlay;
     return SizedBox(
       width: boxWidth,
       height: 190 * s,
@@ -1382,21 +1576,27 @@ class _StaticAvatar extends StatelessWidget {
             bottom: 0,
             left: 0,
             right: 0,
-            child: GestureDetector(
-              onTap: () => showDialog(
-                context: context,
-                builder: (_) => UserProfileDialog(
-                  username: username,
-                  isMe: isMe,
-                  initialAdded: !isMe && friendRequestSent,
-                  onAddFriend: isMe ? null : onFriendRequest,
-                  onCancelRequest: isMe ? null : onCancelRequest,
+            child: Semantics(
+              label: 'View user profile',
+              button: true,
+              child: GestureDetector(
+                onTap: () => showDialog(
+                  context: context,
+                  builder: (_) => UserProfileDialog(
+                    username: username,
+                    isMe: isMe,
+                    initialAdded: !isMe && friendRequestSent,
+                    onAddFriend: isMe ? null : onFriendRequest,
+                    partnerMoodOverlay: isMe ? null : moodOverlay,
+                    partnerAccessoryOverlay: isMe ? null : accessoryOverlay,
+                    partnerInterest: isMe ? null : partnerInterest,
+                  ),
                 ),
-              ),
-              child: LayeredAvatar(
-                boxSize: 90 * s,
-                moodOverlay: isMe ? avatarState?.mood : null,
-                accessoryOverlay: isMe ? avatarState?.accessory : null,
+                child: LayeredAvatar(
+                  boxSize: 90 * s,
+                  moodOverlay: resolvedMood,
+                  accessoryOverlay: resolvedAccessory,
+                ),
               ),
             ),
           ),

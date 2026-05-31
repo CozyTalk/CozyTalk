@@ -89,4 +89,16 @@ class FriendsRepositoryImpl implements FriendsRepository {
     text: text,
     senderDisplayName: senderDisplayName,
   );
+
+  @override
+  Future<List<AppUser>> getUsersByIds(List<String> uids) =>
+      _datasource.getUsersByIds(uids);
+
+  @override
+  Future<void> setFriendTyping(String chatRoomId, bool isTyping) =>
+      _datasource.setFriendTyping(chatRoomId, isTyping);
+
+  @override
+  Stream<bool> watchFriendTyping(String chatRoomId) =>
+      _datasource.watchFriendTyping(chatRoomId);
 }

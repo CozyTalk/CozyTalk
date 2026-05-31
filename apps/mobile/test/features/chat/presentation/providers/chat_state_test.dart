@@ -84,8 +84,11 @@ void main() {
       expect(state.currentUserId, isNull);
       expect(state.currentUserDisplayName, isNull);
       expect(state.currentUserPhotoUrl, isNull);
+      expect(state.backgroundTheme, isNull);
+      expect(state.isRoomLoaded, isFalse);
       expect(state.messages, isEmpty);
       expect(state.typingUsers, isEmpty);
+      expect(state.presenceMembers, isNull);
       expect(state.isSending, isFalse);
       expect(state.error, isNull);
     });
@@ -155,6 +158,24 @@ void main() {
       expect(updated.typingUsers.length, 1);
     });
 
+    test('copyWith sets presenceMembers', () {
+      const state = ChatState();
+      final updated = state.copyWith(presenceMembers: {'u1', 'u2'});
+      expect(updated.presenceMembers, containsAll(['u1', 'u2']));
+    });
+
+    test('copyWith clears presenceMembers with explicit null (sentinel)', () {
+      final state = ChatState(presenceMembers: {'u1'});
+      final cleared = state.copyWith(presenceMembers: null);
+      expect(cleared.presenceMembers, isNull);
+    });
+
+    test('copyWith without presenceMembers preserves existing value', () {
+      final state = ChatState(presenceMembers: {'u1'});
+      final copy = state.copyWith(status: SessionStatus.chatting);
+      expect(copy.presenceMembers, containsAll(['u1']));
+    });
+
     test('copyWith sets currentUserPhotoUrl', () {
       const state = ChatState();
       final updated = state.copyWith(
@@ -180,6 +201,36 @@ void main() {
       expect(state.copyWith(isSending: false).isSending, isFalse);
     });
 
+    test('copyWith sets backgroundTheme', () {
+      const state = ChatState();
+      final updated = state.copyWith(backgroundTheme: 'kao_tapu');
+      expect(updated.backgroundTheme, 'kao_tapu');
+    });
+
+    test('copyWith clears backgroundTheme with explicit null (sentinel)', () {
+      final state = ChatState(backgroundTheme: 'kao_tapu');
+      final cleared = state.copyWith(backgroundTheme: null);
+      expect(cleared.backgroundTheme, isNull);
+    });
+
+    test('copyWith without backgroundTheme preserves existing value', () {
+      final state = ChatState(backgroundTheme: 'sea_of_cloud');
+      final copy = state.copyWith(status: SessionStatus.chatting);
+      expect(copy.backgroundTheme, 'sea_of_cloud');
+    });
+
+    test('copyWith sets isRoomLoaded', () {
+      const state = ChatState();
+      expect(state.copyWith(isRoomLoaded: true).isRoomLoaded, isTrue);
+      expect(state.copyWith(isRoomLoaded: false).isRoomLoaded, isFalse);
+    });
+
+    test('copyWith without isRoomLoaded preserves existing value', () {
+      final state = ChatState(isRoomLoaded: true);
+      final copy = state.copyWith(status: SessionStatus.chatting);
+      expect(copy.isRoomLoaded, isTrue);
+    });
+
     test('copyWith without arguments preserves all fields', () {
       final ts = DateTime.now();
       final msgs = [
@@ -197,6 +248,8 @@ void main() {
         currentUserId: 'user-1',
         currentUserDisplayName: 'Alice',
         currentUserPhotoUrl: 'https://example.com/photo.jpg',
+        backgroundTheme: 'lumphini_park',
+        isRoomLoaded: true,
         messages: msgs,
         typingUsers: const [TypingUser(uid: 'u2', displayName: 'Bob')],
         isSending: true,
@@ -207,6 +260,8 @@ void main() {
       expect(copy.sessionId, 'room-1');
       expect(copy.currentUserId, 'user-1');
       expect(copy.currentUserPhotoUrl, 'https://example.com/photo.jpg');
+      expect(copy.backgroundTheme, 'lumphini_park');
+      expect(copy.isRoomLoaded, isTrue);
       expect(copy.messages.length, 1);
       expect(copy.typingUsers.length, 1);
       expect(copy.isSending, isTrue);

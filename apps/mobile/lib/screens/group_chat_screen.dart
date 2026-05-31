@@ -4,10 +4,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../features/auth/presentation/providers/auth_provider.dart';
+import '../features/avatar/presentation/providers/avatar_decoration_provider.dart';
 import '../features/chat/domain/entities/chat_message.dart' as chat_entity;
 import '../features/chat/domain/entities/session_status.dart';
 import '../features/chat/presentation/providers/chat_provider.dart';
+import '../features/friends/domain/entities/app_user.dart';
+import '../features/friends/presentation/providers/friends_provider.dart';
 import '../features/matchmaking/presentation/providers/matchmaking_provider.dart';
+import '../features/avatar/domain/entities/avatar_decoration.dart';
+import '../features/profile/domain/entities/profile_user.dart';
+import '../features/profile/presentation/providers/profile_provider.dart';
 import '../theme/app_colors.dart';
 import '../dialogs/leave_room_dialog.dart';
 import '../dialogs/song_dialog.dart';
@@ -18,11 +24,18 @@ import '../shared/layered_avatar.dart';
 import '../shared/press_bounce_btn.dart';
 import '../shared/user_profile.dart';
 import '../shared/friend_message_popup.dart';
+import '../shared/friend_request_popup.dart';
 import '../theme/app_routes.dart';
 import '../models/friend.dart';
 import '../shared/gif_picker.dart';
-import '../shared/friend_request_popup.dart';
 import '../shared/info_dialog.dart';
+
+const _kThemeAssets = <String, String>{
+  'kao_tapu': 'assets/images/backgrounds/kao_tapu.png',
+  'red_lotus_lake': 'assets/images/backgrounds/red_lotus_lake.png',
+  'sea_of_cloud': 'assets/images/backgrounds/sea_of_cloud.png',
+  'lumphini_park': 'assets/images/backgrounds/lumphini_park.png',
+};
 
 // ── Card assets ────────────────────────────────────────────────────────────
 const _cardAssets = [
@@ -100,8 +113,9 @@ class GroupChatScreen extends ConsumerStatefulWidget {
 
 class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
     with TickerProviderStateMixin {
+  // Keyed by partner UID after integration (was display name before).
   final Map<String, bool> _friendRequestSent = {};
-  final Map<String, bool> _friendAccepted = {};
+  final Map<String, String> _knownNames = {};
   final TextEditingController _msgController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final FocusNode _focusNode = FocusNode();
@@ -267,53 +281,23 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
     setState(() => _pendingGifUrl = url);
   }
 
-  void _sendFriendRequest(String targetName) {
-    if (_friendRequestSent[targetName] == true) return;
-    setState(() => _friendRequestSent[targetName] = true);
+  void _sendFriendRequest(AppUser partner) {
+    final uid = partner.uid;
+    final friendsState = ref.read(friendsNotifierProvider);
+    final alreadyFriend = friendsState.friends.any((f) => f.friendUid == uid);
+    if (friendsState.isLoading ||
+        _friendRequestSent[uid] == true ||
+        alreadyFriend) {
+      return;
+    }
+    setState(() => _friendRequestSent[uid] = true);
+    ref.read(friendsNotifierProvider.notifier).sendFriendRequest(partner);
     showInfoDialog(
       context,
       type: InfoDialogType.info,
       title: 'Friend Request Sent',
       message:
-          'Your friend request has been sent to $targetName.\nWaiting for them to accept.',
-    );
-    Future.delayed(const Duration(milliseconds: 1500), () {
-      if (!mounted) return;
-      showFriendRequestPopup(
-        context,
-        requesterName: targetName,
-        onAccept: () {
-          setState(() => _friendAccepted[targetName] = true);
-          showInfoDialog(
-            context,
-            type: InfoDialogType.success,
-            title: "You're now friends! 🎉",
-            message:
-                'You and $targetName are now friends.\nYou can find them in your friends list.',
-          );
-        },
-        onDecline: () => setState(() => _friendRequestSent[targetName] = false),
-      );
-    });
-  }
-
-  void _cancelFriendRequest(String targetName) {
-    if (_friendAccepted[targetName] == true) {
-      showInfoDialog(
-        context,
-        type: InfoDialogType.warning,
-        title: 'Cannot Cancel Request',
-        message:
-            '$targetName has already accepted your friend request.\nYou are now friends!',
-      );
-      return;
-    }
-    setState(() => _friendRequestSent[targetName] = false);
-    showInfoDialog(
-      context,
-      type: InfoDialogType.info,
-      title: 'Request Cancelled',
-      message: 'Your friend request to $targetName has been cancelled.',
+          'Your friend request has been sent to ${partner.displayName}.\nWaiting for them to accept.',
     );
   }
 
@@ -477,30 +461,114 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
         ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
     final roomName = args?['roomName'] as String? ?? 'Koh Tapu';
     final roomId = args?['roomId'] as String? ?? 'ABP8C';
-    final bgImage =
-        args?['bgImage'] as String? ?? 'assets/images/backgrounds/kao_tapu.png';
     final maxMembers = args?['maxMembers'] as int? ?? 5;
 
     final avatarState = ref.watch(avatarProvider);
     final userProfile = ref.watch(userProfileProvider);
+    final myThoughts = ref.watch(
+      profileNotifierProvider.select((s) => s.profile?.thoughts ?? ''),
+    );
     final chatState = ref.watch(chatNotifierProvider);
     final roomType = args?['roomType'] as String?;
     final matchState = ref.watch(matchmakingNotifierProvider);
+    final bgImage =
+        _kThemeAssets[matchState.currentRoom?.backgroundTheme] ??
+        args?['bgImage'] as String? ??
+        'assets/images/backgrounds/kao_tapu.png';
     final isLocked = matchState.currentRoom?.isLocked ?? (roomType == 'create');
 
     final myUid =
         chatState.currentUserId ??
         ref.watch(authNotifierProvider).user?.uid ??
         '';
-    final nameMap = <String, String>{
-      for (final m in chatState.messages) m.senderId: m.displayName,
-    };
+    for (final m in chatState.messages) {
+      _knownNames[m.senderId] = m.displayName;
+    }
+    for (final u in chatState.typingUsers) {
+      _knownNames[u.uid] = u.displayName;
+    }
+    final presenceMembers = chatState.presenceMembers;
     final roomUsers = matchState.currentRoom?.users ?? [];
-    final members = roomUsers.isEmpty
+    // Filter to live users only. When presenceMembers is null (subscription not
+    // yet delivered), fall back to the full list to avoid an empty banner flash.
+    final liveUsers = presenceMembers == null
+        ? roomUsers
+        : roomUsers.where((uid) => presenceMembers.contains(uid)).toList();
+    final members = liveUsers.isEmpty
         ? ['Me']
-        : roomUsers
-              .map((uid) => uid == myUid ? 'Me' : (nameMap[uid] ?? 'User'))
+        : liveUsers
+              .map((uid) => uid == myUid ? 'Me' : (_knownNames[uid] ?? 'User'))
               .toList();
+
+    final partnerUids = matchState.partnerUids;
+    final partnersAsync = ref.watch(
+      getUsersByIdsProvider(([...partnerUids]..sort()).join(',')),
+    );
+    final Map<String, AppUser> partnersMap = {
+      for (final u in (partnersAsync.value ?? <AppUser>[])) u.uid: u,
+    };
+
+    // UIDs that are already friends with the current user.
+    final alreadyFriendUids = ref.watch(
+      friendsNotifierProvider.select(
+        (s) => s.friends.map((f) => f.friendUid).toSet(),
+      ),
+    );
+
+    // Per-partner decoration + profile for real avatar rendering.
+    final Map<String, AvatarDecoration?> partnerDecorations = {
+      for (final uid in partnerUids)
+        uid: ref.watch(partnerDecorationProvider(uid)).asData?.value,
+    };
+    final Map<String, ProfileUser?> partnerProfiles = {
+      for (final uid in partnerUids)
+        uid: ref.watch(partnerProfileProvider(uid)).asData?.value,
+    };
+
+    ref.listen<FriendsState>(friendsNotifierProvider, (prev, next) {
+      if (next.error != null && next.error != prev?.error) {
+        ScaffoldMessenger.of(context)
+          ..clearSnackBars()
+          ..showSnackBar(SnackBar(content: Text(next.error!)));
+        ref.read(friendsNotifierProvider.notifier).clearError();
+      }
+
+      // Show in-room popup when any partner sends us a friend request.
+      final prevIds = prev?.incomingRequests.map((r) => r.id).toSet() ?? {};
+      for (final req in next.incomingRequests) {
+        if (!prevIds.contains(req.id) && partnerUids.contains(req.fromUid)) {
+          showFriendRequestPopup(
+            context,
+            requesterName: req.fromDisplayName,
+            onAccept: () =>
+                ref.read(friendsNotifierProvider.notifier).acceptRequest(req),
+            onDecline: () => ref
+                .read(friendsNotifierProvider.notifier)
+                .declineRequest(req.id),
+          );
+        }
+      }
+
+      // Notify when a partner accepted our request.
+      for (final uid in partnerUids) {
+        if (_friendRequestSent[uid] == true) {
+          final wasAlreadyFriend =
+              prev?.friends.any((f) => f.friendUid == uid) ?? false;
+          final isNowFriend = next.friends.any((f) => f.friendUid == uid);
+          if (!wasAlreadyFriend && isNowFriend) {
+            final name = next.friends
+                .firstWhere((f) => f.friendUid == uid)
+                .friendDisplayName;
+            showInfoDialog(
+              context,
+              type: InfoDialogType.success,
+              title: "You're now friends!",
+              message: '$name accepted your friend request.',
+            );
+          }
+        }
+      }
+    });
 
     ref.listen(chatNotifierProvider.select((s) => s.status), (_, next) {
       if (next == SessionStatus.disconnected) {
@@ -554,12 +622,25 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
                           maxMembers,
                           avatarState,
                           userProfile,
+                          myThoughts,
                           members,
+                          roomUsers,
+                          partnersMap,
+                          partnerDecorations,
+                          partnerProfiles,
+                          alreadyFriendUids,
                         ),
                         Expanded(
                           child: Stack(
                             children: [
-                              _buildMessageList(avatarState, chatState),
+                              _buildMessageList(
+                                avatarState,
+                                chatState,
+                                partnersMap,
+                                partnerDecorations,
+                                partnerProfiles,
+                                alreadyFriendUids,
+                              ),
                               Positioned(
                                 top: 0,
                                 left: 0,
@@ -588,13 +669,15 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
                     ),
                     // Barrier — tap outside to close whichever panel is open
                     if (_panelOpen || _songPanelOpen)
-                      GestureDetector(
-                        onTap: _panelOpen ? _closePanel : _closeSongPanel,
-                        behavior: HitTestBehavior.opaque,
-                        child: AnimatedOpacity(
-                          opacity: 1.0,
-                          duration: const Duration(milliseconds: 260),
-                          child: Container(color: Colors.black26),
+                      ExcludeSemantics(
+                        child: GestureDetector(
+                          onTap: _panelOpen ? _closePanel : _closeSongPanel,
+                          behavior: HitTestBehavior.opaque,
+                          child: AnimatedOpacity(
+                            opacity: 1.0,
+                            duration: const Duration(milliseconds: 260),
+                            child: Container(color: Colors.black26),
+                          ),
                         ),
                       ),
                     // Slide-down members panel
@@ -606,11 +689,18 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
                         position: _panelSlide,
                         child: MembersPanelBody(
                           members: members,
+                          memberUids: roomUsers,
                           onClose: _closePanel,
                           avatarState: avatarState,
-                          friendRequestSent: _friendRequestSent,
-                          onAddFriend: _sendFriendRequest,
-                          onCancelRequest: _cancelFriendRequest,
+                          friendRequestSent: {
+                            ..._friendRequestSent,
+                            for (final uid in alreadyFriendUids) uid: true,
+                          },
+                          onAddFriend: (uid) {
+                            if (alreadyFriendUids.contains(uid)) return;
+                            final p = partnersMap[uid];
+                            if (p != null) _sendFriendRequest(p);
+                          },
                         ),
                       ),
                     ),
@@ -652,24 +742,28 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 // Back button
-                _headerBtn(
-                  onTap: () => showDialog(
-                    context: context,
-                    builder: (_) => LeaveRoomDialog(
-                      onLeave: () {
-                        ref
-                            .read(matchmakingNotifierProvider.notifier)
-                            .leaveRoom();
-                        ref
-                            .read(chatNotifierProvider.notifier)
-                            .forceDisconnect();
-                      },
+                Semantics(
+                  label: 'End chat',
+                  button: true,
+                  child: _headerBtn(
+                    onTap: () => showDialog(
+                      context: context,
+                      builder: (_) => LeaveRoomDialog(
+                        onLeave: () {
+                          ref
+                              .read(matchmakingNotifierProvider.notifier)
+                              .leaveRoom();
+                          ref
+                              .read(chatNotifierProvider.notifier)
+                              .forceDisconnect();
+                        },
+                      ),
                     ),
-                  ),
-                  child: SvgPicture.asset(
-                    'assets/images/icons/Back.svg',
-                    width: 24,
-                    height: 24,
+                    child: SvgPicture.asset(
+                      'assets/images/icons/Back.svg',
+                      width: 24,
+                      height: 24,
+                    ),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -681,7 +775,7 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
                     children: [
                       Text(
                         roomName,
-                        style: const TextStyle(
+                        style: Theme.of(context).textTheme.titleLarge!.copyWith(
                           color: Colors.white,
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
@@ -689,7 +783,7 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
                       ),
                       Text(
                         'Room ID:   $roomId',
-                        style: const TextStyle(
+                        style: Theme.of(context).textTheme.bodySmall!.copyWith(
                           color: Colors.white70,
                           fontSize: 12,
                         ),
@@ -698,64 +792,75 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
                   ),
                 ),
                 // Lock toggle
-                GestureDetector(
-                  onTap: () {
-                    ref
-                        .read(matchmakingNotifierProvider.notifier)
-                        .setRoomLock(isLocked: !isLocked);
-                  },
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    width: 60,
-                    height: 32,
-                    padding: const EdgeInsets.symmetric(horizontal: 3),
-                    decoration: BoxDecoration(
-                      color: isLocked
-                          ? const Color(0xFFBA5F3A)
-                          : const Color(0xFFD9D9D9),
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: Colors.black12),
-                    ),
-                    child: Stack(
-                      children: [
-                        AnimatedAlign(
-                          duration: const Duration(milliseconds: 200),
-                          alignment: isLocked
-                              ? Alignment.centerRight
-                              : Alignment.centerLeft,
-                          child: Container(
-                            width: 26,
-                            height: 26,
-                            decoration: const BoxDecoration(
-                              color: Colors.white,
-                              shape: BoxShape.circle,
-                              boxShadow: [
-                                BoxShadow(color: Colors.black12, blurRadius: 4),
-                              ],
-                            ),
-                            child: Icon(
-                              isLocked
-                                  ? Icons.lock_rounded
-                                  : Icons.lock_open_rounded,
-                              size: 16,
-                              color: isLocked
-                                  ? const Color(0xFFBA5F3A)
-                                  : Colors.grey,
+                Semantics(
+                  label: 'Toggle room lock',
+                  button: true,
+                  child: GestureDetector(
+                    onTap: () {
+                      ref
+                          .read(matchmakingNotifierProvider.notifier)
+                          .setRoomLock(isLocked: !isLocked);
+                    },
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      width: 60,
+                      height: 32,
+                      padding: const EdgeInsets.symmetric(horizontal: 3),
+                      decoration: BoxDecoration(
+                        color: isLocked
+                            ? const Color(0xFFBA5F3A)
+                            : const Color(0xFFD9D9D9),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: Colors.black12),
+                      ),
+                      child: Stack(
+                        children: [
+                          AnimatedAlign(
+                            duration: const Duration(milliseconds: 200),
+                            alignment: isLocked
+                                ? Alignment.centerRight
+                                : Alignment.centerLeft,
+                            child: Container(
+                              width: 26,
+                              height: 26,
+                              decoration: const BoxDecoration(
+                                color: Colors.white,
+                                shape: BoxShape.circle,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black12,
+                                    blurRadius: 4,
+                                  ),
+                                ],
+                              ),
+                              child: Icon(
+                                isLocked
+                                    ? Icons.lock_rounded
+                                    : Icons.lock_open_rounded,
+                                size: 16,
+                                color: isLocked
+                                    ? const Color(0xFFBA5F3A)
+                                    : Colors.grey,
+                              ),
                             ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ),
                 const SizedBox(width: 10),
                 // Member list button
-                _headerBtn(
-                  onTap: _panelOpen ? _closePanel : _openPanel,
-                  child: SvgPicture.asset(
-                    'assets/images/icons/memberlist.svg',
-                    width: 26,
-                    height: 26,
+                Semantics(
+                  label: 'View member list',
+                  button: true,
+                  child: _headerBtn(
+                    onTap: _panelOpen ? _closePanel : _openPanel,
+                    child: SvgPicture.asset(
+                      'assets/images/icons/memberlist.svg',
+                      width: 26,
+                      height: 26,
+                    ),
                   ),
                 ),
               ],
@@ -797,7 +902,13 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
     int maxMembers,
     AvatarState avatarState,
     UserProfileState userProfile,
+    String myThoughts,
     List<String> members,
+    List<String> roomUsers,
+    Map<String, AppUser> partnersMap,
+    Map<String, AvatarDecoration?> partnerDecorations,
+    Map<String, ProfileUser?> partnerProfiles,
+    Set<String> alreadyFriendUids,
   ) {
     final count = members.length.clamp(1, 5);
     final preset = _layouts[count];
@@ -836,7 +947,7 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
                     ),
                     child: Text(
                       '${members.length} / $maxMembers',
-                      style: const TextStyle(
+                      style: Theme.of(context).textTheme.bodyMedium!.copyWith(
                         fontWeight: FontWeight.bold,
                         fontSize: 13,
                       ),
@@ -850,11 +961,25 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
                 final username = members[i];
                 final isMe = username == 'Me';
                 final displayName = isMe ? userProfile.username : username;
+                final memberUid = (i < roomUsers.length) ? roomUsers[i] : null;
+                final partner = (!isMe && memberUid != null)
+                    ? partnersMap[memberUid]
+                    : null;
+                final partnerDecoration = (!isMe && memberUid != null)
+                    ? partnerDecorations[memberUid]
+                    : null;
+                final partnerProfile = (!isMe && memberUid != null)
+                    ? partnerProfiles[memberUid]
+                    : null;
+                final partnerMoodOverlay =
+                    AvatarOverlays.mood[partnerDecoration?.moodKey ?? ''];
+                final partnerAccessoryOverlay =
+                    AvatarOverlays.accessory[partnerDecoration?.hatKey ?? ''];
                 final thought = isMe
-                    ? (userProfile.thought.isNotEmpty
-                          ? userProfile.thought
-                          : 'Care to share?')
-                    : 'Hello!';
+                    ? (myThoughts.isNotEmpty ? myThoughts : 'Care to share?')
+                    : (partnerProfile?.thoughts?.isNotEmpty == true
+                          ? partnerProfile!.thoughts!
+                          : 'Hello!');
                 final rawScale = pos.size / 90;
                 final scale = rawScale.clamp(0.78, 1.0);
                 final bubbleW = 84 * scale;
@@ -872,29 +997,51 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
                           bottom: 0,
                           left: 0,
                           right: 0,
-                          child: GestureDetector(
-                            onTap: () => showDialog(
-                              context: context,
-                              builder: (_) => UserProfileDialog(
-                                username: displayName,
-                                isMe: isMe,
-                                initialAdded:
-                                    !isMe &&
-                                    (_friendRequestSent[displayName] == true),
-                                onAddFriend: isMe
-                                    ? null
-                                    : () => _sendFriendRequest(displayName),
-                                onCancelRequest: isMe
-                                    ? null
-                                    : () => _cancelFriendRequest(displayName),
+                          child: Semantics(
+                            label: 'View user profile',
+                            button: true,
+                            child: GestureDetector(
+                              onTap: () => showDialog(
+                                context: context,
+                                builder: (_) => UserProfileDialog(
+                                  username: displayName,
+                                  isMe: isMe,
+                                  initialAdded:
+                                      !isMe &&
+                                      memberUid != null &&
+                                      ((_friendRequestSent[memberUid] ==
+                                              true) ||
+                                          alreadyFriendUids.contains(
+                                            memberUid,
+                                          )),
+                                  onAddFriend:
+                                      (!isMe &&
+                                          partner != null &&
+                                          !(alreadyFriendUids.contains(
+                                            memberUid,
+                                          )))
+                                      ? () => _sendFriendRequest(partner)
+                                      : null,
+                                  partnerMoodOverlay: isMe
+                                      ? null
+                                      : partnerMoodOverlay,
+                                  partnerAccessoryOverlay: isMe
+                                      ? null
+                                      : partnerAccessoryOverlay,
+                                  partnerInterest: isMe
+                                      ? null
+                                      : partnerProfile?.interest,
+                                ),
                               ),
-                            ),
-                            child: LayeredAvatar(
-                              boxSize: pos.size,
-                              moodOverlay: isMe ? avatarState.mood : null,
-                              accessoryOverlay: isMe
-                                  ? avatarState.accessory
-                                  : null,
+                              child: LayeredAvatar(
+                                boxSize: pos.size,
+                                moodOverlay: isMe
+                                    ? avatarState.mood
+                                    : partnerMoodOverlay,
+                                accessoryOverlay: isMe
+                                    ? avatarState.accessory
+                                    : partnerAccessoryOverlay,
+                              ),
                             ),
                           ),
                         ),
@@ -981,7 +1128,10 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
             const SizedBox(height: 2),
             Text(
               label,
-              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+              style: Theme.of(context).textTheme.labelSmall!.copyWith(
+                fontSize: 11,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ],
         ),
@@ -990,7 +1140,14 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
   }
 
   // ── Message list ──────────────────────────────────────────────────────────
-  Widget _buildMessageList(AvatarState avatarState, ChatState chatState) {
+  Widget _buildMessageList(
+    AvatarState avatarState,
+    ChatState chatState,
+    Map<String, AppUser> partnersMap,
+    Map<String, AvatarDecoration?> partnerDecorations,
+    Map<String, ProfileUser?> partnerProfiles,
+    Set<String> alreadyFriendUids,
+  ) {
     final backendMsgs = chatState.messages
         .map((m) => _toGroupDisplay(m, chatState.currentUserId))
         .toList();
@@ -1025,7 +1182,14 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
           _MsgType.card => _buildCard(msg.text),
           _MsgType.gif => _buildGifBubble(msg, avatarState, isMe: true),
           _MsgType.gifOther => _buildGifBubble(msg, avatarState, isMe: false),
-          _ => _buildChatBubble(msg, avatarState),
+          _ => _buildChatBubble(
+            msg,
+            avatarState,
+            partnersMap,
+            partnerDecorations,
+            partnerProfiles,
+            alreadyFriendUids,
+          ),
         };
       },
     );
@@ -1043,8 +1207,8 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
       child: Text(
         text,
         textAlign: TextAlign.center,
-        style: const TextStyle(
-          color: Color(0xFF836151),
+        style: Theme.of(context).textTheme.bodyMedium!.copyWith(
+          color: const Color(0xFF836151),
           fontSize: 13,
           fontWeight: FontWeight.w500,
         ),
@@ -1059,7 +1223,10 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
           const SizedBox(height: 8),
           Text(
             msg.time!,
-            style: const TextStyle(fontSize: 12, color: Colors.black45),
+            style: Theme.of(context).textTheme.bodySmall!.copyWith(
+              fontSize: 12,
+              color: Colors.black.withValues(alpha: 0.60),
+            ),
           ),
           const SizedBox(height: 6),
         ],
@@ -1073,7 +1240,10 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
           ),
           child: Text(
             msg.text,
-            style: const TextStyle(fontSize: 12, color: Colors.black54),
+            style: Theme.of(context).textTheme.bodySmall!.copyWith(
+              fontSize: 12,
+              color: Colors.black54,
+            ),
           ),
         ),
         const SizedBox(height: 8),
@@ -1081,7 +1251,14 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
     );
   }
 
-  Widget _buildChatBubble(_GroupMsg msg, AvatarState avatarState) {
+  Widget _buildChatBubble(
+    _GroupMsg msg,
+    AvatarState avatarState,
+    Map<String, AppUser> partnersMap,
+    Map<String, AvatarDecoration?> partnerDecorations,
+    Map<String, ProfileUser?> partnerProfiles,
+    Set<String> alreadyFriendUids,
+  ) {
     final isMe = msg.type == _MsgType.me;
     final maxW = MediaQuery.of(context).size.width * 0.60;
 
@@ -1095,17 +1272,58 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
         children: [
           // Avatar (others only)
           if (!isMe) ...[
-            GestureDetector(
-              onTap: () => showDialog(
-                context: context,
-                builder: (_) => UserProfileDialog(
-                  username: msg.sender ?? '',
-                  initialAdded: _friendRequestSent[msg.sender ?? ''] == true,
-                  onAddFriend: () => _sendFriendRequest(msg.sender ?? ''),
-                  onCancelRequest: () => _cancelFriendRequest(msg.sender ?? ''),
+            Semantics(
+              label: 'View user profile',
+              button: true,
+              child: GestureDetector(
+                onTap: () {
+                  final partnerByName = partnersMap.values
+                      .where((u) => u.displayName == (msg.sender ?? ''))
+                      .firstOrNull;
+                  final dec = partnerByName != null
+                      ? partnerDecorations[partnerByName.uid]
+                      : null;
+                  final prof = partnerByName != null
+                      ? partnerProfiles[partnerByName.uid]
+                      : null;
+                  showDialog(
+                    context: context,
+                    builder: (_) => UserProfileDialog(
+                      username: msg.sender ?? '',
+                      initialAdded:
+                          partnerByName != null &&
+                          ((_friendRequestSent[partnerByName.uid] == true) ||
+                              alreadyFriendUids.contains(partnerByName.uid)),
+                      onAddFriend:
+                          (partnerByName != null &&
+                              !alreadyFriendUids.contains(partnerByName.uid))
+                          ? () => _sendFriendRequest(partnerByName)
+                          : null,
+                      partnerMoodOverlay:
+                          AvatarOverlays.mood[dec?.moodKey ?? ''],
+                      partnerAccessoryOverlay:
+                          AvatarOverlays.accessory[dec?.hatKey ?? ''],
+                      partnerInterest: prof?.interest,
+                    ),
+                  );
+                },
+                child: Builder(
+                  builder: (ctx) {
+                    final pByName = partnersMap.values
+                        .where((u) => u.displayName == (msg.sender ?? ''))
+                        .firstOrNull;
+                    final dec = pByName != null
+                        ? partnerDecorations[pByName.uid]
+                        : null;
+                    return LayeredAvatar(
+                      boxSize: 40,
+                      moodOverlay: AvatarOverlays.mood[dec?.moodKey ?? ''],
+                      accessoryOverlay:
+                          AvatarOverlays.accessory[dec?.hatKey ?? ''],
+                    );
+                  },
                 ),
               ),
-              child: LayeredAvatar(boxSize: 40),
             ),
             const SizedBox(width: 8),
           ],
@@ -1120,7 +1338,7 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
                   padding: const EdgeInsets.only(bottom: 4),
                   child: Text(
                     msg.sender ?? '',
-                    style: const TextStyle(
+                    style: Theme.of(context).textTheme.bodySmall!.copyWith(
                       fontSize: 12,
                       fontWeight: FontWeight.bold,
                     ),
@@ -1132,9 +1350,9 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
                   if (isMe) ...[
                     Text(
                       msg.time ?? '',
-                      style: const TextStyle(
+                      style: Theme.of(context).textTheme.labelSmall!.copyWith(
                         fontSize: 10,
-                        color: Colors.black45,
+                        color: Colors.black.withValues(alpha: 0.60),
                       ),
                     ),
                     const SizedBox(width: 6),
@@ -1155,16 +1373,19 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
                     ),
                     child: Text(
                       msg.text,
-                      style: const TextStyle(fontSize: 15, height: 1.6),
+                      style: Theme.of(context).textTheme.bodyLarge!.copyWith(
+                        fontSize: 15,
+                        height: 1.6,
+                      ),
                     ),
                   ),
                   if (!isMe) ...[
                     const SizedBox(width: 6),
                     Text(
                       msg.time ?? '',
-                      style: const TextStyle(
+                      style: Theme.of(context).textTheme.labelSmall!.copyWith(
                         fontSize: 10,
-                        color: Colors.black45,
+                        color: Colors.black.withValues(alpha: 0.60),
                       ),
                     ),
                   ],
@@ -1226,7 +1447,10 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
     );
     final timestamp = Text(
       msg.time ?? '',
-      style: const TextStyle(fontSize: 10, color: Colors.black45),
+      style: Theme.of(context).textTheme.labelSmall!.copyWith(
+        fontSize: 10,
+        color: Colors.black.withValues(alpha: 0.60),
+      ),
     );
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
@@ -1246,7 +1470,7 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
                   padding: const EdgeInsets.only(bottom: 4),
                   child: Text(
                     msg.sender ?? '',
-                    style: const TextStyle(
+                    style: Theme.of(context).textTheme.bodySmall!.copyWith(
                       fontSize: 12,
                       fontWeight: FontWeight.bold,
                     ),
@@ -1323,9 +1547,13 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
               ),
             ),
           ),
-          GestureDetector(
-            onTap: () => setState(() => _pendingGifUrl = null),
-            child: const Icon(Icons.close, color: Colors.white70, size: 20),
+          Semantics(
+            label: 'Close GIF preview',
+            button: true,
+            child: GestureDetector(
+              onTap: () => setState(() => _pendingGifUrl = null),
+              child: const Icon(Icons.close, color: Colors.white70, size: 20),
+            ),
           ),
         ],
       ),
@@ -1348,7 +1576,9 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
                 maxLines: 5,
                 keyboardType: TextInputType.multiline,
                 textInputAction: TextInputAction.newline,
-                style: const TextStyle(fontSize: 15),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodyLarge!.copyWith(fontSize: 15),
                 strutStyle: const StrutStyle(
                   fontSize: 15,
                   height: 1.6,
@@ -1416,20 +1646,24 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
             ),
           ),
           const SizedBox(width: 10),
-          GestureDetector(
-            onTap: _sendMessage,
-            child: Container(
-              width: 50,
-              height: 50,
-              decoration: BoxDecoration(
-                color: const Color(0xFFEAC163),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              alignment: Alignment.center,
-              child: SvgPicture.asset(
-                'assets/images/icons/sent.svg',
-                width: 24,
-                height: 24,
+          Semantics(
+            label: 'Send message',
+            button: true,
+            child: GestureDetector(
+              onTap: _sendMessage,
+              child: Container(
+                width: 50,
+                height: 50,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEAC163),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                alignment: Alignment.center,
+                child: SvgPicture.asset(
+                  'assets/images/icons/sent.svg',
+                  width: 24,
+                  height: 24,
+                ),
               ),
             ),
           ),

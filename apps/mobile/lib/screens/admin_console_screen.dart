@@ -393,15 +393,15 @@ class _AdminConsoleScreenState extends ConsumerState<AdminConsoleScreen> {
                 children: [
                   Text(
                     'ADMIN CONSOLE',
-                    style: TextStyle(
+                    style: Theme.of(context).textTheme.labelSmall!.copyWith(
                       fontSize: 10,
                       color: Colors.white.withValues(alpha: .7),
                       letterSpacing: 1.4,
                     ),
                   ),
-                  const Text(
+                  Text(
                     'Moderation',
-                    style: TextStyle(
+                    style: Theme.of(context).textTheme.titleLarge!.copyWith(
                       fontSize: 20,
                       fontWeight: FontWeight.w800,
                       color: Colors.white,
@@ -532,7 +532,7 @@ class _AdminConsoleScreenState extends ConsumerState<AdminConsoleScreen> {
                       const SizedBox(width: 5),
                       Text(
                         t.label,
-                        style: TextStyle(
+                        style: Theme.of(context).textTheme.bodyMedium!.copyWith(
                           fontSize: 13,
                           fontWeight: FontWeight.w700,
                           color: active ? AdminC.greenInk : AdminC.inkSoft,
@@ -551,11 +551,12 @@ class _AdminConsoleScreenState extends ConsumerState<AdminConsoleScreen> {
                           ),
                           child: Text(
                             '${t.badge}',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 10,
-                              fontWeight: FontWeight.w800,
-                            ),
+                            style: Theme.of(context).textTheme.labelSmall!
+                                .copyWith(
+                                  color: Colors.white,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w800,
+                                ),
                           ),
                         ),
                       ],
@@ -602,7 +603,7 @@ class _AdminConsoleScreenState extends ConsumerState<AdminConsoleScreen> {
                 controller: _searchCtrl,
                 decoration: InputDecoration(
                   hintText: hints[_tab],
-                  hintStyle: const TextStyle(
+                  hintStyle: Theme.of(context).textTheme.bodyMedium!.copyWith(
                     color: AdminC.inkSoft,
                     fontSize: 14,
                   ),
@@ -610,7 +611,10 @@ class _AdminConsoleScreenState extends ConsumerState<AdminConsoleScreen> {
                   contentPadding: EdgeInsets.zero,
                   isDense: true,
                 ),
-                style: const TextStyle(fontSize: 14, color: AdminC.ink),
+                style: Theme.of(context).textTheme.bodyMedium!.copyWith(
+                  fontSize: 14,
+                  color: AdminC.ink,
+                ),
               ),
             ),
             if (_query.isNotEmpty)
@@ -755,7 +759,7 @@ class _AdminBlockedUsersDialog extends StatelessWidget {
           children: [
             Text(
               'Blocked by $userName',
-              style: const TextStyle(
+              style: Theme.of(context).textTheme.titleMedium!.copyWith(
                 fontWeight: FontWeight.w800,
                 fontSize: 16,
                 color: AdminC.ink,
@@ -764,16 +768,22 @@ class _AdminBlockedUsersDialog extends StatelessWidget {
             const SizedBox(height: 4),
             Text(
               '${entries.length} / 5 blocked',
-              style: const TextStyle(fontSize: 12, color: AdminC.inkSoft),
+              style: Theme.of(context).textTheme.bodySmall!.copyWith(
+                fontSize: 12,
+                color: AdminC.inkSoft,
+              ),
             ),
             const SizedBox(height: 16),
             if (entries.isEmpty)
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 12),
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 12),
                 child: Center(
                   child: Text(
                     'No blocked users',
-                    style: TextStyle(color: AdminC.inkSoft, fontSize: 14),
+                    style: Theme.of(context).textTheme.bodyMedium!.copyWith(
+                      color: AdminC.inkSoft,
+                      fontSize: 14,
+                    ),
                   ),
                 ),
               )
@@ -802,18 +812,20 @@ class _AdminBlockedUsersDialog extends StatelessWidget {
                               children: [
                                 Text(
                                   e.displayName ?? e.uid,
-                                  style: const TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w600,
-                                    color: AdminC.ink,
-                                  ),
+                                  style: Theme.of(context).textTheme.bodyMedium!
+                                      .copyWith(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w600,
+                                        color: AdminC.ink,
+                                      ),
                                 ),
                                 Text(
                                   e.uid,
-                                  style: const TextStyle(
-                                    fontSize: 11,
-                                    color: AdminC.inkSoft,
-                                  ),
+                                  style: Theme.of(context).textTheme.labelSmall!
+                                      .copyWith(
+                                        fontSize: 11,
+                                        color: AdminC.inkSoft,
+                                      ),
                                 ),
                               ],
                             ),
@@ -876,7 +888,7 @@ class _StatCard extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             value,
-            style: const TextStyle(
+            style: Theme.of(context).textTheme.titleLarge!.copyWith(
               fontSize: 22,
               fontWeight: FontWeight.w800,
               color: AdminC.ink,
@@ -884,7 +896,7 @@ class _StatCard extends StatelessWidget {
           ),
           Text(
             label,
-            style: const TextStyle(
+            style: Theme.of(context).textTheme.labelSmall!.copyWith(
               fontSize: 10,
               fontWeight: FontWeight.w600,
               color: AdminC.inkSoft,

@@ -81,6 +81,7 @@ void main() {
           status: SessionStatus.chatting,
           sessionId: 'test-session',
           currentUserId: 'user-1',
+          isRoomLoaded: true,
         ),
       );
       await tester.pumpWidget(_buildChatScreen(fake));
@@ -97,6 +98,7 @@ void main() {
           status: SessionStatus.chatting,
           sessionId: 'test-session',
           currentUserId: 'user-1',
+          isRoomLoaded: true,
           messages: [
             ChatMessage(
               id: 'm1',
@@ -141,6 +143,7 @@ void main() {
           status: SessionStatus.chatting,
           sessionId: 'test-session',
           currentUserId: 'user-1',
+          isRoomLoaded: true,
           typingUsers: [TypingUser(uid: 'user-2', displayName: 'Bob')],
         ),
       );
@@ -164,6 +167,7 @@ void main() {
             status: SessionStatus.chatting,
             sessionId: 'test-session',
             currentUserId: 'user-1',
+            isRoomLoaded: true,
             typingUsers: [TypingUser(uid: 'user-2', displayName: 'Bob')],
           ),
         );
@@ -184,6 +188,7 @@ void main() {
           status: SessionStatus.chatting,
           sessionId: 'test-session',
           currentUserId: 'user-1',
+          isRoomLoaded: true,
         ),
       );
       await tester.pumpWidget(_buildChatScreen(fake));
@@ -197,6 +202,7 @@ void main() {
           status: SessionStatus.chatting,
           sessionId: 'test-session',
           currentUserId: 'user-1',
+          isRoomLoaded: true,
         ),
       );
       await tester.pumpWidget(_buildChatScreen(fake));
@@ -217,6 +223,7 @@ void main() {
           status: SessionStatus.chatting,
           sessionId: 'test-session',
           currentUserId: 'user-1',
+          isRoomLoaded: true,
         ),
       );
       await tester.pumpWidget(_buildChatScreen(fake));
@@ -233,6 +240,7 @@ void main() {
           status: SessionStatus.chatting,
           sessionId: 'test-session',
           currentUserId: 'user-1',
+          isRoomLoaded: true,
           error: 'Could not send message.',
         ),
       );
@@ -247,6 +255,7 @@ void main() {
           status: SessionStatus.chatting,
           sessionId: 'test-session',
           currentUserId: 'user-1',
+          isRoomLoaded: true,
           isSending: true,
         ),
       );
@@ -265,6 +274,7 @@ void main() {
             status: SessionStatus.chatting,
             sessionId: 'test-session',
             currentUserId: 'user-1',
+            isRoomLoaded: true,
             typingUsers: [
               TypingUser(uid: 'u2', displayName: 'Alice'),
               TypingUser(uid: 'u3', displayName: 'Bob'),
@@ -294,6 +304,7 @@ void main() {
             status: SessionStatus.chatting,
             sessionId: 'test-session',
             currentUserId: 'user-1',
+            isRoomLoaded: true,
             typingUsers: [
               TypingUser(uid: 'u2', displayName: 'Bob'),
               TypingUser(uid: 'u3', displayName: 'Carol'),
@@ -318,6 +329,7 @@ void main() {
           status: SessionStatus.chatting,
           sessionId: 'test-session',
           currentUserId: 'user-1',
+          isRoomLoaded: true,
         ),
       );
       await tester.pumpWidget(_buildChatScreen(fake));
@@ -335,6 +347,7 @@ void main() {
           status: SessionStatus.chatting,
           sessionId: 'test-session',
           currentUserId: 'user-1',
+          isRoomLoaded: true,
         ),
       );
       await tester.pumpWidget(_buildChatScreen(fake));
@@ -353,6 +366,7 @@ void main() {
           status: SessionStatus.chatting,
           sessionId: 'test-session',
           currentUserId: 'user-1',
+          isRoomLoaded: true,
         ),
       );
       await tester.pumpWidget(_buildChatScreen(fake));
@@ -364,6 +378,23 @@ void main() {
 
       expect(fake.lastIsTyping, isFalse);
       expect(fake.sendMessageCount, 1);
+    });
+
+    testWidgets('shows loading indicator while room background is loading', (
+      tester,
+    ) async {
+      final fake = _FakeChatNotifier(
+        initial: const ChatState(
+          status: SessionStatus.chatting,
+          sessionId: 'test-session',
+          currentUserId: 'user-1',
+          isRoomLoaded: false,
+        ),
+      );
+      await tester.pumpWidget(_buildChatScreen(fake));
+
+      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+      expect(find.byType(TextField), findsNothing);
     });
   });
 }
