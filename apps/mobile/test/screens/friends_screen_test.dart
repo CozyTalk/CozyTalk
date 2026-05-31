@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mobile/features/avatar/presentation/providers/avatar_decoration_provider.dart';
+import 'package:mobile/features/block/presentation/providers/block_provider.dart';
 import 'package:mobile/features/friends/domain/entities/friend.dart' as domain;
 import 'package:mobile/features/friends/domain/entities/friend_room_status.dart';
 import 'package:mobile/features/friends/presentation/providers/friends_provider.dart';
+import 'package:mobile/features/profile/presentation/providers/profile_provider.dart';
 import 'package:mobile/screens/friends_screen.dart';
 import 'package:mobile/screens/widgets.dart';
 import 'package:mobile/shared/connectivity_provider.dart';
@@ -55,6 +57,17 @@ class _LoadingToIdleFriendsNotifier extends FriendsNotifier {
   void clearError() {}
 }
 
+class _FakeBlockNotifier extends BlockNotifier {
+  @override
+  BlockState build() => const BlockState();
+
+  @override
+  Future<void> block(String targetUid, {String? displayName}) async {}
+
+  @override
+  Future<void> unblock(String targetUid) async {}
+}
+
 final _fakeDomainFriend = domain.Friend(
   friendshipId: 'fship1',
   friendUid: 'uid1',
@@ -72,8 +85,10 @@ Widget _build({
     overrides: [
       networkInfoProvider.overrideWithValue(networkInfo),
       friendsNotifierProvider.overrideWith(() => fake),
-      partnerDecorationProvider.overrideWith((ref, uid) async => null),
+      avatarDecorationByUidProvider.overrideWith((ref, uid) async => null),
       getUsersByIdsProvider.overrideWith((ref, csv) async => []),
+      blockNotifierProvider.overrideWith(() => _FakeBlockNotifier()),
+      profileByUidProvider.overrideWith((ref, uid) async => null),
     ],
     child: const MaterialApp(home: FriendsScreen()),
   );
@@ -253,6 +268,12 @@ void main() {
                 FakeNetworkInfo(isOnline: true),
               ),
               friendsNotifierProvider.overrideWith(() => notifier),
+              avatarDecorationByUidProvider.overrideWith(
+                (ref, uid) async => null,
+              ),
+              getUsersByIdsProvider.overrideWith((ref, csv) async => []),
+              blockNotifierProvider.overrideWith(() => _FakeBlockNotifier()),
+              profileByUidProvider.overrideWith((ref, uid) async => null),
             ],
             child: const MaterialApp(home: FriendsScreen()),
           ),

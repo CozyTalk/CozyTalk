@@ -10,30 +10,21 @@ import '../features/chat/domain/entities/session_status.dart';
 import '../features/chat/presentation/providers/chat_provider.dart';
 import '../features/friends/domain/entities/app_user.dart';
 import '../features/friends/presentation/providers/friends_provider.dart';
+import '../features/jukebox/presentation/providers/jukebox_provider.dart';
 import '../features/matchmaking/domain/entities/matchmaking_status.dart';
 import '../features/matchmaking/presentation/providers/matchmaking_provider.dart';
 import '../features/profile/presentation/providers/profile_provider.dart';
+import '../features/report/presentation/screens/report_sheet.dart';
 import '../theme/app_colors.dart';
 import '../dialogs/leave_room_dialog.dart';
 import '../dialogs/song_dialog.dart';
 import '../dialogs/user_profile_dialog.dart';
 import '../shared/avatar_overlay.dart';
-import '../shared/friend_request_popup.dart';
-import '../shared/layered_avatar.dart';
-import '../shared/press_bounce_btn.dart';
-import '../shared/user_profile.dart';
-import '../shared/friend_message_popup.dart';
-import '../theme/app_routes.dart';
-import '../models/friend.dart';
+import '../shared/background_theme.dart';
 import '../shared/gif_picker.dart';
 import '../shared/info_dialog.dart';
-
-const _kThemeAssets = <String, String>{
-  'kao_tapu': 'assets/images/backgrounds/kao_tapu.png',
-  'red_lotus_lake': 'assets/images/backgrounds/red_lotus_lake.png',
-  'sea_of_cloud': 'assets/images/backgrounds/sea_of_cloud.png',
-  'lumphini_park': 'assets/images/backgrounds/lumphini_park.png',
-};
+import '../shared/layered_avatar.dart';
+import '../shared/press_bounce_btn.dart';
 
 // ── Card assets ────────────────────────────────────────────────────────────
 const _cardAssets = [
@@ -71,15 +62,19 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
   final FocusNode _focusNode = FocusNode();
   final bool _isBlocked = false;
   Timer? _typingTimer;
-  Timer? _friendMsgTimer;
+
+  late final JukeboxNotifier _jukeboxNotifier;
 
   // ── Song panel animation ──
   bool _songPanelOpen = false;
   late final AnimationController _songCtrl;
   late final Animation<Offset> _songSlide;
 
-  String friendMood = 'I love TikTok very much.';
   bool _friendRequestSent = false;
+  String? _partnerUid;
+  String _myThoughts = 'Care to share?';
+  String _myDisplayName = '';
+  String _myInterest = '';
   final List<({ChatMessage msg, int seq})> _localMessages = [];
   final List<ChatMessage> _optimisticMessages = [];
   String? _pendingGifUrl;
@@ -87,6 +82,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
   @override
   void initState() {
     super.initState();
+    _jukeboxNotifier = ref.read(jukeboxNotifierProvider.notifier);
     _songCtrl = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 260),
@@ -108,24 +104,51 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
             currentUserId: authUser.uid,
             currentUserDisplayName: authUser.displayName,
           );
-    });
-    // Mock: friend sends a message after 3 seconds
-    _friendMsgTimer = Timer(const Duration(seconds: 3), () {
-      if (!mounted) return;
-      showFriendMessagePopup(
-        context,
-        friendName: 'Nong Prae',
-        message: 'Hey! Are you free tonight? 🍕',
-        onTap: () => _showLeaveForFriendChat(),
+      _jukeboxNotifier.enterRoom(roomId);
+      if (ref.read(avatarDecorationNotifierProvider).decoration == null) {
+        ref.read(avatarDecorationNotifierProvider.notifier).load(authUser.uid);
+      }
+      // Set partnerUid early to prevent currentRoom listener from double-loading
+      final room = ref.read(matchmakingNotifierProvider).currentRoom;
+      final partnerUid = room?.users.firstWhere(
+        (uid) => uid != authUser.uid,
+        orElse: () => '',
       );
+      if (partnerUid != null && partnerUid.isNotEmpty) {
+        _partnerUid = partnerUid;
+      }
+      // Load own profile (ensures latest data), snapshot, then load partner
+      ref.read(profileNotifierProvider.notifier).load(authUser.uid).then((_) {
+        if (!mounted) return;
+        final own = ref.read(profileNotifierProvider).profile;
+        if (own?.uid == authUser.uid) {
+          bool changed = false;
+          if (own?.thoughts?.isNotEmpty == true) {
+            _myThoughts = own!.thoughts!;
+            changed = true;
+          }
+          if (own?.displayName?.isNotEmpty == true) {
+            _myDisplayName = own!.displayName!;
+            changed = true;
+          }
+          if (own?.interest?.isNotEmpty == true) {
+            _myInterest = own!.interest!;
+            changed = true;
+          }
+          if (changed) setState(() {});
+        }
+        // Partner profile is loaded reactively via profileByUidProvider(_partnerUid)
+        // in build() — no explicit load() needed here.
+      });
     });
+    // TODO: show real incoming friend message popup from friendChatNotifierProvider
   }
 
   @override
   void dispose() {
     _typingTimer?.cancel();
-    _friendMsgTimer?.cancel();
     _songCtrl.dispose();
+    _jukeboxNotifier.leaveRoom();
     _msgController.dispose();
     _scrollController.dispose();
     _focusNode.dispose();
@@ -193,53 +216,77 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
   }
 
   void _sendTopicCard() {
-    final seq = ref.read(chatNotifierProvider).messages.length;
-    setState(() {
-      _localMessages.add((
-        msg: ChatMessage(type: 'card', text: _pickCard()),
-        seq: seq,
-      ));
-    });
+    final cardPath = _pickCard();
+    setState(
+      () => _optimisticMessages.add(ChatMessage(type: 'card', text: cardPath)),
+    );
     _scrollToBottom();
+    ref.read(chatNotifierProvider.notifier).sendMessage('card::$cardPath');
   }
 
   void _sendGif(String url) {
     setState(() => _pendingGifUrl = url);
   }
 
-  void _sendFriendRequest(AppUser partner) {
-    final friendsState = ref.read(friendsNotifierProvider);
-    final alreadyFriend = friendsState.friends.any(
-      (f) => f.friendUid == partner.uid,
-    );
-    if (friendsState.isLoading || _friendRequestSent || alreadyFriend) return;
+  void _sendFriendRequest([String name = '']) {
+    if (_friendRequestSent) return;
+    if (ref.read(friendsNotifierProvider).isLoading) return;
+    final targetName = name.isNotEmpty ? name : 'your match';
     setState(() => _friendRequestSent = true);
-    ref.read(friendsNotifierProvider.notifier).sendFriendRequest(partner);
+    if (_partnerUid != null && _partnerUid!.isNotEmpty) {
+      ref
+          .read(friendsNotifierProvider.notifier)
+          .sendFriendRequest(
+            AppUser(uid: _partnerUid!, displayName: targetName),
+          );
+    }
     showInfoDialog(
       context,
       type: InfoDialogType.info,
       title: 'Friend Request Sent',
       message:
-          'Your friend request has been sent to ${partner.displayName}.\nWaiting for them to accept.',
+          'Your friend request has been sent to $targetName.\nWaiting for them to accept.',
     );
   }
 
-  void _shuffleTopic() {
+  void cancelFriendRequest([String name = '']) {
+    setState(() => _friendRequestSent = false);
+    showInfoDialog(
+      context,
+      type: InfoDialogType.info,
+      title: 'Request Cancelled',
+      message:
+          'Your friend request to ${name.isNotEmpty ? name : 'your match'} has been cancelled.',
+    );
+  }
+
+  void reportUser() {
+    final sessionId = ref.read(matchmakingNotifierProvider).roomId ?? '';
+    final reportedUid = _partnerUid ?? '';
+    if (sessionId.isEmpty || reportedUid.isEmpty) return;
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) =>
+          ReportSheet(sessionId: sessionId, reportedUserId: reportedUid),
+    );
+  }
+
+  void shuffleTopic() {
+    final cardPath = _pickCard();
     final seq = ref.read(chatNotifierProvider).messages.length;
     setState(() {
       _localMessages.add((
         msg: ChatMessage(type: 'system', text: 'Someone shuffled the topic!'),
         seq: seq,
       ));
-      _localMessages.add((
-        msg: ChatMessage(type: 'card', text: _pickCard()),
-        seq: seq,
-      ));
+      _optimisticMessages.add(ChatMessage(type: 'card', text: cardPath));
     });
     _scrollToBottom();
+    ref.read(chatNotifierProvider.notifier).sendMessage('card::$cardPath');
   }
 
-  void _onWillPop() {
+  void onWillPop() {
     final notifier = ref.read(chatNotifierProvider.notifier);
     showDialog(
       context: context,
@@ -247,137 +294,42 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
     );
   }
 
-  void _showLeaveForFriendChat() {
-    final mockFriend = Friend(
-      name: 'Nong Prae',
-      username: 'kaitom',
-      lastMessage: 'Hey! Are you free tonight? 🍕',
-      isOnline: true,
-      avatar: 'assets/images/UserAvatar.png',
-      interest: 'Cats',
-    );
-    showDialog(
-      context: context,
-      builder: (dialogCtx) => Dialog(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        insetPadding: const EdgeInsets.symmetric(horizontal: 32),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(24, 22, 24, 20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text(
-                'Leave this room?',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w800,
-                  color: Colors.black,
-                  decoration: TextDecoration.none,
-                ),
-              ),
-              const SizedBox(height: 10),
-              const Text(
-                'You will leave this room and won\'t\nbe able to come back.',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 15,
-                  height: 1.3,
-                  color: Colors.black87,
-                  decoration: TextDecoration.none,
-                  fontWeight: FontWeight.w400,
-                ),
-              ),
-              const SizedBox(height: 20),
-              Row(
-                children: [
-                  Expanded(
-                    child: SizedBox(
-                      height: 42,
-                      child: ElevatedButton(
-                        onPressed: () => Navigator.pop(dialogCtx),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFD9D5D1),
-                          foregroundColor: Colors.black,
-                          elevation: 0,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(18),
-                            side: const BorderSide(color: Color(0xFFC8C3BE)),
-                          ),
-                        ),
-                        child: const Text(
-                          'Stay',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: SizedBox(
-                      height: 42,
-                      child: ElevatedButton(
-                        onPressed: () {
-                          Navigator.pop(dialogCtx);
-                          // Clear stack back to home, then push Friends → Friend Chat
-                          Navigator.popUntil(context, (route) => route.isFirst);
-                          Navigator.pushNamed(context, AppRoutes.friends);
-                          Navigator.pushNamed(
-                            context,
-                            AppRoutes.friendChat,
-                            arguments: mockFriend,
-                          );
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFD86A3B),
-                          foregroundColor: Colors.white,
-                          elevation: 0,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(18),
-                          ),
-                        ),
-                        child: const Text(
-                          'Leave',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
+  // TODO: implement _showLeaveForFriendChat — navigate to /friends/chat with real Friend
+  // from friendsNotifierProvider; triggered by incoming friend message popup
 
-  static const _kWarning =
+  final kWarning =
       'Keep it friendly! Please be respectful and protect your personal info.\n'
       'Report any suspicious behavior to help keep our community safe.';
 
-  static String _formatTime(DateTime t) {
+  String formatTime(DateTime t) {
     final tod = TimeOfDay.fromDateTime(t);
     final h = tod.hourOfPeriod == 0 ? 12 : tod.hourOfPeriod;
     final m = tod.minute.toString().padLeft(2, '0');
     return '$h:$m ${tod.period.name}';
   }
 
-  ChatMessage _toDisplay(chat_entity.ChatMessage msg, String? myUid) {
+  ChatMessage toDisplay(chat_entity.ChatMessage msg, String? myUid) {
     final isMe = msg.senderId == myUid;
+    if (msg.text.startsWith('card::')) {
+      return ChatMessage(type: 'card', text: msg.text.substring(6));
+    }
+    if (msg.text.startsWith('system::')) {
+      return ChatMessage(type: 'system', text: msg.text.substring(8));
+    }
     final isGif = msg.text.contains('giphy.com');
     return ChatMessage(
       type: isGif ? (isMe ? 'gif' : 'gif_other') : (isMe ? 'me' : 'other'),
       text: msg.text,
-      time: _formatTime(msg.timestamp),
+      time: formatTime(msg.timestamp),
     );
+  }
+
+  String? findPartnerDisplayName(ChatState chatState) {
+    final myUid = chatState.currentUserId ?? '';
+    for (final m in chatState.messages) {
+      if (m.senderId != myUid) return m.displayName;
+    }
+    return null;
   }
 
   @override
@@ -385,50 +337,40 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
     final args =
         ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
     final roomName = args?['roomName'] as String? ?? 'Red Lotus Lake';
-    final roomId = args?['roomId'] as String? ?? 'AWD3V';
-    final blocked = args?['isBlocked'] as bool? ?? _isBlocked;
-
-    final avatarState = ref.watch(avatarProvider);
-    final userProfile = ref.watch(userProfileProvider);
-    final chatState = ref.watch(chatNotifierProvider);
     final matchState = ref.watch(matchmakingNotifierProvider);
+    final roomId = matchState.roomId ?? args?['roomId'] as String? ?? 'AWD3V';
     final bgImage =
-        _kThemeAssets[matchState.currentRoom?.backgroundTheme] ??
+        backgroundThemeAsset(matchState.currentRoom?.backgroundTheme) ??
         args?['bgImage'] as String? ??
         'assets/images/backgrounds/red_lotus_lake.png';
-    final myThoughts = ref.watch(
-      profileNotifierProvider.select((s) => s.profile?.thoughts ?? ''),
-    );
-    final myMood = myThoughts.isNotEmpty ? myThoughts : 'Care to share?';
+    final blocked = args?['isBlocked'] as bool? ?? _isBlocked;
 
-    final partnerUids = ref.watch(
-      matchmakingNotifierProvider.select((s) => s.partnerUids),
+    final decoState = ref.watch(avatarDecorationNotifierProvider);
+    final avatarState = AvatarState(
+      mood: AvatarOverlays.mood[decoState.decoration?.moodKey ?? ''],
+      accessory: AvatarOverlays.accessory[decoState.decoration?.hatKey ?? ''],
     );
-    final partnersAsync = ref.watch(
-      getUsersByIdsProvider(([...partnerUids]..sort()).join(',')),
-    );
-    final partner = partnersAsync.value?.firstOrNull;
-
-    // True when this partner is already in the current user's friends list.
-    final isAlreadyFriend =
-        partner != null &&
-        ref.watch(
-          friendsNotifierProvider.select(
-            (s) => s.friends.any((f) => f.friendUid == partner.uid),
-          ),
-        );
-
-    // Partner profile + decoration for real avatar rendering.
-    final partnerDecoration = partner != null
-        ? ref.watch(partnerDecorationProvider(partner.uid)).asData?.value
+    final chatState = ref.watch(chatNotifierProvider);
+    // Partner profile lives in its own auto-disposing slot to avoid racing with
+    // the shared profileNotifierProvider that own-profile editing uses.
+    final partnerProfile = _partnerUid != null
+        ? ref.watch(profileByUidProvider(_partnerUid!)).asData?.value
         : null;
-    final partnerProfile = partner != null
-        ? ref.watch(partnerProfileProvider(partner.uid)).asData?.value
+    final partnerName = partnerProfile?.displayName?.isNotEmpty == true
+        ? partnerProfile!.displayName!
+        : (findPartnerDisplayName(chatState) ?? '');
+    final partnerThought = partnerProfile?.thoughts ?? 'Care to share?';
+    final myUsername = _myDisplayName.isNotEmpty
+        ? _myDisplayName
+        : (ref.watch(authNotifierProvider).user?.displayName ?? '');
+    final partnerInterest = partnerProfile?.interest ?? '';
+    final partnerDecoration = _partnerUid != null
+        ? ref.watch(avatarDecorationByUidProvider(_partnerUid!)).asData?.value
         : null;
-    final partnerMoodOverlay =
-        AvatarOverlays.mood[partnerDecoration?.moodKey ?? ''];
-    final partnerAccessoryOverlay =
-        AvatarOverlays.accessory[partnerDecoration?.hatKey ?? ''];
+    final partnerAvatarState = AvatarState(
+      mood: AvatarOverlays.mood[partnerDecoration?.moodKey ?? ''],
+      accessory: AvatarOverlays.accessory[partnerDecoration?.hatKey ?? ''],
+    );
 
     ref.listen<FriendsState>(friendsNotifierProvider, (prev, next) {
       if (next.error != null && next.error != prev?.error) {
@@ -437,48 +379,26 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
           ..showSnackBar(SnackBar(content: Text(next.error!)));
         ref.read(friendsNotifierProvider.notifier).clearError();
       }
-
-      // Show in-room popup when partner sends US a friend request.
-      final prevIds = prev?.incomingRequests.map((r) => r.id).toSet() ?? {};
-      for (final req in next.incomingRequests) {
-        if (!prevIds.contains(req.id) && partnerUids.contains(req.fromUid)) {
-          showFriendRequestPopup(
-            context,
-            requesterName: req.fromDisplayName,
-            onAccept: () =>
-                ref.read(friendsNotifierProvider.notifier).acceptRequest(req),
-            onDecline: () => ref
-                .read(friendsNotifierProvider.notifier)
-                .declineRequest(req.id),
-          );
-        }
-      }
-
-      // Notify USER A when partner accepted their request.
-      if (_friendRequestSent) {
-        for (final uid in partnerUids) {
-          final wasAlreadyFriend =
-              prev?.friends.any((f) => f.friendUid == uid) ?? false;
-          final isNowFriend = next.friends.any((f) => f.friendUid == uid);
-          if (!wasAlreadyFriend && isNowFriend) {
-            final name = next.friends
-                .firstWhere((f) => f.friendUid == uid)
-                .friendDisplayName;
-            showInfoDialog(
-              context,
-              type: InfoDialogType.success,
-              title: "You're now friends!",
-              message: '$name accepted your friend request.',
-            );
-          }
-        }
-      }
     });
 
     ref.listen(chatNotifierProvider.select((s) => s.status), (_, next) {
       if (next == SessionStatus.disconnected) {
         Navigator.of(context).popUntil((route) => route.isFirst);
       }
+    });
+
+    // Fallback: set _partnerUid if currentRoom arrived after initState or changed.
+    // profileByUidProvider(_partnerUid) in build() reacts automatically on setState.
+    ref.listen(matchmakingNotifierProvider.select((s) => s.currentRoom), (
+      _,
+      room,
+    ) {
+      if (room == null) return;
+      final myUid = ref.read(authNotifierProvider).user?.uid;
+      if (myUid == null) return;
+      final uid = room.users.firstWhere((u) => u != myUid, orElse: () => '');
+      if (uid.isEmpty || uid == _partnerUid) return;
+      setState(() => _partnerUid = uid);
     });
 
     ref.listen(matchmakingNotifierProvider.select((s) => s.status), (
@@ -507,13 +427,13 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (bool didPop, Object? result) {
-        if (!didPop) _onWillPop();
+        if (!didPop) onWillPop();
       },
       child: Scaffold(
         backgroundColor: AppColors.scaffoldBg,
         body: Column(
           children: [
-            _buildHeader(roomName, roomId),
+            buildHeader(roomName, roomId),
             Expanded(
               child: ClipRect(
                 child: Stack(
@@ -521,31 +441,27 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
                     // Main content
                     Column(
                       children: [
-                        _buildBanner(
+                        buildBanner(
                           bgImage,
                           avatarState,
-                          myMood,
-                          userProfile.username,
-                          partner,
-                          partnerMoodOverlay,
-                          partnerAccessoryOverlay,
-                          partnerProfile?.thoughts,
-                          partnerProfile?.interest,
-                          isAlreadyFriend,
-                          roomId,
+                          _myThoughts,
+                          myUsername,
+                          partnerName,
+                          partnerThought,
+                          _myInterest,
+                          partnerInterest,
+                          partnerAvatarState,
                         ),
                         Expanded(
                           child: Stack(
                             children: [
-                              _buildMessageList(
+                              buildMessageList(
                                 avatarState,
                                 chatState,
-                                partner,
-                                partnerMoodOverlay,
-                                partnerAccessoryOverlay,
-                                partnerProfile?.interest,
-                                isAlreadyFriend,
-                                roomId,
+                                partnerName,
+                                _myInterest,
+                                partnerInterest,
+                                partnerAvatarState,
                               ),
                               Positioned(
                                 top: 0,
@@ -570,7 +486,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
                             ],
                           ),
                         ),
-                        blocked ? _buildBlockedBar() : _buildInputBar(),
+                        blocked ? buildBlockedBar() : buildInputBar(),
                       ],
                     ),
                     // Barrier
@@ -582,14 +498,20 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
                           child: Container(color: Colors.black26),
                         ),
                       ),
-                    // Slide-down song panel
+                    // Song panel — always in tree so audio survives panel close.
+                    // isVisible arms the WebView on first open so it initialises
+                    // against a real surface (fixes Android off-screen init).
                     Positioned(
                       top: 0,
                       left: 0,
                       right: 0,
                       child: SlideTransition(
                         position: _songSlide,
-                        child: SongPanelBody(onClose: _closeSongPanel),
+                        child: SongPanelBody(
+                          onClose: _closeSongPanel,
+                          roomId: roomId,
+                          isVisible: _songPanelOpen,
+                        ),
                       ),
                     ),
                   ],
@@ -603,7 +525,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
   }
 
   // ── Header ────────────────────────────────────────────────────────────────
-  Widget _buildHeader(String roomName, String roomId) {
+  Widget buildHeader(String roomName, String roomId) {
     return Container(
       width: double.infinity,
       decoration: const BoxDecoration(
@@ -622,8 +544,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
                 Semantics(
                   label: 'End chat',
                   button: true,
-                  child: _headerBtn(
-                    onTap: _onWillPop,
+                  child: headerBtn(
+                    onTap: onWillPop,
                     child: SvgPicture.asset(
                       'assets/images/icons/Back.svg',
                       width: 24,
@@ -664,7 +586,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
     );
   }
 
-  Widget _headerBtn({required Widget child, required VoidCallback onTap}) {
+  Widget headerBtn({required Widget child, required VoidCallback onTap}) {
     return PressBounceBtn(
       onTap: onTap,
       scale: 0.90,
@@ -690,18 +612,16 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
   }
 
   // ── Banner ────────────────────────────────────────────────────────────────
-  Widget _buildBanner(
+  Widget buildBanner(
     String bgImage,
     AvatarState avatarState,
-    String myMood,
+    String myThoughts,
     String myUsername,
-    AppUser? partner,
-    AvatarOverlay? partnerMoodOverlay,
-    AvatarOverlay? partnerAccessoryOverlay,
-    String? partnerThoughts,
-    String? partnerInterest,
-    bool isAlreadyFriend,
-    String sessionId,
+    String partnerName,
+    String partnerThought,
+    String myInterest,
+    String partnerInterest,
+    AvatarState partnerAvatarState,
   ) {
     return SizedBox(
       height: 250,
@@ -728,27 +648,24 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     _StaticAvatar(
-                      username: partner?.displayName ?? '...',
-                      moodText: partnerThoughts?.isNotEmpty == true
-                          ? partnerThoughts!
-                          : 'Care to share?',
+                      username: partnerName,
+                      moodText: partnerThought,
                       isMe: false,
+                      uid: _partnerUid,
+                      interest: partnerInterest,
+                      avatarState: partnerAvatarState,
                       boxWidth: eachW,
-                      moodOverlay: partnerMoodOverlay,
-                      accessoryOverlay: partnerAccessoryOverlay,
-                      partnerInterest: partnerInterest,
-                      onFriendRequest: (partner != null && !isAlreadyFriend)
-                          ? () => _sendFriendRequest(partner)
-                          : null,
-                      friendRequestSent: _friendRequestSent || isAlreadyFriend,
-                      sessionId: sessionId,
-                      reportedUserId: partner?.uid,
+                      onFriendRequest: _sendFriendRequest,
+                      onCancelRequest: cancelFriendRequest,
+                      friendRequestSent: _friendRequestSent,
+                      onReport: reportUser,
                     ),
                     const SizedBox(width: 20),
                     _StaticAvatar(
                       username: myUsername,
-                      moodText: myMood,
+                      moodText: myThoughts,
                       isMe: true,
+                      interest: myInterest,
                       avatarState: avatarState,
                       boxWidth: eachW,
                     ),
@@ -763,13 +680,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
             right: 10,
             child: Column(
               children: [
-                _sideBtn(
-                  'Song',
-                  'assets/images/icons/song.svg',
-                  _openSongPanel,
-                ),
+                sideBtn('Song', 'assets/images/icons/song.svg', _openSongPanel),
                 const SizedBox(height: 10),
-                _sideBtn(
+                sideBtn(
                   'Topic',
                   'assets/images/icons/card.svg',
                   _sendTopicCard,
@@ -782,7 +695,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
     );
   }
 
-  Widget _sideBtn(String label, String svgPath, VoidCallback onTap) {
+  Widget sideBtn(String label, String svgPath, VoidCallback onTap) {
     return PressBounceBtn(
       onTap: onTap,
       child: Container(
@@ -816,20 +729,18 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
   }
 
   // ── Message list ──────────────────────────────────────────────────────────
-  Widget _buildMessageList(
+  Widget buildMessageList(
     AvatarState avatarState,
     ChatState chatState,
-    AppUser? partner,
-    AvatarOverlay? partnerMoodOverlay,
-    AvatarOverlay? partnerAccessoryOverlay,
-    String? partnerInterest,
-    bool isAlreadyFriend,
-    String sessionId,
+    String partnerName,
+    String myInterest,
+    String partnerInterest,
+    AvatarState partnerAvatarState,
   ) {
     final backendMsgs = chatState.messages
-        .map((m) => _toDisplay(m, chatState.currentUserId))
+        .map((m) => toDisplay(m, chatState.currentUserId))
         .toList();
-    final merged = <ChatMessage>[ChatMessage(type: 'warning', text: _kWarning)];
+    final merged = <ChatMessage>[ChatMessage(type: 'warning', text: kWarning)];
     int localIdx = 0;
     for (int i = 0; i <= backendMsgs.length; i++) {
       while (localIdx < _localMessages.length &&
@@ -853,42 +764,36 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
         }
         final msg = displayMessages[i];
         return switch (msg.type) {
-          'warning' => _buildWarning(msg.text),
-          'system' => _buildSystem(msg),
-          'me' => _buildBubble(
+          'warning' => buildWarning(msg.text),
+          'system' => buildSystem(msg),
+          'me' => buildBubble(
             msg,
             isMe: true,
             avatarState: avatarState,
-            partner: partner,
-            sessionId: sessionId,
+            partnerName: partnerName,
+            interest: myInterest,
           ),
-          'other' => _buildBubble(
+          'other' => buildBubble(
             msg,
             isMe: false,
-            partner: partner,
-            partnerMoodOverlay: partnerMoodOverlay,
-            partnerAccessoryOverlay: partnerAccessoryOverlay,
-            partnerInterest: partnerInterest,
-            isAlreadyFriend: isAlreadyFriend,
-            sessionId: sessionId,
+            avatarState: partnerAvatarState,
+            partnerName: partnerName,
+            interest: partnerInterest,
           ),
-          'card' => _buildCard(msg.text),
-          'gif' => _buildGifBubble(
+          'card' => buildCard(msg.text),
+          'gif' => buildGifBubble(
             msg,
             isMe: true,
             avatarState: avatarState,
-            partner: partner,
-            sessionId: sessionId,
+            partnerName: partnerName,
+            interest: myInterest,
           ),
-          'gif_other' => _buildGifBubble(
+          'gif_other' => buildGifBubble(
             msg,
             isMe: false,
-            partner: partner,
-            partnerMoodOverlay: partnerMoodOverlay,
-            partnerAccessoryOverlay: partnerAccessoryOverlay,
-            partnerInterest: partnerInterest,
-            isAlreadyFriend: isAlreadyFriend,
-            sessionId: sessionId,
+            avatarState: partnerAvatarState,
+            partnerName: partnerName,
+            interest: partnerInterest,
           ),
           _ => const SizedBox.shrink(),
         };
@@ -896,7 +801,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
     );
   }
 
-  Widget _buildWarning(String text) {
+  Widget buildWarning(String text) {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -917,7 +822,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
     );
   }
 
-  Widget _buildSystem(ChatMessage msg) {
+  Widget buildSystem(ChatMessage msg) {
     return Column(
       children: [
         if (msg.time != null) ...[
@@ -952,16 +857,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
     );
   }
 
-  Widget _buildBubble(
+  Widget buildBubble(
     ChatMessage msg, {
     required bool isMe,
     AvatarState? avatarState,
-    AppUser? partner,
-    AvatarOverlay? partnerMoodOverlay,
-    AvatarOverlay? partnerAccessoryOverlay,
-    String? partnerInterest,
-    bool isAlreadyFriend = false,
-    String? sessionId,
+    String partnerName = '',
+    String interest = '',
   }) {
     final maxW = MediaQuery.of(context).size.width * 0.62;
     return Padding(
@@ -980,22 +881,20 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
                 onTap: () => showDialog(
                   context: context,
                   builder: (_) => UserProfileDialog(
-                    username: partner?.displayName ?? '...',
-                    initialAdded: _friendRequestSent || isAlreadyFriend,
-                    onAddFriend: (partner != null && !isAlreadyFriend)
-                        ? () => _sendFriendRequest(partner)
-                        : null,
-                    partnerMoodOverlay: partnerMoodOverlay,
-                    partnerAccessoryOverlay: partnerAccessoryOverlay,
-                    partnerInterest: partnerInterest,
-                    sessionId: sessionId,
-                    reportedUserId: partner?.uid,
+                    username: partnerName,
+                    interest: interest,
+                    uid: _partnerUid,
+                    initialAdded: _friendRequestSent,
+                    onAddFriend: () => _sendFriendRequest(partnerName),
+                    onCancelRequest: () => cancelFriendRequest(partnerName),
+                    onReport: reportUser,
+                    avatarState: avatarState,
                   ),
                 ),
                 child: LayeredAvatar(
                   boxSize: 40,
-                  moodOverlay: partnerMoodOverlay,
-                  accessoryOverlay: partnerAccessoryOverlay,
+                  moodOverlay: avatarState?.mood,
+                  accessoryOverlay: avatarState?.accessory,
                 ),
               ),
             ),
@@ -1049,20 +948,16 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
     );
   }
 
-  Widget _buildCard(String assetPath) {
-    return _TopicCard(assetPath: assetPath, onShuffle: _shuffleTopic);
+  Widget buildCard(String assetPath) {
+    return _TopicCard(assetPath: assetPath, onShuffle: shuffleTopic);
   }
 
-  Widget _buildGifBubble(
+  Widget buildGifBubble(
     ChatMessage msg, {
     required bool isMe,
     AvatarState? avatarState,
-    AppUser? partner,
-    AvatarOverlay? partnerMoodOverlay,
-    AvatarOverlay? partnerAccessoryOverlay,
-    String? partnerInterest,
-    bool isAlreadyFriend = false,
-    String? sessionId,
+    String partnerName = '',
+    String interest = '',
   }) {
     final maxW = MediaQuery.of(context).size.width * 0.55;
     final gifWidget = Container(
@@ -1114,22 +1009,20 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
                 onTap: () => showDialog(
                   context: context,
                   builder: (_) => UserProfileDialog(
-                    username: partner?.displayName ?? '...',
-                    initialAdded: _friendRequestSent || isAlreadyFriend,
-                    onAddFriend: (partner != null && !isAlreadyFriend)
-                        ? () => _sendFriendRequest(partner)
-                        : null,
-                    partnerMoodOverlay: partnerMoodOverlay,
-                    partnerAccessoryOverlay: partnerAccessoryOverlay,
-                    partnerInterest: partnerInterest,
-                    sessionId: sessionId,
-                    reportedUserId: partner?.uid,
+                    username: partnerName,
+                    interest: interest,
+                    uid: _partnerUid,
+                    initialAdded: _friendRequestSent,
+                    onAddFriend: () => _sendFriendRequest(partnerName),
+                    onCancelRequest: () => cancelFriendRequest(partnerName),
+                    onReport: reportUser,
+                    avatarState: avatarState,
                   ),
                 ),
                 child: LayeredAvatar(
                   boxSize: 40,
-                  moodOverlay: partnerMoodOverlay,
-                  accessoryOverlay: partnerAccessoryOverlay,
+                  moodOverlay: avatarState?.mood,
+                  accessoryOverlay: avatarState?.accessory,
                 ),
               ),
             ),
@@ -1154,7 +1047,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
   }
 
   // ── Blocked bar ───────────────────────────────────────────────────────────
-  Widget _buildBlockedBar() {
+  Widget buildBlockedBar() {
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
       color: const Color(0xFF6B5E5B),
@@ -1178,7 +1071,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
   }
 
   // ── GIF preview strip ─────────────────────────────────────────────────────
-  Widget _buildGifPreview() {
+  Widget buildGifPreview() {
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
       color: const Color(0xFF6B5E5B),
@@ -1226,17 +1119,17 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
   }
 
   // ── Input bar ─────────────────────────────────────────────────────────────
-  Widget _buildInputBar() {
+  Widget buildInputBar() {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        if (_pendingGifUrl != null) _buildGifPreview(),
-        _buildInputRow(),
+        if (_pendingGifUrl != null) buildGifPreview(),
+        buildInputRow(),
       ],
     );
   }
 
-  Widget _buildInputRow() {
+  Widget buildInputRow() {
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
       color: const Color(0xFF6B5E5B),
@@ -1362,37 +1255,37 @@ class _TopicCard extends StatefulWidget {
 
 class _TopicCardState extends State<_TopicCard>
     with SingleTickerProviderStateMixin {
-  late final AnimationController _ctrl;
-  late final Animation<double> _scale;
-  late final Animation<double> _rotate;
+  late final AnimationController ctrl;
+  late final Animation<double> scale;
+  late final Animation<double> rotate;
 
   @override
   void initState() {
     super.initState();
-    _ctrl = AnimationController(
+    ctrl = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 380),
     );
-    _scale = TweenSequence([
+    scale = TweenSequence([
       TweenSequenceItem(tween: Tween(begin: 1.0, end: 0.90), weight: 35),
       TweenSequenceItem(tween: Tween(begin: 0.90, end: 1.06), weight: 40),
       TweenSequenceItem(tween: Tween(begin: 1.06, end: 1.00), weight: 25),
-    ]).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeOut));
-    _rotate = TweenSequence([
+    ]).animate(CurvedAnimation(parent: ctrl, curve: Curves.easeOut));
+    rotate = TweenSequence([
       TweenSequenceItem(tween: Tween(begin: 0.0, end: -0.04), weight: 30),
       TweenSequenceItem(tween: Tween(begin: -0.04, end: 0.04), weight: 40),
       TweenSequenceItem(tween: Tween(begin: 0.04, end: 0.0), weight: 30),
-    ]).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut));
+    ]).animate(CurvedAnimation(parent: ctrl, curve: Curves.easeInOut));
   }
 
   @override
   void dispose() {
-    _ctrl.dispose();
+    ctrl.dispose();
     super.dispose();
   }
 
-  void _handleShuffle() {
-    _ctrl.forward(from: 0); // animation plays independently
+  void handleShuffle() {
+    ctrl.forward(from: 0); // animation plays independently
     widget.onShuffle(); // new card + scroll fires immediately
   }
 
@@ -1403,10 +1296,10 @@ class _TopicCardState extends State<_TopicCard>
         children: [
           const SizedBox(height: 8),
           AnimatedBuilder(
-            animation: _ctrl,
+            animation: ctrl,
             builder: (_, child) => Transform.rotate(
-              angle: _rotate.value,
-              child: Transform.scale(scale: _scale.value, child: child),
+              angle: rotate.value,
+              child: Transform.scale(scale: scale.value, child: child),
             ),
             child: Image.asset(
               widget.assetPath,
@@ -1424,7 +1317,7 @@ class _TopicCardState extends State<_TopicCard>
           ),
           const SizedBox(height: 8),
           PressBounceBtn(
-            onTap: _handleShuffle,
+            onTap: handleShuffle,
             scale: 0.92,
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 10),
@@ -1462,20 +1355,20 @@ class _TypingIndicator extends StatefulWidget {
 
 class _TypingIndicatorState extends State<_TypingIndicator>
     with TickerProviderStateMixin {
-  late final List<AnimationController> _controllers;
-  late final List<Animation<double>> _anims;
+  late final List<AnimationController> controllers;
+  late final List<Animation<double>> anims;
 
   @override
   void initState() {
     super.initState();
-    _controllers = List.generate(
+    controllers = List.generate(
       3,
       (i) => AnimationController(
         vsync: this,
         duration: const Duration(milliseconds: 380),
       ),
     );
-    _anims = _controllers
+    anims = controllers
         .map(
           (c) => Tween<double>(
             begin: 0,
@@ -1483,16 +1376,16 @@ class _TypingIndicatorState extends State<_TypingIndicator>
           ).animate(CurvedAnimation(parent: c, curve: Curves.easeInOut)),
         )
         .toList();
-    _startLoop();
+    startLoop();
   }
 
-  Future<void> _startLoop() async {
+  Future<void> startLoop() async {
     while (mounted) {
       for (int i = 0; i < 3; i++) {
         if (!mounted) return;
-        await _controllers[i].forward();
+        await controllers[i].forward();
         if (!mounted) return;
-        await _controllers[i].reverse();
+        await controllers[i].reverse();
       }
       await Future.delayed(const Duration(milliseconds: 200));
     }
@@ -1500,7 +1393,7 @@ class _TypingIndicatorState extends State<_TypingIndicator>
 
   @override
   void dispose() {
-    for (final c in _controllers) {
+    for (final c in controllers) {
       c.dispose();
     }
     super.dispose();
@@ -1527,9 +1420,9 @@ class _TypingIndicatorState extends State<_TypingIndicator>
               children: List.generate(
                 3,
                 (i) => AnimatedBuilder(
-                  animation: _anims[i],
+                  animation: anims[i],
                   builder: (_, _) => Transform.translate(
-                    offset: Offset(0, _anims[i].value),
+                    offset: Offset(0, anims[i].value),
                     child: Container(
                       width: 7,
                       height: 7,
@@ -1556,36 +1449,31 @@ class _StaticAvatar extends StatelessWidget {
     required this.username,
     required this.moodText,
     required this.isMe,
+    this.uid,
+    this.interest,
     this.avatarState,
     this.boxWidth = 120,
     this.onFriendRequest,
+    this.onCancelRequest,
+    this.onReport,
     this.friendRequestSent = false,
-    this.moodOverlay,
-    this.accessoryOverlay,
-    this.partnerInterest,
-    this.sessionId,
-    this.reportedUserId,
   });
 
   final String username;
   final String moodText;
   final bool isMe;
+  final String? uid;
+  final String? interest;
   final AvatarState? avatarState;
   final VoidCallback? onFriendRequest;
+  final VoidCallback? onCancelRequest;
+  final VoidCallback? onReport;
   final bool friendRequestSent;
   final double boxWidth;
-  // Real partner overlays (ignored for isMe == true).
-  final AvatarOverlay? moodOverlay;
-  final AvatarOverlay? accessoryOverlay;
-  final String? partnerInterest;
-  final String? sessionId;
-  final String? reportedUserId;
 
   @override
   Widget build(BuildContext context) {
     final s = boxWidth / 120;
-    final resolvedMood = isMe ? avatarState?.mood : moodOverlay;
-    final resolvedAccessory = isMe ? avatarState?.accessory : accessoryOverlay;
     return SizedBox(
       width: boxWidth,
       height: 190 * s,
@@ -1597,27 +1485,27 @@ class _StaticAvatar extends StatelessWidget {
             left: 0,
             right: 0,
             child: Semantics(
-              label: 'View user profile',
-              button: true,
+              label: isMe ? null : 'View user profile',
+              button: !isMe,
               child: GestureDetector(
                 onTap: () => showDialog(
                   context: context,
                   builder: (_) => UserProfileDialog(
                     username: username,
+                    interest: interest,
                     isMe: isMe,
+                    uid: isMe ? null : uid,
                     initialAdded: !isMe && friendRequestSent,
                     onAddFriend: isMe ? null : onFriendRequest,
-                    partnerMoodOverlay: isMe ? null : moodOverlay,
-                    partnerAccessoryOverlay: isMe ? null : accessoryOverlay,
-                    partnerInterest: isMe ? null : partnerInterest,
-                    sessionId: isMe ? null : sessionId,
-                    reportedUserId: isMe ? null : reportedUserId,
+                    onCancelRequest: isMe ? null : onCancelRequest,
+                    onReport: isMe ? null : onReport,
+                    avatarState: avatarState,
                   ),
                 ),
                 child: LayeredAvatar(
                   boxSize: 90 * s,
-                  moodOverlay: resolvedMood,
-                  accessoryOverlay: resolvedAccessory,
+                  moodOverlay: avatarState?.mood,
+                  accessoryOverlay: avatarState?.accessory,
                 ),
               ),
             ),

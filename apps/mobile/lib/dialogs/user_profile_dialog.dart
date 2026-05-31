@@ -1,17 +1,32 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import '../features/auth/presentation/providers/auth_provider.dart';
+import '../features/avatar/presentation/providers/avatar_decoration_provider.dart';
+import '../features/profile/presentation/providers/profile_provider.dart';
 import '../shared/avatar_overlay.dart';
 import '../shared/layered_avatar.dart';
-import '../shared/user_profile.dart';
 import 'report_dialog.dart';
 
 class UserProfileDialog extends ConsumerStatefulWidget {
   final String username;
+  final String? interest;
   final bool isMe;
   final bool initialAdded;
   final VoidCallback? onAddFriend;
   final VoidCallback? onCancelRequest;
+
+  /// Called after the dialog is closed when the user taps Report.
+  /// If null, falls back to the design-only ReportDialog.
+  final VoidCallback? onReport;
+
+  /// Pre-resolved avatar overlays for this user.
+  final AvatarState? avatarState;
+
+  /// UID of the user being displayed. When provided the dialog watches
+  /// [profileByUidProvider] and [avatarDecorationByUidProvider] directly.
+  final String? uid;
+
   // Partner-only fields — shown when isMe is false.
   final AvatarOverlay? partnerMoodOverlay;
   final AvatarOverlay? partnerAccessoryOverlay;
@@ -19,13 +34,18 @@ class UserProfileDialog extends ConsumerStatefulWidget {
   // Required to submit a report — omit when isMe is true or sessionId unknown.
   final String? sessionId;
   final String? reportedUserId;
+
   const UserProfileDialog({
     super.key,
     required this.username,
+    this.interest,
     this.isMe = false,
     this.initialAdded = false,
     this.onAddFriend,
     this.onCancelRequest,
+    this.onReport,
+    this.avatarState,
+    this.uid,
     this.partnerMoodOverlay,
     this.partnerAccessoryOverlay,
     this.partnerInterest,
@@ -48,8 +68,60 @@ class _UserProfileDialogState extends ConsumerState<UserProfileDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final avatarState = ref.watch(avatarProvider);
-    final userProfile = ref.watch(userProfileProvider);
+    // ── Own user ──────────────────────────────────────────────────────────────
+    // profileNotifierProvider is always primed by initState before any tap.
+    // updateDisplayName writes Firestore only — Firebase Auth displayName is
+    // stale after a rename and null for anonymous users.
+    final ownProfileName = widget.isMe
+        ? (ref.watch(profileNotifierProvider).profile?.displayName ?? '')
+        : '';
+    final myDisplayName = ownProfileName.isNotEmpty
+        ? ownProfileName
+        : (ref.watch(authNotifierProvider).user?.displayName ?? '');
+
+    // ── Other user ────────────────────────────────────────────────────────────
+    // When a uid is provided, watch the per-uid providers directly so the
+    // dialog is self-sufficient regardless of whether the caller pre-loaded the
+    // data. Falls back to the caller-supplied fields if uid is absent.
+    final otherProfile = (!widget.isMe && widget.uid != null)
+        ? ref.watch(profileByUidProvider(widget.uid!)).asData?.value
+        : null;
+    final otherDeco = (!widget.isMe && widget.uid != null)
+        ? ref.watch(avatarDecorationByUidProvider(widget.uid!)).asData?.value
+        : null;
+
+    final resolvedUsername = widget.isMe
+        ? (widget.username.isNotEmpty ? widget.username : myDisplayName)
+        : (otherProfile?.displayName?.isNotEmpty == true
+              ? otherProfile!.displayName!
+              : widget.username);
+    final resolvedInterest = widget.isMe
+        ? widget.interest
+        : (otherProfile?.interest?.isNotEmpty == true
+              ? otherProfile!.interest
+              : widget.interest);
+
+    // ── Avatar overlays ───────────────────────────────────────────────────────
+    // Use the caller-supplied AvatarState when available. Fall back to the
+    // singleton notifier for own user (avatar-dress-up screen live source of
+    // truth), or to the per-uid decoration for other users.
+    final AvatarState resolvedAvatar;
+    if (widget.avatarState != null) {
+      resolvedAvatar = widget.avatarState!;
+    } else if (widget.isMe) {
+      final decoState = ref.watch(avatarDecorationNotifierProvider);
+      resolvedAvatar = AvatarState(
+        mood: AvatarOverlays.mood[decoState.decoration?.moodKey ?? ''],
+        accessory: AvatarOverlays.accessory[decoState.decoration?.hatKey ?? ''],
+      );
+    } else if (otherDeco != null) {
+      resolvedAvatar = AvatarState(
+        mood: AvatarOverlays.mood[otherDeco.moodKey ?? ''],
+        accessory: AvatarOverlays.accessory[otherDeco.hatKey ?? ''],
+      );
+    } else {
+      resolvedAvatar = const AvatarState();
+    }
 
     return Dialog(
       backgroundColor: Colors.transparent,
@@ -98,12 +170,8 @@ class _UserProfileDialogState extends ConsumerState<UserProfileDialog> {
                           borderRadius: BorderRadius.circular(17),
                           child: LayeredAvatar(
                             boxSize: 100,
-                            moodOverlay: widget.isMe
-                                ? avatarState.mood
-                                : widget.partnerMoodOverlay,
-                            accessoryOverlay: widget.isMe
-                                ? avatarState.accessory
-                                : widget.partnerAccessoryOverlay,
+                            moodOverlay: resolvedAvatar.mood,
+                            accessoryOverlay: resolvedAvatar.accessory,
                           ),
                         ),
                       ),
@@ -163,23 +231,22 @@ class _UserProfileDialogState extends ConsumerState<UserProfileDialog> {
                             const SizedBox(width: 10),
                             // Report
                             GestureDetector(
-                              onTap:
-                                  (widget.sessionId != null &&
-                                      widget.reportedUserId != null)
-                                  ? () {
-                                      final nav = Navigator.of(context);
-                                      final sid = widget.sessionId!;
-                                      final rid = widget.reportedUserId!;
-                                      nav.pop();
-                                      showDialog(
-                                        context: nav.context,
-                                        builder: (_) => ReportDialog(
-                                          sessionId: sid,
-                                          reportedUserId: rid,
-                                        ),
-                                      );
-                                    }
-                                  : null,
+                              onTap: () {
+                                final nav = Navigator.of(context);
+                                nav.pop();
+                                if (widget.onReport != null) {
+                                  widget.onReport!();
+                                } else if (widget.sessionId != null &&
+                                    widget.reportedUserId != null) {
+                                  showDialog(
+                                    context: nav.context,
+                                    builder: (_) => ReportDialog(
+                                      sessionId: widget.sessionId!,
+                                      reportedUserId: widget.reportedUserId!,
+                                    ),
+                                  );
+                                }
+                              },
                               child: Container(
                                 width: 44,
                                 height: 44,
@@ -242,7 +309,9 @@ class _UserProfileDialogState extends ConsumerState<UserProfileDialog> {
                         ),
                         const SizedBox(height: 3),
                         Text(
-                          widget.isMe ? userProfile.username : widget.username,
+                          resolvedUsername.isNotEmpty
+                              ? resolvedUsername
+                              : myDisplayName,
                           style: const TextStyle(
                             fontSize: 15,
                             color: Colors.black87,
@@ -259,13 +328,9 @@ class _UserProfileDialogState extends ConsumerState<UserProfileDialog> {
                         ),
                         const SizedBox(height: 5),
                         Text(
-                          widget.isMe
-                              ? (userProfile.interest.isNotEmpty
-                                    ? userProfile.interest
-                                    : 'No interest set yet.')
-                              : (widget.partnerInterest?.isNotEmpty == true
-                                    ? widget.partnerInterest!
-                                    : 'No interest set yet.'),
+                          resolvedInterest?.isNotEmpty == true
+                              ? resolvedInterest!
+                              : 'No interest set yet.',
                           style: const TextStyle(
                             fontSize: 14,
                             color: Colors.black87,

@@ -15,6 +15,10 @@ class _FakeUserStatusRepository implements UserStatusRepository {
   int setOnlineCount = 0;
   String? lastRoomId;
   String? lastMode;
+  int? lastMaxUsers;
+  int? lastMemberCount;
+  bool? lastIsLocked;
+  String? lastBackgroundTheme;
   int clearCount = 0;
 
   void givenStatus(UserStatus value) => _returnValue = value;
@@ -34,10 +38,21 @@ class _FakeUserStatusRepository implements UserStatusRepository {
   }
 
   @override
-  Future<void> setInRoom({required String roomId, required String mode}) async {
+  Future<void> setInRoom({
+    required String roomId,
+    required String mode,
+    required int maxUsers,
+    required int memberCount,
+    required bool isLocked,
+    String? backgroundTheme,
+  }) async {
     if (_error != null) throw _error!;
     lastRoomId = roomId;
     lastMode = mode;
+    lastMaxUsers = maxUsers;
+    lastMemberCount = memberCount;
+    lastIsLocked = isLocked;
+    lastBackgroundTheme = backgroundTheme;
   }
 
   @override
@@ -146,15 +161,63 @@ void main() {
     });
 
     test('forwards roomId and mode to repository', () async {
-      await usecase(roomId: 'abc12', mode: '1v1');
+      await usecase(
+        roomId: 'abc12',
+        mode: '1v1',
+        maxUsers: 5,
+        memberCount: 1,
+        isLocked: false,
+      );
       expect(repo.lastRoomId, 'abc12');
       expect(repo.lastMode, '1v1');
+    });
+
+    test('forwards maxUsers, memberCount, isLocked to repository', () async {
+      await usecase(
+        roomId: 'abc12',
+        mode: 'group',
+        maxUsers: 5,
+        memberCount: 3,
+        isLocked: true,
+      );
+      expect(repo.lastMaxUsers, 5);
+      expect(repo.lastMemberCount, 3);
+      expect(repo.lastIsLocked, isTrue);
+    });
+
+    test('forwards backgroundTheme to repository', () async {
+      await usecase(
+        roomId: 'abc12',
+        mode: 'group',
+        maxUsers: 5,
+        memberCount: 1,
+        isLocked: false,
+        backgroundTheme: 'kao_tapu',
+      );
+      expect(repo.lastBackgroundTheme, 'kao_tapu');
+    });
+
+    test('backgroundTheme defaults to null when omitted', () async {
+      await usecase(
+        roomId: 'abc12',
+        mode: 'group',
+        maxUsers: 5,
+        memberCount: 1,
+        isLocked: false,
+      );
+      expect(repo.lastBackgroundTheme, isNull);
     });
 
     test('propagates exception', () async {
       repo.givenError(Exception('fail'));
       await expectLater(
-        usecase(roomId: 'abc12', mode: 'group'),
+        usecase(
+          roomId: 'abc12',
+          mode: 'group',
+          maxUsers: 5,
+          memberCount: 1,
+          isLocked: false,
+        ),
         throwsA(isA<Exception>()),
       );
     });

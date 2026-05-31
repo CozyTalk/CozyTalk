@@ -22,7 +22,14 @@ class _FakeUserStatusRepository implements UserStatusRepository {
   Future<void> setOnline() async => setOnlineCount++;
 
   @override
-  Future<void> setInRoom({required String roomId, required String mode}) async {
+  Future<void> setInRoom({
+    required String roomId,
+    required String mode,
+    required int maxUsers,
+    required int memberCount,
+    required bool isLocked,
+    String? backgroundTheme,
+  }) async {
     lastRoomId = roomId;
     lastMode = mode;
   }
@@ -103,7 +110,13 @@ void main() {
     });
 
     test('setInRoom records roomId and mode', () async {
-      await repo.setInRoom(roomId: 'xyz99', mode: 'group');
+      await repo.setInRoom(
+        roomId: 'xyz99',
+        mode: 'group',
+        maxUsers: 5,
+        memberCount: 1,
+        isLocked: false,
+      );
       expect(repo.lastRoomId, 'xyz99');
       expect(repo.lastMode, 'group');
     });

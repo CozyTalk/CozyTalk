@@ -53,11 +53,11 @@ final profileNotifierProvider = NotifierProvider<ProfileNotifier, ProfileState>(
   ProfileNotifier.new,
 );
 
-/// Fetches another user's profile (interest, thoughts) from Firestore.
-/// Scoped per-UID; disposes automatically when no longer watched.
-final partnerProfileProvider = FutureProvider.autoDispose
+/// Loads any user's profile by UID without disturbing [profileNotifierProvider].
+/// Auto-disposes when no longer watched.
+final profileByUidProvider = FutureProvider.autoDispose
     .family<ProfileUser?, String>(
-      (ref, uid) => GetProfile(ref.watch(profileRepositoryProvider))(uid),
+      (ref, uid) => ref.read(_getProfileProvider)(uid),
     );
 
 const _sentinel = Object();
