@@ -22,6 +22,9 @@ class MembersPanelBody extends StatelessWidget {
   final void Function(String name)? onReport;
   final Map<String, AvatarState> memberAvatarStates;
 
+  // Session ID passed to ReportDialog so reports are wired to the backend.
+  final String? sessionId;
+
   const MembersPanelBody({
     super.key,
     required this.members,
@@ -33,6 +36,7 @@ class MembersPanelBody extends StatelessWidget {
     this.currentUser = 'Me',
     this.avatarState = const AvatarState(),
     this.friendRequestSent = const {},
+    this.sessionId,
     this.memberAvatarStates = const {},
   });
 
@@ -143,10 +147,13 @@ class MembersPanelBody extends StatelessWidget {
                 onClose();
                 if (onReport != null) {
                   onReport!(name);
-                } else {
+                } else if (sessionId != null && uid != null) {
                   showDialog(
                     context: context,
-                    builder: (_) => const ReportDialog(),
+                    builder: (_) => ReportDialog(
+                      sessionId: sessionId!,
+                      reportedUserId: uid,
+                    ),
                   );
                 }
               },

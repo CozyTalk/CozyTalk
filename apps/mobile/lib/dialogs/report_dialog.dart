@@ -1,15 +1,26 @@
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
-class ReportDialog extends StatefulWidget {
-  const ReportDialog({super.key});
+import '../features/report/domain/entities/report_type.dart';
+import '../features/report/presentation/providers/report_provider.dart';
+
+class ReportDialog extends ConsumerStatefulWidget {
+  final String sessionId;
+  final String reportedUserId;
+
+  const ReportDialog({
+    super.key,
+    required this.sessionId,
+    required this.reportedUserId,
+  });
 
   @override
-  State<ReportDialog> createState() => _ReportDialogState();
+  ConsumerState<ReportDialog> createState() => _ReportDialogState();
 }
 
-class _ReportDialogState extends State<ReportDialog> {
+class _ReportDialogState extends ConsumerState<ReportDialog> {
   int _step = 1;
   final Set<int> _selectedOptions = {};
   final TextEditingController _contextCtrl = TextEditingController();
@@ -18,6 +29,22 @@ class _ReportDialogState extends State<ReportDialog> {
 
   // Store picked images as bytes so it works on both Android and Web
   final List<Uint8List> _imageBytes = [];
+  final List<String> _imagePaths = [];
+
+  static const _optionTypes = [
+    ReportType.harassment,
+    ReportType.spam,
+    ReportType.inappropriateContent,
+    ReportType.other,
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(reportNotifierProvider.notifier).reset();
+    });
+  }
 
   @override
   void dispose() {
@@ -40,13 +67,52 @@ class _ReportDialogState extends State<ReportDialog> {
     );
     if (file == null) return;
     final bytes = await file.readAsBytes();
-    if (mounted) setState(() => _imageBytes.add(bytes));
+    if (!mounted) return;
+    setState(() {
+      _imageBytes.add(bytes);
+      _imagePaths.add(file.path);
+    });
   }
 
-  void _removeImage(int index) => setState(() => _imageBytes.removeAt(index));
+  void _removeImage(int index) => setState(() {
+    _imageBytes.removeAt(index);
+    _imagePaths.removeAt(index);
+  });
+
+  Future<void> _submit() async {
+    if (_selectedOptions.isEmpty) return;
+    final notifier = ref.read(reportNotifierProvider.notifier);
+    notifier.reset();
+
+    final selectedIndex = _selectedOptions.first;
+    final type = _optionTypes[selectedIndex];
+    final reason = selectedIndex == 3 && _othersCtrl.text.trim().isNotEmpty
+        ? _othersCtrl.text.trim()
+        : type.displayName;
+
+    notifier.selectType(type);
+    notifier.setReason(reason);
+    notifier.setContextText(_contextCtrl.text.trim());
+    for (final path in _imagePaths) {
+      notifier.addImage(path);
+    }
+
+    await notifier.submit(
+      sessionId: widget.sessionId,
+      reportedUserId: widget.reportedUserId,
+    );
+
+    if (!mounted) return;
+    final state = ref.read(reportNotifierProvider);
+    if (state.isSuccess) {
+      setState(() => _step = 3);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    final reportState = ref.watch(reportNotifierProvider);
+
     return Dialog(
       insetPadding: EdgeInsets.symmetric(horizontal: _step == 3 ? 32 : 24),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
@@ -64,7 +130,7 @@ class _ReportDialogState extends State<ReportDialog> {
               children: [
                 if (_step < 3) ...[_buildHeader(), const SizedBox(height: 12)],
                 if (_step == 1) _buildStep1(),
-                if (_step == 2) _buildStep2(),
+                if (_step == 2) _buildStep2(reportState),
                 if (_step == 3) _buildStep3(),
               ],
             ),
@@ -142,11 +208,10 @@ class _ReportDialogState extends State<ReportDialog> {
   }
 
   // ── Step 2: Additional context + images ───────────────────────────────────
-  Widget _buildStep2() {
+  Widget _buildStep2(ReportState reportState) {
     final charCount = _contextCtrl.text.length;
     return Column(
       children: [
-        // Additional context
         _inputCard(
           label: 'Additional Context',
           trailing: '$charCount/200',
@@ -166,12 +231,19 @@ class _ReportDialogState extends State<ReportDialog> {
           ),
         ),
         const SizedBox(height: 14),
-        // Attach images
         _inputCard(
           label: 'Attach images',
           trailing: '${_imageBytes.length}/3',
           child: _buildImagePicker(),
         ),
+        if (reportState.error != null) ...[
+          const SizedBox(height: 12),
+          Text(
+            reportState.error!,
+            style: const TextStyle(color: Colors.red, fontSize: 13),
+            textAlign: TextAlign.center,
+          ),
+        ],
         const SizedBox(height: 28),
         Row(
           children: [
@@ -179,12 +251,18 @@ class _ReportDialogState extends State<ReportDialog> {
               child: _btn(
                 'Back',
                 gray: true,
-                onTap: () => setState(() => _step = 1),
+                onTap: reportState.isSubmitting
+                    ? null
+                    : () => setState(() => _step = 1),
               ),
             ),
             const SizedBox(width: 12),
             Expanded(
-              child: _btn('Submit', onTap: () => setState(() => _step = 3)),
+              child: _btn(
+                'Submit',
+                onTap: reportState.isSubmitting ? null : _submit,
+                isLoading: reportState.isSubmitting,
+              ),
             ),
           ],
         ),
@@ -197,7 +275,6 @@ class _ReportDialogState extends State<ReportDialog> {
       spacing: 8,
       runSpacing: 8,
       children: [
-        // Existing thumbnails
         ..._imageBytes.asMap().entries.map((entry) {
           final i = entry.key;
           final bytes = entry.value;
@@ -235,7 +312,6 @@ class _ReportDialogState extends State<ReportDialog> {
             ],
           );
         }),
-        // Add button (show only when < 3 images)
         if (_imageBytes.length < 3)
           GestureDetector(
             onTap: _pickImage,
@@ -467,7 +543,12 @@ class _ReportDialogState extends State<ReportDialog> {
   }
 
   // ── Shared: button ────────────────────────────────────────────────────────
-  Widget _btn(String text, {bool gray = false, VoidCallback? onTap}) {
+  Widget _btn(
+    String text, {
+    bool gray = false,
+    VoidCallback? onTap,
+    bool isLoading = false,
+  }) {
     return SizedBox(
       height: 48,
       child: ElevatedButton(
@@ -487,10 +568,22 @@ class _ReportDialogState extends State<ReportDialog> {
             ),
           ),
         ),
-        child: Text(
-          text,
-          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
-        ),
+        child: isLoading
+            ? const SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Colors.black54,
+                ),
+              )
+            : Text(
+                text,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 16,
+                ),
+              ),
       ),
     );
   }

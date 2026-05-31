@@ -26,6 +26,15 @@ class UserProfileDialog extends ConsumerStatefulWidget {
   /// UID of the user being displayed. When provided the dialog watches
   /// [profileByUidProvider] and [avatarDecorationByUidProvider] directly.
   final String? uid;
+
+  // Partner-only fields — shown when isMe is false.
+  final AvatarOverlay? partnerMoodOverlay;
+  final AvatarOverlay? partnerAccessoryOverlay;
+  final String? partnerInterest;
+  // Required to submit a report — omit when isMe is true or sessionId unknown.
+  final String? sessionId;
+  final String? reportedUserId;
+
   const UserProfileDialog({
     super.key,
     required this.username,
@@ -37,6 +46,11 @@ class UserProfileDialog extends ConsumerStatefulWidget {
     this.onReport,
     this.avatarState,
     this.uid,
+    this.partnerMoodOverlay,
+    this.partnerAccessoryOverlay,
+    this.partnerInterest,
+    this.sessionId,
+    this.reportedUserId,
   });
 
   @override
@@ -218,13 +232,18 @@ class _UserProfileDialogState extends ConsumerState<UserProfileDialog> {
                             // Report
                             GestureDetector(
                               onTap: () {
-                                Navigator.pop(context);
+                                final nav = Navigator.of(context);
+                                nav.pop();
                                 if (widget.onReport != null) {
                                   widget.onReport!();
-                                } else {
+                                } else if (widget.sessionId != null &&
+                                    widget.reportedUserId != null) {
                                   showDialog(
-                                    context: context,
-                                    builder: (_) => const ReportDialog(),
+                                    context: nav.context,
+                                    builder: (_) => ReportDialog(
+                                      sessionId: widget.sessionId!,
+                                      reportedUserId: widget.reportedUserId!,
+                                    ),
                                   );
                                 }
                               },
