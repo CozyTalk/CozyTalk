@@ -11,7 +11,7 @@ import {
 import {getBlockedUids} from "../user/_blockUtils";
 
 export const match1v1Users = onDocumentCreated(
-  {document: "waiting_pool/{uid}", region: "asia-southeast1", minInstances: 1},
+  {document: "waiting_pool/{uid}", region: "asia-southeast1", minInstances: 0},
   async (event) => {
     const data = event.data?.data();
     const triggerUid = event.params.uid;
@@ -52,7 +52,8 @@ export const match1v1Users = onDocumentCreated(
         return {
           doc: c,
           blocked:
-            triggerBlockedUids.includes(c.id) || cBlockedUids.includes(triggerUid),
+            triggerBlockedUids.includes(c.id) ||
+            cBlockedUids.includes(triggerUid),
         };
       }),
     );
