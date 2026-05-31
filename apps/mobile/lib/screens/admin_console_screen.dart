@@ -164,7 +164,11 @@ class _AdminConsoleScreenState extends ConsumerState<AdminConsoleScreen> {
     return '${months[dt.month - 1]} ${dt.year}';
   }
 
-  AdminReport _toDisplayReport(feat.AdminReport e) {
+  AdminReport _toDisplayReport(
+    feat.AdminReport e, {
+    int reportCount = 0,
+    DateTime? reportedUserJoinedAt,
+  }) {
     return AdminReport(
       id: e.id,
       status: e.status,
@@ -182,6 +186,8 @@ class _AdminConsoleScreenState extends ConsumerState<AdminConsoleScreen> {
       reportedUserId: e.reportedUserId,
       reportedInterest: e.reportedInterest,
       reporterId: e.reporterId,
+      reportCount: reportCount,
+      reportedUserJoinedAt: reportedUserJoinedAt,
       outcome: e.outcome == null
           ? null
           : AdminReportOutcome(
@@ -284,7 +290,16 @@ class _AdminConsoleScreenState extends ConsumerState<AdminConsoleScreen> {
           (reportCounts[r.reportedUserId] ?? 0) + 1;
     }
 
-    final reports = reportsState.reports.map(_toDisplayReport).toList();
+    final reports = reportsState.reports.map((e) {
+      final user = usersState.users
+          .where((u) => u.uid == e.reportedUserId)
+          .firstOrNull;
+      return _toDisplayReport(
+        e,
+        reportCount: reportCounts[e.reportedUserId] ?? 0,
+        reportedUserJoinedAt: user?.createdAt,
+      );
+    }).toList();
     final users = usersState.users
         .where((u) => !u.banned)
         .map((e) => _toDisplayUser(e, reportCount: reportCounts[e.uid] ?? 0))
@@ -324,6 +339,8 @@ class _AdminConsoleScreenState extends ConsumerState<AdminConsoleScreen> {
                   usersState: usersState,
                   onlineCount: onlineCount,
                   reportCounts: reportCounts,
+                  reportsLoading:
+                      reportsState.status == feat.AdminReportsStatus.loading,
                 ),
               ),
             ],
@@ -656,12 +673,14 @@ class _AdminConsoleScreenState extends ConsumerState<AdminConsoleScreen> {
     required feat.AdminUsersState usersState,
     required int onlineCount,
     required Map<String, int> reportCounts,
+    required bool reportsLoading,
   }) {
     return switch (_tab) {
       0 => AdminReportsTab(
         reports: reports,
         onOpen: _openReport,
         query: _query,
+        isLoading: reportsLoading,
       ),
       1 => AdminUsersTab(
         users: users,

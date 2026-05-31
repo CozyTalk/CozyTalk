@@ -99,6 +99,8 @@ class AdminReport {
   final String reportedUserId;
   final String reportedInterest;
   final String reporterId;
+  final int reportCount;
+  final DateTime? reportedUserJoinedAt;
   AdminReportOutcome? outcome;
 
   AdminReport({
@@ -118,6 +120,8 @@ class AdminReport {
     required this.reportedUserId,
     required this.reportedInterest,
     this.reporterId = '',
+    this.reportCount = 0,
+    this.reportedUserJoinedAt,
     this.outcome,
   });
 }

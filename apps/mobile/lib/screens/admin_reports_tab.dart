@@ -182,11 +182,13 @@ class AdminReportsTab extends StatefulWidget {
   final List<AdminReport> reports;
   final void Function(AdminReport) onOpen;
   final String query;
+  final bool isLoading;
   const AdminReportsTab({
     super.key,
     required this.reports,
     required this.onOpen,
     required this.query,
+    this.isLoading = false,
   });
 
   @override
@@ -209,6 +211,10 @@ class _AdminReportsTabState extends State<AdminReportsTab> {
           r.reportedUserId.toLowerCase().contains(q);
       return matchFilter && matchQuery;
     }).toList();
+
+    if (widget.isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),

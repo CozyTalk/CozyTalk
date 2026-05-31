@@ -63,6 +63,18 @@ class _AdminReportDetailScreenState extends State<AdminReportDetailScreen> {
   String get _finalReason => _banReasons.join(', ');
   bool get _canNext => _banReasons.isNotEmpty;
 
+  static String _formatAccountAge(DateTime joinedAt) {
+    final diff = DateTime.now().difference(joinedAt);
+    final days = diff.inDays;
+    if (days < 1) return '<1d';
+    if (days < 30) return '${days}d';
+    final months = (days / 30).floor();
+    if (months < 12) return '${months}m';
+    final years = (months / 12).floor();
+    final remMonths = months % 12;
+    return remMonths == 0 ? '${years}y' : '${years}y ${remMonths}m';
+  }
+
   void _resetBanModal() {
     _banReasons.clear();
     _banDuration = 'Permanent';
@@ -526,11 +538,19 @@ class _AdminReportDetailScreenState extends State<AdminReportDetailScreen> {
             child: Row(
               children: [
                 Expanded(
-                  child: _MiniStat(label: 'Prior reports', value: '3'),
+                  child: _MiniStat(
+                    label: 'Prior reports',
+                    value: '${widget.report.reportCount}',
+                  ),
                 ),
                 Container(width: 1, height: 30, color: _C.border),
                 Expanded(
-                  child: _MiniStat(label: 'Account age', value: '1m'),
+                  child: _MiniStat(
+                    label: 'Account age',
+                    value: widget.report.reportedUserJoinedAt != null
+                        ? _formatAccountAge(widget.report.reportedUserJoinedAt!)
+                        : '—',
+                  ),
                 ),
                 Container(width: 1, height: 30, color: _C.border),
                 Expanded(
