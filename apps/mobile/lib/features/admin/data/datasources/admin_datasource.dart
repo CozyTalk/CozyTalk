@@ -93,6 +93,7 @@ class AdminDatasourceImpl implements AdminDatasource {
             }
           }
           final results = <AdminReportModel>[];
+          Object? firstParseError;
           for (final doc in snap.docs) {
             try {
               final data = Map<String, dynamic>.from(doc.data());
@@ -101,6 +102,9 @@ class AdminDatasourceImpl implements AdminDatasource {
               data['sessionId'] ??= '';
               data['reportType'] ??= 'other';
               data['reason'] ??= '';
+              if (data['contextImageUrls'] is! List) {
+                data['contextImageUrls'] = <String>[];
+              }
               if (data['outcome'] is Map) {
                 data['outcome'] = Map<String, dynamic>.from(
                   data['outcome'] as Map,
@@ -114,9 +118,13 @@ class AdminDatasourceImpl implements AdminDatasource {
                   reportedInterest: interestMap[data['reportedUserId']] ?? '',
                 ),
               );
-            } catch (_) {
-              // Skip malformed documents silently.
+            } catch (e) {
+              firstParseError ??= e;
             }
+          }
+          if (results.isEmpty && firstParseError != null) {
+            // ignore: only_throw_errors
+            throw firstParseError;
           }
           return results;
         });
