@@ -147,14 +147,6 @@ class AuthDatasourceImpl implements AuthDatasource {
         password: password,
       );
       final user = credential.user!;
-      // Ensure existing admin accounts always carry the correct role in case
-      // the document was created before this check existed or after an
-      // emulator reset.
-      if (_roleForEmail(email) == 'admin') {
-        await _firestore.collection('users').doc(user.uid).set({
-          'role': 'admin',
-        }, SetOptions(merge: true));
-      }
       return AuthUserModel(
         uid: user.uid,
         email: user.email,
