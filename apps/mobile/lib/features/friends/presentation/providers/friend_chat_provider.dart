@@ -157,6 +157,9 @@ class FriendChatNotifier extends Notifier<FriendChatState> {
     _typingSub?.cancel();
     _messagesSub = null;
     _typingSub = null;
-    state = const FriendChatState();
+    // Defer state reset: leaveChat() is called from FriendChatScreen.dispose()
+    // which fires during widget unmount. Riverpod forbids synchronous state
+    // modification during that phase — schedule it for the next microtask.
+    Future.microtask(() => state = const FriendChatState());
   }
 }
