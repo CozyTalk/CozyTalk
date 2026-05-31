@@ -5,6 +5,7 @@ import '../models/blocked_user_model.dart';
 
 abstract class BlockDatasource {
   Stream<List<BlockedUserModel>> watchBlockedUsers(String uid);
+  Stream<bool> watchIsBlockedBy(String partnerUid, String myUid);
   Future<void> blockUser(
     String ownerUid,
     String targetUid, {
@@ -36,6 +37,17 @@ class BlockDatasourceImpl implements BlockDatasource {
               )
               .toList(),
         );
+  }
+
+  @override
+  Stream<bool> watchIsBlockedBy(String partnerUid, String myUid) {
+    return _firestore
+        .collection('users')
+        .doc(partnerUid)
+        .collection('blocked')
+        .doc(myUid)
+        .snapshots()
+        .map((snap) => snap.exists);
   }
 
   @override

@@ -5,6 +5,7 @@ import 'dart:async';
 import '../features/auth/presentation/providers/auth_provider.dart';
 import '../features/avatar/presentation/providers/avatar_decoration_provider.dart';
 import '../features/friends/domain/entities/friend_message.dart';
+import '../features/block/presentation/providers/block_provider.dart';
 import '../features/friends/presentation/providers/friend_chat_provider.dart';
 import '../features/friends/presentation/providers/friends_provider.dart';
 import '../features/profile/presentation/providers/profile_provider.dart';
@@ -161,6 +162,15 @@ class _FriendChatScreenState extends ConsumerState<FriendChatScreen> {
         (s) => s.presenceMap[partnerUid] ?? _friend.isOnline,
       ),
     );
+    final iBlockedPartner = ref.watch(
+      blockNotifierProvider.select(
+        (s) => s.blockedUsers.any((u) => u.uid == partnerUid),
+      ),
+    );
+    final partnerBlockedMe = ref
+        .watch(isBlockedByProvider(partnerUid))
+        .when(data: (v) => v, loading: () => false, error: (_, _) => false);
+    final isBlocked = iBlockedPartner || partnerBlockedMe;
     final displayName = partnerProfile?.displayName ?? _friend.displayName;
     final partnerMoodOverlay =
         AvatarOverlays.mood[partnerDecoration?.moodKey ?? ''];
@@ -252,7 +262,7 @@ class _FriendChatScreenState extends ConsumerState<FriendChatScreen> {
                     ],
                   ),
           ),
-          _friend.isBlocked ? _buildBlockedBar() : _buildInputBar(chatState),
+          isBlocked ? _buildBlockedBar() : _buildInputBar(chatState),
         ],
       ),
     );
@@ -574,16 +584,25 @@ class _FriendChatScreenState extends ConsumerState<FriendChatScreen> {
       ),
       child: Container(
         height: 58,
+        padding: const EdgeInsets.symmetric(horizontal: 20),
         decoration: BoxDecoration(
-          color: Colors.grey.shade300,
+          color: Colors.white,
           borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: Colors.grey.shade300, width: 1.5),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.12),
+              blurRadius: 8,
+              offset: const Offset(0, 3),
+            ),
+          ],
         ),
-        alignment: Alignment.center,
+        alignment: Alignment.centerLeft,
         child: Text(
           'You can no longer send messages in this chat.',
           style: TextStyle(
-            fontSize: 13,
-            color: Colors.grey.shade600,
+            fontSize: 15,
+            color: Colors.grey.shade400,
             fontWeight: FontWeight.w500,
           ),
         ),

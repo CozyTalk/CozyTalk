@@ -2,7 +2,11 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../features/avatar/presentation/providers/avatar_decoration_provider.dart';
 import '../features/block/presentation/providers/block_provider.dart';
+import '../features/friends/presentation/providers/friends_provider.dart';
+import '../features/profile/presentation/providers/profile_provider.dart';
+import '../shared/avatar_overlay.dart';
 import '../theme/app_colors.dart';
 import '../models/friend.dart';
 import '../shared/layered_avatar.dart';
@@ -24,6 +28,15 @@ class _BlockedScreenState extends ConsumerState<BlockedScreen> {
   Widget build(BuildContext context) {
     final blockState = ref.watch(blockNotifierProvider);
     final blocked = blockState.blockedUsers;
+
+    final liveNamesAsync = ref.watch(
+      getUsersByIdsProvider(
+        (blocked.map((u) => u.uid).toList()..sort()).join(','),
+      ),
+    );
+    final liveNames = <String, String>{
+      for (final u in (liveNamesAsync.value ?? [])) u.uid: u.displayName,
+    };
 
     return Scaffold(
       backgroundColor: AppColors.scaffoldBg,
@@ -62,15 +75,39 @@ class _BlockedScreenState extends ConsumerState<BlockedScreen> {
                     itemBuilder: (context, i) {
                       final user = blocked[i];
                       final note = _notes[user.uid];
+                      final displayName =
+                          liveNames[user.uid] ?? user.displayName ?? user.uid;
+                      final interest =
+                          ref
+                              .watch(partnerProfileProvider(user.uid))
+                              .asData
+                              ?.value
+                              ?.interest ??
+                          '';
+                      final decoration = ref
+                          .watch(partnerDecorationProvider(user.uid))
+                          .asData
+                          ?.value;
+                      final moodOverlay =
+                          AvatarOverlays.mood[decoration?.moodKey ?? ''];
+                      final accessoryOverlay =
+                          AvatarOverlays.accessory[decoration?.hatKey ?? ''];
                       final friend = Friend(
-                        name: user.displayName ?? user.uid,
-                        username: user.uid,
+                        friendUid: user.uid,
+                        name: displayName,
+                        username: displayName,
                         note: note,
                         lastMessage: '',
                         isOnline: false,
-                        interest: '',
+                        interest: interest,
                       );
-                      return _buildBlockedCard(context, friend, user.uid);
+                      return _buildBlockedCard(
+                        context,
+                        friend,
+                        user.uid,
+                        moodOverlay,
+                        accessoryOverlay,
+                      );
                     },
                   ),
           ),
@@ -147,6 +184,8 @@ class _BlockedScreenState extends ConsumerState<BlockedScreen> {
     BuildContext context,
     Friend friend,
     String targetUid,
+    AvatarOverlay? moodOverlay,
+    AvatarOverlay? accessoryOverlay,
   ) {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -194,8 +233,14 @@ class _BlockedScreenState extends ConsumerState<BlockedScreen> {
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(14),
                   child: Padding(
-                    padding: const EdgeInsets.only(top: 8),
-                    child: Center(child: LayeredAvatar(boxSize: 44)),
+                    padding: const EdgeInsets.only(top: 10),
+                    child: Center(
+                      child: LayeredAvatar(
+                        boxSize: 42,
+                        moodOverlay: moodOverlay,
+                        accessoryOverlay: accessoryOverlay,
+                      ),
+                    ),
                   ),
                 ),
               ),

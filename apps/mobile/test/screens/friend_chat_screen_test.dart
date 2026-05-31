@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mobile/features/auth/domain/entities/auth_user.dart';
 import 'package:mobile/features/auth/presentation/providers/auth_provider.dart';
 import 'package:mobile/features/avatar/presentation/providers/avatar_decoration_provider.dart';
+import 'package:mobile/features/block/presentation/providers/block_provider.dart';
 import 'package:mobile/features/friends/domain/entities/app_user.dart';
 import 'package:mobile/features/friends/domain/entities/friend_message.dart';
 import 'package:mobile/features/friends/domain/entities/friend_request.dart';
@@ -108,6 +109,17 @@ class _FakeFriendChatNotifierWithError extends FriendChatNotifier {
   void leaveChat() {}
 }
 
+class _FakeBlockNotifier extends BlockNotifier {
+  @override
+  BlockState build() => const BlockState();
+
+  @override
+  Future<void> block(String targetUid, {String? displayName}) async {}
+
+  @override
+  Future<void> unblock(String targetUid) async {}
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 final _onlineFriend = Friend(
@@ -128,20 +140,11 @@ final _offlineFriend = Friend(
   isOnline: false,
 );
 
-final _blockedFriend = Friend(
-  friendshipId: 'fship3',
-  chatRoomId: 'room-3',
-  name: 'Carol',
-  username: 'carol',
-  lastMessage: '',
-  isOnline: false,
-  isBlocked: true,
-);
-
 Widget _buildScreen(
   _FakeFriendChatNotifier chatFake, {
   _FakeAuthNotifier? authFake,
   Friend? friend,
+  bool simulateBlocked = false,
 }) {
   friend ??= _onlineFriend;
   final auth =
@@ -159,6 +162,10 @@ Widget _buildScreen(
       friendsNotifierProvider.overrideWith(() => _FakeFriendsNotifier()),
       partnerDecorationProvider.overrideWith((ref, uid) async => null),
       partnerProfileProvider.overrideWith((ref, uid) async => null),
+      blockNotifierProvider.overrideWith(() => _FakeBlockNotifier()),
+      isBlockedByProvider.overrideWith(
+        (ref, uid) => Stream.value(simulateBlocked),
+      ),
     ],
     child: MaterialApp(
       routes: {
@@ -198,6 +205,8 @@ Widget _buildScreenWithErrorNotifier(Friend? friend) {
       friendsNotifierProvider.overrideWith(() => _FakeFriendsNotifier()),
       partnerDecorationProvider.overrideWith((ref, uid) async => null),
       partnerProfileProvider.overrideWith((ref, uid) async => null),
+      blockNotifierProvider.overrideWith(() => _FakeBlockNotifier()),
+      isBlockedByProvider.overrideWith((ref, uid) => Stream.value(false)),
     ],
     child: MaterialApp(
       routes: {
@@ -366,7 +375,9 @@ void main() {
       tester,
     ) async {
       final fake = _FakeFriendChatNotifier();
-      await tester.pumpWidget(_buildScreen(fake, friend: _blockedFriend));
+      await tester.pumpWidget(
+        _buildScreen(fake, friend: _onlineFriend, simulateBlocked: true),
+      );
       await _navigate(tester);
       expect(
         find.text('You can no longer send messages in this chat.'),

@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import '../features/avatar/presentation/providers/avatar_decoration_provider.dart';
+import '../features/profile/presentation/providers/profile_provider.dart';
+import '../shared/avatar_overlay.dart';
 import '../theme/app_colors.dart';
 import '../models/friend.dart';
 import '../shared/layered_avatar.dart';
 import '../shared/pill_button.dart';
 
-// ─── Public helpers called from FriendsScreen ───────────────────────────────
+// ─── Public helpers called from FriendsScreen / FriendChatScreen ─────────────
 
 void showFriendProfileDialog({
   required BuildContext context,
@@ -22,17 +26,18 @@ void showFriendProfileDialog({
 
 // ─── Profile popup (view + edit mode) ───────────────────────────────────────
 
-class _FriendProfileDialog extends StatefulWidget {
+class _FriendProfileDialog extends ConsumerStatefulWidget {
   final Friend friend;
   final void Function(String) onNoteSaved;
 
   const _FriendProfileDialog({required this.friend, required this.onNoteSaved});
 
   @override
-  State<_FriendProfileDialog> createState() => _FriendProfileDialogState();
+  ConsumerState<_FriendProfileDialog> createState() =>
+      _FriendProfileDialogState();
 }
 
-class _FriendProfileDialogState extends State<_FriendProfileDialog> {
+class _FriendProfileDialogState extends ConsumerState<_FriendProfileDialog> {
   static const int _maxNote = 20;
   late final TextEditingController _noteCtrl;
   late final String _originalName;
@@ -67,6 +72,19 @@ class _FriendProfileDialogState extends State<_FriendProfileDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final uid = widget.friend.friendUid;
+    final liveProfile = uid.isNotEmpty
+        ? ref.watch(partnerProfileProvider(uid)).asData?.value
+        : null;
+    final liveDecoration = uid.isNotEmpty
+        ? ref.watch(partnerDecorationProvider(uid)).asData?.value
+        : null;
+    final liveInterest = liveProfile?.interest ?? widget.friend.interest;
+    final moodOverlay = AvatarOverlays.mood[liveDecoration?.moodKey ?? ''];
+    final accessoryOverlay =
+        AvatarOverlays.accessory[liveDecoration?.hatKey ?? ''];
+    final hasAvatar = liveDecoration != null;
+
     return Dialog(
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(24),
@@ -87,14 +105,18 @@ class _FriendProfileDialogState extends State<_FriendProfileDialog> {
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildAvatar(),
+                    _buildAvatar(
+                      hasAvatar: hasAvatar,
+                      moodOverlay: moodOverlay,
+                      accessoryOverlay: accessoryOverlay,
+                    ),
                     const SizedBox(width: 16),
                     Expanded(child: _buildInfoColumn()),
                   ],
                 ),
                 const SizedBox(height: 20),
                 // ── Interest ──
-                _buildInterestSection(),
+                _buildInterestSection(liveInterest),
                 // ── Edit-mode buttons ──
                 if (_editing) ...[
                   const SizedBox(height: 20),
@@ -134,7 +156,11 @@ class _FriendProfileDialogState extends State<_FriendProfileDialog> {
   }
 
   // ── Avatar ──
-  Widget _buildAvatar() {
+  Widget _buildAvatar({
+    required bool hasAvatar,
+    required AvatarOverlay? moodOverlay,
+    required AvatarOverlay? accessoryOverlay,
+  }) {
     return Container(
       width: 90,
       height: 90,
@@ -155,8 +181,12 @@ class _FriendProfileDialogState extends State<_FriendProfileDialog> {
         child: Padding(
           padding: const EdgeInsets.only(top: 12),
           child: Center(
-            child: widget.friend.avatar.isNotEmpty
-                ? LayeredAvatar(boxSize: 68)
+            child: hasAvatar
+                ? LayeredAvatar(
+                    boxSize: 68,
+                    moodOverlay: moodOverlay,
+                    accessoryOverlay: accessoryOverlay,
+                  )
                 : const Icon(Icons.person, color: Colors.grey, size: 50),
           ),
         ),
@@ -285,7 +315,7 @@ class _FriendProfileDialogState extends State<_FriendProfileDialog> {
   }
 
   // ── Interest section ──
-  Widget _buildInterestSection() {
+  Widget _buildInterestSection(String? interest) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -299,7 +329,7 @@ class _FriendProfileDialogState extends State<_FriendProfileDialog> {
         ),
         const SizedBox(height: 4),
         Text(
-          widget.friend.interest.isNotEmpty ? widget.friend.interest : '—',
+          (interest != null && interest.isNotEmpty) ? interest : '—',
           style: Theme.of(
             context,
           ).textTheme.bodyMedium!.copyWith(fontSize: 13, color: Colors.black87),

@@ -11,13 +11,14 @@ User-level blocking. A user can block up to 5 other users. Blocked relationships
 | `WatchBlockedUsers` | `domain/usecases/watch_blocked_users.dart` |
 | `BlockUser` | `domain/usecases/block_user.dart` |
 | `UnblockUser` | `domain/usecases/unblock_user.dart` |
+| `WatchIsBlockedBy` | `domain/usecases/watch_is_blocked_by.dart` — streams `true` when `partnerUid` has blocked `myUid` |
 
 ## Data
 
 | Class | File |
 |---|---|
 | `BlockedUserModel` | `data/models/blocked_user_model.dart` — `@freezed` DTO with `TimestampConverter` |
-| `BlockDatasourceImpl` | `data/datasources/block_datasource.dart` — streams Firestore subcollection; calls `blockUser`/`unblockUser` CFs |
+| `BlockDatasourceImpl` | `data/datasources/block_datasource.dart` — streams Firestore subcollection; calls `blockUser`/`unblockUser` CFs; `watchIsBlockedBy(partnerUid, myUid)` reads `users/{partnerUid}/blocked/{myUid}` |
 | `BlockRepositoryImpl` | `data/repositories/block_repository_impl.dart` |
 
 ## Presentation
@@ -27,6 +28,7 @@ User-level blocking. A user can block up to 5 other users. Blocked relationships
 | `BlockState` | `presentation/providers/block_provider.dart` — fields: `status`, `blockedUsers`, `isSubmitting`, `error` |
 | `BlockNotifier` | `presentation/providers/block_provider.dart` — subscribes in `build()` via `authNotifierProvider`; `block()` + `unblock()` actions |
 | `blockNotifierProvider` | `presentation/providers/block_provider.dart` |
+| `isBlockedByProvider` | `presentation/providers/block_provider.dart` — `StreamProvider.family<bool, String>`; param is `partnerUid`; returns `true` when that partner has blocked the current user |
 
 ## Firestore
 
@@ -39,6 +41,8 @@ Collection: `users/{uid}/blocked/{blockedUid}`
 | `blockedAt` | Timestamp |
 
 Max 5 entries per user.
+
+Security rules: owner has full read/write; the blocked person (`request.auth.uid == blockedId`) has read-only access so `isBlockedByProvider` can check whether they are blocked without exposing the owner's full list.
 
 ## Room Block Enforcement
 
