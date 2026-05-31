@@ -83,3 +83,4 @@ node_modules/
 # Claude Code worktrees
 .claude/worktrees/
 .claude/plans/
+.claude/scheduled_tasks.lock
