@@ -20,6 +20,9 @@ class UserStatusRepositoryImpl implements UserStatusRepository {
   }
 
   @override
+  Stream<int> watchOnlineCount() => _datasource.watchOnlineCount();
+
+  @override
   Future<void> setOnline() => _datasource.setOnline();
 
   @override
