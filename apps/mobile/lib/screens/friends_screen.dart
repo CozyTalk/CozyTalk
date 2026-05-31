@@ -114,14 +114,14 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
         f.friendshipId: (
           mood:
               AvatarOverlays.mood[ref
-                      .watch(partnerDecorationProvider(f.friendUid))
+                      .watch(avatarDecorationByUidProvider(f.friendUid))
                       .asData
                       ?.value
                       ?.moodKey ??
                   ''],
           hat:
               AvatarOverlays.accessory[ref
-                      .watch(partnerDecorationProvider(f.friendUid))
+                      .watch(avatarDecorationByUidProvider(f.friendUid))
                       .asData
                       ?.value
                       ?.hatKey ??
@@ -133,7 +133,7 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
       for (final f in state.friends)
         f.friendUid:
             ref
-                .watch(partnerProfileProvider(f.friendUid))
+                .watch(profileByUidProvider(f.friendUid))
                 .asData
                 ?.value
                 ?.interest ??

@@ -74,10 +74,10 @@ class _FriendProfileDialogState extends ConsumerState<_FriendProfileDialog> {
   Widget build(BuildContext context) {
     final uid = widget.friend.friendUid;
     final liveProfile = uid.isNotEmpty
-        ? ref.watch(partnerProfileProvider(uid)).asData?.value
+        ? ref.watch(profileByUidProvider(uid)).asData?.value
         : null;
     final liveDecoration = uid.isNotEmpty
-        ? ref.watch(partnerDecorationProvider(uid)).asData?.value
+        ? ref.watch(avatarDecorationByUidProvider(uid)).asData?.value
         : null;
     final liveInterest = liveProfile?.interest ?? widget.friend.interest;
     final moodOverlay = AvatarOverlays.mood[liveDecoration?.moodKey ?? ''];

@@ -85,10 +85,10 @@ Widget _build({
     overrides: [
       networkInfoProvider.overrideWithValue(networkInfo),
       friendsNotifierProvider.overrideWith(() => fake),
-      partnerDecorationProvider.overrideWith((ref, uid) async => null),
+      avatarDecorationByUidProvider.overrideWith((ref, uid) async => null),
       getUsersByIdsProvider.overrideWith((ref, csv) async => []),
       blockNotifierProvider.overrideWith(() => _FakeBlockNotifier()),
-      partnerProfileProvider.overrideWith((ref, uid) async => null),
+      profileByUidProvider.overrideWith((ref, uid) async => null),
     ],
     child: const MaterialApp(home: FriendsScreen()),
   );
@@ -268,10 +268,12 @@ void main() {
                 FakeNetworkInfo(isOnline: true),
               ),
               friendsNotifierProvider.overrideWith(() => notifier),
-              partnerDecorationProvider.overrideWith((ref, uid) async => null),
+              avatarDecorationByUidProvider.overrideWith(
+                (ref, uid) async => null,
+              ),
               getUsersByIdsProvider.overrideWith((ref, csv) async => []),
               blockNotifierProvider.overrideWith(() => _FakeBlockNotifier()),
-              partnerProfileProvider.overrideWith((ref, uid) async => null),
+              profileByUidProvider.overrideWith((ref, uid) async => null),
             ],
             child: const MaterialApp(home: FriendsScreen()),
           ),

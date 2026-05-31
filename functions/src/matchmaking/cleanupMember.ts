@@ -21,6 +21,12 @@ export const cleanupMember = onValueDeleted(
     let requeueBackgroundTheme: string | null = null;
 
     await db.runTransaction(async (tx) => {
+      // Reset on every retry so a stale value from a conflicting attempt never
+      // leaks into the post-transaction re-queue side-effect.
+      requeueUid = null;
+      requeueInterestVector = null;
+      requeueBackgroundTheme = null;
+
       const snap = await tx.get(roomRef);
       if (!snap.exists) return;
 

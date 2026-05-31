@@ -152,11 +152,11 @@ class _FriendChatScreenState extends ConsumerState<FriendChatScreen> {
 
     // Live partner data — overrides stale friendship-doc values.
     final partnerProfile = ref
-        .watch(partnerProfileProvider(partnerUid))
+        .watch(profileByUidProvider(partnerUid))
         .asData
         ?.value;
     final partnerDecoration = ref
-        .watch(partnerDecorationProvider(partnerUid))
+        .watch(avatarDecorationByUidProvider(partnerUid))
         .asData
         ?.value;
     final isOnline = ref.watch(

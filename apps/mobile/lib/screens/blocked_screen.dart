@@ -79,13 +79,13 @@ class _BlockedScreenState extends ConsumerState<BlockedScreen> {
                           liveNames[user.uid] ?? user.displayName ?? user.uid;
                       final interest =
                           ref
-                              .watch(partnerProfileProvider(user.uid))
+                              .watch(profileByUidProvider(user.uid))
                               .asData
                               ?.value
                               ?.interest ??
                           '';
                       final decoration = ref
-                          .watch(partnerDecorationProvider(user.uid))
+                          .watch(avatarDecorationByUidProvider(user.uid))
                           .asData
                           ?.value;
                       final moodOverlay =

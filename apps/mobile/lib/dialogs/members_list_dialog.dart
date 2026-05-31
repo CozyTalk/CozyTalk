@@ -18,16 +18,22 @@ class MembersPanelBody extends StatelessWidget {
   final Map<String, bool> friendRequestSent;
   // Called with the UID of the member to add.
   final void Function(String uid) onAddFriend;
+  final void Function(String uid)? onCancelRequest;
+  final void Function(String name)? onReport;
+  final Map<String, AvatarState> memberAvatarStates;
 
   const MembersPanelBody({
     super.key,
     required this.members,
     required this.onClose,
     required this.onAddFriend,
+    this.onCancelRequest,
+    this.onReport,
     this.memberUids = const [],
     this.currentUser = 'Me',
     this.avatarState = const AvatarState(),
     this.friendRequestSent = const {},
+    this.memberAvatarStates = const {},
   });
 
   @override
@@ -71,13 +77,17 @@ class MembersPanelBody extends StatelessWidget {
         children: [
           ClipRRect(
             borderRadius: BorderRadius.circular(12),
-            child: isMe
-                ? LayeredAvatar(
-                    boxSize: 46,
-                    moodOverlay: avatarState.mood,
-                    accessoryOverlay: avatarState.accessory,
-                  )
-                : LayeredAvatar(boxSize: 46),
+            child: LayeredAvatar(
+              boxSize: 46,
+              moodOverlay:
+                  (memberAvatarStates[name] ??
+                          (isMe ? avatarState : const AvatarState()))
+                      .mood,
+              accessoryOverlay:
+                  (memberAvatarStates[name] ??
+                          (isMe ? avatarState : const AvatarState()))
+                      .accessory,
+            ),
           ),
           const SizedBox(width: 14),
           Expanded(
@@ -131,10 +141,14 @@ class MembersPanelBody extends StatelessWidget {
             GestureDetector(
               onTap: () {
                 onClose();
-                showDialog(
-                  context: context,
-                  builder: (_) => const ReportDialog(),
-                );
+                if (onReport != null) {
+                  onReport!(name);
+                } else {
+                  showDialog(
+                    context: context,
+                    builder: (_) => const ReportDialog(),
+                  );
+                }
               },
               child: Container(
                 width: 38,

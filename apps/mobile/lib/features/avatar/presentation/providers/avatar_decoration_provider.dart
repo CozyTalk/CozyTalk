@@ -50,13 +50,13 @@ final avatarDecorationNotifierProvider =
       AvatarDecorationNotifier.new,
     );
 
-/// Fetches another user's avatar decoration (hatKey, moodKey) from Firestore.
-/// Scoped per-UID; disposes automatically when no longer watched.
-final partnerDecorationProvider = FutureProvider.autoDispose
-    .family<AvatarDecoration?, String>(
-      (ref, uid) =>
-          GetAvatarDecoration(ref.watch(avatarRepositoryProvider))(uid),
-    );
+/// Loads any user's avatar decoration by UID without disturbing
+/// [avatarDecorationNotifierProvider]. Auto-disposes when no longer watched.
+final avatarDecorationByUidProvider = FutureProvider.autoDispose
+    .family<AvatarDecoration?, String>((ref, uid) async {
+      if (uid.isEmpty) return null;
+      return ref.read(_getAvatarDecorationProvider)(uid);
+    });
 
 enum AvatarDecorationStatus { idle, loading, saving, error }
 
