@@ -72,8 +72,11 @@ class AdminDatasourceImpl implements AdminDatasource {
         .asyncMap((snap) async {
           final uids = <String>{};
           for (final doc in snap.docs) {
-            uids.add(doc.data()['reporterId'] as String);
-            uids.add(doc.data()['reportedUserId'] as String);
+            final d = doc.data();
+            final rid = d['reporterId'];
+            final ruid = d['reportedUserId'];
+            if (rid is String && rid.isNotEmpty) uids.add(rid);
+            if (ruid is String && ruid.isNotEmpty) uids.add(ruid);
           }
           final nameMap = <String, String>{};
           final interestMap = <String, String>{};
@@ -89,20 +92,33 @@ class AdminDatasourceImpl implements AdminDatasource {
               }
             }
           }
-          return snap.docs.map((doc) {
-            final data = Map<String, dynamic>.from(doc.data());
-            if (data['outcome'] is Map) {
-              data['outcome'] = Map<String, dynamic>.from(
-                data['outcome'] as Map,
+          final results = <AdminReportModel>[];
+          for (final doc in snap.docs) {
+            try {
+              final data = Map<String, dynamic>.from(doc.data());
+              data['reporterId'] ??= '';
+              data['reportedUserId'] ??= '';
+              data['sessionId'] ??= '';
+              data['reportType'] ??= 'other';
+              data['reason'] ??= '';
+              if (data['outcome'] is Map) {
+                data['outcome'] = Map<String, dynamic>.from(
+                  data['outcome'] as Map,
+                );
+              }
+              results.add(
+                AdminReportModel.fromJson(data).copyWith(
+                  id: doc.id,
+                  reporterName: nameMap[data['reporterId']] ?? 'Unknown',
+                  reportedName: nameMap[data['reportedUserId']] ?? 'Unknown',
+                  reportedInterest: interestMap[data['reportedUserId']] ?? '',
+                ),
               );
+            } catch (_) {
+              // Skip malformed documents silently.
             }
-            return AdminReportModel.fromJson(data).copyWith(
-              id: doc.id,
-              reporterName: nameMap[data['reporterId']] ?? 'Unknown',
-              reportedName: nameMap[data['reportedUserId']] ?? 'Unknown',
-              reportedInterest: interestMap[data['reportedUserId']] ?? '',
-            );
-          }).toList();
+          }
+          return results;
         });
   }
 
