@@ -100,6 +100,8 @@ class FriendsState {
   final Map<String, String> lastMessageMap;
   // keyed by friendUid
   final Map<String, FriendRoomStatus?> roomMap;
+  // chatRoomIds that received a new message while the DM was not open.
+  final Set<String> unreadChatRoomIds;
 
   const FriendsState({
     this.allUsers = const [],
@@ -110,6 +112,7 @@ class FriendsState {
     this.presenceMap = const {},
     this.lastMessageMap = const {},
     this.roomMap = const {},
+    this.unreadChatRoomIds = const {},
   });
 
   FriendsState copyWith({
@@ -121,6 +124,7 @@ class FriendsState {
     Map<String, bool>? presenceMap,
     Map<String, String>? lastMessageMap,
     Map<String, FriendRoomStatus?>? roomMap,
+    Set<String>? unreadChatRoomIds,
   }) => FriendsState(
     allUsers: allUsers ?? this.allUsers,
     friends: friends ?? this.friends,
@@ -130,6 +134,7 @@ class FriendsState {
     presenceMap: presenceMap ?? this.presenceMap,
     lastMessageMap: lastMessageMap ?? this.lastMessageMap,
     roomMap: roomMap ?? this.roomMap,
+    unreadChatRoomIds: unreadChatRoomIds ?? this.unreadChatRoomIds,
   );
 }
 
@@ -141,6 +146,8 @@ class FriendsNotifier extends Notifier<FriendsState> {
   final Map<String, StreamSubscription<bool>> _presenceSubs = {};
   final Map<String, StreamSubscription<String>> _lastMessageSubs = {};
   final Map<String, StreamSubscription<FriendRoomStatus?>> _roomSubs = {};
+  // Tracks chatRoomIds whose first lastMessage emission has been processed.
+  final Set<String> _initializedRooms = {};
 
   @override
   FriendsState build() {
@@ -237,10 +244,20 @@ class FriendsNotifier extends Notifier<FriendsState> {
         _lastMessageSubs[f.chatRoomId] = ref
             .read(_watchFriendLastMessageProvider)(f.chatRoomId)
             .listen((msg) {
-              state = state.copyWith(
-                lastMessageMap: Map<String, String>.from(state.lastMessageMap)
-                  ..[f.chatRoomId] = msg,
-              );
+              final isNew = _initializedRooms.contains(f.chatRoomId);
+              _initializedRooms.add(f.chatRoomId);
+              final newLastMsg = Map<String, String>.from(state.lastMessageMap)
+                ..[f.chatRoomId] = msg;
+              if (isNew && msg.isNotEmpty) {
+                // A new message arrived after the initial load — mark unread.
+                state = state.copyWith(
+                  lastMessageMap: newLastMsg,
+                  unreadChatRoomIds: Set<String>.from(state.unreadChatRoomIds)
+                    ..add(f.chatRoomId),
+                );
+              } else {
+                state = state.copyWith(lastMessageMap: newLastMsg);
+              }
             }, onError: (_) {});
       }
 
@@ -333,4 +350,12 @@ class FriendsNotifier extends Notifier<FriendsState> {
   }
 
   void clearError() => state = state.copyWith(error: null);
+
+  void markChatAsRead(String chatRoomId) {
+    if (!state.unreadChatRoomIds.contains(chatRoomId)) return;
+    state = state.copyWith(
+      unreadChatRoomIds: Set<String>.from(state.unreadChatRoomIds)
+        ..remove(chatRoomId),
+    );
+  }
 }

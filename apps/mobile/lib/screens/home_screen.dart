@@ -89,10 +89,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       body: Column(
         children: [
           _TopBar(
-            hasNotification: ref
-                .watch(friendsNotifierProvider)
-                .incomingRequests
-                .isNotEmpty,
+            hasNotification: ref.watch(
+              friendsNotifierProvider.select(
+                (s) =>
+                    s.incomingRequests.isNotEmpty ||
+                    s.unreadChatRoomIds.isNotEmpty,
+              ),
+            ),
             onBellTap: () =>
                 Navigator.pushNamed(context, AppRoutes.notification),
             onUserTap: () => Navigator.pushNamed(context, AppRoutes.profile),

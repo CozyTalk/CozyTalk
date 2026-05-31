@@ -46,13 +46,18 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
     super.dispose();
   }
 
-  Friend _toScreenFriend(domain.Friend f, FriendsState state) {
+  Friend _toScreenFriend(
+    domain.Friend f,
+    FriendsState state,
+    Map<String, String> liveNames,
+  ) {
     final roomStatus = state.roomMap[f.friendUid];
+    final liveName = liveNames[f.friendUid] ?? f.friendDisplayName;
     return Friend(
       friendshipId: f.friendshipId,
       chatRoomId: f.chatRoomId,
-      name: f.friendDisplayName,
-      username: f.friendDisplayName,
+      name: liveName,
+      username: liveName,
       note: _notes[f.friendshipId],
       lastMessage: state.lastMessageMap[f.chatRoomId] ?? '',
       isOnline: state.presenceMap[f.friendUid] ?? false,
@@ -85,8 +90,14 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(friendsNotifierProvider);
+    // Fetch live display names for all friends to override stale friendship-doc names.
+    final friendUids = state.friends.map((f) => f.friendUid).toList();
+    final liveNamesAsync = ref.watch(getUsersByIdsProvider(friendUids));
+    final liveNames = <String, String>{
+      for (final u in (liveNamesAsync.value ?? [])) u.uid: u.displayName,
+    };
     final friends = state.friends
-        .map((f) => _toScreenFriend(f, state))
+        .map((f) => _toScreenFriend(f, state, liveNames))
         .toList();
     final filtered = _filtered(friends);
     final isOffline = !ref

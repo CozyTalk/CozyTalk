@@ -3,8 +3,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mobile/features/auth/domain/entities/auth_user.dart';
 import 'package:mobile/features/auth/presentation/providers/auth_provider.dart';
+import 'package:mobile/features/avatar/presentation/providers/avatar_decoration_provider.dart';
+import 'package:mobile/features/friends/domain/entities/app_user.dart';
 import 'package:mobile/features/friends/domain/entities/friend_message.dart';
+import 'package:mobile/features/friends/domain/entities/friend_request.dart';
 import 'package:mobile/features/friends/presentation/providers/friend_chat_provider.dart';
+import 'package:mobile/features/friends/presentation/providers/friends_provider.dart';
+import 'package:mobile/features/profile/presentation/providers/profile_provider.dart';
 import 'package:mobile/models/friend.dart';
 import 'package:mobile/screens/friend_chat_screen.dart';
 import 'package:mobile/theme/app_routes.dart';
@@ -67,6 +72,24 @@ class _FakeFriendChatNotifier extends FriendChatNotifier {
 
   @override
   void leaveChat() => leaveChatCount++;
+}
+
+class _FakeFriendsNotifier extends FriendsNotifier {
+  @override
+  FriendsState build() => const FriendsState();
+
+  @override
+  Future<void> sendFriendRequest(AppUser toUser) async {}
+  @override
+  Future<void> acceptRequest(FriendRequest request) async {}
+  @override
+  Future<void> declineRequest(String requestId) async {}
+  @override
+  Future<void> removeFriend(String friendshipId) async {}
+  @override
+  void clearError() {}
+  @override
+  void markChatAsRead(String chatRoomId) {}
 }
 
 class _FakeFriendChatNotifierWithError extends FriendChatNotifier {
@@ -133,6 +156,9 @@ Widget _buildScreen(
     overrides: [
       authNotifierProvider.overrideWith(() => auth),
       friendChatNotifierProvider.overrideWith(() => chatFake),
+      friendsNotifierProvider.overrideWith(() => _FakeFriendsNotifier()),
+      partnerDecorationProvider.overrideWith((ref, uid) async => null),
+      partnerProfileProvider.overrideWith((ref, uid) async => null),
     ],
     child: MaterialApp(
       routes: {
@@ -169,6 +195,9 @@ Widget _buildScreenWithErrorNotifier(Friend? friend) {
       friendChatNotifierProvider.overrideWith(
         () => _FakeFriendChatNotifierWithError(),
       ),
+      friendsNotifierProvider.overrideWith(() => _FakeFriendsNotifier()),
+      partnerDecorationProvider.overrideWith((ref, uid) async => null),
+      partnerProfileProvider.overrideWith((ref, uid) async => null),
     ],
     child: MaterialApp(
       routes: {

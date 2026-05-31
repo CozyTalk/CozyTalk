@@ -154,6 +154,8 @@ class _MainUIAuthRouter extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Keep own RTDB presence alive — same as _AuthRouter.
+    ref.watch(ownStatusNotifierProvider);
     ref.listen<AuthStatus>(authNotifierProvider.select((s) => s.status), (
       _,
       next,

@@ -1,9 +1,14 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter/material.dart';
+import 'dart:async';
 import '../features/auth/presentation/providers/auth_provider.dart';
+import '../features/avatar/presentation/providers/avatar_decoration_provider.dart';
 import '../features/friends/domain/entities/friend_message.dart';
 import '../features/friends/presentation/providers/friend_chat_provider.dart';
+import '../features/friends/presentation/providers/friends_provider.dart';
+import '../features/profile/presentation/providers/profile_provider.dart';
+import '../shared/avatar_overlay.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_routes.dart';
 import '../models/friend.dart';
@@ -27,6 +32,7 @@ class _FriendChatScreenState extends ConsumerState<FriendChatScreen> {
   late final FriendChatNotifier _chatNotifier;
   late Friend _friend;
   bool _initialized = false;
+  Timer? _typingTimer;
 
   @override
   void initState() {
@@ -54,10 +60,23 @@ class _FriendChatScreenState extends ConsumerState<FriendChatScreen> {
 
   @override
   void dispose() {
+    _typingTimer?.cancel();
     _chatNotifier.leaveChat();
     _inputCtrl.dispose();
     _scrollCtrl.dispose();
     super.dispose();
+  }
+
+  void _onTypingChanged(String text) {
+    _typingTimer?.cancel();
+    if (text.isNotEmpty) {
+      _chatNotifier.setTyping(true);
+      _typingTimer = Timer(const Duration(seconds: 3), () {
+        _chatNotifier.setTyping(false);
+      });
+    } else {
+      _chatNotifier.setTyping(false);
+    }
   }
 
   void _sendMessage() {
@@ -123,6 +142,31 @@ class _FriendChatScreenState extends ConsumerState<FriendChatScreen> {
       authNotifierProvider.select((s) => s.user?.uid ?? ''),
     );
 
+    // Derive partner UID from chatRoomId (friendshipId = "uid1_uid2" sorted).
+    final partnerUid = _friend.chatRoomId
+        .split('_')
+        .firstWhere((uid) => uid != currentUid, orElse: () => '');
+
+    // Live partner data — overrides stale friendship-doc values.
+    final partnerProfile = ref
+        .watch(partnerProfileProvider(partnerUid))
+        .asData
+        ?.value;
+    final partnerDecoration = ref
+        .watch(partnerDecorationProvider(partnerUid))
+        .asData
+        ?.value;
+    final isOnline = ref.watch(
+      friendsNotifierProvider.select(
+        (s) => s.presenceMap[partnerUid] ?? _friend.isOnline,
+      ),
+    );
+    final displayName = partnerProfile?.displayName ?? _friend.displayName;
+    final partnerMoodOverlay =
+        AvatarOverlays.mood[partnerDecoration?.moodKey ?? ''];
+    final partnerAccessoryOverlay =
+        AvatarOverlays.accessory[partnerDecoration?.hatKey ?? ''];
+
     ref.listen<FriendChatState>(friendChatNotifierProvider, (prev, next) {
       if (next.error != null && next.error != prev?.error) {
         ScaffoldMessenger.of(
@@ -138,7 +182,14 @@ class _FriendChatScreenState extends ConsumerState<FriendChatScreen> {
       backgroundColor: AppColors.scaffoldBg,
       body: Column(
         children: [
-          _buildHeader(context),
+          _buildHeader(
+            context,
+            displayName,
+            isOnline,
+            partnerMoodOverlay,
+            partnerAccessoryOverlay,
+            partnerProfile?.interest,
+          ),
           if (chatState.isLoading)
             const LinearProgressIndicator()
           else if (_friend.room != null && _friend.isOnline)
@@ -193,6 +244,11 @@ class _FriendChatScreenState extends ConsumerState<FriendChatScreen> {
                       ...chatState.messages.map(
                         (m) => _buildMessageBubble(m, currentUid),
                       ),
+                      if (chatState.isPartnerTyping)
+                        const Padding(
+                          padding: EdgeInsets.only(top: 6),
+                          child: _FriendTypingIndicator(),
+                        ),
                     ],
                   ),
           ),
@@ -203,7 +259,14 @@ class _FriendChatScreenState extends ConsumerState<FriendChatScreen> {
   }
 
   // ─── Header ───
-  Widget _buildHeader(BuildContext context) {
+  Widget _buildHeader(
+    BuildContext context,
+    String displayName,
+    bool isOnline,
+    AvatarOverlay? moodOverlay,
+    AvatarOverlay? accessoryOverlay,
+    String? interest,
+  ) {
     return Container(
       decoration: const BoxDecoration(
         color: AppColors.brownDeep,
@@ -280,13 +343,11 @@ class _FriendChatScreenState extends ConsumerState<FriendChatScreen> {
                         child: Padding(
                           padding: const EdgeInsets.only(top: 7),
                           child: Center(
-                            child: _friend.avatar.isNotEmpty
-                                ? LayeredAvatar(boxSize: 34)
-                                : const Icon(
-                                    Icons.person,
-                                    color: Colors.grey,
-                                    size: 28,
-                                  ),
+                            child: LayeredAvatar(
+                              boxSize: 34,
+                              moodOverlay: moodOverlay,
+                              accessoryOverlay: accessoryOverlay,
+                            ),
                           ),
                         ),
                       ),
@@ -301,7 +362,7 @@ class _FriendChatScreenState extends ConsumerState<FriendChatScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        _friend.displayName,
+                        displayName,
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 18,
@@ -315,12 +376,12 @@ class _FriendChatScreenState extends ConsumerState<FriendChatScreen> {
                             width: 8,
                             height: 8,
                             decoration: BoxDecoration(
-                              color: _friend.isOnline
+                              color: isOnline
                                   ? const Color(0xFF86BA73)
                                   : Colors.grey.shade300,
                               shape: BoxShape.circle,
                               border: Border.all(
-                                color: _friend.isOnline
+                                color: isOnline
                                     ? const Color(0xFF72A161)
                                     : Colors.grey.shade400,
                                 width: 1.5,
@@ -329,7 +390,7 @@ class _FriendChatScreenState extends ConsumerState<FriendChatScreen> {
                           ),
                           const SizedBox(width: 4),
                           Text(
-                            _friend.isOnline ? 'Online' : 'Offline',
+                            isOnline ? 'Online' : 'Offline',
                             style: const TextStyle(
                               color: Colors.white70,
                               fontSize: 12,
@@ -580,6 +641,7 @@ class _FriendChatScreenState extends ConsumerState<FriendChatScreen> {
                   fontWeight: FontWeight.w500,
                 ),
                 textAlignVertical: TextAlignVertical.center,
+                onChanged: _onTypingChanged,
                 textInputAction: TextInputAction.send,
                 onSubmitted: (_) => _sendMessage(),
               ),
@@ -630,6 +692,109 @@ class _FriendChatScreenState extends ConsumerState<FriendChatScreen> {
           ),
         ],
       ),
+    );
+  }
+}
+
+// ── Typing indicator (three bouncing dots) ────────────────────────────────────
+class _FriendTypingIndicator extends StatefulWidget {
+  const _FriendTypingIndicator();
+
+  @override
+  State<_FriendTypingIndicator> createState() => _FriendTypingIndicatorState();
+}
+
+class _FriendTypingIndicatorState extends State<_FriendTypingIndicator>
+    with TickerProviderStateMixin {
+  late final List<AnimationController> _controllers;
+  late final List<Animation<double>> _anims;
+
+  @override
+  void initState() {
+    super.initState();
+    _controllers = List.generate(
+      3,
+      (i) => AnimationController(
+        vsync: this,
+        duration: const Duration(milliseconds: 400),
+      ),
+    );
+    _anims = _controllers
+        .map(
+          (c) => Tween<double>(
+            begin: 0,
+            end: -6,
+          ).animate(CurvedAnimation(parent: c, curve: Curves.easeInOut)),
+        )
+        .toList();
+    _startLoop();
+  }
+
+  Future<void> _startLoop() async {
+    while (mounted) {
+      for (int i = 0; i < _controllers.length; i++) {
+        if (!mounted) return;
+        await _controllers[i].forward();
+        await _controllers[i].reverse();
+        await Future.delayed(const Duration(milliseconds: 100));
+      }
+      await Future.delayed(const Duration(milliseconds: 200));
+    }
+  }
+
+  @override
+  void dispose() {
+    for (final c in _controllers) {
+      c.dispose();
+    }
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            color: Colors.grey.shade200,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: const Icon(Icons.person, color: Colors.grey, size: 24),
+        ),
+        const SizedBox(width: 8),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+          decoration: BoxDecoration(
+            color: const Color(0xFFDEF1C2),
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: const Color(0xFFC7D2B5), width: 1.5),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: List.generate(
+              3,
+              (i) => AnimatedBuilder(
+                animation: _anims[i],
+                builder: (_, _) => Transform.translate(
+                  offset: Offset(0, _anims[i].value),
+                  child: Container(
+                    width: 7,
+                    height: 7,
+                    margin: const EdgeInsets.symmetric(horizontal: 3),
+                    decoration: const BoxDecoration(
+                      color: Color(0xFF6B5E5B),
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

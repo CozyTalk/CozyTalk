@@ -31,4 +31,6 @@ abstract class FriendsRepository {
     required String senderDisplayName,
   });
   Future<List<AppUser>> getUsersByIds(List<String> uids);
+  Future<void> setFriendTyping(String chatRoomId, bool isTyping);
+  Stream<bool> watchFriendTyping(String chatRoomId);
 }

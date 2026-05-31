@@ -5,7 +5,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../domain/entities/friend_message.dart';
 import '../../domain/usecases/send_friend_message.dart';
+import '../../domain/usecases/set_friend_typing.dart';
 import '../../domain/usecases/watch_friend_messages.dart';
+import '../../domain/usecases/watch_friend_typing.dart';
 import 'friends_provider.dart';
 
 final _watchFriendMessagesProvider = Provider<WatchFriendMessages>(
@@ -14,6 +16,14 @@ final _watchFriendMessagesProvider = Provider<WatchFriendMessages>(
 
 final _sendFriendMessageProvider = Provider<SendFriendMessage>(
   (ref) => SendFriendMessage(ref.watch(friendsRepositoryProvider)),
+);
+
+final _setFriendTypingProvider = Provider<SetFriendTyping>(
+  (ref) => SetFriendTyping(ref.watch(friendsRepositoryProvider)),
+);
+
+final _watchFriendTypingProvider = Provider<WatchFriendTyping>(
+  (ref) => WatchFriendTyping(ref.watch(friendsRepositoryProvider)),
 );
 
 final friendChatNotifierProvider =
@@ -27,6 +37,7 @@ class FriendChatState {
   final List<FriendMessage> messages;
   final bool isLoading;
   final bool isSending;
+  final bool isPartnerTyping;
   final String? chatRoomId;
   final String? friendDisplayName;
   final String? error;
@@ -35,6 +46,7 @@ class FriendChatState {
     this.messages = const [],
     this.isLoading = false,
     this.isSending = false,
+    this.isPartnerTyping = false,
     this.chatRoomId,
     this.friendDisplayName,
     this.error,
@@ -44,6 +56,7 @@ class FriendChatState {
     List<FriendMessage>? messages,
     bool? isLoading,
     bool? isSending,
+    bool? isPartnerTyping,
     Object? chatRoomId = _chatSentinel,
     Object? friendDisplayName = _chatSentinel,
     Object? error = _chatSentinel,
@@ -51,6 +64,7 @@ class FriendChatState {
     messages: messages ?? this.messages,
     isLoading: isLoading ?? this.isLoading,
     isSending: isSending ?? this.isSending,
+    isPartnerTyping: isPartnerTyping ?? this.isPartnerTyping,
     chatRoomId: chatRoomId == _chatSentinel
         ? this.chatRoomId
         : chatRoomId as String?,
@@ -63,20 +77,27 @@ class FriendChatState {
 
 class FriendChatNotifier extends Notifier<FriendChatState> {
   StreamSubscription<List<FriendMessage>>? _messagesSub;
+  StreamSubscription<bool>? _typingSub;
 
   @override
   FriendChatState build() {
-    ref.onDispose(() => _messagesSub?.cancel());
+    ref.onDispose(() {
+      _messagesSub?.cancel();
+      _typingSub?.cancel();
+    });
     return const FriendChatState();
   }
 
   Future<void> enterChat(String chatRoomId, String friendDisplayName) async {
     _messagesSub?.cancel();
+    _typingSub?.cancel();
     state = FriendChatState(
       isLoading: true,
       chatRoomId: chatRoomId,
       friendDisplayName: friendDisplayName,
     );
+    // Clear unread badge for this chat room.
+    ref.read(friendsNotifierProvider.notifier).markChatAsRead(chatRoomId);
 
     _messagesSub = ref
         .read(_watchFriendMessagesProvider)(chatRoomId)
@@ -88,6 +109,21 @@ class FriendChatNotifier extends Notifier<FriendChatState> {
             error: e.toString().replaceFirst('Exception: ', ''),
           ),
         );
+
+    _typingSub = ref
+        .read(_watchFriendTypingProvider)(chatRoomId)
+        .listen(
+          (isTyping) => state = state.copyWith(isPartnerTyping: isTyping),
+          onError: (_) {},
+        );
+  }
+
+  Future<void> setTyping(bool isTyping) async {
+    final chatRoomId = state.chatRoomId;
+    if (chatRoomId == null) return;
+    try {
+      await ref.read(_setFriendTypingProvider)(chatRoomId, isTyping);
+    } catch (_) {}
   }
 
   Future<void> sendMessage(String text) async {
@@ -103,6 +139,8 @@ class FriendChatNotifier extends Notifier<FriendChatState> {
         text: text,
         senderDisplayName: myDisplayName,
       );
+      // Clear our own typing indicator after sending.
+      setTyping(false);
       state = state.copyWith(isSending: false);
     } catch (e) {
       state = state.copyWith(
@@ -113,8 +151,12 @@ class FriendChatNotifier extends Notifier<FriendChatState> {
   }
 
   void leaveChat() {
+    // Clear our typing indicator so partner doesn't see us as typing after we leave.
+    setTyping(false);
     _messagesSub?.cancel();
+    _typingSub?.cancel();
     _messagesSub = null;
+    _typingSub = null;
     state = const FriendChatState();
   }
 }

@@ -124,6 +124,12 @@ class _FakeFriendsDatasource implements FriendsDatasource {
 
   @override
   Future<List<AppUser>> getUsersByIds(List<String> uids) async => [];
+
+  @override
+  Future<void> setFriendTyping(String chatRoomId, bool isTyping) async {}
+
+  @override
+  Stream<bool> watchFriendTyping(String chatRoomId) => Stream.value(false);
 }
 
 void main() {

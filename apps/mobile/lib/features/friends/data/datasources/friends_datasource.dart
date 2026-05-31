@@ -37,6 +37,8 @@ abstract class FriendsDatasource {
     required String senderDisplayName,
   });
   Future<List<AppUser>> getUsersByIds(List<String> uids);
+  Future<void> setFriendTyping(String chatRoomId, bool isTyping);
+  Stream<bool> watchFriendTyping(String chatRoomId);
 }
 
 class FriendsDatasourceImpl implements FriendsDatasource {
@@ -258,6 +260,27 @@ class FriendsDatasourceImpl implements FriendsDatasource {
         displayName: data['displayName'] as String? ?? '',
       );
     }).toList();
+  }
+
+  @override
+  Future<void> setFriendTyping(String chatRoomId, bool isTyping) async {
+    final ref = _database.ref('typing/$chatRoomId/$currentUid');
+    if (isTyping) {
+      await ref.set(true);
+    } else {
+      await ref.remove();
+    }
+  }
+
+  @override
+  Stream<bool> watchFriendTyping(String chatRoomId) {
+    return _database.ref('typing/$chatRoomId').onValue.map((event) {
+      if (!event.snapshot.exists || event.snapshot.value == null) return false;
+      final data = Map<String, dynamic>.from(event.snapshot.value as Map);
+      return data.entries
+          .where((e) => e.key != currentUid)
+          .any((e) => e.value == true);
+    });
   }
 
   static String _makeFriendshipId(String uid1, String uid2) {
