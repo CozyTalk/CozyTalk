@@ -189,6 +189,7 @@ class _FriendChatScreenState extends ConsumerState<FriendChatScreen> {
             partnerMoodOverlay,
             partnerAccessoryOverlay,
             partnerProfile?.interest,
+            partnerUid,
           ),
           if (chatState.isLoading)
             const LinearProgressIndicator()
@@ -266,6 +267,7 @@ class _FriendChatScreenState extends ConsumerState<FriendChatScreen> {
     AvatarOverlay? moodOverlay,
     AvatarOverlay? accessoryOverlay,
     String? interest,
+    String reportedUserId,
   ) {
     return Container(
       decoration: const BoxDecoration(
@@ -408,7 +410,10 @@ class _FriendChatScreenState extends ConsumerState<FriendChatScreen> {
                   child: GestureDetector(
                     onTap: () => showDialog(
                       context: context,
-                      builder: (_) => const ReportDialog(),
+                      builder: (_) => ReportDialog(
+                        sessionId: _friend.chatRoomId,
+                        reportedUserId: reportedUserId,
+                      ),
                     ),
                     child: Container(
                       padding: const EdgeInsets.all(10),

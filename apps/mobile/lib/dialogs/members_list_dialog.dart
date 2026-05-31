@@ -19,6 +19,9 @@ class MembersPanelBody extends StatelessWidget {
   // Called with the UID of the member to add.
   final void Function(String uid) onAddFriend;
 
+  // Session ID passed to ReportDialog so reports are wired to the backend.
+  final String? sessionId;
+
   const MembersPanelBody({
     super.key,
     required this.members,
@@ -28,6 +31,7 @@ class MembersPanelBody extends StatelessWidget {
     this.currentUser = 'Me',
     this.avatarState = const AvatarState(),
     this.friendRequestSent = const {},
+    this.sessionId,
   });
 
   @override
@@ -129,13 +133,18 @@ class MembersPanelBody extends StatelessWidget {
             const SizedBox(width: 8),
             // Report
             GestureDetector(
-              onTap: () {
-                onClose();
-                showDialog(
-                  context: context,
-                  builder: (_) => const ReportDialog(),
-                );
-              },
+              onTap: (sessionId != null && uid != null)
+                  ? () {
+                      final sid = sessionId!;
+                      final ruid = uid;
+                      onClose();
+                      showDialog(
+                        context: context,
+                        builder: (_) =>
+                            ReportDialog(sessionId: sid, reportedUserId: ruid),
+                      );
+                    }
+                  : null,
               child: Container(
                 width: 38,
                 height: 38,

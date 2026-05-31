@@ -629,6 +629,7 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
                           partnerDecorations,
                           partnerProfiles,
                           alreadyFriendUids,
+                          roomId,
                         ),
                         Expanded(
                           child: Stack(
@@ -640,6 +641,7 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
                                 partnerDecorations,
                                 partnerProfiles,
                                 alreadyFriendUids,
+                                roomId,
                               ),
                               Positioned(
                                 top: 0,
@@ -692,6 +694,7 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
                           memberUids: roomUsers,
                           onClose: _closePanel,
                           avatarState: avatarState,
+                          sessionId: roomId,
                           friendRequestSent: {
                             ..._friendRequestSent,
                             for (final uid in alreadyFriendUids) uid: true,
@@ -909,6 +912,7 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
     Map<String, AvatarDecoration?> partnerDecorations,
     Map<String, ProfileUser?> partnerProfiles,
     Set<String> alreadyFriendUids,
+    String roomId,
   ) {
     final count = members.length.clamp(1, 5);
     final preset = _layouts[count];
@@ -1031,6 +1035,8 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
                                   partnerInterest: isMe
                                       ? null
                                       : partnerProfile?.interest,
+                                  sessionId: isMe ? null : roomId,
+                                  reportedUserId: isMe ? null : memberUid,
                                 ),
                               ),
                               child: LayeredAvatar(
@@ -1147,6 +1153,7 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
     Map<String, AvatarDecoration?> partnerDecorations,
     Map<String, ProfileUser?> partnerProfiles,
     Set<String> alreadyFriendUids,
+    String roomId,
   ) {
     final backendMsgs = chatState.messages
         .map((m) => _toGroupDisplay(m, chatState.currentUserId))
@@ -1189,6 +1196,7 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
             partnerDecorations,
             partnerProfiles,
             alreadyFriendUids,
+            roomId,
           ),
         };
       },
@@ -1258,6 +1266,7 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
     Map<String, AvatarDecoration?> partnerDecorations,
     Map<String, ProfileUser?> partnerProfiles,
     Set<String> alreadyFriendUids,
+    String roomId,
   ) {
     final isMe = msg.type == _MsgType.me;
     final maxW = MediaQuery.of(context).size.width * 0.60;
@@ -1304,6 +1313,8 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
                       partnerAccessoryOverlay:
                           AvatarOverlays.accessory[dec?.hatKey ?? ''],
                       partnerInterest: prof?.interest,
+                      sessionId: roomId,
+                      reportedUserId: partnerByName?.uid,
                     ),
                   );
                 },

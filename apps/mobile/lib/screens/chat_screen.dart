@@ -532,6 +532,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
                           partnerProfile?.thoughts,
                           partnerProfile?.interest,
                           isAlreadyFriend,
+                          roomId,
                         ),
                         Expanded(
                           child: Stack(
@@ -544,6 +545,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
                                 partnerAccessoryOverlay,
                                 partnerProfile?.interest,
                                 isAlreadyFriend,
+                                roomId,
                               ),
                               Positioned(
                                 top: 0,
@@ -699,6 +701,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
     String? partnerThoughts,
     String? partnerInterest,
     bool isAlreadyFriend,
+    String sessionId,
   ) {
     return SizedBox(
       height: 250,
@@ -738,6 +741,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
                           ? () => _sendFriendRequest(partner)
                           : null,
                       friendRequestSent: _friendRequestSent || isAlreadyFriend,
+                      sessionId: sessionId,
+                      reportedUserId: partner?.uid,
                     ),
                     const SizedBox(width: 20),
                     _StaticAvatar(
@@ -819,6 +824,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
     AvatarOverlay? partnerAccessoryOverlay,
     String? partnerInterest,
     bool isAlreadyFriend,
+    String sessionId,
   ) {
     final backendMsgs = chatState.messages
         .map((m) => _toDisplay(m, chatState.currentUserId))
@@ -854,6 +860,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
             isMe: true,
             avatarState: avatarState,
             partner: partner,
+            sessionId: sessionId,
           ),
           'other' => _buildBubble(
             msg,
@@ -863,6 +870,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
             partnerAccessoryOverlay: partnerAccessoryOverlay,
             partnerInterest: partnerInterest,
             isAlreadyFriend: isAlreadyFriend,
+            sessionId: sessionId,
           ),
           'card' => _buildCard(msg.text),
           'gif' => _buildGifBubble(
@@ -870,6 +878,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
             isMe: true,
             avatarState: avatarState,
             partner: partner,
+            sessionId: sessionId,
           ),
           'gif_other' => _buildGifBubble(
             msg,
@@ -879,6 +888,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
             partnerAccessoryOverlay: partnerAccessoryOverlay,
             partnerInterest: partnerInterest,
             isAlreadyFriend: isAlreadyFriend,
+            sessionId: sessionId,
           ),
           _ => const SizedBox.shrink(),
         };
@@ -951,6 +961,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
     AvatarOverlay? partnerAccessoryOverlay,
     String? partnerInterest,
     bool isAlreadyFriend = false,
+    String? sessionId,
   }) {
     final maxW = MediaQuery.of(context).size.width * 0.62;
     return Padding(
@@ -977,6 +988,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
                     partnerMoodOverlay: partnerMoodOverlay,
                     partnerAccessoryOverlay: partnerAccessoryOverlay,
                     partnerInterest: partnerInterest,
+                    sessionId: sessionId,
+                    reportedUserId: partner?.uid,
                   ),
                 ),
                 child: LayeredAvatar(
@@ -1049,6 +1062,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
     AvatarOverlay? partnerAccessoryOverlay,
     String? partnerInterest,
     bool isAlreadyFriend = false,
+    String? sessionId,
   }) {
     final maxW = MediaQuery.of(context).size.width * 0.55;
     final gifWidget = Container(
@@ -1108,6 +1122,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
                     partnerMoodOverlay: partnerMoodOverlay,
                     partnerAccessoryOverlay: partnerAccessoryOverlay,
                     partnerInterest: partnerInterest,
+                    sessionId: sessionId,
+                    reportedUserId: partner?.uid,
                   ),
                 ),
                 child: LayeredAvatar(
@@ -1547,6 +1563,8 @@ class _StaticAvatar extends StatelessWidget {
     this.moodOverlay,
     this.accessoryOverlay,
     this.partnerInterest,
+    this.sessionId,
+    this.reportedUserId,
   });
 
   final String username;
@@ -1560,6 +1578,8 @@ class _StaticAvatar extends StatelessWidget {
   final AvatarOverlay? moodOverlay;
   final AvatarOverlay? accessoryOverlay;
   final String? partnerInterest;
+  final String? sessionId;
+  final String? reportedUserId;
 
   @override
   Widget build(BuildContext context) {
@@ -1590,6 +1610,8 @@ class _StaticAvatar extends StatelessWidget {
                     partnerMoodOverlay: isMe ? null : moodOverlay,
                     partnerAccessoryOverlay: isMe ? null : accessoryOverlay,
                     partnerInterest: isMe ? null : partnerInterest,
+                    sessionId: isMe ? null : sessionId,
+                    reportedUserId: isMe ? null : reportedUserId,
                   ),
                 ),
                 child: LayeredAvatar(

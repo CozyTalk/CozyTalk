@@ -16,6 +16,9 @@ class UserProfileDialog extends ConsumerStatefulWidget {
   final AvatarOverlay? partnerMoodOverlay;
   final AvatarOverlay? partnerAccessoryOverlay;
   final String? partnerInterest;
+  // Required to submit a report — omit when isMe is true or sessionId unknown.
+  final String? sessionId;
+  final String? reportedUserId;
   const UserProfileDialog({
     super.key,
     required this.username,
@@ -26,6 +29,8 @@ class UserProfileDialog extends ConsumerStatefulWidget {
     this.partnerMoodOverlay,
     this.partnerAccessoryOverlay,
     this.partnerInterest,
+    this.sessionId,
+    this.reportedUserId,
   });
 
   @override
@@ -158,13 +163,23 @@ class _UserProfileDialogState extends ConsumerState<UserProfileDialog> {
                             const SizedBox(width: 10),
                             // Report
                             GestureDetector(
-                              onTap: () {
-                                Navigator.pop(context);
-                                showDialog(
-                                  context: context,
-                                  builder: (_) => const ReportDialog(),
-                                );
-                              },
+                              onTap:
+                                  (widget.sessionId != null &&
+                                      widget.reportedUserId != null)
+                                  ? () {
+                                      final nav = Navigator.of(context);
+                                      final sid = widget.sessionId!;
+                                      final rid = widget.reportedUserId!;
+                                      nav.pop();
+                                      showDialog(
+                                        context: nav.context,
+                                        builder: (_) => ReportDialog(
+                                          sessionId: sid,
+                                          reportedUserId: rid,
+                                        ),
+                                      );
+                                    }
+                                  : null,
                               child: Container(
                                 width: 44,
                                 height: 44,
