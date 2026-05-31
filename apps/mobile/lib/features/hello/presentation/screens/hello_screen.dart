@@ -101,7 +101,7 @@ class _HelloScreenState extends ConsumerState<HelloScreen> {
             ),
             const SizedBox(height: 8),
             ElevatedButton.icon(
-              onPressed: () => FirebaseCrashlytics.instance.crash(),
+              onPressed: _promptCrash,
               icon: const Icon(Icons.bug_report),
               label: const Text('Test Crashlytics'),
               style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
@@ -125,6 +125,56 @@ class _HelloScreenState extends ConsumerState<HelloScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _promptCrash() async {
+    final ctrl = TextEditingController();
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Test Crashlytics'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'ask Oakar',
+              style: TextStyle(fontSize: 12, color: Colors.black54),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: ctrl,
+              obscureText: true,
+              autofocus: true,
+              decoration: const InputDecoration(
+                labelText: 'Password',
+                border: OutlineInputBorder(),
+              ),
+              onSubmitted: (_) => Navigator.pop(ctx, true),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Crash'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    if (ctrl.text != 'CrashPassword') {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Wrong password')));
+      return;
+    }
+    FirebaseCrashlytics.instance.crash();
   }
 
   void _submit() {
