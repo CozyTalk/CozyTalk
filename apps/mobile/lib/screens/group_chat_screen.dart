@@ -13,7 +13,7 @@ import '../features/friends/presentation/providers/friends_provider.dart';
 import '../features/jukebox/presentation/providers/jukebox_provider.dart';
 import '../features/matchmaking/presentation/providers/matchmaking_provider.dart';
 import '../features/profile/presentation/providers/profile_provider.dart';
-import '../features/report/presentation/screens/report_sheet.dart';
+import '../dialogs/report_dialog.dart';
 import '../theme/app_colors.dart';
 import '../dialogs/leave_room_dialog.dart';
 import '../dialogs/members_list_dialog.dart';
@@ -428,11 +428,10 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
           '';
     }
     if (reportedUid.isEmpty) return;
-    showModalBottomSheet<void>(
+    showDialog<void>(
       context: context,
-      isScrollControlled: true,
       builder: (_) =>
-          ReportSheet(sessionId: sessionId, reportedUserId: reportedUid),
+          ReportDialog(sessionId: sessionId, reportedUserId: reportedUid),
     );
   }
 
