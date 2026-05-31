@@ -53,11 +53,7 @@ extension AdminReportModelX on AdminReportModel {
   AdminReport toEntity() => AdminReport(
     id: id,
     // 'pending' → pending, 'reviewed' (banned/actioned) → reviewed, anything else → resolved
-    status: status == 'pending'
-        ? 'pending'
-        : status == 'reviewed'
-        ? 'reviewed'
-        : 'resolved',
+    status: status == 'pending' ? 'pending' : 'resolved',
     reporterId: reporterId,
     reportedUserId: reportedUserId,
     sessionId: sessionId,
