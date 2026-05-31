@@ -142,6 +142,7 @@ export const reportSession = onCall(
 
     const db = admin.firestore();
     let encryptionKey: string | null = null;
+    let isFriendChat = false;
 
     const roomSnap = await db.collection("rooms").doc(sessionId).get();
     if (roomSnap.exists) {
@@ -203,37 +204,64 @@ export const reportSession = onCall(
           .collection("session_keys")
           .doc(sessionId)
           .get();
-        if (!keySnap.exists) {
-          throw new HttpsError(
-            "not-found",
-            "Session not found or retention window has expired.",
-          );
+        if (keySnap.exists) {
+          const keyData = keySnap.data()!;
+          const users = keyData.users as string[];
+          if (!users.includes(reporterId)) {
+            throw new HttpsError(
+              "permission-denied",
+              "Not a session participant.",
+            );
+          }
+          if (!users.includes(reportedUserId)) {
+            throw new HttpsError(
+              "invalid-argument",
+              "Reported user is not a participant in this session.",
+            );
+          }
+          encryptionKey = (keyData.encryptionKey as string | undefined) ?? null;
+          await db.collection("session_keys").doc(sessionId).update({
+            expiresAt: null,
+            flagged: true,
+          });
+        } else {
+          // Fall back to friend chat — friendshipId is the sessionId.
+          const friendshipSnap = await db
+            .collection("friendships")
+            .doc(sessionId)
+            .get();
+          if (!friendshipSnap.exists) {
+            throw new HttpsError(
+              "not-found",
+              "Session not found or retention window has expired.",
+            );
+          }
+          const friendData = friendshipSnap.data()!;
+          const friendUsers = friendData.users as string[];
+          if (!friendUsers.includes(reporterId)) {
+            throw new HttpsError(
+              "permission-denied",
+              "Not a session participant.",
+            );
+          }
+          if (!friendUsers.includes(reportedUserId)) {
+            throw new HttpsError(
+              "invalid-argument",
+              "Reported user is not a participant in this session.",
+            );
+          }
+          // Friend messages are plaintext — no encryption key needed.
+          isFriendChat = true;
         }
-        const keyData = keySnap.data()!;
-        const users = keyData.users as string[];
-        if (!users.includes(reporterId)) {
-          throw new HttpsError(
-            "permission-denied",
-            "Not a session participant.",
-          );
-        }
-        if (!users.includes(reportedUserId)) {
-          throw new HttpsError(
-            "invalid-argument",
-            "Reported user is not a participant in this session.",
-          );
-        }
-        encryptionKey = (keyData.encryptionKey as string | undefined) ?? null;
-        await db.collection("session_keys").doc(sessionId).update({
-          expiresAt: null,
-          flagged: true,
-        });
       }
     }
 
-    // Fetch all messages, decrypt them, and flag each for indefinite retention.
+    // Fetch messages for the chat log.
+    // Friend chat: friend_messages/{id}/messages (plaintext, persistent — no flagging).
+    // Stranger chat: chat_rooms/{id}/messages (AES-256-GCM, flagged for retention).
+    const messagesCollection = isFriendChat ? "friend_messages" : "chat_rooms";
     const msgsSnap = await db
-      .collection("chat_rooms")
+      .collection(messagesCollection)
       .doc(sessionId)
       .collection("messages")
       .get();
@@ -248,23 +276,33 @@ export const reportSession = onCall(
     const chatEntries: ChatEntry[] = [];
 
     if (!msgsSnap.empty) {
-      const batch = db.batch();
+      const batch = isFriendChat ? null : db.batch();
       for (const doc of msgsSnap.docs) {
-        batch.update(doc.ref, {flagged: true, expiresAt: null});
         const d = doc.data();
-        const text =
-          encryptionKey && d.encryptedText && d.iv && d.authTag
-            ? _decryptMessage(
-                d.encryptedText as string,
-                d.iv as string,
-                d.authTag as string,
-                encryptionKey,
-              )
-            : null;
+        let text: string | null;
+        if (isFriendChat) {
+          // Friend messages are stored as plaintext.
+          text = (d.text as string | null) ?? null;
+        } else {
+          batch!.update(doc.ref, {flagged: true, expiresAt: null});
+          text =
+            encryptionKey && d.encryptedText && d.iv && d.authTag
+              ? _decryptMessage(
+                  d.encryptedText as string,
+                  d.iv as string,
+                  d.authTag as string,
+                  encryptionKey,
+                )
+              : null;
+        }
         chatEntries.push({
           id: doc.id,
           senderId: d.senderId as string,
-          displayName: d.displayName as string,
+          // Stranger chat uses 'displayName'; friend chat uses 'senderDisplayName'.
+          displayName:
+            ((isFriendChat ? d.senderDisplayName : d.displayName) as
+              | string
+              | undefined) ?? "",
           text,
           timestamp: d.timestamp?.toDate?.()?.toISOString() ?? null,
         });
@@ -272,7 +310,7 @@ export const reportSession = onCall(
       chatEntries.sort((a, b) =>
         (a.timestamp ?? "").localeCompare(b.timestamp ?? ""),
       );
-      await batch.commit();
+      if (batch) await batch.commit();
     }
 
     const reportRef = db.collection("reports").doc();
