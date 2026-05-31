@@ -205,6 +205,8 @@ class _AdminReportsTabState extends State<AdminReportsTab> {
     final filtered = widget.reports.where((r) {
       final matchFilter = _reportFilter == 'all'
           ? true
+          : _reportFilter == 'pending'
+          ? r.status == 'pending' || r.status == 'reviewed'
           : r.status == _reportFilter;
       final q = widget.query.toLowerCase();
       final matchQuery =
