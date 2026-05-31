@@ -11,6 +11,7 @@ import '../models/chat_message_model.dart';
 
 abstract class ChatDatasource {
   Future<String> fetchSessionKey(String sessionId);
+  Future<String?> fetchRoomBackground(String sessionId);
   Stream<List<ChatMessageModel>> watchRawMessages(String sessionId);
   Stream<List<TypingUser>> watchTypingUsers(String sessionId);
   Stream<Set<String>> watchPresence(String sessionId);
@@ -36,6 +37,15 @@ class ChatDatasourceImpl implements ChatDatasource {
   final FirebaseAuth _auth;
 
   ChatDatasourceImpl(this._firestore, this._db, this._functions, this._auth);
+
+  @override
+  Future<String?> fetchRoomBackground(String sessionId) async {
+    if (sessionId.startsWith('proto-')) return null;
+    final doc = await _firestore.collection('rooms').doc(sessionId).get();
+    if (!doc.exists || doc.data() == null) return null;
+    final data = Map<String, dynamic>.from(doc.data()!);
+    return data['backgroundTheme'] as String?;
+  }
 
   @override
   Future<String> fetchSessionKey(String sessionId) async {

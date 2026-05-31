@@ -14,6 +14,7 @@ import '../../domain/entities/session_status.dart';
 import '../../domain/entities/typing_user.dart';
 import '../../domain/repositories/chat_repository.dart';
 import '../../domain/usecases/end_session.dart';
+import '../../domain/usecases/fetch_room_background.dart';
 import '../../domain/usecases/send_message.dart';
 import '../../domain/usecases/set_typing.dart';
 import '../../domain/usecases/watch_messages.dart';
@@ -58,6 +59,10 @@ final _endSessionProvider = Provider<EndSession>(
   (ref) => EndSession(ref.watch(_chatRepositoryProvider)),
 );
 
+final _fetchRoomBackgroundProvider = Provider<FetchRoomBackground>(
+  (ref) => FetchRoomBackground(ref.watch(_chatRepositoryProvider)),
+);
+
 final chatNotifierProvider = NotifierProvider<ChatNotifier, ChatState>(
   ChatNotifier.new,
 );
@@ -70,6 +75,8 @@ class ChatState {
   final String? currentUserId;
   final String? currentUserDisplayName;
   final String? currentUserPhotoUrl;
+  final String? backgroundTheme;
+  final bool isRoomLoaded;
   final List<ChatMessage> messages;
   final List<TypingUser> typingUsers;
   final Set<String>? presenceMembers;
@@ -82,6 +89,8 @@ class ChatState {
     this.currentUserId,
     this.currentUserDisplayName,
     this.currentUserPhotoUrl,
+    this.backgroundTheme,
+    this.isRoomLoaded = false,
     this.messages = const [],
     this.typingUsers = const [],
     this.presenceMembers,
@@ -95,6 +104,8 @@ class ChatState {
     Object? currentUserId = _sentinel,
     Object? currentUserDisplayName = _sentinel,
     Object? currentUserPhotoUrl = _sentinel,
+    Object? backgroundTheme = _sentinel,
+    bool? isRoomLoaded,
     List<ChatMessage>? messages,
     List<TypingUser>? typingUsers,
     Object? presenceMembers = _sentinel,
@@ -112,6 +123,10 @@ class ChatState {
     currentUserPhotoUrl: currentUserPhotoUrl == _sentinel
         ? this.currentUserPhotoUrl
         : currentUserPhotoUrl as String?,
+    backgroundTheme: backgroundTheme == _sentinel
+        ? this.backgroundTheme
+        : backgroundTheme as String?,
+    isRoomLoaded: isRoomLoaded ?? this.isRoomLoaded,
     messages: messages ?? this.messages,
     typingUsers: typingUsers ?? this.typingUsers,
     presenceMembers: presenceMembers == _sentinel
@@ -143,9 +158,19 @@ class ChatNotifier extends Notifier<ChatState> {
       currentUserId: currentUserId,
       currentUserDisplayName: currentUserDisplayName,
       currentUserPhotoUrl: currentUserPhotoUrl,
+      isRoomLoaded: false,
     );
 
-    _joinProtoThenSubscribe(sessionId, currentUserId);
+    _loadRoomThenJoin(sessionId, currentUserId);
+  }
+
+  Future<void> _loadRoomThenJoin(String sessionId, String uid) async {
+    String? bg;
+    try {
+      bg = await ref.read(_fetchRoomBackgroundProvider)(sessionId);
+    } catch (_) {}
+    state = state.copyWith(backgroundTheme: bg, isRoomLoaded: true);
+    _joinProtoThenSubscribe(sessionId, uid);
   }
 
   Future<void> _joinProtoThenSubscribe(String sessionId, String uid) async {

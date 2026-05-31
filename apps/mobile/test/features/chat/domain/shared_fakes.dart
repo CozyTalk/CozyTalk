@@ -65,6 +65,9 @@ class FakeChatRepository implements ChatRepository {
   }
 
   @override
+  Future<String?> fetchRoomBackground(String sessionId) async => null;
+
+  @override
   Future<void> endSession({required String sessionId}) async {
     endSessionCount++;
     lastSessionId = sessionId;

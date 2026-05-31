@@ -5,6 +5,7 @@ abstract class ChatRepository {
   Stream<List<ChatMessage>> watchMessages(String sessionId);
   Stream<List<TypingUser>> watchTypingUsers(String sessionId);
   Stream<Set<String>> watchPresence(String sessionId);
+  Future<String?> fetchRoomBackground(String sessionId);
   Future<void> sendMessage({required String sessionId, required String text});
   Future<void> setTyping({
     required String sessionId,

@@ -29,6 +29,9 @@ class _FakeChatDatasource implements ChatDatasource {
   Future<String> fetchSessionKey(String sessionId) async => keyHex;
 
   @override
+  Future<String?> fetchRoomBackground(String sessionId) async => null;
+
+  @override
   Stream<List<ChatMessageModel>> watchRawMessages(String sessionId) =>
       Stream.value(messages);
 
@@ -250,6 +253,16 @@ void main() {
 
         await repo.endSession(sessionId: 'room-1');
         expect(datasource.endSessionCount, 1);
+      });
+    });
+
+    group('fetchRoomBackground', () {
+      test('delegates to datasource', () async {
+        final datasource = _FakeChatDatasource(keyHex: _testKeyHex);
+        final repo = ChatRepositoryImpl(datasource);
+
+        final result = await repo.fetchRoomBackground('room-1');
+        expect(result, isNull);
       });
     });
   });

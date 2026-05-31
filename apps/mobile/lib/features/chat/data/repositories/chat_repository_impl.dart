@@ -33,6 +33,10 @@ class ChatRepositoryImpl implements ChatRepository {
       _datasource.watchPresence(sessionId);
 
   @override
+  Future<String?> fetchRoomBackground(String sessionId) =>
+      _datasource.fetchRoomBackground(sessionId);
+
+  @override
   Future<void> sendMessage({required String sessionId, required String text}) =>
       _datasource.sendMessage(sessionId: sessionId, text: text);
 
