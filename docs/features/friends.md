@@ -41,7 +41,7 @@ See `docs/database/schema.md` for full field lists and security rules.
 | `Friend` | `friendshipId`, `friendUid`, `friendDisplayName`, `chatRoomId`, `friendedAt` |
 | `FriendRequest` | `id`, `fromUid`, `fromDisplayName`, `toUid`, `status` (enum), `createdAt` |
 | `FriendMessage` | `id`, `senderId`, `senderDisplayName`, `text`, `timestamp` |
-| `FriendRoomStatus` | `roomId`, `memberCount`, `maxUsers`, `isLocked`, `mode` — snapshot of a friend's current room |
+| `FriendRoomStatus` | `roomId`, `memberCount`, `maxUsers`, `isLocked`, `mode`, `backgroundTheme?` — snapshot of a friend's current room (sourced entirely from RTDB `user_status` — never Firestore) |
 
 **Use cases** (`domain/usecases/`)
 
@@ -58,7 +58,7 @@ See `docs/database/schema.md` for full field lists and security rules.
 - `acceptFriendRequest`: Firestore batch (update request + create friendship doc), then writes `friends/{currentUid}/{fromUid}: true` and `friends/{fromUid}/{currentUid}: true` to RTDB.
 - `watchFriendPresence(friendUid)`: streams `user_status/{friendUid}` existence as `bool`.
 - `watchFriendLastMessage(chatRoomId)`: streams the latest message text from `friend_messages/{chatRoomId}/messages` (descending by timestamp, limit 1).
-- `watchFriendRoom(friendUid)`: streams `user_status/{friendUid}`; when `status == 'in_room'`, does a one-time Firestore `rooms/{roomId}` fetch and emits `FriendRoomStatus`; emits `null` otherwise.
+- `watchFriendRoom(friendUid)`: streams `user_status/{friendUid}` and emits a `FriendRoomStatus` when `status == 'in_room'` (reading `roomId`, `memberCount`, `maxUsers`, `isLocked`, `roomMode`, `backgroundTheme` directly from RTDB); emits `null` otherwise. No Firestore read — non-members are not allowed to read `rooms/{roomId}` per the security rules, so all room metadata is mirrored on the friend's own `user_status` node by `OwnStatusNotifier` when they enter a room.
 
 **Friendship ID** — deterministic: `[uid1, uid2]..sort()` joined with `_`. Used as both the `friendships` document ID and the `friend_messages` sub-collection path.
 
@@ -94,7 +94,9 @@ Per-friend enrichment subscriptions are managed by `_updateEnrichmentSubscriptio
 
 `FriendsScreen` (`screens/friends_screen.dart`) — integrated with `friendsNotifierProvider`. Maps `domain.Friend` → screen `Friend` model via `_toScreenFriend(f, state)`, pulling `isOnline` from `presenceMap`, `lastMessage` from `lastMessageMap`, and `room` (as `RoomInfo`) from `roomMap`. Notes, block state, and unread counts remain local-only state for this prototype.
 
-`FriendChatScreen` (`screens/friend_chat_screen.dart`) — integrated with `friendChatNotifierProvider`. Receives a `Friend` (screen model) from route arguments. Calls `enterChat(chatRoomId, username)` on first frame and `leaveChat()` on dispose. Renders real messages from `FriendChatState.messages`; `isMe` is derived from `senderId == authNotifierProvider.user.uid`. Shows empty state, loading indicator, and sending indicator from state. Errors surface as SnackBar via `ref.listen`.
+**Join-friend-room shortcut** — When a friend's `roomMap` entry is non-null and they're online, the friend card renders a `FriendRoomCard` (theme/widgets.dart) showing the live room (thumbnail + name derived from `backgroundTheme` via `resolveRoomTheme()` in `theme/room_themes.dart`; falls back to "Group Room"/"1v1 Room" when theme is null). Tapping **Join** navigates to `AppRoutes.findingRoom` with `{roomType: 'joinById', roomId, isGroup: true}`, which hits the existing `joinRoomById` CF. The button is hidden for 1v1 rooms (privacy: no third-party joins) and disabled/replaced with **Locked** or **Full** badges otherwise.
+
+`FriendChatScreen` (`screens/friend_chat_screen.dart`) — integrated with `friendChatNotifierProvider`. Receives a `Friend` (screen model) from route arguments. Calls `enterChat(chatRoomId, username)` on first frame and `leaveChat()` on dispose. Renders real messages from `FriendChatState.messages`; `isMe` is derived from `senderId == authNotifierProvider.user.uid`. Shows loading indicator and sending indicator from state. The date label + safety notice banner are always rendered above the message list, even when there are no messages yet. Errors surface as SnackBar via `ref.listen`. A "CURRENTLY IN" banner pulls the partner's live room state from `friendsNotifierProvider.roomMap[partnerUid]` (not from stale route args) and offers a **Join** action with the same logic as `FriendsScreen`.
 
 `NotificationScreen` (`screens/notification_screen.dart`) — integrated with `friendsNotifierProvider.incomingRequests`. Accept/decline wired to notifier.
 

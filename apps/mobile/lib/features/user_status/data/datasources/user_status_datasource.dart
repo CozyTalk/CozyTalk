@@ -6,7 +6,14 @@ import '../models/user_status_model.dart';
 abstract class UserStatusDatasource {
   Stream<UserStatusModel?> watchStatus(String uid);
   Future<void> setOnline();
-  Future<void> setInRoom({required String roomId, required String mode});
+  Future<void> setInRoom({
+    required String roomId,
+    required String mode,
+    required int maxUsers,
+    required int memberCount,
+    required bool isLocked,
+    String? backgroundTheme,
+  });
   Future<void> clearStatus();
 }
 
@@ -36,12 +43,27 @@ class UserStatusDatasourceImpl implements UserStatusDatasource {
   }
 
   @override
-  Future<void> setInRoom({required String roomId, required String mode}) async {
+  Future<void> setInRoom({
+    required String roomId,
+    required String mode,
+    required int maxUsers,
+    required int memberCount,
+    required bool isLocked,
+    String? backgroundTheme,
+  }) async {
     final uid = _auth.currentUser?.uid;
     if (uid == null) return;
     final ref = _db.ref('user_status/$uid');
     await ref.onDisconnect().remove();
-    await ref.set({'status': 'in_room', 'roomId': roomId, 'roomMode': mode});
+    await ref.set({
+      'status': 'in_room',
+      'roomId': roomId,
+      'roomMode': mode,
+      'maxUsers': maxUsers,
+      'memberCount': memberCount,
+      'isLocked': isLocked,
+      if (backgroundTheme != null) 'backgroundTheme': backgroundTheme,
+    });
   }
 
   @override

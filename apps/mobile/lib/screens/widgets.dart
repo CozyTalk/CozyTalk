@@ -259,24 +259,7 @@ class _ActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (room.isOneOnOne) {
-      return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-        decoration: BoxDecoration(
-          color: Colors.grey.shade200,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: Colors.grey.shade300, width: 1.5),
-        ),
-        child: Text(
-          'Join',
-          style: Theme.of(context).textTheme.bodyMedium!.copyWith(
-            fontSize: 13,
-            fontWeight: FontWeight.w900,
-            color: Colors.grey.shade400,
-          ),
-        ),
-      );
-    }
+    if (room.isOneOnOne) return const SizedBox.shrink();
     if (room.canJoin && onJoin != null) {
       return GestureDetector(
         onTap: onJoin,
@@ -298,7 +281,24 @@ class _ActionButton extends StatelessWidget {
         ),
       );
     }
-    if (room.isLocked) return const SizedBox.shrink();
+    if (room.isLocked) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+        decoration: BoxDecoration(
+          color: Colors.grey.shade200,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: Colors.grey.shade300, width: 1.5),
+        ),
+        child: Text(
+          'Locked',
+          style: Theme.of(context).textTheme.bodyMedium!.copyWith(
+            fontSize: 13,
+            fontWeight: FontWeight.w900,
+            color: Colors.grey.shade500,
+          ),
+        ),
+      );
+    }
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
       decoration: BoxDecoration(
@@ -307,7 +307,7 @@ class _ActionButton extends StatelessWidget {
         border: Border.all(color: Colors.grey.shade300, width: 1.5),
       ),
       child: Text(
-        'Join',
+        'Full',
         style: Theme.of(context).textTheme.bodyMedium!.copyWith(
           fontSize: 13,
           fontWeight: FontWeight.w900,

@@ -14,6 +14,7 @@ import '../shared/info_dialog.dart';
 import '../shared/offline_card.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_routes.dart';
+import '../theme/room_themes.dart';
 import '../models/friend.dart';
 import 'friend_profile_dialog.dart';
 import 'remove_friend_dialog.dart';
@@ -74,15 +75,17 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
     );
   }
 
-  RoomInfo _toRoomInfo(FriendRoomStatus s) => RoomInfo(
-    name: s.mode == '1v1' ? '1v1 Room' : 'Group Room',
-    thumbnail: s.mode == '1v1'
-        ? 'assets/images/1on1_doodle.png'
-        : 'assets/images/group_doodle.png',
-    current: s.memberCount,
-    max: s.maxUsers,
-    isLocked: s.isLocked,
-  );
+  RoomInfo _toRoomInfo(FriendRoomStatus s) {
+    final theme = resolveRoomTheme(s.backgroundTheme, mode: s.mode);
+    return RoomInfo(
+      roomId: s.roomId,
+      name: theme.title,
+      thumbnail: theme.thumbnail,
+      current: s.memberCount,
+      max: s.maxUsers,
+      isLocked: s.isLocked,
+    );
+  }
 
   List<Friend> _filtered(List<Friend> friends) => _query.isEmpty
       ? friends
@@ -408,10 +411,11 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
                   onJoin: friend.room!.canJoin
                       ? () => Navigator.pushNamed(
                           context,
-                          AppRoutes.groupChatScreen,
+                          AppRoutes.findingRoom,
                           arguments: {
-                            'roomName': friend.room!.name,
-                            'bgImage': friend.room!.thumbnail,
+                            'roomType': 'joinById',
+                            'roomId': friend.room!.roomId,
+                            'isGroup': true,
                           },
                         )
                       : null,

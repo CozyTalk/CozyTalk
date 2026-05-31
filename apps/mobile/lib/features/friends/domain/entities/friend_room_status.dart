@@ -4,6 +4,7 @@ class FriendRoomStatus {
   final int maxUsers;
   final bool isLocked;
   final String mode;
+  final String? backgroundTheme;
 
   const FriendRoomStatus({
     required this.roomId,
@@ -11,5 +12,6 @@ class FriendRoomStatus {
     required this.maxUsers,
     required this.isLocked,
     required this.mode,
+    this.backgroundTheme,
   });
 }

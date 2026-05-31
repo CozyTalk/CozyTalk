@@ -284,7 +284,7 @@ void main() {
       expect(find.text('How are you?'), findsNothing);
     });
 
-    testWidgets('shows empty state text when no messages and not loading', (
+    testWidgets('shows safety notice banner when no messages and not loading', (
       tester,
     ) async {
       final fake = _FakeFriendChatNotifier(
@@ -292,7 +292,7 @@ void main() {
       );
       await tester.pumpWidget(_buildScreen(fake, friend: _onlineFriend));
       await _navigate(tester);
-      expect(find.text('No messages yet. Say hello!'), findsOneWidget);
+      expect(find.textContaining('Keep it friendly!'), findsOneWidget);
     });
 
     testWidgets('shows LinearProgressIndicator when isLoading', (tester) async {
