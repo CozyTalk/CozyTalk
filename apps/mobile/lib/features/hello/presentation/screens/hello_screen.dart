@@ -174,6 +174,7 @@ class _HelloScreenState extends ConsumerState<HelloScreen> {
       ).showSnackBar(const SnackBar(content: Text('Wrong password')));
       return;
     }
+    await FirebaseCrashlytics.instance.setCrashlyticsCollectionEnabled(true);
     FirebaseCrashlytics.instance.crash();
   }
 
