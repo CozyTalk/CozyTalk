@@ -230,6 +230,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
 
   void _sendFriendRequest([String name = '']) {
     if (_friendRequestSent) return;
+    if (ref.read(friendsNotifierProvider).isLoading) return;
     final targetName = name.isNotEmpty ? name : 'your match';
     setState(() => _friendRequestSent = true);
     if (_partnerUid != null && _partnerUid!.isNotEmpty) {
