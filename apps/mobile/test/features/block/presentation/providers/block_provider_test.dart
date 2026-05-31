@@ -14,6 +14,10 @@ class _FakeBlockRepository implements BlockRepository {
   Exception? error;
 
   @override
+  Stream<bool> watchIsBlockedBy(String partnerUid, String myUid) =>
+      const Stream.empty();
+
+  @override
   Stream<List<BlockedUser>> watchBlockedUsers(String uid) =>
       const Stream.empty();
 

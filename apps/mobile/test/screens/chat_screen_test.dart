@@ -8,13 +8,17 @@ import 'package:mobile/features/chat/domain/entities/chat_message.dart'
 import 'package:mobile/features/chat/domain/entities/session_status.dart';
 import 'package:mobile/features/chat/presentation/providers/chat_provider.dart';
 import 'package:mobile/features/friends/domain/entities/app_user.dart';
-import 'package:mobile/features/friends/domain/entities/friend_request.dart';
 import 'package:mobile/features/friends/presentation/providers/friends_provider.dart';
 import 'package:mobile/features/matchmaking/domain/entities/matchmaking_status.dart';
 import 'package:mobile/features/matchmaking/domain/entities/room.dart';
 import 'package:mobile/features/matchmaking/presentation/providers/matchmaking_provider.dart';
+import 'package:mobile/features/avatar/presentation/providers/avatar_decoration_provider.dart';
+import 'package:mobile/features/profile/domain/entities/profile_user.dart';
+import 'package:mobile/features/profile/presentation/providers/profile_provider.dart';
+import 'package:mobile/features/jukebox/presentation/providers/jukebox_provider.dart';
 import 'package:mobile/screens/chat_screen.dart';
 import 'package:mobile/shared/avatar_overlay.dart';
+import 'package:mobile/shared/layered_avatar.dart';
 import 'package:mobile/shared/user_profile.dart';
 
 // ── Fakes ─────────────────────────────────────────────────────────────────────
@@ -139,12 +143,30 @@ class _FakeUserProfileNotifier extends UserProfileNotifier {
   UserProfileState build() => const UserProfileState();
 }
 
-class _FakeFriendsNotifier extends FriendsNotifier {
+class _FakeProfileNotifier extends ProfileNotifier {
+  final ProfileState _initial;
+  int loadCount = 0;
+  String? lastLoadedUid;
+
+  _FakeProfileNotifier({ProfileState initial = const ProfileState()})
+    : _initial = initial;
+
+  @override
+  ProfileState build() => _initial;
+
+  @override
+  Future<void> load(String uid) async {
+    loadCount++;
+    lastLoadedUid = uid;
+  }
+}
+
+class _FakeFriendsNotifierForChat extends FriendsNotifier {
+  final FriendsState _initial;
   int sendFriendRequestCount = 0;
   AppUser? lastRequestedUser;
-  final FriendsState _initial;
 
-  _FakeFriendsNotifier({FriendsState initial = const FriendsState()})
+  _FakeFriendsNotifierForChat({FriendsState initial = const FriendsState()})
     : _initial = initial;
 
   @override
@@ -157,16 +179,30 @@ class _FakeFriendsNotifier extends FriendsNotifier {
   }
 
   @override
-  Future<void> acceptRequest(FriendRequest request) async {}
-
-  @override
-  Future<void> declineRequest(String requestId) async {}
-
-  @override
-  Future<void> removeFriend(String friendshipId) async {}
-
-  @override
   void clearError() {}
+}
+
+class _FakeJukeboxNotifier extends JukeboxNotifier {
+  @override
+  JukeboxUiState build() => const JukeboxUiState();
+
+  @override
+  void enterRoom(String roomId) {}
+
+  @override
+  void leaveRoom() {}
+
+  @override
+  Future<void> addUrl(String url) async {}
+
+  @override
+  Future<void> skip() async {}
+
+  @override
+  Future<void> setPlaying(bool isPlaying) async {}
+
+  @override
+  Future<void> removeFromQueue(int index) async {}
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -189,10 +225,11 @@ Future<void> _pump(WidgetTester tester) async {
 Widget _buildScreen(
   _FakeChatNotifier chatFake, {
   _FakeMatchmakingNotifier? matchFake,
-  _FakeFriendsNotifier? friendsFake,
-  List<AppUser> partnerUsers = const [
-    AppUser(uid: 'partner-uid', displayName: 'Alice'),
-  ],
+  _FakeProfileNotifier? profileFake,
+  _FakeFriendsNotifierForChat? friendsFake,
+  // Per-uid profile overrides for partner/other users.
+  // Keys are UIDs; values are the ProfileUser to return from profileByUidProvider.
+  Map<String, ProfileUser>? partnerProfilesByUid,
   AuthState auth = const AuthState(
     status: AuthStatus.authenticated,
     user: AuthUser(uid: 'u1'),
@@ -207,10 +244,21 @@ Widget _buildScreen(
       ),
       avatarProvider.overrideWith(() => _FakeAvatarNotifier()),
       userProfileProvider.overrideWith(() => _FakeUserProfileNotifier()),
-      getUsersByIdsProvider.overrideWith((ref, csv) async => partnerUsers),
-      friendsNotifierProvider.overrideWith(
-        () => friendsFake ?? _FakeFriendsNotifier(),
+      profileNotifierProvider.overrideWith(
+        () => profileFake ?? _FakeProfileNotifier(),
       ),
+      friendsNotifierProvider.overrideWith(
+        () => friendsFake ?? _FakeFriendsNotifierForChat(),
+      ),
+      jukeboxNotifierProvider.overrideWith(() => _FakeJukeboxNotifier()),
+      // Prevent real Firestore calls for per-uid decoration in tests.
+      avatarDecorationByUidProvider.overrideWith((ref, uid) async => null),
+      // Inject partner profile data so tests don't need Firebase.
+      if (partnerProfilesByUid != null)
+        ...partnerProfilesByUid.entries.map(
+          (e) =>
+              profileByUidProvider(e.key).overrideWith((ref) async => e.value),
+        ),
     ],
     child: MaterialApp(
       onGenerateRoute: (settings) {
@@ -352,6 +400,83 @@ void main() {
       expect(chatFake.forceDisconnectCount, 1);
     });
 
+    testWidgets(
+      'partner displayName from profileByUidProvider appears in avatar dialog',
+      (tester) async {
+        final matchFake = _FakeMatchmakingNotifier(
+          initial: MatchmakingState(
+            roomId: 'room1',
+            currentRoom: Room(
+              roomId: 'room1',
+              roomType: RoomType.public,
+              mode: RoomMode.oneToOne,
+              status: RoomStatus.active,
+              maxUsers: 2,
+              memberCount: 2,
+              users: const ['u1', 'u2'],
+              isLocked: false,
+              createdAt: DateTime(2025),
+            ),
+          ),
+        );
+        await tester.pumpWidget(
+          _buildScreen(
+            _FakeChatNotifier(),
+            matchFake: matchFake,
+            partnerProfilesByUid: {
+              'u2': ProfileUser(uid: 'u2', displayName: 'Alice'),
+            },
+          ),
+        );
+        await _pump(tester);
+
+        // The partner avatar in the banner opens a UserProfileDialog on tap.
+        // profileByUidProvider('u2') is overridden to return Alice immediately
+        // so the dialog should show 'Alice' once the future resolves.
+        await tester.tap(find.byType(LayeredAvatar).first);
+        await tester.pump();
+
+        expect(find.text('Alice'), findsWidgets);
+      },
+    );
+
+    testWidgets(
+      'shows partner thoughts from profileByUidProvider in thought bubble',
+      (tester) async {
+        final matchFake = _FakeMatchmakingNotifier(
+          initial: MatchmakingState(
+            roomId: 'room1',
+            currentRoom: Room(
+              roomId: 'room1',
+              roomType: RoomType.public,
+              mode: RoomMode.oneToOne,
+              status: RoomStatus.active,
+              maxUsers: 2,
+              memberCount: 2,
+              users: const ['u1', 'u2'],
+              isLocked: false,
+              createdAt: DateTime(2025),
+            ),
+          ),
+        );
+        await tester.pumpWidget(
+          _buildScreen(
+            _FakeChatNotifier(),
+            matchFake: matchFake,
+            partnerProfilesByUid: {
+              'u2': ProfileUser(
+                uid: 'u2',
+                displayName: 'Bob',
+                thoughts: 'Love hiking!',
+              ),
+            },
+          ),
+        );
+        await _pump(tester);
+        expect(find.text('Love hiking!'), findsWidgets);
+      },
+    );
+
     testWidgets("gif_other message renders left-aligned, not right", (
       tester,
     ) async {
@@ -448,10 +573,21 @@ void main() {
     group('Add Friend', () {
       _FakeMatchmakingNotifier matchWithPartnerFake() =>
           _FakeMatchmakingNotifier(
-            initial: const MatchmakingState(
+            initial: MatchmakingState(
               status: MatchmakingStatus.matched,
               roomId: 'room-1',
-              partnerUids: ['partner-uid'],
+              partnerUids: const ['partner-uid'],
+              currentRoom: Room(
+                roomId: 'room-1',
+                roomType: RoomType.public,
+                mode: RoomMode.oneToOne,
+                status: RoomStatus.active,
+                maxUsers: 2,
+                memberCount: 2,
+                users: const ['u1', 'partner-uid'],
+                isLocked: false,
+                createdAt: DateTime(2025),
+              ),
             ),
           );
 
@@ -460,7 +596,7 @@ void main() {
       ) async {
         final handle = tester.ensureSemantics();
         try {
-          final friendsFake = _FakeFriendsNotifier();
+          final friendsFake = _FakeFriendsNotifierForChat();
           await tester.pumpWidget(
             _buildScreen(
               _FakeChatNotifier(),
@@ -486,7 +622,7 @@ void main() {
         (tester) async {
           final handle = tester.ensureSemantics();
           try {
-            final friendsFake = _FakeFriendsNotifier();
+            final friendsFake = _FakeFriendsNotifierForChat();
             await tester.pumpWidget(
               _buildScreen(
                 _FakeChatNotifier(),
@@ -515,7 +651,7 @@ void main() {
         (tester) async {
           final handle = tester.ensureSemantics();
           try {
-            final friendsFake = _FakeFriendsNotifier(
+            final friendsFake = _FakeFriendsNotifierForChat(
               initial: const FriendsState(isLoading: true),
             );
             await tester.pumpWidget(
@@ -544,7 +680,7 @@ void main() {
       testWidgets(
         'error SnackBar shown when friendsNotifierProvider.error is non-null',
         (tester) async {
-          final friendsFake = _FakeFriendsNotifier();
+          final friendsFake = _FakeFriendsNotifierForChat();
           await tester.pumpWidget(
             _buildScreen(_FakeChatNotifier(), friendsFake: friendsFake),
           );

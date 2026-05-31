@@ -31,6 +31,10 @@ class _FakeBlockDatasource implements BlockDatasource {
   }
 
   @override
+  Stream<bool> watchIsBlockedBy(String partnerUid, String myUid) =>
+      const Stream.empty();
+
+  @override
   Future<void> unblockUser(String ownerUid, String targetUid) async {
     unblockCount++;
     lastOwnerUid = ownerUid;
