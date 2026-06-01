@@ -90,7 +90,7 @@ class _FakeFriendsNotifier extends FriendsNotifier {
   @override
   void clearError() {}
   @override
-  void markChatAsRead(String chatRoomId) {}
+  Future<void> markChatAsRead(String chatRoomId) async {}
 }
 
 class _FakeFriendChatNotifierWithError extends FriendChatNotifier {

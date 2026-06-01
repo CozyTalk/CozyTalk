@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../data/datasources/friends_datasource.dart';
@@ -165,8 +166,18 @@ class FriendsNotifier extends Notifier<FriendsState> {
   // Tracks chatRoomIds whose first lastMessage emission has been processed.
   final Set<String> _initializedRooms = {};
 
+  SharedPreferences? _prefs;
+
+  static String _prefKey(String chatRoomId) => 'friends_last_read_$chatRoomId';
+
+  // Returns null when prefs aren't loaded yet or the key has never been written.
+  int? _lastReadAt(String chatRoomId) => _prefs?.getInt(_prefKey(chatRoomId));
+
   @override
   FriendsState build() {
+    // Load prefs eagerly; will be ready before the first Firestore emission.
+    SharedPreferences.getInstance().then((p) => _prefs = p);
+
     ref.onDispose(() {
       _friendsSub?.cancel();
       _requestsSub?.cancel();
@@ -267,7 +278,7 @@ class FriendsNotifier extends Notifier<FriendsState> {
         _lastMessageSubs[f.chatRoomId] = ref
             .read(_watchFriendLastMessageProvider)(f.chatRoomId)
             .listen((event) {
-              final isNew = _initializedRooms.contains(f.chatRoomId);
+              final isSubsequent = _initializedRooms.contains(f.chatRoomId);
               _initializedRooms.add(f.chatRoomId);
               final newLastMsg = Map<String, String>.from(state.lastMessageMap)
                 ..[f.chatRoomId] = event.text;
@@ -275,12 +286,24 @@ class FriendsNotifier extends Notifier<FriendsState> {
                 state.lastMessageTimestampMap,
               )..[f.chatRoomId] = event.timestamp;
               final currentUid = ref.read(friendsDatasourceProvider).currentUid;
-              final isFromFriend =
-                  isNew &&
+              final fromFriend =
                   event.text.isNotEmpty &&
                   event.senderId.isNotEmpty &&
                   event.senderId != currentUid;
-              if (isFromFriend) {
+
+              // For the very first emission, compare the message timestamp
+              // against the persisted lastReadAt so unread state survives restart.
+              final lastReadAt = _lastReadAt(f.chatRoomId);
+              final isInitiallyUnread =
+                  !isSubsequent &&
+                  fromFriend &&
+                  lastReadAt != null &&
+                  event.timestamp != null &&
+                  event.timestamp!.millisecondsSinceEpoch > lastReadAt;
+
+              final isFromFriend = isSubsequent && fromFriend;
+
+              if (isFromFriend || isInitiallyUnread) {
                 final newCount = (state.unreadCountMap[f.chatRoomId] ?? 0) + 1;
                 state = state.copyWith(
                   lastMessageMap: newLastMsg,
@@ -387,8 +410,13 @@ class FriendsNotifier extends Notifier<FriendsState> {
 
   void clearError() => state = state.copyWith(error: null);
 
-  void markChatAsRead(String chatRoomId) {
+  Future<void> markChatAsRead(String chatRoomId) async {
     if ((state.unreadCountMap[chatRoomId] ?? 0) == 0) return;
+    final ts = state.lastMessageTimestampMap[chatRoomId];
+    if (ts != null) {
+      _prefs ??= await SharedPreferences.getInstance();
+      await _prefs!.setInt(_prefKey(chatRoomId), ts.millisecondsSinceEpoch);
+    }
     state = state.copyWith(
       unreadCountMap: Map<String, int>.from(state.unreadCountMap)
         ..[chatRoomId] = 0,
