@@ -5,12 +5,14 @@ import 'package:mobile/features/admin/domain/repositories/admin_repository.dart'
 
 class FakeAdminRepository implements AdminRepository {
   int returnOnlineCount = 0;
+  int returnPendingCount = 0;
   List<AdminReport>? returnReports;
   String? returnChatLogUrl;
   List<AdminUser>? returnUsers;
   Exception? error;
 
   int watchOnlineCountCount = 0;
+  int watchPendingCountCount = 0;
   int watchReportsCount = 0;
   int resolveReportCount = 0;
   int getChatLogUrlCount = 0;
@@ -35,7 +37,11 @@ class FakeAdminRepository implements AdminRepository {
   }
 
   @override
-  Stream<int> watchPendingCount() => Stream.value(0);
+  Stream<int> watchPendingCount() {
+    watchPendingCountCount++;
+    if (error != null) return Stream.error(error!);
+    return Stream.value(returnPendingCount);
+  }
 
   @override
   Stream<List<AdminReport>> watchReports() {
