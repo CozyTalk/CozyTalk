@@ -33,9 +33,9 @@ class _FakeDatasource implements FriendsDatasource {
   Stream<bool> watchFriendPresence(String friendUid) => Stream.value(false);
 
   @override
-  Stream<({String text, DateTime? timestamp})> watchFriendLastMessage(
-    String chatRoomId,
-  ) => Stream.value((text: '', timestamp: null));
+  Stream<({String text, DateTime? timestamp, String senderId})>
+  watchFriendLastMessage(String chatRoomId) =>
+      Stream.value((text: '', timestamp: null, senderId: ''));
 
   @override
   Stream<FriendRoomStatus?> watchFriendRoom(String friendUid) =>

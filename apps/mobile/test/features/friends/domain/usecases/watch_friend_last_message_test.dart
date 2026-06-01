@@ -16,11 +16,13 @@ void main() {
     repo.lastMessageResult = 'hey there';
     final result = await usecase('room-1').first;
     expect(result.text, 'hey there');
+    expect(result.senderId, '');
   });
 
   test('returns empty string when no messages', () async {
     final result = await usecase('room-1').first;
     expect(result.text, '');
+    expect(result.senderId, '');
   });
 
   test('forwards chatRoomId to repository', () async {
