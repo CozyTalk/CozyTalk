@@ -50,3 +50,6 @@ app.*.map.json
 
 # Local environment
 .env
+
+# Golden test failure artifacts (generated locally, not for commit)
+test/widgets/failures/
