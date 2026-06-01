@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mobile/features/admin/domain/entities/admin_report.dart';
 import 'package:mobile/features/admin/domain/entities/admin_user.dart';
 import 'package:mobile/features/admin/presentation/providers/admin_provider.dart';
 import 'package:mobile/screens/admin_console_screen.dart';
@@ -62,20 +61,6 @@ class _FakeUsersNotifier extends AdminUsersNotifier {
 }
 
 // ─── Test helpers ────────────────────────────────────────────────────────────
-
-AdminReport _makeReport(String id) => AdminReport(
-  id: id,
-  status: 'pending',
-  reporterId: 'u1',
-  reportedUserId: 'u2',
-  sessionId: 's1',
-  reportType: 'spam',
-  reason: 'Sending scam links',
-  createdAt: DateTime(2025, 1, 15),
-  reporterName: 'Alice',
-  reportedName: 'Bob',
-  reportedInterest: 'gaming',
-);
 
 AdminUser _makeUser(String uid, {bool banned = false, bool online = false}) =>
     AdminUser(

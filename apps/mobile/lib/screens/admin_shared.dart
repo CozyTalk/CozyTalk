@@ -665,8 +665,9 @@ class _AdminBanModalState extends State<AdminBanModal> {
 
   String get _finalReason {
     final parts = _reasons.map((r) {
-      if (r == 'Others')
+      if (r == 'Others') {
         return _other.isNotEmpty ? 'Others: $_other' : 'Others';
+      }
       return r;
     }).toList();
     return parts.join(', ');
