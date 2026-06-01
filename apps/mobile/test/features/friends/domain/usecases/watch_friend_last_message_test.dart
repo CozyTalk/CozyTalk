@@ -15,12 +15,12 @@ void main() {
   test('returns last message text from repository', () async {
     repo.lastMessageResult = 'hey there';
     final result = await usecase('room-1').first;
-    expect(result, 'hey there');
+    expect(result.text, 'hey there');
   });
 
   test('returns empty string when no messages', () async {
     final result = await usecase('room-1').first;
-    expect(result, '');
+    expect(result.text, '');
   });
 
   test('forwards chatRoomId to repository', () async {

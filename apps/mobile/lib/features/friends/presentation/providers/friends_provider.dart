@@ -104,6 +104,8 @@ class FriendsState {
   final Map<String, bool> presenceMap;
   // keyed by chatRoomId
   final Map<String, String> lastMessageMap;
+  // keyed by chatRoomId — timestamp of the most recent message
+  final Map<String, DateTime?> lastMessageTimestampMap;
   // keyed by friendUid
   final Map<String, FriendRoomStatus?> roomMap;
   // chatRoomIds that received a new message while the DM was not open.
@@ -117,6 +119,7 @@ class FriendsState {
     this.error,
     this.presenceMap = const {},
     this.lastMessageMap = const {},
+    this.lastMessageTimestampMap = const {},
     this.roomMap = const {},
     this.unreadChatRoomIds = const {},
   });
@@ -129,6 +132,7 @@ class FriendsState {
     Object? error = _sentinel,
     Map<String, bool>? presenceMap,
     Map<String, String>? lastMessageMap,
+    Map<String, DateTime?>? lastMessageTimestampMap,
     Map<String, FriendRoomStatus?>? roomMap,
     Set<String>? unreadChatRoomIds,
   }) => FriendsState(
@@ -139,6 +143,8 @@ class FriendsState {
     error: error == _sentinel ? this.error : error as String?,
     presenceMap: presenceMap ?? this.presenceMap,
     lastMessageMap: lastMessageMap ?? this.lastMessageMap,
+    lastMessageTimestampMap:
+        lastMessageTimestampMap ?? this.lastMessageTimestampMap,
     roomMap: roomMap ?? this.roomMap,
     unreadChatRoomIds: unreadChatRoomIds ?? this.unreadChatRoomIds,
   );
@@ -150,7 +156,8 @@ class FriendsNotifier extends Notifier<FriendsState> {
   StreamSubscription<List<AppUser>>? _usersSub;
 
   final Map<String, StreamSubscription<bool>> _presenceSubs = {};
-  final Map<String, StreamSubscription<String>> _lastMessageSubs = {};
+  final Map<String, StreamSubscription<({String text, DateTime? timestamp})>>
+  _lastMessageSubs = {};
   final Map<String, StreamSubscription<FriendRoomStatus?>> _roomSubs = {};
   // Tracks chatRoomIds whose first lastMessage emission has been processed.
   final Set<String> _initializedRooms = {};
@@ -227,10 +234,14 @@ class FriendsNotifier extends Notifier<FriendsState> {
         ..removeWhere((k, _) => removedUids.contains(k));
       final newLastMsg = Map<String, String>.from(state.lastMessageMap)
         ..removeWhere((k, _) => removedRoomIds.contains(k));
+      final newLastMsgTs = Map<String, DateTime?>.from(
+        state.lastMessageTimestampMap,
+      )..removeWhere((k, _) => removedRoomIds.contains(k));
       state = state.copyWith(
         presenceMap: newPresence,
         roomMap: newRoom,
         lastMessageMap: newLastMsg,
+        lastMessageTimestampMap: newLastMsgTs,
       );
     }
 
@@ -249,20 +260,27 @@ class FriendsNotifier extends Notifier<FriendsState> {
       if (!_lastMessageSubs.containsKey(f.chatRoomId)) {
         _lastMessageSubs[f.chatRoomId] = ref
             .read(_watchFriendLastMessageProvider)(f.chatRoomId)
-            .listen((msg) {
+            .listen((event) {
               final isNew = _initializedRooms.contains(f.chatRoomId);
               _initializedRooms.add(f.chatRoomId);
               final newLastMsg = Map<String, String>.from(state.lastMessageMap)
-                ..[f.chatRoomId] = msg;
-              if (isNew && msg.isNotEmpty) {
+                ..[f.chatRoomId] = event.text;
+              final newLastMsgTs = Map<String, DateTime?>.from(
+                state.lastMessageTimestampMap,
+              )..[f.chatRoomId] = event.timestamp;
+              if (isNew && event.text.isNotEmpty) {
                 // A new message arrived after the initial load — mark unread.
                 state = state.copyWith(
                   lastMessageMap: newLastMsg,
+                  lastMessageTimestampMap: newLastMsgTs,
                   unreadChatRoomIds: Set<String>.from(state.unreadChatRoomIds)
                     ..add(f.chatRoomId),
                 );
               } else {
-                state = state.copyWith(lastMessageMap: newLastMsg);
+                state = state.copyWith(
+                  lastMessageMap: newLastMsg,
+                  lastMessageTimestampMap: newLastMsgTs,
+                );
               }
             }, onError: (_) {});
       }

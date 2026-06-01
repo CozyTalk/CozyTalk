@@ -72,11 +72,13 @@ class FakeFriendsRepository implements FriendsRepository {
   }
 
   @override
-  Stream<String> watchFriendLastMessage(String chatRoomId) {
+  Stream<({String text, DateTime? timestamp})> watchFriendLastMessage(
+    String chatRoomId,
+  ) {
     lastWatchLastMessageChatRoomId = chatRoomId;
     return error != null
         ? Stream.error(error!)
-        : Stream.value(lastMessageResult);
+        : Stream.value((text: lastMessageResult, timestamp: null));
   }
 
   @override
