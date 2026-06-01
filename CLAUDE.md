@@ -145,8 +145,8 @@ RTDB paths: `rooms/{id}/members/{uid}`, `typing/{id}/{uid}`, `presence/{id}/{uid
 `USE_EMULATOR` — compile-time constant (default `true`). Pass `--dart-define=USE_EMULATOR=false` for production. Emulators: Auth 9099, Functions 5001, Firestore 8080, RTDB 9000.
 
 **`_useMainUI` toggle (main.dart line 35):**
-- `false` (default) → chatroom/backend testing: `_AuthRouter` → `LoginScreen` (features/auth) → `HelloScreen`. Registers `findingRoom` route.
-- `true` → production UI: `HomeScreen` (screens/) + `AppRoutes` named routes including `findingRoom`.
+- `true` (default) → production UI: `_MainUIAuthRouter` → `HomeScreen` (screens/) + `AppRoutes` named routes including `findingRoom`.
+- `false` → chatroom/backend testing: `_AuthRouter` → `LoginScreen` (features/auth) → `HelloScreen`. Registers `findingRoom` route.
 
 `_MainUIAuthRouter` routes: `authenticated + @cozytalk.com email → AdminConsoleScreen` · `authenticated (other) → HomeScreen` · `idle → spinner` · others → `LoginScreen`.
 
@@ -158,7 +158,7 @@ RTDB paths: `rooms/{id}/members/{uid}`, `typing/{id}/{uid}`, `presence/{id}/{uid
 
 ## 9. Integration Rules
 
-Integration = wiring `screens/` (production frontend) to `features/` (CA backend). When `_useMainUI = true`, the app uses `HomeScreen` + named routes (design preview). When `false` (default), it uses `_AuthRouter` → `HelloScreen` for backend testing.
+Integration = wiring `screens/` (production frontend) to `features/` (CA backend). When `_useMainUI = true` (default), the app uses `HomeScreen` + named routes (production UI). When `false`, it uses `_AuthRouter` → `HelloScreen` for backend testing.
 
 **Hard rules:**
 - Convert screen: `StatefulWidget` → `ConsumerStatefulWidget`, add `ref.watch/read` calls for real data

@@ -96,6 +96,25 @@ class FriendsRepositoryImpl implements FriendsRepository {
       _datasource.getUsersByIds(uids);
 
   @override
+  Future<int> getUnreadMessageCount(
+    String chatRoomId, {
+    required int sinceMs,
+    required String friendUid,
+  }) => _datasource.getUnreadMessageCount(
+    chatRoomId,
+    sinceMs: sinceMs,
+    friendUid: friendUid,
+  );
+
+  @override
+  Future<void> setChatRead(String chatRoomId) =>
+      _datasource.setChatRead(chatRoomId);
+
+  @override
+  Stream<DateTime?> watchChatRead(String chatRoomId) =>
+      _datasource.watchChatRead(chatRoomId);
+
+  @override
   Future<void> setFriendTyping(String chatRoomId, bool isTyping) =>
       _datasource.setFriendTyping(chatRoomId, isTyping);
 

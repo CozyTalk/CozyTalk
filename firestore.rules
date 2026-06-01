@@ -10,10 +10,15 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == uid;
     }
 
+    function _isCozytalkEmail(email) {
+      return email.size() >= 13 && email.lower()[email.lower().size() - 13:] == '@cozytalk.com';
+    }
+
     function isAdmin() {
       return isSignedIn()
-        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
-        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+        && (('email' in request.auth.token && _isCozytalkEmail(request.auth.token.email))
+            || (exists(/databases/$(database)/documents/users/$(request.auth.uid))
+                && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'));
     }
 
     // Checks rooms/{sessionId} (new matchmaking system)
@@ -91,12 +96,13 @@ service cloud.firestore {
     // Cloud Functions are the sole writers except for the isLocked field on
     // custom rooms, which any current member may toggle directly.
     match /rooms/{roomId} {
-      // Members read active/padding rooms; tombstones (status=='expired', users:[])
+      // Members read active/pending rooms; tombstones (status=='expired', users:[])
       // are readable by any signed-in user so clients can surface "expired" errors.
-      allow read: if isSignedIn() && (
+      // Admins may list all rooms (e.g. for dashboard online-count aggregation).
+      allow read: if isAdmin() || (isSignedIn() && (
         resource.data.status == 'expired' ||
         request.auth.uid in resource.data.users
-      );
+      ));
 
       allow create, delete: if false;
 
@@ -238,6 +244,18 @@ service cloud.firestore {
         && request.resource.data.text.size() <= 10000
         && request.resource.data.timestamp == request.time;
       allow update, delete: if false;
+    }
+
+    // Per-user read marker. lastReadAt is server-assigned (request.time) so it
+    // shares the message clock — clients compute unread counts skew-free.
+    match /friend_messages/{chatRoomId}/reads/{uid} {
+      allow read: if isSignedIn() && _isFriendshipParticipant(chatRoomId);
+      allow create, update: if isSignedIn()
+        && uid == request.auth.uid
+        && _isFriendshipParticipant(chatRoomId)
+        && request.resource.data.keys().hasOnly(['lastReadAt'])
+        && request.resource.data.lastReadAt == request.time;
+      allow delete: if false;
     }
 
     // ── chat_rooms/messages ───────────────────────────────────────────────────

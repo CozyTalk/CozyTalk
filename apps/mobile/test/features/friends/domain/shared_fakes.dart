@@ -41,6 +41,11 @@ class FakeFriendsRepository implements FriendsRepository {
   bool presenceResult = false;
   String? lastWatchPresenceFriendUid;
 
+  int unreadCountResult = 0;
+  String? lastUnreadCountChatRoomId;
+  int? lastUnreadCountSinceMs;
+  String? lastUnreadCountFriendUid;
+
   String lastMessageResult = '';
   String? lastWatchLastMessageChatRoomId;
 
@@ -145,6 +150,26 @@ class FakeFriendsRepository implements FriendsRepository {
     lastSenderDisplayName = senderDisplayName;
   }
 
+  int setChatReadCount = 0;
+  String? lastSetChatReadId;
+  DateTime? watchChatReadResult;
+  String? lastWatchChatReadId;
+
+  @override
+  Future<void> setChatRead(String chatRoomId) async {
+    if (error != null) throw error!;
+    setChatReadCount++;
+    lastSetChatReadId = chatRoomId;
+  }
+
+  @override
+  Stream<DateTime?> watchChatRead(String chatRoomId) {
+    lastWatchChatReadId = chatRoomId;
+    return error != null
+        ? Stream.error(error!)
+        : Stream.value(watchChatReadResult);
+  }
+
   @override
   Future<void> setFriendTyping(String chatRoomId, bool isTyping) async {}
 
@@ -157,5 +182,18 @@ class FakeFriendsRepository implements FriendsRepository {
     getUsersByIdsCallCount++;
     lastGetUsersByIds = uids;
     return usersById;
+  }
+
+  @override
+  Future<int> getUnreadMessageCount(
+    String chatRoomId, {
+    required int sinceMs,
+    required String friendUid,
+  }) async {
+    if (error != null) throw error!;
+    lastUnreadCountChatRoomId = chatRoomId;
+    lastUnreadCountSinceMs = sinceMs;
+    lastUnreadCountFriendUid = friendUid;
+    return unreadCountResult;
   }
 }

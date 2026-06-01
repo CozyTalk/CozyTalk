@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mobile/shared/pill_button.dart';
 
+import 'golden_tolerance.dart';
+
 void main() {
   testWidgets('PillButton golden – Accept (green) variant', (tester) async {
+    useGoldenTolerance('test/widgets/pill_button_golden_test.dart');
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
@@ -26,6 +29,7 @@ void main() {
   });
 
   testWidgets('PillButton golden – Decline (red) variant', (tester) async {
+    useGoldenTolerance('test/widgets/pill_button_golden_test.dart');
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(

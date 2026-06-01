@@ -50,6 +50,17 @@ final authNotifierProvider = NotifierProvider<AuthNotifier, AuthState>(
   AuthNotifier.new,
 );
 
+final userRoleProvider = StreamProvider.autoDispose.family<String, String>((
+  ref,
+  uid,
+) {
+  return FirebaseFirestore.instance
+      .collection('users')
+      .doc(uid)
+      .snapshots()
+      .map((doc) => doc.exists ? (doc.data()!['role'] as String? ?? '') : '');
+});
+
 enum AuthStatus { idle, loading, authenticated, unauthenticated }
 
 const _sentinel = Object();

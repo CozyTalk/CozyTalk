@@ -1,5 +1,4 @@
 import '../../domain/entities/admin_blocked_entry.dart';
-import '../../domain/entities/admin_dashboard_stats.dart';
 import '../../domain/entities/admin_report.dart';
 import '../../domain/entities/admin_user.dart';
 import '../../domain/repositories/admin_repository.dart';
@@ -13,8 +12,10 @@ class AdminRepositoryImpl implements AdminRepository {
   AdminRepositoryImpl(this._datasource);
 
   @override
-  Future<AdminDashboardStats> getDashboardStats() =>
-      _datasource.getDashboardStats();
+  Stream<int> watchOnlineCount() => _datasource.watchOnlineCount();
+
+  @override
+  Stream<int> watchPendingCount() => _datasource.watchPendingCount();
 
   @override
   Stream<List<AdminReport>> watchReports() => _datasource.watchReports().map(

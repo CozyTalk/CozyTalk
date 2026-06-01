@@ -39,6 +39,13 @@ abstract class FriendsDatasource {
     required String senderDisplayName,
   });
   Future<List<AppUser>> getUsersByIds(List<String> uids);
+  Future<int> getUnreadMessageCount(
+    String chatRoomId, {
+    required int sinceMs,
+    required String friendUid,
+  });
+  Future<void> setChatRead(String chatRoomId);
+  Stream<DateTime?> watchChatRead(String chatRoomId);
   Future<void> setFriendTyping(String chatRoomId, bool isTyping);
   Stream<bool> watchFriendTyping(String chatRoomId);
 }
@@ -274,6 +281,66 @@ class FriendsDatasourceImpl implements FriendsDatasource {
         displayName: data['displayName'] as String? ?? '',
       );
     }).toList();
+  }
+
+  @override
+  Future<int> getUnreadMessageCount(
+    String chatRoomId, {
+    required int sinceMs,
+    required String friendUid,
+  }) async {
+    // Count the trailing run of messages sent by the friend, newest-first.
+    // Stop at the first message the current user sent: replying (or opening the
+    // chat, which advances sinceMs) means everything older has been read. So if
+    // the last message is the current user's own, the count is 0.
+    // Filtering and ordering on the same field keeps this on the default
+    // single-field index (no composite index required).
+    final snap = await _firestore
+        .collection('friend_messages')
+        .doc(chatRoomId)
+        .collection('messages')
+        .where(
+          'timestamp',
+          isGreaterThan: Timestamp.fromMillisecondsSinceEpoch(sinceMs),
+        )
+        .orderBy('timestamp', descending: true)
+        .get();
+    var count = 0;
+    for (final doc in snap.docs) {
+      if (doc.data()['senderId'] == friendUid) {
+        count++;
+      } else {
+        break;
+      }
+    }
+    return count;
+  }
+
+  @override
+  Future<void> setChatRead(String chatRoomId) async {
+    // serverTimestamp() is assigned by the server, so the read marker shares the
+    // same clock as message timestamps — no client skew. Per-user doc keeps the
+    // security rule trivial (uid == request.auth.uid) and syncs across devices.
+    await _firestore
+        .collection('friend_messages')
+        .doc(chatRoomId)
+        .collection('reads')
+        .doc(currentUid)
+        .set({'lastReadAt': FieldValue.serverTimestamp()});
+  }
+
+  @override
+  Stream<DateTime?> watchChatRead(String chatRoomId) {
+    return _firestore
+        .collection('friend_messages')
+        .doc(chatRoomId)
+        .collection('reads')
+        .doc(currentUid)
+        .snapshots()
+        .map((doc) {
+          final ts = doc.data()?['lastReadAt'];
+          return ts is Timestamp ? ts.toDate() : null;
+        });
   }
 
   @override
