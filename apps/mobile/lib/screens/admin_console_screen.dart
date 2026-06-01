@@ -284,7 +284,7 @@ class _AdminConsoleScreenState extends ConsumerState<AdminConsoleScreen> {
       uid: e.uid,
       online: e.online,
       interest: e.interest,
-      reports: reportCount,
+      reports: 0,
       joined: _formatJoined(e.createdAt),
       current: currentBan,
       reportRefs: const [],
@@ -314,8 +314,7 @@ class _AdminConsoleScreenState extends ConsumerState<AdminConsoleScreen> {
         .toList();
 
     final onlineCount = ref.watch(feat.adminOnlineCountProvider).value ?? 0;
-    final pendingCount =
-        reportsState.reports.where((r) => r.status == 'pending').length;
+    final pendingCount = ref.watch(feat.adminPendingCountProvider).value ?? 0;
     final bannedCount = usersState.users.where((u) => u.banned).length;
     final totalUsers = usersState.users.length;
 

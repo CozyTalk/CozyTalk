@@ -37,6 +37,9 @@ class _FakeAdminDatasource implements AdminDatasource {
   }
 
   @override
+  Stream<int> watchPendingCount() => Stream.value(0);
+
+  @override
   Stream<List<AdminReportModel>> watchReports() {
     watchReportsCount++;
     if (error != null) return Stream.error(error!);

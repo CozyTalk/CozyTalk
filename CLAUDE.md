@@ -145,7 +145,7 @@ RTDB paths: `rooms/{id}/members/{uid}`, `typing/{id}/{uid}`, `presence/{id}/{uid
 `USE_EMULATOR` — compile-time constant (default `true`). Pass `--dart-define=USE_EMULATOR=false` for production. Emulators: Auth 9099, Functions 5001, Firestore 8080, RTDB 9000.
 
 **`_useMainUI` toggle (main.dart line 35):**
-- `false` (default) → chatroom/backend testing: `_AuthRouter` → `LoginScreen` (features/auth) → `HelloScreen`. Registers `findingRoom` route.
+- `true` (default) → chatroom/backend testing: `_AuthRouter` → `LoginScreen` (features/auth) → `HelloScreen`. Registers `findingRoom` route.
 - `true` → production UI: `HomeScreen` (screens/) + `AppRoutes` named routes including `findingRoom`.
 
 `_MainUIAuthRouter` routes: `authenticated + @cozytalk.com email → AdminConsoleScreen` · `authenticated (other) → HomeScreen` · `idle → spinner` · others → `LoginScreen`.

@@ -4,6 +4,7 @@ import '../entities/admin_user.dart';
 
 abstract class AdminRepository {
   Stream<int> watchOnlineCount();
+  Stream<int> watchPendingCount();
   Stream<List<AdminReport>> watchReports();
   Future<void> resolveReport(
     String reportId, {

@@ -11,6 +11,7 @@ import '../models/admin_user_model.dart';
 
 abstract class AdminDatasource {
   Stream<int> watchOnlineCount();
+  Stream<int> watchPendingCount();
   Stream<List<AdminReportModel>> watchReports();
   Future<void> resolveReport(
     String reportId, {
@@ -41,7 +42,10 @@ class AdminDatasourceImpl implements AdminDatasource {
   StreamSubscription<DatabaseEvent>? _poolSub;
   final _onlineCountController = StreamController<int>.broadcast();
 
-  AdminDatasourceImpl(this._firestore, this._functions, this._database) {
+  AdminDatasourceImpl(this._firestore, this._functions, this._database);
+
+  void _ensureSubscribed() {
+    if (_roomsSub != null) return;
     _roomsSub = _firestore
         .collection('rooms')
         .where('status', isEqualTo: 'active')
@@ -78,7 +82,19 @@ class AdminDatasourceImpl implements AdminDatasource {
       _onlineCountController.add(_roomUids.union(_poolUids).length);
 
   @override
-  Stream<int> watchOnlineCount() => _onlineCountController.stream;
+  Stream<int> watchOnlineCount() {
+    _ensureSubscribed();
+    return _onlineCountController.stream;
+  }
+
+  @override
+  Stream<int> watchPendingCount() {
+    return _firestore
+        .collection('reports')
+        .where('status', isEqualTo: 'pending')
+        .snapshots()
+        .map((snap) => snap.size);
+  }
 
   @override
   void dispose() {
@@ -113,20 +129,31 @@ class AdminDatasourceImpl implements AdminDatasource {
               }
             }
           }
-          return snap.docs.map((doc) {
-            final data = Map<String, dynamic>.from(doc.data());
-            if (data['outcome'] is Map) {
-              data['outcome'] = Map<String, dynamic>.from(
-                data['outcome'] as Map,
+          final result = <AdminReportModel>[];
+          for (final doc in snap.docs) {
+            try {
+              final data = Map<String, dynamic>.from(doc.data());
+              if (data['outcome'] is Map) {
+                data['outcome'] = Map<String, dynamic>.from(
+                  data['outcome'] as Map,
+                );
+              }
+              result.add(
+                AdminReportModel.fromJson(data).copyWith(
+                  id: doc.id,
+                  reporterName: nameMap[data['reporterId']] ?? 'Unknown',
+                  reportedName: nameMap[data['reportedUserId']] ?? 'Unknown',
+                  reportedInterest:
+                      interestMap[data['reportedUserId']] ?? '',
+                ),
+              );
+            } catch (e) {
+              debugPrint(
+                '[AdminDatasource] skipping malformed report ${doc.id}: $e',
               );
             }
-            return AdminReportModel.fromJson(data).copyWith(
-              id: doc.id,
-              reporterName: nameMap[data['reporterId']] ?? 'Unknown',
-              reportedName: nameMap[data['reportedUserId']] ?? 'Unknown',
-              reportedInterest: interestMap[data['reportedUserId']] ?? '',
-            );
-          }).toList();
+          }
+          return result;
         });
   }
 

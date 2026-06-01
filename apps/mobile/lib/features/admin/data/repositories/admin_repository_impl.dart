@@ -15,6 +15,9 @@ class AdminRepositoryImpl implements AdminRepository {
   Stream<int> watchOnlineCount() => _datasource.watchOnlineCount();
 
   @override
+  Stream<int> watchPendingCount() => _datasource.watchPendingCount();
+
+  @override
   Stream<List<AdminReport>> watchReports() => _datasource.watchReports().map(
     (models) => models.map((m) => m.toEntity()).toList(),
   );

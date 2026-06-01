@@ -17,6 +17,7 @@ import '../../domain/usecases/get_chat_log_url.dart';
 import '../../domain/usecases/resolve_report.dart';
 import '../../domain/usecases/unban_user.dart';
 import '../../domain/usecases/watch_online_count.dart';
+import '../../domain/usecases/watch_pending_count.dart';
 import '../../domain/usecases/watch_reports.dart';
 import '../../domain/usecases/watch_users.dart';
 
@@ -70,8 +71,16 @@ final _watchOnlineCountProvider = Provider<WatchOnlineCount>(
   (ref) => WatchOnlineCount(ref.watch(adminRepositoryProvider)),
 );
 
+final _watchPendingCountProvider = Provider<WatchPendingCount>(
+  (ref) => WatchPendingCount(ref.watch(adminRepositoryProvider)),
+);
+
 final adminOnlineCountProvider = StreamProvider<int>((ref) {
   return ref.watch(_watchOnlineCountProvider).call();
+});
+
+final adminPendingCountProvider = StreamProvider<int>((ref) {
+  return ref.watch(_watchPendingCountProvider).call();
 });
 
 // ── Public providers ───────────────────────────────────────────────────────

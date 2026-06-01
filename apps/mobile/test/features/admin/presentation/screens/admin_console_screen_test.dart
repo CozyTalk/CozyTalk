@@ -94,10 +94,14 @@ AdminUser _makeUser(String uid, {bool banned = false, bool online = false}) =>
 Widget _buildScreen({
   _FakeReportsNotifier? reports,
   _FakeUsersNotifier? users,
+  int pendingCount = 0,
 }) {
   return ProviderScope(
     overrides: [
       adminOnlineCountProvider.overrideWith((ref) => Stream.value(0)),
+      adminPendingCountProvider.overrideWith(
+        (ref) => Stream.value(pendingCount),
+      ),
       adminReportsProvider.overrideWith(
         () => reports ?? _FakeReportsNotifier(),
       ),
@@ -145,13 +149,7 @@ void main() {
     });
 
     testWidgets('renders pending report count in header', (tester) async {
-      final reports = _FakeReportsNotifier(
-        AdminReportsState(
-          status: AdminReportsStatus.loaded,
-          reports: [_makeReport('r1'), _makeReport('r2'), _makeReport('r3')],
-        ),
-      );
-      await tester.pumpWidget(_buildScreen(reports: reports));
+      await tester.pumpWidget(_buildScreen(pendingCount: 3));
       await tester.pumpAndSettle();
 
       expect(find.text('3'), findsWidgets);

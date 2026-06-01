@@ -35,6 +35,9 @@ class FakeAdminRepository implements AdminRepository {
   }
 
   @override
+  Stream<int> watchPendingCount() => Stream.value(0);
+
+  @override
   Stream<List<AdminReport>> watchReports() {
     watchReportsCount++;
     if (error != null) return Stream.error(error!);
