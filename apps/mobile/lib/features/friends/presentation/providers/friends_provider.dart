@@ -108,8 +108,8 @@ class FriendsState {
   final Map<String, DateTime?> lastMessageTimestampMap;
   // keyed by friendUid
   final Map<String, FriendRoomStatus?> roomMap;
-  // chatRoomIds that received a new message while the DM was not open.
-  final Set<String> unreadChatRoomIds;
+  // keyed by chatRoomId — count of unread messages from the friend (not self)
+  final Map<String, int> unreadCountMap;
 
   const FriendsState({
     this.allUsers = const [],
@@ -121,7 +121,7 @@ class FriendsState {
     this.lastMessageMap = const {},
     this.lastMessageTimestampMap = const {},
     this.roomMap = const {},
-    this.unreadChatRoomIds = const {},
+    this.unreadCountMap = const {},
   });
 
   FriendsState copyWith({
@@ -134,7 +134,7 @@ class FriendsState {
     Map<String, String>? lastMessageMap,
     Map<String, DateTime?>? lastMessageTimestampMap,
     Map<String, FriendRoomStatus?>? roomMap,
-    Set<String>? unreadChatRoomIds,
+    Map<String, int>? unreadCountMap,
   }) => FriendsState(
     allUsers: allUsers ?? this.allUsers,
     friends: friends ?? this.friends,
@@ -146,7 +146,7 @@ class FriendsState {
     lastMessageTimestampMap:
         lastMessageTimestampMap ?? this.lastMessageTimestampMap,
     roomMap: roomMap ?? this.roomMap,
-    unreadChatRoomIds: unreadChatRoomIds ?? this.unreadChatRoomIds,
+    unreadCountMap: unreadCountMap ?? this.unreadCountMap,
   );
 }
 
@@ -156,7 +156,10 @@ class FriendsNotifier extends Notifier<FriendsState> {
   StreamSubscription<List<AppUser>>? _usersSub;
 
   final Map<String, StreamSubscription<bool>> _presenceSubs = {};
-  final Map<String, StreamSubscription<({String text, DateTime? timestamp})>>
+  final Map<
+    String,
+    StreamSubscription<({String text, DateTime? timestamp, String senderId})>
+  >
   _lastMessageSubs = {};
   final Map<String, StreamSubscription<FriendRoomStatus?>> _roomSubs = {};
   // Tracks chatRoomIds whose first lastMessage emission has been processed.
@@ -237,11 +240,14 @@ class FriendsNotifier extends Notifier<FriendsState> {
       final newLastMsgTs = Map<String, DateTime?>.from(
         state.lastMessageTimestampMap,
       )..removeWhere((k, _) => removedRoomIds.contains(k));
+      final newUnread = Map<String, int>.from(state.unreadCountMap)
+        ..removeWhere((k, _) => removedRoomIds.contains(k));
       state = state.copyWith(
         presenceMap: newPresence,
         roomMap: newRoom,
         lastMessageMap: newLastMsg,
         lastMessageTimestampMap: newLastMsgTs,
+        unreadCountMap: newUnread,
       );
     }
 
@@ -268,13 +274,19 @@ class FriendsNotifier extends Notifier<FriendsState> {
               final newLastMsgTs = Map<String, DateTime?>.from(
                 state.lastMessageTimestampMap,
               )..[f.chatRoomId] = event.timestamp;
-              if (isNew && event.text.isNotEmpty) {
-                // A new message arrived after the initial load — mark unread.
+              final currentUid = ref.read(friendsDatasourceProvider).currentUid;
+              final isFromFriend =
+                  isNew &&
+                  event.text.isNotEmpty &&
+                  event.senderId.isNotEmpty &&
+                  event.senderId != currentUid;
+              if (isFromFriend) {
+                final newCount = (state.unreadCountMap[f.chatRoomId] ?? 0) + 1;
                 state = state.copyWith(
                   lastMessageMap: newLastMsg,
                   lastMessageTimestampMap: newLastMsgTs,
-                  unreadChatRoomIds: Set<String>.from(state.unreadChatRoomIds)
-                    ..add(f.chatRoomId),
+                  unreadCountMap: Map<String, int>.from(state.unreadCountMap)
+                    ..[f.chatRoomId] = newCount,
                 );
               } else {
                 state = state.copyWith(
@@ -376,10 +388,10 @@ class FriendsNotifier extends Notifier<FriendsState> {
   void clearError() => state = state.copyWith(error: null);
 
   void markChatAsRead(String chatRoomId) {
-    if (!state.unreadChatRoomIds.contains(chatRoomId)) return;
+    if ((state.unreadCountMap[chatRoomId] ?? 0) == 0) return;
     state = state.copyWith(
-      unreadChatRoomIds: Set<String>.from(state.unreadChatRoomIds)
-        ..remove(chatRoomId),
+      unreadCountMap: Map<String, int>.from(state.unreadCountMap)
+        ..[chatRoomId] = 0,
     );
   }
 }

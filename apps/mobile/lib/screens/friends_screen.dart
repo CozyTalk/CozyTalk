@@ -33,7 +33,6 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
   String _query = '';
 
   final Map<String, String?> _notes = {};
-  final Map<String, int> _unreadCounts = {};
   String? _pendingRemoveName;
 
   @override
@@ -68,7 +67,7 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
       note: _notes[f.friendshipId],
       lastMessage: state.lastMessageMap[f.chatRoomId] ?? '',
       isOnline: state.presenceMap[f.friendUid] ?? false,
-      unreadCount: _unreadCounts[f.friendshipId] ?? 0,
+      unreadCount: state.unreadCountMap[f.chatRoomId] ?? 0,
       isBlocked: blockedUids.contains(f.friendUid),
       interest: liveInterests[f.friendUid] ?? '',
       room: roomStatus != null ? _toRoomInfo(roomStatus) : null,
@@ -188,22 +187,6 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
           );
         }
       }
-      // Increment unread badge when new messages arrive for a room.
-      final prevUnread = prev?.unreadChatRoomIds ?? {};
-      final newlyUnread = next.unreadChatRoomIds.difference(prevUnread);
-      if (newlyUnread.isNotEmpty) {
-        setState(() {
-          for (final chatRoomId in newlyUnread) {
-            try {
-              final f = next.friends.firstWhere(
-                (f) => f.chatRoomId == chatRoomId,
-              );
-              _unreadCounts[f.friendshipId] =
-                  (_unreadCounts[f.friendshipId] ?? 0) + 1;
-            } catch (_) {}
-          }
-        });
-      }
     });
 
     return Scaffold(
@@ -300,12 +283,9 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
     final showRoom = friend.room != null && friend.isOnline;
     return GestureDetector(
       onTap: () {
-        if (friend.unreadCount > 0) {
-          setState(() => _unreadCounts[friend.friendshipId] = 0);
-          ref
-              .read(friendsNotifierProvider.notifier)
-              .markChatAsRead(friend.chatRoomId);
-        }
+        ref
+            .read(friendsNotifierProvider.notifier)
+            .markChatAsRead(friend.chatRoomId);
         Navigator.pushNamed(context, AppRoutes.friendChat, arguments: friend);
       },
       child: Container(

@@ -17,9 +17,8 @@ abstract class FriendsDatasource {
   Stream<List<FriendRequestModel>> watchIncomingRequests();
   Stream<List<FriendMessageModel>> watchMessages(String chatRoomId);
   Stream<bool> watchFriendPresence(String friendUid);
-  Stream<({String text, DateTime? timestamp})> watchFriendLastMessage(
-    String chatRoomId,
-  );
+  Stream<({String text, DateTime? timestamp, String senderId})>
+  watchFriendLastMessage(String chatRoomId);
   Stream<FriendRoomStatus?> watchFriendRoom(String friendUid);
   Future<void> sendFriendRequest({
     required String toUid,
@@ -136,9 +135,8 @@ class FriendsDatasourceImpl implements FriendsDatasource {
   }
 
   @override
-  Stream<({String text, DateTime? timestamp})> watchFriendLastMessage(
-    String chatRoomId,
-  ) {
+  Stream<({String text, DateTime? timestamp, String senderId})>
+  watchFriendLastMessage(String chatRoomId) {
     return _firestore
         .collection('friend_messages')
         .doc(chatRoomId)
@@ -147,7 +145,9 @@ class FriendsDatasourceImpl implements FriendsDatasource {
         .limit(1)
         .snapshots()
         .map((snap) {
-          if (snap.docs.isEmpty) return (text: '', timestamp: null);
+          if (snap.docs.isEmpty) {
+            return (text: '', timestamp: null, senderId: '');
+          }
           final data = Map<String, dynamic>.from(snap.docs.first.data());
           final ts = data['timestamp'];
           DateTime? timestamp;
@@ -156,7 +156,11 @@ class FriendsDatasourceImpl implements FriendsDatasource {
           } else if (ts is int) {
             timestamp = DateTime.fromMillisecondsSinceEpoch(ts);
           }
-          return (text: data['text'] as String? ?? '', timestamp: timestamp);
+          return (
+            text: data['text'] as String? ?? '',
+            timestamp: timestamp,
+            senderId: data['senderId'] as String? ?? '',
+          );
         });
   }
 
