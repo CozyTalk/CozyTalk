@@ -178,12 +178,14 @@ class FriendsNotifier extends Notifier<FriendsState> {
   // Returns null when prefs aren't loaded yet or the key has never been written.
   int? _lastReadAt(String chatRoomId) => _prefs?.getInt(_prefKey(chatRoomId));
 
+  bool _disposed = false;
+
   @override
   FriendsState build() {
-    // Load prefs eagerly; will be ready before the first Firestore emission.
-    SharedPreferences.getInstance().then((p) => _prefs = p);
+    _disposed = false;
 
     ref.onDispose(() {
+      _disposed = true;
       _friendsSub?.cancel();
       _requestsSub?.cancel();
       _usersSub?.cancel();
@@ -198,33 +200,42 @@ class FriendsNotifier extends Notifier<FriendsState> {
       }
     });
 
-    _friendsSub = ref.read(_watchFriendsProvider)().listen(
-      (friends) {
-        state = state.copyWith(friends: friends);
-        _updateEnrichmentSubscriptions(friends);
-      },
-      onError: (Object e) => state = state.copyWith(
-        error: e.toString().replaceFirst('Exception: ', ''),
-      ),
-    );
+    // Start subscriptions only after prefs are loaded so _lastReadAt() is
+    // always accurate when _updateEnrichmentSubscriptions first runs.
+    // SharedPreferences loads from disk in < 1 ms; Firestore streams start
+    // from network/cache, so the delay is imperceptible.
+    SharedPreferences.getInstance().then((prefs) {
+      if (_disposed) return;
+      _prefs = prefs;
 
-    _requestsSub = ref
-        .read(_watchIncomingRequestsProvider)()
-        .listen(
-          (requests) => state = state.copyWith(incomingRequests: requests),
-          onError: (Object e) => state = state.copyWith(
-            error: e.toString().replaceFirst('Exception: ', ''),
-          ),
-        );
+      _friendsSub = ref.read(_watchFriendsProvider)().listen(
+        (friends) {
+          state = state.copyWith(friends: friends);
+          _updateEnrichmentSubscriptions(friends);
+        },
+        onError: (Object e) => state = state.copyWith(
+          error: e.toString().replaceFirst('Exception: ', ''),
+        ),
+      );
 
-    _usersSub = ref
-        .read(_watchAllUsersProvider)()
-        .listen(
-          (users) => state = state.copyWith(allUsers: users),
-          onError: (Object e) => state = state.copyWith(
-            error: e.toString().replaceFirst('Exception: ', ''),
-          ),
-        );
+      _requestsSub = ref
+          .read(_watchIncomingRequestsProvider)()
+          .listen(
+            (requests) => state = state.copyWith(incomingRequests: requests),
+            onError: (Object e) => state = state.copyWith(
+              error: e.toString().replaceFirst('Exception: ', ''),
+            ),
+          );
+
+      _usersSub = ref
+          .read(_watchAllUsersProvider)()
+          .listen(
+            (users) => state = state.copyWith(allUsers: users),
+            onError: (Object e) => state = state.copyWith(
+              error: e.toString().replaceFirst('Exception: ', ''),
+            ),
+          );
+    });
 
     return const FriendsState();
   }
@@ -280,26 +291,23 @@ class FriendsNotifier extends Notifier<FriendsState> {
       }
 
       if (!_lastMessageSubs.containsKey(f.chatRoomId)) {
-        // On startup, query the real unread count from Firestore if we have a
-        // stored lastReadAt marker, then write a fresh marker so the count
-        // survives the next restart too.
-        final lastReadAt = _lastReadAt(f.chatRoomId);
-        if (lastReadAt != null) {
-          ref
-              .read(_getUnreadMessageCountProvider)(
-                f.chatRoomId,
-                sinceMs: lastReadAt,
-                friendUid: f.friendUid,
-              )
-              .then((n) {
-                if (n > 0) {
-                  state = state.copyWith(
-                    unreadCountMap: Map<String, int>.from(state.unreadCountMap)
-                      ..[f.chatRoomId] = n,
-                  );
-                }
-              });
-        }
+        // Query the real unread count from Firestore.
+        // sinceMs = 0 when no lastReadAt is stored (first-ever use or never
+        // explicitly marked as read), which counts ALL messages from the friend.
+        ref
+            .read(_getUnreadMessageCountProvider)(
+              f.chatRoomId,
+              sinceMs: _lastReadAt(f.chatRoomId) ?? 0,
+              friendUid: f.friendUid,
+            )
+            .then((n) {
+              if (n > 0) {
+                state = state.copyWith(
+                  unreadCountMap: Map<String, int>.from(state.unreadCountMap)
+                    ..[f.chatRoomId] = n,
+                );
+              }
+            });
 
         _lastMessageSubs[f.chatRoomId] = ref
             .read(_watchFriendLastMessageProvider)(f.chatRoomId)
@@ -318,16 +326,8 @@ class FriendsNotifier extends Notifier<FriendsState> {
                   event.senderId != currentUid;
 
               // Only count new in-session messages (subsequent stream events).
-              // The initial unread count is loaded via the Firestore query above.
+              // Startup count is handled by the Firestore query above.
               if (isSubsequent && fromFriend) {
-                // Persist unread marker so the badge survives the next restart.
-                if (event.timestamp != null) {
-                  final marker = event.timestamp!.millisecondsSinceEpoch - 1;
-                  final existing = _lastReadAt(f.chatRoomId);
-                  if (existing == null || marker > existing) {
-                    _prefs?.setInt(_prefKey(f.chatRoomId), marker);
-                  }
-                }
                 final newCount = (state.unreadCountMap[f.chatRoomId] ?? 0) + 1;
                 state = state.copyWith(
                   lastMessageMap: newLastMsg,
