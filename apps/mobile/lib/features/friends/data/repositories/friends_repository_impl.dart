@@ -107,6 +107,14 @@ class FriendsRepositoryImpl implements FriendsRepository {
   );
 
   @override
+  Future<void> setChatRead(String chatRoomId) =>
+      _datasource.setChatRead(chatRoomId);
+
+  @override
+  Stream<DateTime?> watchChatRead(String chatRoomId) =>
+      _datasource.watchChatRead(chatRoomId);
+
+  @override
   Future<void> setFriendTyping(String chatRoomId, bool isTyping) =>
       _datasource.setFriendTyping(chatRoomId, isTyping);
 

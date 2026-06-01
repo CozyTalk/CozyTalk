@@ -246,6 +246,18 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
+    // Per-user read marker. lastReadAt is server-assigned (request.time) so it
+    // shares the message clock — clients compute unread counts skew-free.
+    match /friend_messages/{chatRoomId}/reads/{uid} {
+      allow read: if isSignedIn() && _isFriendshipParticipant(chatRoomId);
+      allow create, update: if isSignedIn()
+        && uid == request.auth.uid
+        && _isFriendshipParticipant(chatRoomId)
+        && request.resource.data.keys().hasOnly(['lastReadAt'])
+        && request.resource.data.lastReadAt == request.time;
+      allow delete: if false;
+    }
+
     // ── chat_rooms/messages ───────────────────────────────────────────────────
     // Participant check spans both rooms (new) and active_sessions (legacy).
     match /chat_rooms/{sessionId}/messages/{messageId} {

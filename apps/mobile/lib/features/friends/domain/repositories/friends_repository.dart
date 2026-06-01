@@ -37,6 +37,8 @@ abstract class FriendsRepository {
     required int sinceMs,
     required String friendUid,
   });
+  Future<void> setChatRead(String chatRoomId);
+  Stream<DateTime?> watchChatRead(String chatRoomId);
   Future<void> setFriendTyping(String chatRoomId, bool isTyping);
   Stream<bool> watchFriendTyping(String chatRoomId);
 }

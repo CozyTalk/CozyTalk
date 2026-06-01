@@ -150,6 +150,26 @@ class FakeFriendsRepository implements FriendsRepository {
     lastSenderDisplayName = senderDisplayName;
   }
 
+  int setChatReadCount = 0;
+  String? lastSetChatReadId;
+  DateTime? watchChatReadResult;
+  String? lastWatchChatReadId;
+
+  @override
+  Future<void> setChatRead(String chatRoomId) async {
+    if (error != null) throw error!;
+    setChatReadCount++;
+    lastSetChatReadId = chatRoomId;
+  }
+
+  @override
+  Stream<DateTime?> watchChatRead(String chatRoomId) {
+    lastWatchChatReadId = chatRoomId;
+    return error != null
+        ? Stream.error(error!)
+        : Stream.value(watchChatReadResult);
+  }
+
   @override
   Future<void> setFriendTyping(String chatRoomId, bool isTyping) async {}
 

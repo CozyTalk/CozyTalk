@@ -45,7 +45,7 @@ See `docs/database/schema.md` for full field lists and security rules.
 
 **Use cases** (`domain/usecases/`)
 
-`WatchAllUsers` · `WatchFriends` · `WatchIncomingRequests` · `WatchFriendMessages` · `SendFriendRequest` · `AcceptFriendRequest` · `DeclineFriendRequest` · `RemoveFriend` · `SendFriendMessage` · `WatchFriendPresence` · `WatchFriendLastMessage` · `WatchFriendRoom`
+`WatchAllUsers` · `WatchFriends` · `WatchIncomingRequests` · `WatchFriendMessages` · `SendFriendRequest` · `AcceptFriendRequest` · `DeclineFriendRequest` · `RemoveFriend` · `SendFriendMessage` · `WatchFriendPresence` · `WatchFriendLastMessage` · `WatchFriendRoom` · `GetUnreadMessageCount` · `SetChatRead` · `WatchChatRead`
 
 ---
 
@@ -79,11 +79,16 @@ See `docs/database/schema.md` for full field lists and security rules.
 | `lastMessageMap` | `Map<String, String>` | keyed by `chatRoomId` — last message text |
 | `lastMessageTimestampMap` | `Map<String, DateTime?>` | keyed by `chatRoomId` — timestamp of the most recent message; `null` when no messages exist |
 | `roomMap` | `Map<String, FriendRoomStatus?>` | keyed by `friendUid` — current room or `null` |
-| `unreadCountMap` | `Map<String, int>` | keyed by `chatRoomId` — count of unread messages from the friend (not from self); incremented per incoming message, reset to 0 by `markChatAsRead(chatRoomId)` |
+| `unreadCountMap` | `Map<String, int>` | keyed by `chatRoomId` — count of unread messages from the friend (not from self); recomputed from the server read marker and incremented per incoming message |
 
 Per-friend enrichment subscriptions are managed by `_updateEnrichmentSubscriptions()` in `FriendsNotifier`, called whenever the `friends` list changes. Stale subscriptions are cancelled when a friend is removed.
 
-**Unread persistence** — `FriendsNotifier` persists `lastReadAt` (milliseconds epoch) per chatRoom in `SharedPreferences` under the key `friends_last_read_<chatRoomId>`. On the first stream emission after app restart, if the message timestamp is newer than the stored `lastReadAt` and the message was sent by the friend, `unreadCountMap` is initialised to 1. `markChatAsRead(chatRoomId)` is `Future<void>`; it saves the last message timestamp to `SharedPreferences` before resetting the in-memory count. If the key has never been written (first-ever session or before this feature was deployed), no badge is shown on startup.
+**Unread count (server-authoritative read marker)** — the read marker lives in Firestore at `friend_messages/{chatRoomId}/reads/{uid}` as `{ lastReadAt: Timestamp }`, written with `serverTimestamp()`. Because the marker and message `timestamp`s both come from the server clock, the unread boundary has no client-clock skew, and the marker syncs across devices.
+
+- Each room subscribes to `watchChatRead(chatRoomId)`. On every emission (initial load, this device marking read, or another device marking read), `_recomputeUnread` runs `getUnreadMessageCount(sinceMs: lastReadAt, friendUid:)` and sets `unreadCountMap[chatRoomId]` to the exact count.
+- `getUnreadMessageCount` counts the **trailing run** of the friend's messages newest-first, stopping at the first message the current user sent — so if the last message is the user's own, the count is 0. `sinceMs = 0` (no marker yet) counts that trailing run over all history.
+- New messages arriving while the app is open bump the badge by 1 (`watchFriendLastMessage`), except for the chat the user is currently viewing (`_activeChatRoomId`).
+- `setActiveChat`/`clearActiveChat` (called by `FriendChatNotifier.enterChat`/`leaveChat`) mark the room active and write the read marker via `markChatRead` (which calls `setChatRead` + clears the badge optimistically). `markChatAsRead(chatRoomId)` is an in-memory-only optimistic clear used on a friend-card tap.
 
 ### Providers
 
@@ -96,7 +101,7 @@ Per-friend enrichment subscriptions are managed by `_updateEnrichmentSubscriptio
 
 ### Production Screens
 
-`FriendsScreen` (`screens/friends_screen.dart`) — integrated with `friendsNotifierProvider`. Maps `domain.Friend` → screen `Friend` model via `_toScreenFriend(f, state)`, pulling `isOnline` from `presenceMap`, `lastMessage` from `lastMessageMap`, and `room` (as `RoomInfo`) from `roomMap`. The list is sorted by `lastMessageTimestampMap` (most recently messaged first; friends with no messages fall to the bottom). Unread badge count comes directly from `state.unreadCountMap[chatRoomId]`; the notifier increments it for every incoming message whose `senderId` differs from the current user's UID, so only messages received from the friend (not sent by self) count toward the badge. Tapping a friend card calls `markChatAsRead(chatRoomId)` which resets the count to 0 in state and persists the read timestamp to `SharedPreferences`. The three-dot menu shows **Block** when the friend is not blocked and **Unblock** when they are. Notes remain local-only state for this prototype.
+`FriendsScreen` (`screens/friends_screen.dart`) — integrated with `friendsNotifierProvider`. Maps `domain.Friend` → screen `Friend` model via `_toScreenFriend(f, state)`, pulling `isOnline` from `presenceMap`, `lastMessage` from `lastMessageMap`, and `room` (as `RoomInfo`) from `roomMap`. The list is sorted by `lastMessageTimestampMap` (most recently messaged first; friends with no messages fall to the bottom). Unread badge count comes directly from `state.unreadCountMap[chatRoomId]` (recomputed from the server read marker; see "Unread count" above). Tapping a friend card calls `markChatAsRead(chatRoomId)` for an optimistic in-memory reset; the chat screen's `enterChat` then writes the authoritative marker. The three-dot menu shows **Block** when the friend is not blocked and **Unblock** when they are. Notes remain local-only state for this prototype.
 
 `HomeScreen` (`screens/home_screen.dart`) — the Friends `_QuickAction` box displays a red dot badge in its top-right corner when `unreadCountMap.values.any((c) => c > 0)`. The bell/notification icon badge reflects only `incomingRequests.isNotEmpty` (friend requests).
 

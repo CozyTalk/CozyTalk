@@ -4,7 +4,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../data/datasources/friends_datasource.dart';
@@ -20,7 +19,9 @@ import '../../domain/usecases/get_unread_message_count.dart';
 import '../../domain/usecases/get_users_by_ids.dart';
 import '../../domain/usecases/remove_friend.dart';
 import '../../domain/usecases/send_friend_request.dart';
+import '../../domain/usecases/set_chat_read.dart';
 import '../../domain/usecases/watch_all_users.dart';
+import '../../domain/usecases/watch_chat_read.dart';
 import '../../domain/usecases/watch_friend_last_message.dart';
 import '../../domain/usecases/watch_friend_presence.dart';
 import '../../domain/usecases/watch_friend_room.dart';
@@ -77,6 +78,14 @@ final _watchFriendLastMessageProvider = Provider<WatchFriendLastMessage>(
 
 final _getUnreadMessageCountProvider = Provider<GetUnreadMessageCount>(
   (ref) => GetUnreadMessageCount(ref.watch(friendsRepositoryProvider)),
+);
+
+final _setChatReadProvider = Provider<SetChatRead>(
+  (ref) => SetChatRead(ref.watch(friendsRepositoryProvider)),
+);
+
+final _watchChatReadProvider = Provider<WatchChatRead>(
+  (ref) => WatchChatRead(ref.watch(friendsRepositoryProvider)),
 );
 
 final _watchFriendRoomProvider = Provider<WatchFriendRoom>(
@@ -168,15 +177,15 @@ class FriendsNotifier extends Notifier<FriendsState> {
   >
   _lastMessageSubs = {};
   final Map<String, StreamSubscription<FriendRoomStatus?>> _roomSubs = {};
+  // Per-room subscription to the server-side read marker (reads/{uid}.lastReadAt).
+  final Map<String, StreamSubscription<DateTime?>> _readSubs = {};
+  // Latest read marker per room, fed by _readSubs; drives unread recompute.
+  final Map<String, DateTime?> _lastReadMap = {};
   // Tracks chatRoomIds whose first lastMessage emission has been processed.
   final Set<String> _initializedRooms = {};
 
-  SharedPreferences? _prefs;
-
-  static String _prefKey(String chatRoomId) => 'friends_last_read_$chatRoomId';
-
-  // Returns null when prefs aren't loaded yet or the key has never been written.
-  int? _lastReadAt(String chatRoomId) => _prefs?.getInt(_prefKey(chatRoomId));
+  // chatRoomId the user is currently viewing; messages arriving in it are read.
+  String? _activeChatRoomId;
 
   bool _disposed = false;
 
@@ -195,47 +204,41 @@ class FriendsNotifier extends Notifier<FriendsState> {
       for (final sub in _lastMessageSubs.values) {
         sub.cancel();
       }
+      for (final sub in _readSubs.values) {
+        sub.cancel();
+      }
       for (final sub in _roomSubs.values) {
         sub.cancel();
       }
     });
 
-    // Start subscriptions only after prefs are loaded so _lastReadAt() is
-    // always accurate when _updateEnrichmentSubscriptions first runs.
-    // SharedPreferences loads from disk in < 1 ms; Firestore streams start
-    // from network/cache, so the delay is imperceptible.
-    SharedPreferences.getInstance().then((prefs) {
-      if (_disposed) return;
-      _prefs = prefs;
+    _friendsSub = ref.read(_watchFriendsProvider)().listen(
+      (friends) {
+        state = state.copyWith(friends: friends);
+        _updateEnrichmentSubscriptions(friends);
+      },
+      onError: (Object e) => state = state.copyWith(
+        error: e.toString().replaceFirst('Exception: ', ''),
+      ),
+    );
 
-      _friendsSub = ref.read(_watchFriendsProvider)().listen(
-        (friends) {
-          state = state.copyWith(friends: friends);
-          _updateEnrichmentSubscriptions(friends);
-        },
-        onError: (Object e) => state = state.copyWith(
-          error: e.toString().replaceFirst('Exception: ', ''),
-        ),
-      );
+    _requestsSub = ref
+        .read(_watchIncomingRequestsProvider)()
+        .listen(
+          (requests) => state = state.copyWith(incomingRequests: requests),
+          onError: (Object e) => state = state.copyWith(
+            error: e.toString().replaceFirst('Exception: ', ''),
+          ),
+        );
 
-      _requestsSub = ref
-          .read(_watchIncomingRequestsProvider)()
-          .listen(
-            (requests) => state = state.copyWith(incomingRequests: requests),
-            onError: (Object e) => state = state.copyWith(
-              error: e.toString().replaceFirst('Exception: ', ''),
-            ),
-          );
-
-      _usersSub = ref
-          .read(_watchAllUsersProvider)()
-          .listen(
-            (users) => state = state.copyWith(allUsers: users),
-            onError: (Object e) => state = state.copyWith(
-              error: e.toString().replaceFirst('Exception: ', ''),
-            ),
-          );
-    });
+    _usersSub = ref
+        .read(_watchAllUsersProvider)()
+        .listen(
+          (users) => state = state.copyWith(allUsers: users),
+          onError: (Object e) => state = state.copyWith(
+            error: e.toString().replaceFirst('Exception: ', ''),
+          ),
+        );
 
     return const FriendsState();
   }
@@ -255,6 +258,8 @@ class FriendsNotifier extends Notifier<FriendsState> {
     );
     for (final roomId in removedRoomIds) {
       _lastMessageSubs.remove(roomId)?.cancel();
+      _readSubs.remove(roomId)?.cancel();
+      _lastReadMap.remove(roomId);
     }
 
     if (removedUids.isNotEmpty || removedRoomIds.isNotEmpty) {
@@ -291,25 +296,15 @@ class FriendsNotifier extends Notifier<FriendsState> {
       }
 
       if (!_lastMessageSubs.containsKey(f.chatRoomId)) {
-        // Query the real unread count from Firestore.
-        // sinceMs = 0 when no lastReadAt is stored (first-ever use or never
-        // explicitly marked as read), which counts ALL messages from the friend.
-        ref
-            .read(_getUnreadMessageCountProvider)(
-              f.chatRoomId,
-              sinceMs: _lastReadAt(f.chatRoomId) ?? 0,
-              friendUid: f.friendUid,
-            )
-            .then((n) {
-              if (_disposed) return;
-              if (n > 0) {
-                state = state.copyWith(
-                  unreadCountMap: Map<String, int>.from(state.unreadCountMap)
-                    ..[f.chatRoomId] = n,
-                );
-              }
-            })
-            .catchError((_) {});
+        // Authoritative unread count: recompute whenever the server-side read
+        // marker changes — initial load, this device marking read, or another
+        // device marking read (cross-device sync).
+        _readSubs[f.chatRoomId] = ref
+            .read(_watchChatReadProvider)(f.chatRoomId)
+            .listen((lastRead) {
+              _lastReadMap[f.chatRoomId] = lastRead;
+              _recomputeUnread(f.chatRoomId, f.friendUid);
+            }, onError: (_) {});
 
         _lastMessageSubs[f.chatRoomId] = ref
             .read(_watchFriendLastMessageProvider)(f.chatRoomId)
@@ -329,7 +324,12 @@ class FriendsNotifier extends Notifier<FriendsState> {
 
               // Only count new in-session messages (subsequent stream events).
               // Startup count is handled by the Firestore query above.
-              if (isSubsequent && fromFriend) {
+              // Skip the chat the user is currently viewing: messages arriving
+              // while it's open are read immediately, so they must not bump the
+              // badge. leaveChat() persists the read marker on exit.
+              if (isSubsequent &&
+                  fromFriend &&
+                  f.chatRoomId != _activeChatRoomId) {
                 final newCount = (state.unreadCountMap[f.chatRoomId] ?? 0) + 1;
                 state = state.copyWith(
                   lastMessageMap: newLastMsg,
@@ -357,6 +357,29 @@ class FriendsNotifier extends Notifier<FriendsState> {
             }, onError: (_) {});
       }
     }
+  }
+
+  // Counts friend messages newer than the read marker. The marker (server
+  // timestamp) and message timestamps share the server clock, so there is no
+  // client skew at the boundary. sinceMs = 0 when no marker exists yet (counts
+  // the trailing run of the friend's messages — see getUnreadMessageCount).
+  void _recomputeUnread(String chatRoomId, String friendUid) {
+    ref
+        .read(_getUnreadMessageCountProvider)(
+          chatRoomId,
+          sinceMs: _lastReadMap[chatRoomId]?.millisecondsSinceEpoch ?? 0,
+          friendUid: friendUid,
+        )
+        .then((n) {
+          if (_disposed) return;
+          if ((state.unreadCountMap[chatRoomId] ?? 0) != n) {
+            state = state.copyWith(
+              unreadCountMap: Map<String, int>.from(state.unreadCountMap)
+                ..[chatRoomId] = n,
+            );
+          }
+        })
+        .catchError((_) {});
   }
 
   Future<void> sendFriendRequest(AppUser toUser) async {
@@ -436,16 +459,39 @@ class FriendsNotifier extends Notifier<FriendsState> {
 
   void clearError() => state = state.copyWith(error: null);
 
-  Future<void> markChatAsRead(String chatRoomId) async {
-    if ((state.unreadCountMap[chatRoomId] ?? 0) == 0) return;
-    final ts = state.lastMessageTimestampMap[chatRoomId];
-    if (ts != null) {
-      _prefs ??= await SharedPreferences.getInstance();
-      await _prefs!.setInt(_prefKey(chatRoomId), ts.millisecondsSinceEpoch);
+  // Called when the user opens a chat. Tracks it as active so messages arriving
+  // while it's open don't bump the badge, and writes the read marker.
+  void setActiveChat(String chatRoomId) {
+    _activeChatRoomId = chatRoomId;
+    markChatRead(chatRoomId);
+  }
+
+  // Called when the user leaves the chat. Writes the read marker again so
+  // messages received during the session count as read, then drops the flag.
+  void clearActiveChat() {
+    final id = _activeChatRoomId;
+    _activeChatRoomId = null;
+    if (id != null) markChatRead(id);
+  }
+
+  // Optimistic, in-memory clear only. Used on a friend-card tap before the chat
+  // screen mounts; the chat screen's setActiveChat writes the marker.
+  void markChatAsRead(String chatRoomId) => _clearBadge(chatRoomId);
+
+  // Writes a server-authoritative read marker (reads/{uid}.lastReadAt via
+  // serverTimestamp) and clears the badge optimistically. watchChatRead echoes
+  // the new marker back, which recomputes the exact count cross-device.
+  void markChatRead(String chatRoomId) {
+    _clearBadge(chatRoomId);
+    ref.read(_setChatReadProvider)(chatRoomId).catchError((_) {});
+  }
+
+  void _clearBadge(String chatRoomId) {
+    if ((state.unreadCountMap[chatRoomId] ?? 0) != 0) {
+      state = state.copyWith(
+        unreadCountMap: Map<String, int>.from(state.unreadCountMap)
+          ..[chatRoomId] = 0,
+      );
     }
-    state = state.copyWith(
-      unreadCountMap: Map<String, int>.from(state.unreadCountMap)
-        ..[chatRoomId] = 0,
-    );
   }
 }
