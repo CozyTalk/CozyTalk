@@ -335,7 +335,10 @@ void main() {
             initial: FriendsState(friends: [_fakeDomainFriend]),
           );
           await tester.pumpWidget(
-            _build(networkInfo: FakeNetworkInfo(isOnline: true), notifier: fake),
+            _build(
+              networkInfo: FakeNetworkInfo(isOnline: true),
+              notifier: fake,
+            ),
           );
           await tester.pump();
 
@@ -349,43 +352,42 @@ void main() {
         },
       );
 
-      testWidgets(
-        'shows block limit dialog when 5 users are already blocked',
-        (tester) async {
-          final ts = DateTime(2024);
-          final fake = _FakeFriendsNotifier(
-            initial: FriendsState(friends: [_fakeDomainFriend]),
-          );
-          final blockFake = _FakeBlockNotifier(
-            initial: BlockState(
-              status: BlockStatus.loaded,
-              blockedUsers: [
-                BlockedUser(uid: 'b1', blockedAt: ts),
-                BlockedUser(uid: 'b2', blockedAt: ts),
-                BlockedUser(uid: 'b3', blockedAt: ts),
-                BlockedUser(uid: 'b4', blockedAt: ts),
-                BlockedUser(uid: 'b5', blockedAt: ts),
-              ],
-            ),
-          );
-          await tester.pumpWidget(
-            _build(
-              networkInfo: FakeNetworkInfo(isOnline: true),
-              notifier: fake,
-              blockNotifier: blockFake,
-            ),
-          );
-          await tester.pump();
+      testWidgets('shows block limit dialog when 5 users are already blocked', (
+        tester,
+      ) async {
+        final ts = DateTime(2024);
+        final fake = _FakeFriendsNotifier(
+          initial: FriendsState(friends: [_fakeDomainFriend]),
+        );
+        final blockFake = _FakeBlockNotifier(
+          initial: BlockState(
+            status: BlockStatus.loaded,
+            blockedUsers: [
+              BlockedUser(uid: 'b1', blockedAt: ts),
+              BlockedUser(uid: 'b2', blockedAt: ts),
+              BlockedUser(uid: 'b3', blockedAt: ts),
+              BlockedUser(uid: 'b4', blockedAt: ts),
+              BlockedUser(uid: 'b5', blockedAt: ts),
+            ],
+          ),
+        );
+        await tester.pumpWidget(
+          _build(
+            networkInfo: FakeNetworkInfo(isOnline: true),
+            notifier: fake,
+            blockNotifier: blockFake,
+          ),
+        );
+        await tester.pump();
 
-          await tester.tap(find.byType(PopupMenuButton<String>));
-          await tester.pumpAndSettle();
+        await tester.tap(find.byType(PopupMenuButton<String>));
+        await tester.pumpAndSettle();
 
-          await tester.tap(find.text('Block'));
-          await tester.pumpAndSettle();
+        await tester.tap(find.text('Block'));
+        await tester.pumpAndSettle();
 
-          expect(find.text('Block limit reached'), findsOneWidget);
-        },
-      );
+        expect(find.text('Block limit reached'), findsOneWidget);
+      });
     });
 
     group('accessibility', () {

@@ -56,9 +56,7 @@ void showBlockLimitDialog({required BuildContext context}) {
             text: '5 users',
             style: TextStyle(fontWeight: FontWeight.bold),
           ),
-          TextSpan(
-            text: '.\nUnblock someone to add a new blocked user.',
-          ),
+          TextSpan(text: '.\nUnblock someone to add a new blocked user.'),
         ],
       ),
       confirmLabel: 'OK',
