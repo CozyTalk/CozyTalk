@@ -41,6 +41,21 @@ class _AdminConsoleScreenState extends ConsumerState<AdminConsoleScreen> {
     });
   }
 
+  void _showErrorToast(String msg) {
+    final overlay = Overlay.of(context);
+    late OverlayEntry entry;
+    entry = OverlayEntry(
+      builder: (_) => Positioned(
+        top: MediaQuery.of(context).padding.top + 16,
+        left: 40,
+        right: 40,
+        child: AdminToast(msg: msg, isError: true),
+      ),
+    );
+    overlay.insert(entry);
+    Future.delayed(const Duration(milliseconds: 2500), entry.remove);
+  }
+
   void _openReport(AdminReport displayReport) async {
     final reportsNotifier = ref.read(feat.adminReportsProvider.notifier);
     final usersState = ref.read(feat.adminUsersProvider);
@@ -65,16 +80,21 @@ class _AdminConsoleScreenState extends ConsumerState<AdminConsoleScreen> {
             if (mounted) _showToast('Report dismissed');
           },
           onBanConfirmed: (reason, duration, note) async {
-            await ref
-                .read(feat.adminUsersProvider.notifier)
-                .banUser(
-                  uid: displayReport.reportedUserId,
-                  reason: reason,
-                  duration: _normalizeDuration(duration),
-                  note: note.trim().isEmpty ? null : note.trim(),
-                  reportId: displayReport.id,
-                );
-            if (mounted) _showToast('User banned');
+            try {
+              await ref
+                  .read(feat.adminUsersProvider.notifier)
+                  .banUser(
+                    uid: displayReport.reportedUserId,
+                    reason: reason,
+                    duration: _normalizeDuration(duration),
+                    note: note.trim().isEmpty ? null : note.trim(),
+                    reportId: displayReport.id,
+                  );
+              if (mounted) _showToast('${displayReport.reported} has been banned');
+            } catch (_) {
+              if (mounted) _showErrorToast('Failed to ban ${displayReport.reported}');
+              rethrow;
+            }
           },
           onGetChatLog: displayReport.chatLogStoragePath != null
               ? () => reportsNotifier.getChatLogUrl(displayReport.id)
@@ -274,7 +294,6 @@ class _AdminConsoleScreenState extends ConsumerState<AdminConsoleScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final dashAsync = ref.watch(feat.adminDashboardProvider);
     final reportsState = ref.watch(feat.adminReportsProvider);
     final usersState = ref.watch(feat.adminUsersProvider);
 
@@ -294,11 +313,11 @@ class _AdminConsoleScreenState extends ConsumerState<AdminConsoleScreen> {
         .map((e) => _toBannedUser(e, reportCount: reportCounts[e.uid] ?? 0))
         .toList();
 
+    final onlineCount = ref.watch(feat.adminOnlineCountProvider).value ?? 0;
     final pendingCount =
-        dashAsync.value?.pendingReports ??
         reportsState.reports.where((r) => r.status == 'pending').length;
-    final onlineCount = dashAsync.value?.onlineUsers ?? 0;
-    final bannedCount = dashAsync.value?.bannedUsers ?? banned.length;
+    final bannedCount = usersState.users.where((u) => u.banned).length;
+    final totalUsers = usersState.users.length;
 
     return Scaffold(
       backgroundColor: AdminC.cream,
@@ -313,6 +332,7 @@ class _AdminConsoleScreenState extends ConsumerState<AdminConsoleScreen> {
                 pendingCount: pendingCount,
                 onlineCount: onlineCount,
                 bannedCount: bannedCount,
+                totalUsers: totalUsers,
               ),
               _buildTabs(pendingCount: pendingCount),
               _buildSearchBar(),
@@ -348,6 +368,7 @@ class _AdminConsoleScreenState extends ConsumerState<AdminConsoleScreen> {
     required int pendingCount,
     required int onlineCount,
     required int bannedCount,
+    required int totalUsers,
   }) {
     return Container(
       decoration: const BoxDecoration(
@@ -463,8 +484,8 @@ class _AdminConsoleScreenState extends ConsumerState<AdminConsoleScreen> {
               const SizedBox(width: 8),
               Expanded(
                 child: _StatCard(
-                  label: 'Users online',
-                  value: '$onlineCount',
+                  label: 'Total users',
+                  value: '$totalUsers',
                   accentColor: const Color(0xFF5BBE6B),
                   icon: Icons.people_rounded,
                 ),
@@ -677,22 +698,28 @@ class _AdminConsoleScreenState extends ConsumerState<AdminConsoleScreen> {
             return;
           }
           if (action != 'ban') return;
-          showModalBottomSheet(
+          showDialog(
             context: context,
-            isScrollControlled: true,
+            barrierColor: Colors.black.withValues(alpha: 0.35),
+            barrierDismissible: false,
             builder: (_) => AdminBanModal(
               username: entity.displayName,
               onClose: () => Navigator.pop(context),
               onConfirm: (_, reason, duration) async {
-                await ref
-                    .read(feat.adminUsersProvider.notifier)
-                    .banUser(
-                      uid: entity.uid,
-                      reason: reason,
-                      duration: _normalizeDuration(duration),
-                      reportId: null,
-                    );
-                if (mounted) _showToast('User banned');
+                try {
+                  await ref
+                      .read(feat.adminUsersProvider.notifier)
+                      .banUser(
+                        uid: entity.uid,
+                        reason: reason,
+                        duration: _normalizeDuration(duration),
+                        reportId: null,
+                      );
+                  if (mounted) _showToast('${entity.displayName} has been banned');
+                } catch (_) {
+                  if (mounted) _showErrorToast('Failed to ban ${entity.displayName}');
+                  rethrow;
+                }
               },
             ),
           );
@@ -715,12 +742,17 @@ class _AdminConsoleScreenState extends ConsumerState<AdminConsoleScreen> {
                   reportCount: reportCounts[entity.uid] ?? 0,
                 ),
                 onUnban: (subject) async {
-                  await ref
-                      .read(feat.adminUsersProvider.notifier)
-                      .unbanUser(subject.uid);
-                  if (mounted) {
-                    Navigator.pop(context);
-                    _showToast('User unbanned');
+                  try {
+                    await ref
+                        .read(feat.adminUsersProvider.notifier)
+                        .unbanUser(subject.uid);
+                    if (mounted) {
+                      Navigator.pop(context);
+                      _showToast('${subject.name} has been unbanned');
+                    }
+                  } catch (_) {
+                    if (mounted) _showErrorToast('Failed to unban ${subject.name}');
+                    rethrow;
                   }
                 },
               ),

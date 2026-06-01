@@ -1,27 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mobile/features/admin/domain/entities/admin_dashboard_stats.dart';
 import 'package:mobile/features/admin/domain/entities/admin_report.dart';
 import 'package:mobile/features/admin/domain/entities/admin_user.dart';
 import 'package:mobile/features/admin/presentation/providers/admin_provider.dart';
 import 'package:mobile/screens/admin_console_screen.dart';
 
 // ─── Fake notifiers ─────────────────────────────────────────────────────────
-
-class _FakeDashboardNotifier extends AdminDashboardNotifier {
-  final AdminDashboardStats _stats;
-  _FakeDashboardNotifier([
-    this._stats = const AdminDashboardStats(
-      pendingReports: 0,
-      onlineUsers: 0,
-      bannedUsers: 0,
-    ),
-  ]);
-
-  @override
-  Future<AdminDashboardStats> build() async => _stats;
-}
 
 class _FakeReportsNotifier extends AdminReportsNotifier {
   final AdminReportsState _initial;
@@ -107,15 +92,12 @@ AdminUser _makeUser(String uid, {bool banned = false, bool online = false}) =>
     );
 
 Widget _buildScreen({
-  _FakeDashboardNotifier? dashboard,
   _FakeReportsNotifier? reports,
   _FakeUsersNotifier? users,
 }) {
   return ProviderScope(
     overrides: [
-      adminDashboardProvider.overrideWith(
-        () => dashboard ?? _FakeDashboardNotifier(),
-      ),
+      adminOnlineCountProvider.overrideWith((ref) => Stream.value(0)),
       adminReportsProvider.overrideWith(
         () => reports ?? _FakeReportsNotifier(),
       ),
@@ -159,30 +141,19 @@ void main() {
         ),
       );
       await tester.pump();
-      // Should render without error
       expect(find.byType(AdminConsoleScreen), findsOneWidget);
     });
 
     testWidgets('renders pending report count in header', (tester) async {
-      final dashboard = _FakeDashboardNotifier(
-        const AdminDashboardStats(
-          pendingReports: 3,
-          onlineUsers: 5,
-          bannedUsers: 1,
-        ),
-      );
       final reports = _FakeReportsNotifier(
         AdminReportsState(
           status: AdminReportsStatus.loaded,
           reports: [_makeReport('r1'), _makeReport('r2'), _makeReport('r3')],
         ),
       );
-      await tester.pumpWidget(
-        _buildScreen(dashboard: dashboard, reports: reports),
-      );
+      await tester.pumpWidget(_buildScreen(reports: reports));
       await tester.pumpAndSettle();
 
-      // Header stats and tab badge show pending count
       expect(find.text('3'), findsWidgets);
     });
 
@@ -196,12 +167,10 @@ void main() {
       await tester.pumpWidget(_buildScreen(users: users));
       await tester.pump();
 
-      // Tap the Users tab
       final usersTabs = find.text('Users');
       await tester.tap(usersTabs.first);
       await tester.pumpAndSettle();
 
-      // After switching to Users tab, users are rendered
       expect(find.text('User u1'), findsOneWidget);
       expect(find.text('User u2'), findsOneWidget);
     });
@@ -216,7 +185,6 @@ void main() {
       await tester.pumpWidget(_buildScreen(users: users));
       await tester.pump();
 
-      // Tap Banned tab
       final bannedTabs = find.text('Banned');
       await tester.tap(bannedTabs.first);
       await tester.pumpAndSettle();
@@ -234,11 +202,9 @@ void main() {
       await tester.pumpWidget(_buildScreen(users: users));
       await tester.pump();
 
-      // Switch to Users tab
       await tester.tap(find.text('Users').first);
       await tester.pumpAndSettle();
 
-      // Type in search
       await tester.enterText(find.byType(TextField), 'alice');
       await tester.pump();
 

@@ -4,16 +4,15 @@ import 'package:mobile/features/admin/data/models/admin_report_model.dart';
 import 'package:mobile/features/admin/data/models/admin_user_model.dart';
 import 'package:mobile/features/admin/data/repositories/admin_repository_impl.dart';
 import 'package:mobile/features/admin/domain/entities/admin_blocked_entry.dart';
-import 'package:mobile/features/admin/domain/entities/admin_dashboard_stats.dart';
 
 class _FakeAdminDatasource implements AdminDatasource {
-  AdminDashboardStats? returnStats;
+  int returnOnlineCount = 0;
   List<AdminReportModel>? returnReports;
   String? returnChatLogUrl;
   List<AdminUserModel>? returnUsers;
   Exception? error;
 
-  int getDashboardStatsCount = 0;
+  int watchOnlineCountCount = 0;
   int watchReportsCount = 0;
   int resolveReportCount = 0;
   int getChatLogUrlCount = 0;
@@ -31,10 +30,10 @@ class _FakeAdminDatasource implements AdminDatasource {
   String? lastReportIdForBan;
 
   @override
-  Future<AdminDashboardStats> getDashboardStats() async {
-    getDashboardStatsCount++;
-    if (error != null) throw error!;
-    return returnStats!;
+  Stream<int> watchOnlineCount() {
+    watchOnlineCountCount++;
+    if (error != null) return Stream.error(error!);
+    return Stream.value(returnOnlineCount);
   }
 
   @override
@@ -132,22 +131,20 @@ void main() {
   });
 
   group('AdminRepositoryImpl', () {
-    group('getDashboardStats', () {
-      test('delegates to datasource and returns stats', () async {
-        datasource.returnStats = const AdminDashboardStats(
-          pendingReports: 2,
-          onlineUsers: 5,
-          bannedUsers: 1,
-        );
-        final result = await repository.getDashboardStats();
-        expect(datasource.getDashboardStatsCount, 1);
-        expect(result.pendingReports, 2);
-        expect(result.onlineUsers, 5);
+    group('watchOnlineCount', () {
+      test('delegates to datasource and returns stream', () async {
+        datasource.returnOnlineCount = 5;
+        final result = await repository.watchOnlineCount().first;
+        expect(datasource.watchOnlineCountCount, 1);
+        expect(result, 5);
       });
 
-      test('propagates datasource exception', () {
+      test('propagates datasource error', () async {
         datasource.error = Exception('network error');
-        expect(() => repository.getDashboardStats(), throwsA(isA<Exception>()));
+        expect(
+          repository.watchOnlineCount().first,
+          throwsA(isA<Exception>()),
+        );
       });
     });
 

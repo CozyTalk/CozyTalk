@@ -305,6 +305,7 @@ After the `|| isAdmin()` rule change, Flutter admin screens read these directly:
 
 | Screen | Query |
 |---|---|
+| Dashboard (online count) | `rooms/` where `status == 'active'` (streams `users[]` arrays to count unique UIDs; requires `isAdmin()` bypass on `rooms` read rule) |
 | Reports tab | `reports/` ordered by `createdAt desc`, optional `where status == filter` |
 | Report detail | `reports/{id}` + `users/{reporterId}` + `users/{reportedUserId}` |
 | Users tab | `users/` ordered by `createdAt desc`, pageSize 20 |

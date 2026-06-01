@@ -1,34 +1,27 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mobile/features/admin/domain/entities/admin_dashboard_stats.dart';
-import 'package:mobile/features/admin/domain/usecases/get_dashboard_stats.dart';
+import 'package:mobile/features/admin/domain/usecases/watch_online_count.dart';
 import '../shared_fakes.dart';
 
 void main() {
   late FakeAdminRepository repo;
-  late GetDashboardStats usecase;
+  late WatchOnlineCount usecase;
 
   setUp(() {
     repo = FakeAdminRepository();
-    usecase = GetDashboardStats(repo);
+    usecase = WatchOnlineCount(repo);
   });
 
-  group('GetDashboardStats', () {
-    test('calls repository and returns stats', () async {
-      repo.returnStats = const AdminDashboardStats(
-        pendingReports: 4,
-        onlineUsers: 10,
-        bannedUsers: 2,
-      );
-      final result = await usecase();
-      expect(repo.getDashboardStatsCount, 1);
-      expect(result.pendingReports, 4);
-      expect(result.onlineUsers, 10);
-      expect(result.bannedUsers, 2);
+  group('WatchOnlineCount', () {
+    test('calls repository and returns stream', () async {
+      repo.returnOnlineCount = 7;
+      final result = await usecase().first;
+      expect(repo.watchOnlineCountCount, 1);
+      expect(result, 7);
     });
 
-    test('propagates repository exception', () {
+    test('propagates repository error', () async {
       repo.error = Exception('network error');
-      expect(() => usecase(), throwsA(isA<Exception>()));
+      expect(usecase().first, throwsA(isA<Exception>()));
     });
   });
 }

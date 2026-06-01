@@ -1,10 +1,9 @@
 import '../entities/admin_blocked_entry.dart';
-import '../entities/admin_dashboard_stats.dart';
 import '../entities/admin_report.dart';
 import '../entities/admin_user.dart';
 
 abstract class AdminRepository {
-  Future<AdminDashboardStats> getDashboardStats();
+  Stream<int> watchOnlineCount();
   Stream<List<AdminReport>> watchReports();
   Future<void> resolveReport(
     String reportId, {

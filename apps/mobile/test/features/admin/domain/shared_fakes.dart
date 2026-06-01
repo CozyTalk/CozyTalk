@@ -1,17 +1,16 @@
 import 'package:mobile/features/admin/domain/entities/admin_blocked_entry.dart';
-import 'package:mobile/features/admin/domain/entities/admin_dashboard_stats.dart';
 import 'package:mobile/features/admin/domain/entities/admin_report.dart';
 import 'package:mobile/features/admin/domain/entities/admin_user.dart';
 import 'package:mobile/features/admin/domain/repositories/admin_repository.dart';
 
 class FakeAdminRepository implements AdminRepository {
-  AdminDashboardStats? returnStats;
+  int returnOnlineCount = 0;
   List<AdminReport>? returnReports;
   String? returnChatLogUrl;
   List<AdminUser>? returnUsers;
   Exception? error;
 
-  int getDashboardStatsCount = 0;
+  int watchOnlineCountCount = 0;
   int watchReportsCount = 0;
   int resolveReportCount = 0;
   int getChatLogUrlCount = 0;
@@ -29,10 +28,10 @@ class FakeAdminRepository implements AdminRepository {
   String? lastReportIdForBan;
 
   @override
-  Future<AdminDashboardStats> getDashboardStats() async {
-    getDashboardStatsCount++;
-    if (error != null) throw error!;
-    return returnStats!;
+  Stream<int> watchOnlineCount() {
+    watchOnlineCountCount++;
+    if (error != null) return Stream.error(error!);
+    return Stream.value(returnOnlineCount);
   }
 
   @override
