@@ -70,6 +70,13 @@ class _FakeDatasource implements FriendsDatasource {
   }) async {}
 
   @override
+  Future<int> getUnreadMessageCount(
+    String chatRoomId, {
+    required int sinceMs,
+    required String friendUid,
+  }) async => 0;
+
+  @override
   Future<void> setFriendTyping(String chatRoomId, bool isTyping) async {}
 
   @override

@@ -32,6 +32,11 @@ abstract class FriendsRepository {
     required String senderDisplayName,
   });
   Future<List<AppUser>> getUsersByIds(List<String> uids);
+  Future<int> getUnreadMessageCount(
+    String chatRoomId, {
+    required int sinceMs,
+    required String friendUid,
+  });
   Future<void> setFriendTyping(String chatRoomId, bool isTyping);
   Stream<bool> watchFriendTyping(String chatRoomId);
 }

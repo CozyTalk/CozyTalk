@@ -16,6 +16,7 @@ import '../../domain/entities/friend_room_status.dart';
 import '../../domain/repositories/friends_repository.dart';
 import '../../domain/usecases/accept_friend_request.dart';
 import '../../domain/usecases/decline_friend_request.dart';
+import '../../domain/usecases/get_unread_message_count.dart';
 import '../../domain/usecases/get_users_by_ids.dart';
 import '../../domain/usecases/remove_friend.dart';
 import '../../domain/usecases/send_friend_request.dart';
@@ -72,6 +73,10 @@ final _watchFriendPresenceProvider = Provider<WatchFriendPresence>(
 
 final _watchFriendLastMessageProvider = Provider<WatchFriendLastMessage>(
   (ref) => WatchFriendLastMessage(ref.watch(friendsRepositoryProvider)),
+);
+
+final _getUnreadMessageCountProvider = Provider<GetUnreadMessageCount>(
+  (ref) => GetUnreadMessageCount(ref.watch(friendsRepositoryProvider)),
 );
 
 final _watchFriendRoomProvider = Provider<WatchFriendRoom>(
@@ -275,6 +280,27 @@ class FriendsNotifier extends Notifier<FriendsState> {
       }
 
       if (!_lastMessageSubs.containsKey(f.chatRoomId)) {
+        // On startup, query the real unread count from Firestore if we have a
+        // stored lastReadAt marker, then write a fresh marker so the count
+        // survives the next restart too.
+        final lastReadAt = _lastReadAt(f.chatRoomId);
+        if (lastReadAt != null) {
+          ref
+              .read(_getUnreadMessageCountProvider)(
+                f.chatRoomId,
+                sinceMs: lastReadAt,
+                friendUid: f.friendUid,
+              )
+              .then((n) {
+                if (n > 0) {
+                  state = state.copyWith(
+                    unreadCountMap: Map<String, int>.from(state.unreadCountMap)
+                      ..[f.chatRoomId] = n,
+                  );
+                }
+              });
+        }
+
         _lastMessageSubs[f.chatRoomId] = ref
             .read(_watchFriendLastMessageProvider)(f.chatRoomId)
             .listen((event) {
@@ -291,24 +317,14 @@ class FriendsNotifier extends Notifier<FriendsState> {
                   event.senderId.isNotEmpty &&
                   event.senderId != currentUid;
 
-              // On the very first emission, compare the message timestamp
-              // against the persisted lastReadAt to restore unread state.
-              final lastReadAt = _lastReadAt(f.chatRoomId);
-              final isInitiallyUnread =
-                  !isSubsequent &&
-                  fromFriend &&
-                  event.timestamp != null &&
-                  (lastReadAt == null ||
-                      event.timestamp!.millisecondsSinceEpoch > lastReadAt);
-
-              final isFromFriend = isSubsequent && fromFriend;
-
-              if (isFromFriend || isInitiallyUnread) {
-                // Persist an unread marker (one ms before this message) so the
-                // badge survives restart even if the user never calls markChatAsRead.
+              // Only count new in-session messages (subsequent stream events).
+              // The initial unread count is loaded via the Firestore query above.
+              if (isSubsequent && fromFriend) {
+                // Persist unread marker so the badge survives the next restart.
                 if (event.timestamp != null) {
                   final marker = event.timestamp!.millisecondsSinceEpoch - 1;
-                  if (lastReadAt == null || marker > lastReadAt) {
+                  final existing = _lastReadAt(f.chatRoomId);
+                  if (existing == null || marker > existing) {
                     _prefs?.setInt(_prefKey(f.chatRoomId), marker);
                   }
                 }

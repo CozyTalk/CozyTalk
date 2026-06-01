@@ -39,6 +39,11 @@ abstract class FriendsDatasource {
     required String senderDisplayName,
   });
   Future<List<AppUser>> getUsersByIds(List<String> uids);
+  Future<int> getUnreadMessageCount(
+    String chatRoomId, {
+    required int sinceMs,
+    required String friendUid,
+  });
   Future<void> setFriendTyping(String chatRoomId, bool isTyping);
   Stream<bool> watchFriendTyping(String chatRoomId);
 }
@@ -274,6 +279,25 @@ class FriendsDatasourceImpl implements FriendsDatasource {
         displayName: data['displayName'] as String? ?? '',
       );
     }).toList();
+  }
+
+  @override
+  Future<int> getUnreadMessageCount(
+    String chatRoomId, {
+    required int sinceMs,
+    required String friendUid,
+  }) async {
+    final snap = await _firestore
+        .collection('friend_messages')
+        .doc(chatRoomId)
+        .collection('messages')
+        .where(
+          'timestamp',
+          isGreaterThan: Timestamp.fromMillisecondsSinceEpoch(sinceMs),
+        )
+        .where('senderId', isEqualTo: friendUid)
+        .get();
+    return snap.docs.length;
   }
 
   @override
