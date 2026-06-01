@@ -195,12 +195,9 @@ class AdminDatasourceImpl implements AdminDatasource {
                   .map((e) => Map<String, dynamic>.from(e as Map))
                   .toList();
             }
-            return AdminUserModel.fromJson(
-              data,
-            ).copyWith(
+            return AdminUserModel.fromJson(data).copyWith(
               uid: doc.id,
-              online:
-                  _roomUids.contains(doc.id) || _poolUids.contains(doc.id),
+              online: _roomUids.contains(doc.id) || _poolUids.contains(doc.id),
             );
           }).toList();
         });
