@@ -415,6 +415,8 @@ Presence, typing, and nameQueue data are removed by `leaveRoom` CF on explicit l
 
 **Jest vs Flutter integration:** Jest tests run on the host (no Android clock skew) so timing bounds are tight (≤35s padding). Flutter integration tests use ≤60s bounds to account for Android emulator clock offset.
 
+**Golden tests:** widget golden tests under `test/widgets/*_golden_test.dart` install a tolerant comparator via `useGoldenTolerance(...)` (`test/widgets/golden_tolerance.dart`) that allows a sub-1% pixel diff. Fonts/anti-aliasing render slightly differently across macOS (local) and Linux (CI), so an exact comparison would fail on whichever platform did not generate the committed baseline; the tolerance lets one Linux baseline pass on both while still catching real visual regressions. Do not regenerate baselines on a non-CI platform.
+
 ---
 
 ## The Do-Not-Do List
