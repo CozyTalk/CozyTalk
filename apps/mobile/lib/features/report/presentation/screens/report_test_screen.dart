@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'report_sheet.dart';
+import '../../../../dialogs/report_dialog.dart';
 
 class ReportTestScreen extends StatefulWidget {
   const ReportTestScreen({super.key});
@@ -10,10 +10,8 @@ class ReportTestScreen extends StatefulWidget {
 }
 
 class _ReportTestScreenState extends State<ReportTestScreen> {
-  final _sessionIdController = TextEditingController(text: 'test-session-001');
-  final _reportedUserIdController = TextEditingController(
-    text: 'test-user-abc',
-  );
+  final _sessionIdController = TextEditingController();
+  final _reportedUserIdController = TextEditingController();
 
   @override
   void dispose() {
@@ -34,7 +32,7 @@ class _ReportTestScreenState extends State<ReportTestScreen> {
             TextField(
               controller: _sessionIdController,
               decoration: const InputDecoration(
-                labelText: 'Session ID',
+                labelText: 'Session ID (must exist in Firestore)',
                 border: OutlineInputBorder(),
               ),
             ),
@@ -48,9 +46,9 @@ class _ReportTestScreenState extends State<ReportTestScreen> {
             ),
             const SizedBox(height: 32),
             FilledButton.icon(
-              onPressed: _openReportSheet,
+              onPressed: _openReportDialog,
               icon: const Icon(Icons.flag_outlined),
-              label: const Text('Open Report Sheet'),
+              label: const Text('Open Report Dialog'),
             ),
           ],
         ),
@@ -58,16 +56,14 @@ class _ReportTestScreenState extends State<ReportTestScreen> {
     );
   }
 
-  void _openReportSheet() {
+  void _openReportDialog() {
     final sessionId = _sessionIdController.text.trim();
     final reportedUserId = _reportedUserIdController.text.trim();
     if (sessionId.isEmpty || reportedUserId.isEmpty) return;
-    showModalBottomSheet<void>(
+    showDialog<void>(
       context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
       builder: (_) =>
-          ReportSheet(sessionId: sessionId, reportedUserId: reportedUserId),
+          ReportDialog(sessionId: sessionId, reportedUserId: reportedUserId),
     );
   }
 }

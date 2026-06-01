@@ -1,0 +1,12 @@
+[
+  {
+    "origin": [
+      "http://localhost:*",
+      "https://cozytalk-5d984.web.app",
+      "https://cozytalk-5d984.firebaseapp.com"
+    ],
+    "method": ["GET", "POST", "PUT", "DELETE", "HEAD"],
+    "responseHeader": ["Content-Type", "Authorization"],
+    "maxAgeSeconds": 3600
+  }
+]

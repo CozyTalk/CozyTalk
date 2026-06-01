@@ -14,7 +14,7 @@ import '../features/jukebox/presentation/providers/jukebox_provider.dart';
 import '../features/matchmaking/domain/entities/matchmaking_status.dart';
 import '../features/matchmaking/presentation/providers/matchmaking_provider.dart';
 import '../features/profile/presentation/providers/profile_provider.dart';
-import '../features/report/presentation/screens/report_sheet.dart';
+import '../dialogs/report_dialog.dart';
 import '../theme/app_colors.dart';
 import '../dialogs/leave_room_dialog.dart';
 import '../dialogs/song_dialog.dart';
@@ -264,11 +264,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
     final sessionId = ref.read(matchmakingNotifierProvider).roomId ?? '';
     final reportedUid = _partnerUid ?? '';
     if (sessionId.isEmpty || reportedUid.isEmpty) return;
-    showModalBottomSheet<void>(
+    showDialog<void>(
       context: context,
-      isScrollControlled: true,
       builder: (_) =>
-          ReportSheet(sessionId: sessionId, reportedUserId: reportedUid),
+          ReportDialog(sessionId: sessionId, reportedUserId: reportedUid),
     );
   }
 
