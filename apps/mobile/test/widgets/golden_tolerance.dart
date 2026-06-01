@@ -37,8 +37,11 @@ class _TolerantGoldenFileComparator extends LocalFileComparator {
       result.dispose();
       return true;
     }
-    final error = await generateFailureOutput(result, golden, basedir);
-    result.dispose();
-    throw FlutterError(error);
+    try {
+      final error = await generateFailureOutput(result, golden, basedir);
+      throw FlutterError(error);
+    } finally {
+      result.dispose();
+    }
   }
 }
