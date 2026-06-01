@@ -301,13 +301,15 @@ class FriendsNotifier extends Notifier<FriendsState> {
               friendUid: f.friendUid,
             )
             .then((n) {
+              if (_disposed) return;
               if (n > 0) {
                 state = state.copyWith(
                   unreadCountMap: Map<String, int>.from(state.unreadCountMap)
                     ..[f.chatRoomId] = n,
                 );
               }
-            });
+            })
+            .catchError((_) {});
 
         _lastMessageSubs[f.chatRoomId] = ref
             .read(_watchFriendLastMessageProvider)(f.chatRoomId)

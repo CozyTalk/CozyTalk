@@ -287,6 +287,8 @@ class FriendsDatasourceImpl implements FriendsDatasource {
     required int sinceMs,
     required String friendUid,
   }) async {
+    // Single-field inequality avoids the composite index requirement.
+    // Filter by senderId in Dart after fetching.
     final snap = await _firestore
         .collection('friend_messages')
         .doc(chatRoomId)
@@ -295,9 +297,8 @@ class FriendsDatasourceImpl implements FriendsDatasource {
           'timestamp',
           isGreaterThan: Timestamp.fromMillisecondsSinceEpoch(sinceMs),
         )
-        .where('senderId', isEqualTo: friendUid)
         .get();
-    return snap.docs.length;
+    return snap.docs.where((d) => d.data()['senderId'] == friendUid).length;
   }
 
   @override
