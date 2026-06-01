@@ -40,9 +40,9 @@ class FriendsRepositoryImpl implements FriendsRepository {
       _datasource.watchFriendPresence(friendUid);
 
   @override
-  Stream<({String text, DateTime? timestamp})> watchFriendLastMessage(
-    String chatRoomId,
-  ) => _datasource.watchFriendLastMessage(chatRoomId);
+  Stream<({String text, DateTime? timestamp, String senderId})>
+  watchFriendLastMessage(String chatRoomId) =>
+      _datasource.watchFriendLastMessage(chatRoomId);
 
   @override
   Stream<FriendRoomStatus?> watchFriendRoom(String friendUid) =>
