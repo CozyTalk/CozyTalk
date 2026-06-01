@@ -197,7 +197,11 @@ class AdminDatasourceImpl implements AdminDatasource {
             }
             return AdminUserModel.fromJson(
               data,
-            ).copyWith(uid: doc.id, online: _roomUids.contains(doc.id));
+            ).copyWith(
+              uid: doc.id,
+              online:
+                  _roomUids.contains(doc.id) || _poolUids.contains(doc.id),
+            );
           }).toList();
         });
   }
