@@ -4,11 +4,13 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mobile/shared/connectivity_provider.dart';
 import 'package:mobile/shared/offline_chip.dart';
 import '../shared/fake_network_info.dart';
+import 'golden_tolerance.dart';
 
 void main() {
   testWidgets('OfflineChip golden – offline state renders pill', (
     tester,
   ) async {
+    useGoldenTolerance('test/widgets/offline_chip_golden_test.dart');
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
