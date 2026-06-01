@@ -21,7 +21,6 @@ class BlockedScreen extends ConsumerStatefulWidget {
 }
 
 class _BlockedScreenState extends ConsumerState<BlockedScreen> {
-  static const int _maxBlocked = 5;
   final Map<String, String?> _notes = {};
 
   @override
@@ -43,20 +42,6 @@ class _BlockedScreenState extends ConsumerState<BlockedScreen> {
       body: Column(
         children: [
           _buildCustomAppBar(context),
-          Padding(
-            padding: const EdgeInsets.only(top: 20, right: 30, bottom: 10),
-            child: Align(
-              alignment: Alignment.centerRight,
-              child: Text(
-                '${blocked.length}/$_maxBlocked',
-                style: Theme.of(context).textTheme.bodyLarge!.copyWith(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
-                  color: const Color(0xFF757575),
-                ),
-              ),
-            ),
-          ),
           Expanded(
             child: blocked.isEmpty
                 ? Center(

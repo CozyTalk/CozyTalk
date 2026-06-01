@@ -100,18 +100,6 @@ void main() {
       expect(find.text('Blocked'), findsOneWidget);
     });
 
-    testWidgets('shows blocked user count', (tester) async {
-      final blockFake = _FakeBlockNotifier(
-        initial: BlockState(
-          status: BlockStatus.loaded,
-          blockedUsers: [_makeUser('uid-1'), _makeUser('uid-2')],
-        ),
-      );
-      await tester.pumpWidget(_buildScreen(blockFake: blockFake));
-      await tester.pump();
-      expect(find.text('2/5'), findsOneWidget);
-    });
-
     testWidgets('shows an Unblock button for each blocked user', (
       tester,
     ) async {
