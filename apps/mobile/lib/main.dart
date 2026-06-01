@@ -192,11 +192,15 @@ class _MainUIAuthRouter extends ConsumerWidget {
     final authState = ref.watch(authNotifierProvider);
     final status = authState.status;
     if (status == AuthStatus.authenticated) {
+      final uid = authState.user?.uid ?? '';
       final email = (authState.user?.email ?? '').toLowerCase();
-      if (email.isNotEmpty && email.endsWith('@cozytalk.com')) {
-        return const AdminConsoleScreen();
-      }
-      return const HomeScreen();
+      final role = uid.isNotEmpty
+          ? (ref.watch(userRoleProvider(uid)).asData?.value ?? '')
+          : '';
+      final isAdmin =
+          role == 'admin' ||
+          (email.isNotEmpty && email.endsWith('@cozytalk.com'));
+      return isAdmin ? const AdminConsoleScreen() : const HomeScreen();
     }
     return switch (status) {
       AuthStatus.idle => const Scaffold(

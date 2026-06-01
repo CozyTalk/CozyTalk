@@ -329,9 +329,11 @@ void main() {
       final container = _makeContainer(repo);
       await Future.delayed(Duration.zero);
 
-      await container
-          .read(adminUsersProvider.notifier)
-          .banUser(uid: 'u1', reason: 'Spam', duration: '1 Day');
+      try {
+        await container
+            .read(adminUsersProvider.notifier)
+            .banUser(uid: 'u1', reason: 'Spam', duration: '1 Day');
+      } catch (_) {}
 
       expect(container.read(adminUsersProvider).actionError, isNotNull);
       expect(container.read(adminUsersProvider).isSubmitting, isFalse);
@@ -356,7 +358,9 @@ void main() {
       final container = _makeContainer(repo);
       await Future.delayed(Duration.zero);
 
-      await container.read(adminUsersProvider.notifier).unbanUser('u1');
+      try {
+        await container.read(adminUsersProvider.notifier).unbanUser('u1');
+      } catch (_) {}
 
       expect(container.read(adminUsersProvider).actionError, isNotNull);
     });

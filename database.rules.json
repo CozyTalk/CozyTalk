@@ -73,8 +73,9 @@
       }
     },
     "pool_presence": {
+      ".read": "auth != null && auth.token.email != null && auth.token.email.endsWith('@cozytalk.com')",
       "$uid": {
-        ".read": "auth != null && auth.uid == $uid",
+        ".read": "auth != null && (auth.uid == $uid || root.child('friends').child(auth.uid).child($uid).exists())",
         ".write": "auth != null && auth.uid == $uid",
         ".validate": "newData.isBoolean()"
       }

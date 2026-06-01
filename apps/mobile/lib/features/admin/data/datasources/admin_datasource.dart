@@ -1,15 +1,17 @@
 import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import 'package:cloud_functions/cloud_functions.dart';
+import 'package:firebase_database/firebase_database.dart';
 
 import '../../domain/entities/admin_blocked_entry.dart';
-import '../../domain/entities/admin_dashboard_stats.dart';
 import '../models/admin_report_model.dart';
 import '../models/admin_user_model.dart';
 
 abstract class AdminDatasource {
-  Future<AdminDashboardStats> getDashboardStats();
+  Stream<int> watchOnlineCount();
+  Stream<int> watchPendingCount();
   Stream<List<AdminReportModel>> watchReports();
   Future<void> resolveReport(
     String reportId, {
@@ -33,34 +35,72 @@ abstract class AdminDatasource {
 class AdminDatasourceImpl implements AdminDatasource {
   final FirebaseFirestore _firestore;
   final FirebaseFunctions _functions;
-  Set<String> _onlineUids = {};
+  final FirebaseDatabase _database;
+  Set<String> _roomUids = {};
+  Set<String> _poolUids = {};
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _roomsSub;
+  StreamSubscription<DatabaseEvent>? _poolSub;
+  final _onlineCountController = StreamController<int>.broadcast();
 
-  AdminDatasourceImpl(this._firestore, this._functions) {
+  AdminDatasourceImpl(this._firestore, this._functions, this._database);
+
+  void _ensureSubscribed() {
+    if (_roomsSub != null) return;
     _roomsSub = _firestore
         .collection('rooms')
         .where('status', isEqualTo: 'active')
         .snapshots()
-        .listen((snap) {
-          _onlineUids = {
-            for (final doc in snap.docs)
-              ...(doc.data()['users'] as List? ?? []).cast<String>(),
-          };
-        });
+        .listen(
+          (snap) {
+            _roomUids = {
+              for (final doc in snap.docs)
+                ...(doc.data()['users'] as List? ?? []).cast<String>(),
+            };
+            _emitOnlineCount();
+          },
+          onError: (Object e) =>
+              debugPrint('[AdminDatasource] rooms stream error: $e'),
+        );
+
+    _poolSub = _database.ref('pool_presence').onValue.listen(
+      (event) {
+        if (event.snapshot.exists && event.snapshot.value != null) {
+          _poolUids = (Map<String, dynamic>.from(
+            event.snapshot.value as Map,
+          )).keys.toSet();
+        } else {
+          _poolUids = {};
+        }
+        _emitOnlineCount();
+      },
+      onError: (Object e) =>
+          debugPrint('[AdminDatasource] pool_presence stream error: $e'),
+    );
+  }
+
+  void _emitOnlineCount() =>
+      _onlineCountController.add(_roomUids.union(_poolUids).length);
+
+  @override
+  Stream<int> watchOnlineCount() {
+    _ensureSubscribed();
+    return _onlineCountController.stream;
   }
 
   @override
-  void dispose() => _roomsSub?.cancel();
+  Stream<int> watchPendingCount() {
+    return _firestore
+        .collection('reports')
+        .where('status', isEqualTo: 'pending')
+        .snapshots()
+        .map((snap) => snap.size);
+  }
 
   @override
-  Future<AdminDashboardStats> getDashboardStats() async {
-    final result = await _functions.httpsCallable('adminGetDashboard').call();
-    final data = Map<String, dynamic>.from(result.data as Map);
-    return AdminDashboardStats(
-      pendingReports: data['pendingReports'] as int,
-      onlineUsers: data['onlineUsers'] as int,
-      bannedUsers: data['bannedUsers'] as int,
-    );
+  void dispose() {
+    _roomsSub?.cancel();
+    _poolSub?.cancel();
+    _onlineCountController.close();
   }
 
   @override
@@ -89,20 +129,30 @@ class AdminDatasourceImpl implements AdminDatasource {
               }
             }
           }
-          return snap.docs.map((doc) {
-            final data = Map<String, dynamic>.from(doc.data());
-            if (data['outcome'] is Map) {
-              data['outcome'] = Map<String, dynamic>.from(
-                data['outcome'] as Map,
+          final result = <AdminReportModel>[];
+          for (final doc in snap.docs) {
+            try {
+              final data = Map<String, dynamic>.from(doc.data());
+              if (data['outcome'] is Map) {
+                data['outcome'] = Map<String, dynamic>.from(
+                  data['outcome'] as Map,
+                );
+              }
+              result.add(
+                AdminReportModel.fromJson(data).copyWith(
+                  id: doc.id,
+                  reporterName: nameMap[data['reporterId']] ?? 'Unknown',
+                  reportedName: nameMap[data['reportedUserId']] ?? 'Unknown',
+                  reportedInterest: interestMap[data['reportedUserId']] ?? '',
+                ),
+              );
+            } catch (e) {
+              debugPrint(
+                '[AdminDatasource] skipping malformed report ${doc.id}: $e',
               );
             }
-            return AdminReportModel.fromJson(data).copyWith(
-              id: doc.id,
-              reporterName: nameMap[data['reporterId']] ?? 'Unknown',
-              reportedName: nameMap[data['reportedUserId']] ?? 'Unknown',
-              reportedInterest: interestMap[data['reportedUserId']] ?? '',
-            );
-          }).toList();
+          }
+          return result;
         });
   }
 
@@ -145,9 +195,10 @@ class AdminDatasourceImpl implements AdminDatasource {
                   .map((e) => Map<String, dynamic>.from(e as Map))
                   .toList();
             }
-            return AdminUserModel.fromJson(
-              data,
-            ).copyWith(uid: doc.id, online: _onlineUids.contains(doc.id));
+            return AdminUserModel.fromJson(data).copyWith(
+              uid: doc.id,
+              online: _roomUids.contains(doc.id) || _poolUids.contains(doc.id),
+            );
           }).toList();
         });
   }
