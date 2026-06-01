@@ -160,16 +160,15 @@ class MyApp extends StatelessWidget {
 }
 
 // Streams the Firestore role for a given UID. Emits '' when the doc is absent.
-final _userRoleProvider =
-    StreamProvider.autoDispose.family<String, String>((ref, uid) {
+final _userRoleProvider = StreamProvider.autoDispose.family<String, String>((
+  ref,
+  uid,
+) {
   return FirebaseFirestore.instance
       .collection('users')
       .doc(uid)
       .snapshots()
-      .map(
-        (doc) =>
-            doc.exists ? (doc.data()!['role'] as String? ?? '') : '',
-      );
+      .map((doc) => doc.exists ? (doc.data()!['role'] as String? ?? '') : '');
 });
 
 class _MainUIAuthRouter extends ConsumerWidget {
@@ -210,7 +209,8 @@ class _MainUIAuthRouter extends ConsumerWidget {
       final role = uid.isNotEmpty
           ? (ref.watch(_userRoleProvider(uid)).asData?.value ?? '')
           : '';
-      final isAdmin = role == 'admin' ||
+      final isAdmin =
+          role == 'admin' ||
           (email.isNotEmpty && email.endsWith('@cozytalk.com'));
       return isAdmin ? const AdminConsoleScreen() : const HomeScreen();
     }

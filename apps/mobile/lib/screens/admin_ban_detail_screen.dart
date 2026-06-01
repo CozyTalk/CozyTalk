@@ -53,7 +53,8 @@ class _AdminBanDetailScreenState extends State<AdminBanDetailScreen> {
               ],
             ),
           ),
-          if (hasCurrent && widget.onUnban != null) _buildUnbanButton(context, s),
+          if (hasCurrent && widget.onUnban != null)
+            _buildUnbanButton(context, s),
         ],
       ),
     );

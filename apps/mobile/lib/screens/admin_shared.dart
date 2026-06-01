@@ -567,10 +567,7 @@ class AdminModalBtn extends StatelessWidget {
                   child: SizedBox(
                     width: 18,
                     height: 18,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: fg,
-                    ),
+                    child: CircularProgressIndicator(strokeWidth: 2, color: fg),
                   ),
                 )
               : Row(
@@ -639,7 +636,8 @@ class AdminToast extends StatelessWidget {
 class AdminBanModal extends StatefulWidget {
   final String username;
   final VoidCallback onClose;
-  final Future<void> Function(String name, String reason, String duration) onConfirm;
+  final Future<void> Function(String name, String reason, String duration)
+  onConfirm;
   const AdminBanModal({
     super.key,
     required this.username,
@@ -667,7 +665,8 @@ class _AdminBanModalState extends State<AdminBanModal> {
 
   String get _finalReason {
     final parts = _reasons.map((r) {
-      if (r == 'Others') return _other.isNotEmpty ? 'Others: $_other' : 'Others';
+      if (r == 'Others')
+        return _other.isNotEmpty ? 'Others: $_other' : 'Others';
       return r;
     }).toList();
     return parts.join(', ');

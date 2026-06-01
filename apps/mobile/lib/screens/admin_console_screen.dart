@@ -90,9 +90,11 @@ class _AdminConsoleScreenState extends ConsumerState<AdminConsoleScreen> {
                     note: note.trim().isEmpty ? null : note.trim(),
                     reportId: displayReport.id,
                   );
-              if (mounted) _showToast('${displayReport.reported} has been banned');
+              if (mounted)
+                _showToast('${displayReport.reported} has been banned');
             } catch (_) {
-              if (mounted) _showErrorToast('Failed to ban ${displayReport.reported}');
+              if (mounted)
+                _showErrorToast('Failed to ban ${displayReport.reported}');
               rethrow;
             }
           },
@@ -714,9 +716,11 @@ class _AdminConsoleScreenState extends ConsumerState<AdminConsoleScreen> {
                         duration: _normalizeDuration(duration),
                         reportId: null,
                       );
-                  if (mounted) _showToast('${entity.displayName} has been banned');
+                  if (mounted)
+                    _showToast('${entity.displayName} has been banned');
                 } catch (_) {
-                  if (mounted) _showErrorToast('Failed to ban ${entity.displayName}');
+                  if (mounted)
+                    _showErrorToast('Failed to ban ${entity.displayName}');
                   rethrow;
                 }
               },
@@ -750,7 +754,8 @@ class _AdminConsoleScreenState extends ConsumerState<AdminConsoleScreen> {
                       _showToast('${subject.name} has been unbanned');
                     }
                   } catch (_) {
-                    if (mounted) _showErrorToast('Failed to unban ${subject.name}');
+                    if (mounted)
+                      _showErrorToast('Failed to unban ${subject.name}');
                     rethrow;
                   }
                 },

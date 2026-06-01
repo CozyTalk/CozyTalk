@@ -144,10 +144,7 @@ void main() {
 
       test('propagates datasource error', () async {
         datasource.error = Exception('network error');
-        expect(
-          repository.watchOnlineCount().first,
-          throwsA(isA<Exception>()),
-        );
+        expect(repository.watchOnlineCount().first, throwsA(isA<Exception>()));
       });
     });
 

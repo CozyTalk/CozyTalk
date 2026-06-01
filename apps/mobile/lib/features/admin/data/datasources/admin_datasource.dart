@@ -65,9 +65,9 @@ class AdminDatasourceImpl implements AdminDatasource {
     _poolSub = _database.ref('pool_presence').onValue.listen(
       (event) {
         if (event.snapshot.exists && event.snapshot.value != null) {
-          _poolUids =
-              (Map<String, dynamic>.from(event.snapshot.value as Map)).keys
-                  .toSet();
+          _poolUids = (Map<String, dynamic>.from(
+            event.snapshot.value as Map,
+          )).keys.toSet();
         } else {
           _poolUids = {};
         }
@@ -143,8 +143,7 @@ class AdminDatasourceImpl implements AdminDatasource {
                   id: doc.id,
                   reporterName: nameMap[data['reporterId']] ?? 'Unknown',
                   reportedName: nameMap[data['reportedUserId']] ?? 'Unknown',
-                  reportedInterest:
-                      interestMap[data['reportedUserId']] ?? '',
+                  reportedInterest: interestMap[data['reportedUserId']] ?? '',
                 ),
               );
             } catch (e) {
