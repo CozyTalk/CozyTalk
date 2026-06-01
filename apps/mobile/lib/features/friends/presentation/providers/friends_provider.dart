@@ -291,19 +291,27 @@ class FriendsNotifier extends Notifier<FriendsState> {
                   event.senderId.isNotEmpty &&
                   event.senderId != currentUid;
 
-              // For the very first emission, compare the message timestamp
-              // against the persisted lastReadAt so unread state survives restart.
+              // On the very first emission, compare the message timestamp
+              // against the persisted lastReadAt to restore unread state.
               final lastReadAt = _lastReadAt(f.chatRoomId);
               final isInitiallyUnread =
                   !isSubsequent &&
                   fromFriend &&
-                  lastReadAt != null &&
                   event.timestamp != null &&
-                  event.timestamp!.millisecondsSinceEpoch > lastReadAt;
+                  (lastReadAt == null ||
+                      event.timestamp!.millisecondsSinceEpoch > lastReadAt);
 
               final isFromFriend = isSubsequent && fromFriend;
 
               if (isFromFriend || isInitiallyUnread) {
+                // Persist an unread marker (one ms before this message) so the
+                // badge survives restart even if the user never calls markChatAsRead.
+                if (event.timestamp != null) {
+                  final marker = event.timestamp!.millisecondsSinceEpoch - 1;
+                  if (lastReadAt == null || marker > lastReadAt) {
+                    _prefs?.setInt(_prefKey(f.chatRoomId), marker);
+                  }
+                }
                 final newCount = (state.unreadCountMap[f.chatRoomId] ?? 0) + 1;
                 state = state.copyWith(
                   lastMessageMap: newLastMsg,
