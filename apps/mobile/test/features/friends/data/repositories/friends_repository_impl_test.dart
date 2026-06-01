@@ -65,7 +65,9 @@ class _FakeFriendsDatasource implements FriendsDatasource {
   Stream<bool> watchFriendPresence(String friendUid) => Stream.value(false);
 
   @override
-  Stream<String> watchFriendLastMessage(String chatRoomId) => Stream.value('');
+  Stream<({String text, DateTime? timestamp})> watchFriendLastMessage(
+    String chatRoomId,
+  ) => Stream.value((text: '', timestamp: null));
 
   @override
   Stream<FriendRoomStatus?> watchFriendRoom(String friendUid) =>

@@ -144,12 +144,26 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
         .blockedUsers
         .map((u) => u.uid)
         .toSet();
-    final friends = state.friends
-        .map(
-          (f) =>
-              _toScreenFriend(f, state, liveNames, liveInterests, blockedUids),
-        )
-        .toList();
+    final friends =
+        state.friends
+            .map(
+              (f) => _toScreenFriend(
+                f,
+                state,
+                liveNames,
+                liveInterests,
+                blockedUids,
+              ),
+            )
+            .toList()
+          ..sort((a, b) {
+            final ta = state.lastMessageTimestampMap[a.chatRoomId];
+            final tb = state.lastMessageTimestampMap[b.chatRoomId];
+            if (ta == null && tb == null) return 0;
+            if (ta == null) return 1;
+            if (tb == null) return -1;
+            return tb.compareTo(ta);
+          });
     final filtered = _filtered(friends);
     final isOffline = !ref
         .watch(isOnlineProvider)
@@ -173,6 +187,22 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
             message: '$name has been removed from your friends list.',
           );
         }
+      }
+      // Increment unread badge when new messages arrive for a room.
+      final prevUnread = prev?.unreadChatRoomIds ?? {};
+      final newlyUnread = next.unreadChatRoomIds.difference(prevUnread);
+      if (newlyUnread.isNotEmpty) {
+        setState(() {
+          for (final chatRoomId in newlyUnread) {
+            try {
+              final f = next.friends.firstWhere(
+                (f) => f.chatRoomId == chatRoomId,
+              );
+              _unreadCounts[f.friendshipId] =
+                  (_unreadCounts[f.friendshipId] ?? 0) + 1;
+            } catch (_) {}
+          }
+        });
       }
     });
 
@@ -272,6 +302,9 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
       onTap: () {
         if (friend.unreadCount > 0) {
           setState(() => _unreadCounts[friend.friendshipId] = 0);
+          ref
+              .read(friendsNotifierProvider.notifier)
+              .markChatAsRead(friend.chatRoomId);
         }
         Navigator.pushNamed(context, AppRoutes.friendChat, arguments: friend);
       },
@@ -517,7 +550,7 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
       itemBuilder: (_) => [
         _popupItem('Edit'),
         _divider(),
-        friend.isBlocked ? _popupItemDisabled('Blocked') : _popupItem('Block'),
+        friend.isBlocked ? _popupItem('Unblock') : _popupItem('Block'),
         _divider(),
         _popupItem('Unfriend'),
       ],
@@ -530,29 +563,6 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
       height: 1,
       padding: EdgeInsets.zero,
       child: Divider(height: 1, thickness: 1, color: Colors.grey.shade300),
-    );
-  }
-
-  PopupMenuItem<String> _popupItemDisabled(String label) {
-    return PopupMenuItem<String>(
-      enabled: false,
-      padding: EdgeInsets.zero,
-      child: SizedBox(
-        width: 110,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          child: Center(
-            child: Text(
-              label,
-              style: Theme.of(context).textTheme.bodyMedium!.copyWith(
-                fontWeight: FontWeight.w900,
-                fontSize: 14,
-                color: Colors.grey.shade400,
-              ),
-            ),
-          ),
-        ),
-      ),
     );
   }
 
