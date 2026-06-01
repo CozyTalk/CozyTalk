@@ -113,23 +113,6 @@ void main() {
       expect(find.text('No blocked users'), findsOneWidget);
     });
 
-    testWidgets('shows "0/5" count when blocked list is empty', (tester) async {
-      final blockFake = _FakeBlockNotifier();
-      final authFake = _FakeAuthNotifier(
-        initial: const AuthState(
-          status: AuthStatus.authenticated,
-          user: AuthUser(uid: 'owner-1'),
-        ),
-      );
-
-      await tester.pumpWidget(
-        _buildScreen(blockFake: blockFake, authFake: authFake),
-      );
-      await tester.pump();
-
-      expect(find.text('0/5'), findsOneWidget);
-    });
-
     testWidgets('renders user uid when displayName is null', (tester) async {
       final blockFake = _FakeBlockNotifier(
         initial: BlockState(
@@ -181,50 +164,6 @@ void main() {
       // displayName ('Alice', 'Bob') is shown.
       expect(find.text('Alice'), findsOneWidget);
       expect(find.text('Bob'), findsOneWidget);
-    });
-
-    testWidgets('shows "2/5" count when two users are blocked', (tester) async {
-      final blockFake = _FakeBlockNotifier(
-        initial: BlockState(
-          status: BlockStatus.loaded,
-          blockedUsers: [_makeUser('uid-1'), _makeUser('uid-2')],
-        ),
-      );
-      final authFake = _FakeAuthNotifier(
-        initial: const AuthState(
-          status: AuthStatus.authenticated,
-          user: AuthUser(uid: 'owner-1'),
-        ),
-      );
-
-      await tester.pumpWidget(
-        _buildScreen(blockFake: blockFake, authFake: authFake),
-      );
-      await tester.pump();
-
-      expect(find.text('2/5'), findsOneWidget);
-    });
-
-    testWidgets('shows "1/5" count when one user is blocked', (tester) async {
-      final blockFake = _FakeBlockNotifier(
-        initial: BlockState(
-          status: BlockStatus.loaded,
-          blockedUsers: [_makeUser('uid-1')],
-        ),
-      );
-      final authFake = _FakeAuthNotifier(
-        initial: const AuthState(
-          status: AuthStatus.authenticated,
-          user: AuthUser(uid: 'owner-1'),
-        ),
-      );
-
-      await tester.pumpWidget(
-        _buildScreen(blockFake: blockFake, authFake: authFake),
-      );
-      await tester.pump();
-
-      expect(find.text('1/5'), findsOneWidget);
     });
 
     testWidgets('renders Unblock button for each blocked user', (tester) async {

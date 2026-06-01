@@ -481,15 +481,19 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
               },
             );
           case 'Block':
-            showConfirmBlockDialog(
-              context: context,
-              username: friend.displayName,
-              onConfirm: () {
-                ref
-                    .read(blockNotifierProvider.notifier)
-                    .block(friend.friendUid, displayName: friend.displayName);
-              },
-            );
+            if (ref.read(blockNotifierProvider).blockedUsers.length >= 5) {
+              showBlockLimitDialog(context: context);
+            } else {
+              showConfirmBlockDialog(
+                context: context,
+                username: friend.displayName,
+                onConfirm: () {
+                  ref
+                      .read(blockNotifierProvider.notifier)
+                      .block(friend.friendUid, displayName: friend.displayName);
+                },
+              );
+            }
           case 'Unblock':
             showConfirmUnblockDialog(
               context: context,
