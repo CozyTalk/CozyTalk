@@ -10,8 +10,9 @@ abstract class FriendsRepository {
   Stream<List<FriendRequest>> watchIncomingRequests();
   Stream<List<FriendMessage>> watchMessages(String chatRoomId);
   Stream<bool> watchFriendPresence(String friendUid);
-  Stream<({String text, DateTime? timestamp, String senderId})>
-  watchFriendLastMessage(String chatRoomId);
+  Stream<({String text, DateTime? timestamp})> watchFriendLastMessage(
+    String chatRoomId,
+  );
   Stream<FriendRoomStatus?> watchFriendRoom(String friendUid);
   Future<void> sendFriendRequest({
     required String toUid,

@@ -156,10 +156,7 @@ class FriendsNotifier extends Notifier<FriendsState> {
   StreamSubscription<List<AppUser>>? _usersSub;
 
   final Map<String, StreamSubscription<bool>> _presenceSubs = {};
-  final Map<
-    String,
-    StreamSubscription<({String text, DateTime? timestamp, String senderId})>
-  >
+  final Map<String, StreamSubscription<({String text, DateTime? timestamp})>>
   _lastMessageSubs = {};
   final Map<String, StreamSubscription<FriendRoomStatus?>> _roomSubs = {};
   // Tracks chatRoomIds whose first lastMessage emission has been processed.
@@ -271,13 +268,8 @@ class FriendsNotifier extends Notifier<FriendsState> {
               final newLastMsgTs = Map<String, DateTime?>.from(
                 state.lastMessageTimestampMap,
               )..[f.chatRoomId] = event.timestamp;
-              final currentUid = ref.read(friendsDatasourceProvider).currentUid;
-              final fromFriend =
-                  isNew &&
-                  event.text.isNotEmpty &&
-                  event.senderId != currentUid;
-              if (fromFriend) {
-                // A new message from the friend arrived — mark unread.
+              if (isNew && event.text.isNotEmpty) {
+                // A new message arrived after the initial load — mark unread.
                 state = state.copyWith(
                   lastMessageMap: newLastMsg,
                   lastMessageTimestampMap: newLastMsgTs,
