@@ -105,7 +105,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               friendsNotifierProvider.select(
                 (s) =>
                     s.incomingRequests.isNotEmpty ||
-                    s.unreadChatRoomIds.isNotEmpty,
+                    s.unreadCountMap.values.any((c) => c > 0),
               ),
             ),
             onBellTap: () =>
