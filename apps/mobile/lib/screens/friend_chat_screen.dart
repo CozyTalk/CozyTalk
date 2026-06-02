@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'dart:async';
 import '../features/auth/presentation/providers/auth_provider.dart';
@@ -809,7 +810,10 @@ class _FriendChatScreenState extends ConsumerState<FriendChatScreen> {
                 minLines: 1,
                 maxLines: 5,
                 keyboardType: TextInputType.multiline,
-                textInputAction: TextInputAction.newline,
+                textInputAction: kIsWeb
+                    ? TextInputAction.send
+                    : TextInputAction.newline,
+                onSubmitted: kIsWeb ? (_) => _sendMessage() : null,
                 style: Theme.of(
                   context,
                 ).textTheme.bodyLarge!.copyWith(fontSize: 15),
@@ -892,6 +896,10 @@ class _FriendChatScreenState extends ConsumerState<FriendChatScreen> {
                         'assets/images/icons/sent.svg',
                         width: 24,
                         height: 24,
+                        colorFilter: const ColorFilter.mode(
+                          Color(0xFF695959),
+                          BlendMode.srcIn,
+                        ),
                       ),
               ),
             ),

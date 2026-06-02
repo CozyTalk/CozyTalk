@@ -143,7 +143,6 @@ class _FindingRoomScreenState extends ConsumerState<FindingRoomScreen>
         latestRoom?.backgroundTheme,
         mode: latestRoom?.mode == RoomMode.group ? 'group' : '1v1',
       );
-      setState(() => _matchedTheme = finalTheme);
       Navigator.pushReplacementNamed(
         context,
         isGroup ? AppRoutes.groupChatScreen : AppRoutes.chatScreen,
@@ -315,7 +314,10 @@ class _FindingRoomScreenState extends ConsumerState<FindingRoomScreen>
               const SizedBox(height: 12),
               SizedBox(
                 height: 26,
-                child: (_didMatch && _matchedTheme == null)
+                child:
+                    (_didMatch &&
+                        _matchedTheme == null &&
+                        _args?['roomName'] == null)
                     ? AnimatedBuilder(
                         animation: _shimmerAnim,
                         builder: (_, _) => Opacity(

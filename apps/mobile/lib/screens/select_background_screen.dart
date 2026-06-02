@@ -244,17 +244,11 @@ class _SelectBackgroundScreenState
                         borderRadius: BorderRadius.circular(20),
                         child: InkWell(
                           borderRadius: BorderRadius.circular(20),
-                          onTap: () async {
-                            final notifier = ref.read(
-                              matchmakingNotifierProvider.notifier,
-                            );
-                            final navigator = Navigator.of(context);
-                            await Future.delayed(
-                              const Duration(milliseconds: 600),
-                            );
-                            if (!mounted) return;
-                            notifier.setBackgroundTheme(null);
-                            navigator.pushNamed(
+                          onTap: () {
+                            ref
+                                .read(matchmakingNotifierProvider.notifier)
+                                .setBackgroundTheme(null);
+                            Navigator.of(context).pushNamed(
                               AppRoutes.findingRoom,
                               arguments: {
                                 'roomType': roomType,
