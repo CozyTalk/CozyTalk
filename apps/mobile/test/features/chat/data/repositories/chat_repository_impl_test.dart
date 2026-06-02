@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mobile/features/chat/data/datasources/chat_datasource.dart';
 import 'package:mobile/features/chat/data/models/chat_message_model.dart';
 import 'package:mobile/features/chat/data/repositories/chat_repository_impl.dart';
+import 'package:mobile/features/chat/domain/entities/shuffle_event.dart';
 import 'package:mobile/features/chat/domain/entities/typing_user.dart';
 
 class _FakeChatDatasource implements ChatDatasource {
@@ -12,17 +13,21 @@ class _FakeChatDatasource implements ChatDatasource {
   final List<ChatMessageModel> messages;
   final List<TypingUser> typingUsers;
   final Set<String> presenceUids;
+  final ShuffleEvent? shuffleEvent;
 
   int sendMessageCount = 0;
   int endSessionCount = 0;
   int setTypingCount = 0;
+  int setCardShuffleCount = 0;
   bool? lastIsTyping;
+  ShuffleEvent? lastShuffleEvent;
 
   _FakeChatDatasource({
     required this.keyHex,
     this.messages = const [],
     this.typingUsers = const [],
     this.presenceUids = const {},
+    this.shuffleEvent,
   });
 
   @override
@@ -44,6 +49,10 @@ class _FakeChatDatasource implements ChatDatasource {
       Stream.value(presenceUids);
 
   @override
+  Stream<ShuffleEvent?> watchCardShuffle(String sessionId) =>
+      Stream.value(shuffleEvent);
+
+  @override
   Future<void> sendMessage({
     required String sessionId,
     required String text,
@@ -59,6 +68,15 @@ class _FakeChatDatasource implements ChatDatasource {
   }) async {
     setTypingCount++;
     lastIsTyping = isTyping;
+  }
+
+  @override
+  Future<void> setCardShuffle({
+    required String sessionId,
+    required ShuffleEvent event,
+  }) async {
+    setCardShuffleCount++;
+    lastShuffleEvent = event;
   }
 
   @override
@@ -263,6 +281,56 @@ void main() {
 
         final result = await repo.fetchRoomBackground('room-1');
         expect(result, isNull);
+      });
+    });
+
+    group('watchCardShuffle', () {
+      test('returns null when no event', () async {
+        final datasource = _FakeChatDatasource(keyHex: _testKeyHex);
+        final repo = ChatRepositoryImpl(datasource);
+
+        final result = await repo.watchCardShuffle('room-1').first;
+        expect(result, isNull);
+      });
+
+      test('delegates shuffle event from datasource', () async {
+        const event = ShuffleEvent(
+          shufflerUid: 'u1',
+          shufflerName: 'Alice',
+          questionId: 'q1',
+          questionText: 'What is your favourite hobby?',
+          questionCategory: 'fun',
+          questionDepth: 'light',
+        );
+        final datasource = _FakeChatDatasource(
+          keyHex: _testKeyHex,
+          shuffleEvent: event,
+        );
+        final repo = ChatRepositoryImpl(datasource);
+
+        final result = await repo.watchCardShuffle('room-1').first;
+        expect(result?.shufflerUid, 'u1');
+        expect(result?.shufflerName, 'Alice');
+        expect(result?.questionId, 'q1');
+      });
+    });
+
+    group('setCardShuffle', () {
+      test('delegates to datasource', () async {
+        final datasource = _FakeChatDatasource(keyHex: _testKeyHex);
+        final repo = ChatRepositoryImpl(datasource);
+        const event = ShuffleEvent(
+          shufflerUid: 'u1',
+          shufflerName: 'Alice',
+          questionId: 'q1',
+          questionText: 'What is your favourite hobby?',
+          questionCategory: 'fun',
+          questionDepth: 'light',
+        );
+
+        await repo.setCardShuffle(sessionId: 'room-1', event: event);
+        expect(datasource.setCardShuffleCount, 1);
+        expect(datasource.lastShuffleEvent?.shufflerUid, 'u1');
       });
     });
   });

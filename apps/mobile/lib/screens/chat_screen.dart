@@ -44,7 +44,14 @@ class ChatMessage {
   type; // 'warning' | 'system' | 'me' | 'other' | 'card' | 'gif' | 'gif_other'
   final String text; // for 'card' = asset image path
   final String? time;
-  ChatMessage({required this.type, required this.text, this.time});
+  final String?
+  shufflerName; // for 'card' type: display name of who sent the card
+  ChatMessage({
+    required this.type,
+    required this.text,
+    this.time,
+    this.shufflerName,
+  });
 }
 
 // ── Screen ─────────────────────────────────────────────────────────────────
@@ -273,12 +280,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
 
   void shuffleTopic() {
     final cardPath = _pickCard();
-    final seq = ref.read(chatNotifierProvider).messages.length;
     setState(() {
-      _localMessages.add((
-        msg: ChatMessage(type: 'system', text: 'Someone shuffled the topic!'),
-        seq: seq,
-      ));
       _optimisticMessages.add(ChatMessage(type: 'card', text: cardPath));
     });
     _scrollToBottom();
@@ -310,7 +312,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
   ChatMessage toDisplay(chat_entity.ChatMessage msg, String? myUid) {
     final isMe = msg.senderId == myUid;
     if (msg.text.startsWith('card::')) {
-      return ChatMessage(type: 'card', text: msg.text.substring(6));
+      return ChatMessage(
+        type: 'card',
+        text: msg.text.substring(6),
+        shufflerName: isMe ? null : msg.displayName,
+      );
     }
     if (msg.text.startsWith('system::')) {
       return ChatMessage(type: 'system', text: msg.text.substring(8));
@@ -779,7 +785,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
             partnerName: partnerName,
             interest: partnerInterest,
           ),
-          'card' => buildCard(msg.text),
+          'card' => buildCard(msg.text, shufflerName: msg.shufflerName),
           'gif' => buildGifBubble(
             msg,
             isMe: true,
@@ -947,8 +953,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
     );
   }
 
-  Widget buildCard(String assetPath) {
-    return _TopicCard(assetPath: assetPath, onShuffle: shuffleTopic);
+  Widget buildCard(String assetPath, {String? shufflerName}) {
+    return _TopicCard(
+      assetPath: assetPath,
+      onShuffle: shuffleTopic,
+      shufflerName: shufflerName,
+    );
   }
 
   Widget buildGifBubble(
@@ -1246,7 +1256,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
 class _TopicCard extends StatefulWidget {
   final String assetPath;
   final VoidCallback onShuffle;
-  const _TopicCard({required this.assetPath, required this.onShuffle});
+  final String? shufflerName;
+  const _TopicCard({
+    required this.assetPath,
+    required this.onShuffle,
+    this.shufflerName,
+  });
 
   @override
   State<_TopicCard> createState() => _TopicCardState();
@@ -1294,6 +1309,18 @@ class _TopicCardState extends State<_TopicCard>
       child: Column(
         children: [
           const SizedBox(height: 8),
+          if (widget.shufflerName != null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: Text(
+                '${widget.shufflerName} shuffled the card',
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: Color(0xFF9E8272),
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ),
           AnimatedBuilder(
             animation: ctrl,
             builder: (_, child) => Transform.rotate(

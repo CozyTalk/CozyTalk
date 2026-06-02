@@ -10,7 +10,6 @@ import '../../../jukebox/presentation/widgets/jukebox_chat_player.dart';
 import '../../../jukebox/presentation/widgets/jukebox_sheet.dart';
 import '../../../report/presentation/screens/report_sheet.dart';
 import '../../../card_shuffle/presentation/providers/card_shuffle_provider.dart';
-import '../../../card_shuffle/domain/entities/icebreaker_question.dart';
 
 class ChatScreen extends ConsumerStatefulWidget {
   final String sessionId;
@@ -68,6 +67,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     ref.listen<ChatState>(chatNotifierProvider, (prev, next) {
       if (next.messages.length != (prev?.messages.length ?? 0)) {
         _scrollToBottom();
+      }
+      // Auto-open panel on every incoming shuffle, even if the same card repeats
+      if (next.activeShuffleEvent != null &&
+          !identical(prev?.activeShuffleEvent, next.activeShuffleEvent) &&
+          !_topicPanelVisible) {
+        setState(() => _topicPanelVisible = true);
       }
     });
 
@@ -165,8 +170,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           if (_topicPanelVisible)
             _TopicPanel(
               onClose: () => setState(() => _topicPanelVisible = false),
-              onDraw: () =>
-                  ref.read(cardShuffleNotifierProvider.notifier).draw(),
+              onDraw: _onDraw,
             ),
           _InputBar(
             controller: _controller,
@@ -213,7 +217,18 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     final nowVisible = !_topicPanelVisible;
     setState(() => _topicPanelVisible = nowVisible);
     if (nowVisible) {
-      ref.read(cardShuffleNotifierProvider.notifier).draw();
+      _onDraw();
+    }
+  }
+
+  Future<void> _onDraw() async {
+    final question = await ref
+        .read(cardShuffleNotifierProvider.notifier)
+        .draw();
+    if (question != null) {
+      await ref
+          .read(chatNotifierProvider.notifier)
+          .broadcastCardShuffle(question);
     }
   }
 
@@ -555,14 +570,16 @@ class _InputBar extends StatelessWidget {
 
 class _TopicPanel extends ConsumerWidget {
   final VoidCallback onClose;
-  final Future<IcebreakerQuestion?> Function() onDraw;
+  final Future<void> Function() onDraw;
 
   const _TopicPanel({required this.onClose, required this.onDraw});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final state = ref.watch(cardShuffleNotifierProvider);
-    final question = state.currentQuestion;
+    final chatState = ref.watch(chatNotifierProvider);
+    final shuffleState = ref.watch(cardShuffleNotifierProvider);
+    final event = chatState.activeShuffleEvent;
+    final isMyDraw = event?.shufflerUid == chatState.currentUserId;
     final theme = Theme.of(context);
 
     return Container(
@@ -592,9 +609,9 @@ class _TopicPanel extends ConsumerWidget {
                   fontWeight: FontWeight.w700,
                 ),
               ),
-              if (question != null) ...[
+              if (event != null) ...[
                 const SizedBox(width: 8),
-                _DepthBadge(depth: question.depth),
+                _DepthBadge(depth: event.questionDepth),
               ],
               const Spacer(),
               GestureDetector(
@@ -607,8 +624,18 @@ class _TopicPanel extends ConsumerWidget {
               ),
             ],
           ),
+          if (event != null && !isMyDraw) ...[
+            const SizedBox(height: 6),
+            Text(
+              '${event.shufflerName} drew this card',
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: theme.colorScheme.primary,
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+          ],
           const SizedBox(height: 12),
-          if (state.isLoading)
+          if (shuffleState.isLoading)
             const Center(
               child: SizedBox(
                 height: 32,
@@ -616,9 +643,9 @@ class _TopicPanel extends ConsumerWidget {
                 child: CircularProgressIndicator(strokeWidth: 2),
               ),
             )
-          else if (question != null) ...[
+          else if (event != null) ...[
             Text(
-              question.text,
+              event.questionText,
               style: theme.textTheme.bodyMedium?.copyWith(
                 fontWeight: FontWeight.w500,
                 height: 1.5,
@@ -626,7 +653,7 @@ class _TopicPanel extends ConsumerWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              question.category,
+              event.questionCategory,
               style: theme.textTheme.labelSmall?.copyWith(
                 color: theme.colorScheme.outline,
                 fontStyle: FontStyle.italic,
@@ -643,7 +670,7 @@ class _TopicPanel extends ConsumerWidget {
           SizedBox(
             width: double.infinity,
             child: FilledButton.tonal(
-              onPressed: state.isLoading ? null : onDraw,
+              onPressed: shuffleState.isLoading ? null : onDraw,
               child: const Text('Next Card'),
             ),
           ),
