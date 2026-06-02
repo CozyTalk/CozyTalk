@@ -1,7 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart';
-import 'package:flutter/foundation.dart';
 
 import '../../domain/entities/app_user.dart';
 import '../../domain/entities/friend_room_status.dart';
@@ -177,11 +176,9 @@ class FriendsDatasourceImpl implements FriendsDatasource {
       event,
     ) async {
       if (!event.snapshot.exists || event.snapshot.value == null) {
-        debugPrint('[watchFriendRoom] $friendUid: node missing');
         return null;
       }
       final data = Map<String, dynamic>.from(event.snapshot.value as Map);
-      debugPrint('[watchFriendRoom] $friendUid: $data');
       if (data['status'] != 'in_room') return null;
       final roomId = data['roomId'] as String?;
       if (roomId == null) return null;
@@ -191,8 +188,8 @@ class FriendsDatasourceImpl implements FriendsDatasource {
         try {
           final doc = await _firestore.collection('rooms').doc(roomId).get();
           backgroundTheme = doc.data()?['backgroundTheme'] as String?;
-        } catch (e) {
-          debugPrint('[watchFriendRoom] Firestore fallback failed: $e');
+        } catch (_) {
+          // Non-member reads fail per security rules; degrade to null theme.
         }
       }
 

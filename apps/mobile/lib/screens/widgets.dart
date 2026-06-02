@@ -265,19 +265,24 @@ class _ActionButton extends StatelessWidget {
   Widget build(BuildContext context) {
     if (room.isOneOnOne) return const SizedBox.shrink();
     if (blocked) {
-      return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-        decoration: BoxDecoration(
-          color: Colors.grey.shade200,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: Colors.grey.shade300, width: 1.5),
-        ),
-        child: Text(
-          'Join',
-          style: Theme.of(context).textTheme.bodyMedium!.copyWith(
-            fontSize: 13,
-            fontWeight: FontWeight.w900,
-            color: Colors.grey.shade400,
+      return Semantics(
+        label: 'Join (not available — blocked)',
+        enabled: false,
+        child: Container(
+          key: const Key('join-blocked'),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+          decoration: BoxDecoration(
+            color: Colors.grey.shade200,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: Colors.grey.shade300, width: 1.5),
+          ),
+          child: Text(
+            'Join',
+            style: Theme.of(context).textTheme.bodyMedium!.copyWith(
+              fontSize: 13,
+              fontWeight: FontWeight.w900,
+              color: Colors.grey.shade400,
+            ),
           ),
         ),
       );

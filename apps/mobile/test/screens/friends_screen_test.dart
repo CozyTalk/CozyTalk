@@ -250,10 +250,9 @@ void main() {
         );
         await tester.pump();
         expect(find.byType(FriendRoomCard), findsOneWidget);
-        final joinFinder = find.text('Join');
-        expect(joinFinder, findsOneWidget);
+        expect(find.byKey(const Key('join-blocked')), findsOneWidget);
         final container = tester.widget<Container>(
-          find.ancestor(of: joinFinder, matching: find.byType(Container)).first,
+          find.byKey(const Key('join-blocked')),
         );
         final decoration = container.decoration as BoxDecoration;
         expect(decoration.color, Colors.grey.shade200);
@@ -286,10 +285,9 @@ void main() {
         );
         await tester.pump();
         expect(find.byType(FriendRoomCard), findsOneWidget);
-        final joinFinder = find.text('Join');
-        expect(joinFinder, findsOneWidget);
+        expect(find.byKey(const Key('join-blocked')), findsOneWidget);
         final container = tester.widget<Container>(
-          find.ancestor(of: joinFinder, matching: find.byType(Container)).first,
+          find.byKey(const Key('join-blocked')),
         );
         final decoration = container.decoration as BoxDecoration;
         expect(decoration.color, Colors.grey.shade200);
