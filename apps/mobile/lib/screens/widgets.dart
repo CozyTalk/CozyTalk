@@ -89,11 +89,13 @@ class CozyCard extends StatelessWidget {
 
 /// Room card shown inside friend cards and friend chat screen.
 /// [showLabel] = true → shows "CURRENTLY IN" label above room name (chat style).
+/// [blocked] = true → Join button is shown but greyed out (either party is blocked).
 class FriendRoomCard extends StatelessWidget {
   final RoomInfo room;
   final bool showLabel;
   final VoidCallback? onJoin;
   final Color backgroundColor;
+  final bool blocked;
 
   const FriendRoomCard({
     super.key,
@@ -101,6 +103,7 @@ class FriendRoomCard extends StatelessWidget {
     this.showLabel = false,
     this.onJoin,
     this.backgroundColor = AppColors.scaffoldBg,
+    this.blocked = false,
   });
 
   @override
@@ -189,7 +192,7 @@ class FriendRoomCard extends StatelessWidget {
               ],
             ),
           ),
-          _ActionButton(room: room, onJoin: onJoin),
+          _ActionButton(room: room, onJoin: onJoin, blocked: blocked),
         ],
       ),
     );
@@ -255,11 +258,35 @@ class _StatusPill extends StatelessWidget {
 class _ActionButton extends StatelessWidget {
   final RoomInfo room;
   final VoidCallback? onJoin;
-  const _ActionButton({required this.room, this.onJoin});
+  final bool blocked;
+  const _ActionButton({required this.room, this.onJoin, this.blocked = false});
 
   @override
   Widget build(BuildContext context) {
     if (room.isOneOnOne) return const SizedBox.shrink();
+    if (blocked) {
+      return Semantics(
+        label: 'Join (not available — blocked)',
+        enabled: false,
+        child: Container(
+          key: const Key('join-blocked'),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+          decoration: BoxDecoration(
+            color: Colors.grey.shade200,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: Colors.grey.shade300, width: 1.5),
+          ),
+          child: Text(
+            'Join',
+            style: Theme.of(context).textTheme.bodyMedium!.copyWith(
+              fontSize: 13,
+              fontWeight: FontWeight.w900,
+              color: Colors.grey.shade400,
+            ),
+          ),
+        ),
+      );
+    }
     if (room.canJoin && onJoin != null) {
       return GestureDetector(
         onTap: onJoin,
