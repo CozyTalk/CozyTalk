@@ -46,7 +46,8 @@ class _GroupMsg {
   final String text; // for card = asset path
   final String? sender;
   final String? time;
-  final String? shufflerName; // for card type: display name of who sent the card
+  final String?
+  shufflerName; // for card type: display name of who sent the card
   const _GroupMsg({
     required this.type,
     required this.text,

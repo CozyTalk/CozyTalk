@@ -44,8 +44,14 @@ class ChatMessage {
   type; // 'warning' | 'system' | 'me' | 'other' | 'card' | 'gif' | 'gif_other'
   final String text; // for 'card' = asset image path
   final String? time;
-  final String? shufflerName; // for 'card' type: display name of who sent the card
-  ChatMessage({required this.type, required this.text, this.time, this.shufflerName});
+  final String?
+  shufflerName; // for 'card' type: display name of who sent the card
+  ChatMessage({
+    required this.type,
+    required this.text,
+    this.time,
+    this.shufflerName,
+  });
 }
 
 // ── Screen ─────────────────────────────────────────────────────────────────

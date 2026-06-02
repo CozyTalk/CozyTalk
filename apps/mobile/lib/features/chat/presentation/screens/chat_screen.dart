@@ -222,8 +222,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 
   Future<void> _onDraw() async {
-    final question =
-        await ref.read(cardShuffleNotifierProvider.notifier).draw();
+    final question = await ref
+        .read(cardShuffleNotifierProvider.notifier)
+        .draw();
     if (question != null) {
       await ref
           .read(chatNotifierProvider.notifier)

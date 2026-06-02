@@ -5,8 +5,6 @@ class SetCardShuffle {
   final ChatRepository _repository;
   SetCardShuffle(this._repository);
 
-  Future<void> call({
-    required String sessionId,
-    required ShuffleEvent event,
-  }) => _repository.setCardShuffle(sessionId: sessionId, event: event);
+  Future<void> call({required String sessionId, required ShuffleEvent event}) =>
+      _repository.setCardShuffle(sessionId: sessionId, event: event);
 }
