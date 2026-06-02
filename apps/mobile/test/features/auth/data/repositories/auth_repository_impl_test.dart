@@ -70,6 +70,9 @@ class _FakeAuthDatasource implements AuthDatasource {
 
   @override
   Future<void> checkBanStatus(String uid) async {}
+
+  @override
+  Stream<(int, String)?> watchBanStatus(String uid) => const Stream.empty();
 }
 
 const _model = AuthUserModel(

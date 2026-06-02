@@ -70,4 +70,7 @@ class FakeAuthRepository implements AuthRepository {
 
   @override
   Future<void> checkBanStatus(String uid) async {}
+
+  @override
+  Stream<(int, String)?> watchBanStatus(String uid) => const Stream.empty();
 }

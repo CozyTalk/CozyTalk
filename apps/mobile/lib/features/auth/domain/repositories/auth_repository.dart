@@ -11,4 +11,5 @@ abstract class AuthRepository {
   Future<void> validateToken();
   // Throws Exception('BANNED:daysLeft:reinstateDate') if uid is currently banned.
   Future<void> checkBanStatus(String uid);
+  Stream<(int, String)?> watchBanStatus(String uid);
 }

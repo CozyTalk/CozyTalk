@@ -19,6 +19,8 @@ abstract class AuthDatasource {
   Future<void> signOut();
   Future<void> validateToken();
   Future<void> checkBanStatus(String uid);
+  // Emits (daysLeft, reinstateDate) when user is actively banned, null otherwise.
+  Stream<(int, String)?> watchBanStatus(String uid);
 }
 
 class AuthDatasourceImpl implements AuthDatasource {
@@ -198,6 +200,27 @@ class AuthDatasourceImpl implements AuthDatasource {
         : _formatDate(expiryDate);
     throw Exception('BANNED:$daysLeft:$reinstateStr');
   }
+
+  @override
+  Stream<(int, String)?> watchBanStatus(String uid) =>
+      _firestore.collection('users').doc(uid).snapshots().map((doc) {
+        if (!doc.exists) return null;
+        final data = doc.data()!;
+        if (data['banned'] != true) return null;
+        final expiresAt = data['banExpiresAt'];
+        DateTime? expiryDate;
+        if (expiresAt is Timestamp) {
+          expiryDate = expiresAt.toDate();
+          if (expiryDate.isBefore(DateTime.now())) return null;
+        }
+        final daysLeft = expiryDate == null
+            ? 0
+            : expiryDate.difference(DateTime.now()).inDays + 1;
+        return (
+          daysLeft,
+          expiryDate == null ? 'Permanently' : _formatDate(expiryDate),
+        );
+      });
 }
 
 const _monthNames = [

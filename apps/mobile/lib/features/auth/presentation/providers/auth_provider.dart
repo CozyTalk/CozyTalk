@@ -101,10 +101,12 @@ class AuthState {
 
 class AuthNotifier extends Notifier<AuthState> {
   StreamSubscription<AuthUser?>? _sub;
+  StreamSubscription<(int, String)?>? _banSub;
 
   @override
   AuthState build() {
     _sub?.cancel();
+    _banSub?.cancel();
     _sub = ref.read(authRepositoryProvider).watchAuthState().listen((user) {
       if (state.status == AuthStatus.loading) return;
       state = state.copyWith(
@@ -114,10 +116,42 @@ class AuthNotifier extends Notifier<AuthState> {
         user: user,
         error: null,
       );
+      if (user != null) {
+        _subscribeToBan(user.uid);
+      } else {
+        _banSub?.cancel();
+        _banSub = null;
+      }
     });
-    ref.onDispose(() => _sub?.cancel());
+    ref.onDispose(() {
+      _sub?.cancel();
+      _banSub?.cancel();
+    });
     _checkTokenOnStartup();
     return const AuthState();
+  }
+
+  void _subscribeToBan(String uid) {
+    _banSub?.cancel();
+    _banSub = ref.read(authRepositoryProvider).watchBanStatus(uid).listen((
+      banInfo,
+    ) async {
+      if (banInfo == null) return;
+      if (!ref.mounted) return;
+      // Immediately sign out — user is banned while app is open.
+      await ref.read(authRepositoryProvider).signOut();
+      if (!ref.mounted) return;
+      _banSub?.cancel();
+      _banSub = null;
+      state = state.copyWith(
+        status: AuthStatus.unauthenticated,
+        user: null,
+        isBanned: true,
+        banDaysLeft: banInfo.$1,
+        banReinstateDate: banInfo.$2,
+        error: null,
+      );
+    });
   }
 
   void _checkTokenOnStartup() {
@@ -162,7 +196,11 @@ class AuthNotifier extends Notifier<AuthState> {
 
   Future<void> signInAnonymously() async {
     if (state.status == AuthStatus.loading) return;
-    state = state.copyWith(status: AuthStatus.loading, error: null);
+    state = state.copyWith(
+      status: AuthStatus.loading,
+      error: null,
+      isBanned: false,
+    );
     try {
       final user = await ref.read(_signInAnonymouslyProvider)();
       state = state.copyWith(status: AuthStatus.authenticated, user: user);
@@ -173,7 +211,11 @@ class AuthNotifier extends Notifier<AuthState> {
 
   Future<void> signInWithGoogle() async {
     if (state.status == AuthStatus.loading) return;
-    state = state.copyWith(status: AuthStatus.loading, error: null);
+    state = state.copyWith(
+      status: AuthStatus.loading,
+      error: null,
+      isBanned: false,
+    );
     try {
       final user = await ref.read(_signInWithGoogleProvider)();
       state = state.copyWith(status: AuthStatus.authenticated, user: user);
@@ -189,7 +231,11 @@ class AuthNotifier extends Notifier<AuthState> {
 
   Future<void> signUp({required String email, required String password}) async {
     if (state.status == AuthStatus.loading) return;
-    state = state.copyWith(status: AuthStatus.loading, error: null);
+    state = state.copyWith(
+      status: AuthStatus.loading,
+      error: null,
+      isBanned: false,
+    );
     try {
       final user = await ref.read(_signUpProvider)(
         email: email,
@@ -203,7 +249,11 @@ class AuthNotifier extends Notifier<AuthState> {
 
   Future<void> signIn({required String email, required String password}) async {
     if (state.status == AuthStatus.loading) return;
-    state = state.copyWith(status: AuthStatus.loading, error: null);
+    state = state.copyWith(
+      status: AuthStatus.loading,
+      error: null,
+      isBanned: false,
+    );
     try {
       final user = await ref.read(_signInProvider)(
         email: email,

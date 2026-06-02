@@ -49,4 +49,8 @@ class AuthRepositoryImpl implements AuthRepository {
 
   @override
   Future<void> checkBanStatus(String uid) => _datasource.checkBanStatus(uid);
+
+  @override
+  Stream<(int, String)?> watchBanStatus(String uid) =>
+      _datasource.watchBanStatus(uid);
 }
