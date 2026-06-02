@@ -26,6 +26,7 @@ import '../shared/layered_avatar.dart';
 import '../shared/press_bounce_btn.dart';
 import '../theme/room_themes.dart';
 import '../features/report/presentation/screens/report_sheet.dart';
+import '../theme/app_routes.dart';
 
 // ── Card assets ────────────────────────────────────────────────────────────
 const _cardAssets = [
@@ -112,6 +113,7 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
   final ScrollController _scrollController = ScrollController();
   final FocusNode _focusNode = FocusNode();
   Timer? _typingTimer;
+  bool _isSkipping = false;
 
   late final JukeboxNotifier _jukeboxNotifier;
 
@@ -457,6 +459,144 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
     );
   }
 
+  void _onLeave() {
+    showDialog(
+      context: context,
+      builder: (_) => LeaveRoomDialog(
+        onLeave: () {
+          ref.read(matchmakingNotifierProvider.notifier).leaveRoom();
+          ref.read(chatNotifierProvider.notifier).forceDisconnect();
+        },
+      ),
+    );
+  }
+
+  void _onSkipRoom() {
+    final args =
+        ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+    final matchState = ref.read(matchmakingNotifierProvider);
+    final liveThemeId = matchState.currentRoom?.backgroundTheme;
+    final liveTheme = resolveRoomTheme(liveThemeId, mode: 'group');
+    final roomName = liveThemeId != null
+        ? liveTheme.title
+        : (args?['roomName'] as String? ?? 'Group Room');
+    final bgImage = liveThemeId != null
+        ? liveTheme.thumbnail
+        : (args?['bgImage'] as String? ??
+              'assets/images/backgrounds/kao_tapu.png');
+    final rawRoomType = args?['roomType'] as String? ?? 'group';
+    // joinById rooms can't be re-joined; re-search as a random group instead.
+    final roomType = rawRoomType == 'joinById' ? 'group' : rawRoomType;
+
+    showDialog<bool>(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 32),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(24, 22, 24, 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Skip Room',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                  color: Colors.black,
+                ),
+              ),
+              const SizedBox(height: 10),
+              const Text(
+                'Leave this room and find\na new one?',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 15,
+                  height: 1.3,
+                  color: Colors.black87,
+                  fontWeight: FontWeight.w400,
+                ),
+              ),
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  Expanded(
+                    child: SizedBox(
+                      height: 42,
+                      child: ElevatedButton(
+                        onPressed: () => Navigator.pop(ctx, false),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFD9D5D1),
+                          foregroundColor: Colors.black,
+                          elevation: 0,
+                          padding: EdgeInsets.zero,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(18),
+                            side: const BorderSide(
+                              color: Color(0xFFC8C3BE),
+                              width: 1,
+                            ),
+                          ),
+                        ),
+                        child: const Text(
+                          'Cancel',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: SizedBox(
+                      height: 42,
+                      child: ElevatedButton(
+                        onPressed: () => Navigator.pop(ctx, true),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFD86A3B),
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          padding: EdgeInsets.zero,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(18),
+                          ),
+                        ),
+                        child: const Text(
+                          'Skip',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    ).then((confirmed) {
+      if (confirmed != true || !mounted) return;
+      setState(() => _isSkipping = true);
+      ref.read(matchmakingNotifierProvider.notifier).leaveRoom();
+      ref.read(chatNotifierProvider.notifier).forceDisconnect();
+      Navigator.of(context).pushReplacementNamed(
+        AppRoutes.findingRoom,
+        arguments: {
+          'roomName': roomName,
+          'bgImage': bgImage,
+          'roomType': roomType,
+        },
+      );
+    });
+  }
+
   void cancelFriendRequest(String targetName) {
     setState(() => _friendRequestSent[targetName] = false);
     showInfoDialog(
@@ -588,6 +728,7 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
 
     ref.listen(chatNotifierProvider.select((s) => s.status), (_, next) {
       if (next == SessionStatus.disconnected) {
+        if (_isSkipping) return;
         Navigator.of(context).popUntil((route) => route.isFirst);
       }
     });
@@ -882,19 +1023,7 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
                   label: 'End chat',
                   button: true,
                   child: headerBtn(
-                    onTap: () => showDialog(
-                      context: context,
-                      builder: (_) => LeaveRoomDialog(
-                        onLeave: () {
-                          ref
-                              .read(matchmakingNotifierProvider.notifier)
-                              .leaveRoom();
-                          ref
-                              .read(chatNotifierProvider.notifier)
-                              .forceDisconnect();
-                        },
-                      ),
-                    ),
+                    onTap: _onLeave,
                     child: SvgPicture.asset(
                       'assets/images/icons/Back.svg',
                       width: 24,
@@ -1216,6 +1345,38 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
                       'Topic',
                       'assets/images/icons/card.svg',
                       _sendTopicCard,
+                    ),
+                    const SizedBox(height: 10),
+                    Semantics(
+                      label: 'Skip room',
+                      button: true,
+                      child: PressBounceBtn(
+                        onTap: _onSkipRoom,
+                        child: Container(
+                          width: 60,
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(12),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.1),
+                                blurRadius: 4,
+                              ),
+                            ],
+                          ),
+                          child: Text(
+                            'Skip\nRoom',
+                            textAlign: TextAlign.center,
+                            style: Theme.of(
+                              context,
+                            ).textTheme.labelSmall!.copyWith(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
                     ),
                   ],
                 ),

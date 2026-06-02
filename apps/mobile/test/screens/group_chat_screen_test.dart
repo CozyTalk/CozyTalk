@@ -14,6 +14,7 @@ import 'package:mobile/features/matchmaking/domain/entities/room.dart';
 import 'package:mobile/features/matchmaking/presentation/providers/matchmaking_provider.dart';
 import 'package:mobile/screens/group_chat_screen.dart';
 import 'package:mobile/shared/avatar_overlay.dart';
+import 'package:mobile/theme/app_routes.dart';
 import 'package:mobile/shared/layered_avatar.dart';
 import 'package:mobile/shared/press_bounce_btn.dart';
 import 'package:mobile/shared/user_profile.dart';
@@ -56,6 +57,7 @@ class _FakeChatNotifier extends ChatNotifier {
   int setTypingCount = 0;
   bool? lastTypingValue;
   int forceDisconnectCount = 0;
+  int endSessionCount = 0;
 
   _FakeChatNotifier({ChatState initial = const ChatState()})
     : _initial = initial;
@@ -81,7 +83,7 @@ class _FakeChatNotifier extends ChatNotifier {
   }
 
   @override
-  Future<void> endSession() async {}
+  Future<void> endSession() async => endSessionCount++;
 
   @override
   void forceDisconnect() => forceDisconnectCount++;
@@ -203,7 +205,10 @@ Widget _buildScreen(
     status: AuthStatus.authenticated,
     user: AuthUser(uid: 'u1'),
   ),
+  Map<String, dynamic>? routeArgs,
+  void Function(Map<String, dynamic>)? onFindingRoomArgs,
 }) {
+  final args = routeArgs ?? _kArgs;
   return ProviderScope(
     overrides: [
       authNotifierProvider.overrideWith(() => _FakeAuthNotifier(initial: auth)),
@@ -222,8 +227,15 @@ Widget _buildScreen(
       onGenerateRoute: (settings) {
         if (settings.name == '/') {
           return MaterialPageRoute(
-            settings: const RouteSettings(name: '/', arguments: _kArgs),
+            settings: RouteSettings(name: '/', arguments: args),
             builder: (_) => const GroupChatScreen(),
+          );
+        }
+        if (settings.name == AppRoutes.findingRoom) {
+          final navArgs = settings.arguments as Map<String, dynamic>?;
+          if (navArgs != null) onFindingRoomArgs?.call(navArgs);
+          return MaterialPageRoute(
+            builder: (_) => const Scaffold(body: Text('finding-room')),
           );
         }
         return MaterialPageRoute(
@@ -464,6 +476,116 @@ void main() {
       await _pump(tester);
       expect(find.text('The Sea of Cloud'), findsOneWidget);
       expect(find.text('Test Group'), findsNothing);
+    });
+
+    group('Skip Room', () {
+      testWidgets('button is visible in the banner', (tester) async {
+        await tester.pumpWidget(_buildScreen(_FakeChatNotifier()));
+        await _pump(tester);
+        expect(find.text('Skip\nRoom'), findsOneWidget);
+      });
+
+      testWidgets('tapping button shows Skip Room confirmation dialog', (
+        tester,
+      ) async {
+        await tester.pumpWidget(_buildScreen(_FakeChatNotifier()));
+        await _pump(tester);
+        await tester.tap(find.text('Skip\nRoom'));
+        await tester.pump();
+        expect(find.text('Skip Room'), findsOneWidget);
+        expect(find.textContaining('Leave this room and find'), findsOneWidget);
+      });
+
+      testWidgets(
+        'cancelling dialog does not call leaveRoom or forceDisconnect',
+        (tester) async {
+          final chatFake = _FakeChatNotifier();
+          final matchFake = _FakeMatchmakingNotifier();
+          await tester.pumpWidget(_buildScreen(chatFake, matchFake: matchFake));
+          await _pump(tester);
+          await tester.tap(find.text('Skip\nRoom'));
+          await tester.pump();
+          await tester.tap(find.text('Cancel'));
+          await tester.pump();
+          expect(matchFake.leaveRoomCount, 0);
+          expect(chatFake.forceDisconnectCount, 0);
+        },
+      );
+
+      testWidgets(
+        'confirming calls leaveRoom and forceDisconnect exactly once each, then navigates to finding-room',
+        (tester) async {
+          final chatFake = _FakeChatNotifier();
+          final matchFake = _FakeMatchmakingNotifier();
+          Map<String, dynamic>? captured;
+          await tester.pumpWidget(
+            _buildScreen(
+              chatFake,
+              matchFake: matchFake,
+              onFindingRoomArgs: (a) => captured = a,
+            ),
+          );
+          await _pump(tester);
+          await tester.tap(find.text('Skip\nRoom'));
+          await tester.pump();
+          await tester.tap(find.text('Skip'));
+          await tester.pump();
+          await tester.pump(const Duration(milliseconds: 400));
+          expect(matchFake.leaveRoomCount, 1);
+          expect(chatFake.forceDisconnectCount, 1);
+          expect(find.text('finding-room'), findsOneWidget);
+          expect(find.text('home'), findsNothing);
+        },
+      );
+
+      testWidgets(
+        'route args carry original roomType and background — no old roomId',
+        (tester) async {
+          Map<String, dynamic>? captured;
+          await tester.pumpWidget(
+            _buildScreen(
+              _FakeChatNotifier(),
+              onFindingRoomArgs: (a) => captured = a,
+            ),
+          );
+          await _pump(tester);
+          await tester.tap(find.text('Skip\nRoom'));
+          await tester.pump();
+          await tester.tap(find.text('Skip'));
+          await tester.pump();
+          await tester.pump(const Duration(milliseconds: 400));
+          expect(captured, isNotNull);
+          expect(captured!['roomType'], _kArgs['roomType']); // 'group'
+          expect(captured!['bgImage'], _kArgs['bgImage']);
+          expect(captured!.containsKey('roomId'), isFalse);
+        },
+      );
+
+      testWidgets('joinById roomType is remapped to group on skip', (
+        tester,
+      ) async {
+        Map<String, dynamic>? captured;
+        await tester.pumpWidget(
+          _buildScreen(
+            _FakeChatNotifier(),
+            routeArgs: const {
+              'roomId': 'GRP01',
+              'roomName': 'Test Group',
+              'bgImage': 'assets/images/backgrounds/kao_tapu.png',
+              'roomType': 'joinById',
+              'maxMembers': 5,
+            },
+            onFindingRoomArgs: (a) => captured = a,
+          ),
+        );
+        await _pump(tester);
+        await tester.tap(find.text('Skip\nRoom'));
+        await tester.pump();
+        await tester.tap(find.text('Skip'));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 400));
+        expect(captured!['roomType'], 'group');
+      });
     });
   });
 }

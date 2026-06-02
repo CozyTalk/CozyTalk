@@ -26,6 +26,7 @@ import '../shared/info_dialog.dart';
 import '../shared/layered_avatar.dart';
 import '../shared/press_bounce_btn.dart';
 import '../features/report/presentation/screens/report_sheet.dart';
+import '../theme/app_routes.dart';
 
 // ── Card assets ────────────────────────────────────────────────────────────
 const _cardAssets = [
@@ -69,6 +70,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
   final ScrollController _scrollController = ScrollController();
   final FocusNode _focusNode = FocusNode();
   final bool _isBlocked = false;
+  bool _isSkipping = false;
   Timer? _typingTimer;
 
   late final JukeboxNotifier _jukeboxNotifier;
@@ -308,6 +310,121 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
     );
   }
 
+  void _onSkipRoom() {
+    final args =
+        ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+    final roomName = args?['roomName'] as String? ?? 'Red Lotus Lake';
+    final bgImage =
+        args?['bgImage'] as String? ??
+        'assets/images/backgrounds/red_lotus_lake.png';
+    showDialog<bool>(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 32),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(24, 22, 24, 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Skip Room',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                  color: Colors.black,
+                ),
+              ),
+              const SizedBox(height: 10),
+              const Text(
+                'Leave this room and find\na new one?',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 15,
+                  height: 1.3,
+                  color: Colors.black87,
+                  fontWeight: FontWeight.w400,
+                ),
+              ),
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  Expanded(
+                    child: SizedBox(
+                      height: 42,
+                      child: ElevatedButton(
+                        onPressed: () => Navigator.pop(ctx, false),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFD9D5D1),
+                          foregroundColor: Colors.black,
+                          elevation: 0,
+                          padding: EdgeInsets.zero,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(18),
+                            side: const BorderSide(
+                              color: Color(0xFFC8C3BE),
+                              width: 1,
+                            ),
+                          ),
+                        ),
+                        child: const Text(
+                          'Cancel',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: SizedBox(
+                      height: 42,
+                      child: ElevatedButton(
+                        onPressed: () => Navigator.pop(ctx, true),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFD86A3B),
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          padding: EdgeInsets.zero,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(18),
+                          ),
+                        ),
+                        child: const Text(
+                          'Skip',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    ).then((confirmed) {
+      if (confirmed != true || !mounted) return;
+      setState(() => _isSkipping = true);
+      ref.read(chatNotifierProvider.notifier).endSession();
+      Navigator.of(context).pushReplacementNamed(
+        AppRoutes.findingRoom,
+        arguments: {
+          'roomName': roomName,
+          'bgImage': bgImage,
+          'roomType': '1v1',
+        },
+      );
+    });
+  }
+
   // TODO: implement _showLeaveForFriendChat — navigate to /friends/chat with real Friend
   // from friendsNotifierProvider; triggered by incoming friend message popup
 
@@ -402,6 +519,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
 
     ref.listen(chatNotifierProvider.select((s) => s.status), (_, next) {
       if (next == SessionStatus.disconnected) {
+        if (_isSkipping) return;
         Navigator.of(context).popUntil((route) => route.isFirst);
       }
     });
@@ -707,6 +825,38 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
                   'Topic',
                   'assets/images/icons/card.svg',
                   _sendTopicCard,
+                ),
+                const SizedBox(height: 10),
+                Semantics(
+                  label: 'Skip room',
+                  button: true,
+                  child: PressBounceBtn(
+                    onTap: _onSkipRoom,
+                    child: Container(
+                      width: 60,
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.1),
+                            blurRadius: 4,
+                          ),
+                        ],
+                      ),
+                      child: Text(
+                        'Skip\nRoom',
+                        textAlign: TextAlign.center,
+                        style: Theme.of(
+                          context,
+                        ).textTheme.labelSmall!.copyWith(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
               ],
             ),

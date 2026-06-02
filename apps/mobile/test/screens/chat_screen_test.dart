@@ -18,6 +18,7 @@ import 'package:mobile/features/profile/presentation/providers/profile_provider.
 import 'package:mobile/features/jukebox/presentation/providers/jukebox_provider.dart';
 import 'package:mobile/screens/chat_screen.dart';
 import 'package:mobile/shared/avatar_overlay.dart';
+import 'package:mobile/theme/app_routes.dart';
 import 'package:mobile/shared/layered_avatar.dart';
 import 'package:mobile/shared/user_profile.dart';
 
@@ -59,6 +60,7 @@ class _FakeChatNotifier extends ChatNotifier {
   int setTypingCount = 0;
   bool? lastTypingValue;
   int forceDisconnectCount = 0;
+  int endSessionCount = 0;
 
   _FakeChatNotifier({ChatState initial = const ChatState()})
     : _initial = initial;
@@ -84,7 +86,7 @@ class _FakeChatNotifier extends ChatNotifier {
   }
 
   @override
-  Future<void> endSession() async {}
+  Future<void> endSession() async => endSessionCount++;
 
   @override
   void forceDisconnect() => forceDisconnectCount++;
@@ -227,13 +229,12 @@ Widget _buildScreen(
   _FakeMatchmakingNotifier? matchFake,
   _FakeProfileNotifier? profileFake,
   _FakeFriendsNotifierForChat? friendsFake,
-  // Per-uid profile overrides for partner/other users.
-  // Keys are UIDs; values are the ProfileUser to return from profileByUidProvider.
   Map<String, ProfileUser>? partnerProfilesByUid,
   AuthState auth = const AuthState(
     status: AuthStatus.authenticated,
     user: AuthUser(uid: 'u1'),
   ),
+  void Function(Map<String, dynamic>)? onFindingRoomArgs,
 }) {
   return ProviderScope(
     overrides: [
@@ -264,8 +265,15 @@ Widget _buildScreen(
       onGenerateRoute: (settings) {
         if (settings.name == '/') {
           return MaterialPageRoute(
-            settings: RouteSettings(name: '/', arguments: _kArgs),
+            settings: const RouteSettings(name: '/', arguments: _kArgs),
             builder: (_) => const ChatScreen(),
+          );
+        }
+        if (settings.name == AppRoutes.findingRoom) {
+          final args = settings.arguments as Map<String, dynamic>?;
+          if (args != null) onFindingRoomArgs?.call(args);
+          return MaterialPageRoute(
+            builder: (_) => const Scaffold(body: Text('finding-room')),
           );
         }
         return MaterialPageRoute(
@@ -692,6 +700,83 @@ void main() {
           await tester.pump();
           expect(find.byType(SnackBar), findsOneWidget);
           expect(find.text('Request failed'), findsOneWidget);
+        },
+      );
+    });
+
+    group('Skip Room', () {
+      testWidgets('button is visible in the banner', (tester) async {
+        await tester.pumpWidget(_buildScreen(_FakeChatNotifier()));
+        await _pump(tester);
+        expect(find.text('Skip\nRoom'), findsOneWidget);
+      });
+
+      testWidgets('tapping button shows Skip Room confirmation dialog', (
+        tester,
+      ) async {
+        await tester.pumpWidget(_buildScreen(_FakeChatNotifier()));
+        await _pump(tester);
+        await tester.tap(find.text('Skip\nRoom'));
+        await tester.pump();
+        expect(find.text('Skip Room'), findsOneWidget);
+        expect(find.textContaining('Leave this room and find'), findsOneWidget);
+      });
+
+      testWidgets('cancelling dialog does not call endSession', (tester) async {
+        final chatFake = _FakeChatNotifier();
+        await tester.pumpWidget(_buildScreen(chatFake));
+        await _pump(tester);
+        await tester.tap(find.text('Skip\nRoom'));
+        await tester.pump();
+        await tester.tap(find.text('Cancel'));
+        await tester.pump();
+        expect(chatFake.endSessionCount, 0);
+        expect(find.byType(ChatScreen), findsOneWidget);
+      });
+
+      testWidgets(
+        'confirming calls endSession exactly once and navigates to finding-room, not home',
+        (tester) async {
+          final chatFake = _FakeChatNotifier();
+          Map<String, dynamic>? captured;
+          await tester.pumpWidget(
+            _buildScreen(chatFake, onFindingRoomArgs: (a) => captured = a),
+          );
+          await _pump(tester);
+          await tester.tap(find.text('Skip\nRoom'));
+          await tester.pump();
+          await tester.tap(find.text('Skip'));
+          await tester.pump();
+          await tester.pump(const Duration(milliseconds: 400));
+          expect(chatFake.endSessionCount, 1);
+          expect(find.text('finding-room'), findsOneWidget);
+          expect(find.text('home'), findsNothing);
+        },
+      );
+
+      testWidgets(
+        'route args carry roomType 1v1 and original background — no old roomId',
+        (tester) async {
+          Map<String, dynamic>? captured;
+          await tester.pumpWidget(
+            _buildScreen(
+              _FakeChatNotifier(),
+              onFindingRoomArgs: (a) => captured = a,
+            ),
+          );
+          await _pump(tester);
+          await tester.tap(find.text('Skip\nRoom'));
+          await tester.pump();
+          await tester.tap(find.text('Skip'));
+          await tester.pump();
+          await tester.pump(const Duration(milliseconds: 400));
+          expect(captured, isNotNull);
+          expect(captured!['roomType'], '1v1');
+          expect(captured!['roomName'], _kArgs['roomName']);
+          expect(captured!['bgImage'], _kArgs['bgImage']);
+          // No roomId in args — FindingRoomScreen starts fresh matchmaking
+          // so the user cannot accidentally rejoin the same room.
+          expect(captured!.containsKey('roomId'), isFalse);
         },
       );
     });
