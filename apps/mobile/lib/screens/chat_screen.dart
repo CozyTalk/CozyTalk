@@ -25,6 +25,7 @@ import '../shared/gif_picker.dart';
 import '../shared/info_dialog.dart';
 import '../shared/layered_avatar.dart';
 import '../shared/press_bounce_btn.dart';
+import '../features/report/presentation/screens/report_sheet.dart';
 
 // ── Card assets ────────────────────────────────────────────────────────────
 const _cardAssets = [
@@ -77,6 +78,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
   late final AnimationController _songCtrl;
   late final Animation<Offset> _songSlide;
 
+  String _roomId = '';
   bool _friendRequestSent = false;
   String? _partnerUid;
   String _myThoughts = 'Care to share?';
@@ -235,6 +237,17 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
     setState(() => _pendingGifUrl = url);
   }
 
+  void _openReport(String reportedUserId) {
+    final sessionId = ref.read(chatNotifierProvider).sessionId ?? _roomId;
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (_) =>
+          ReportSheet(sessionId: sessionId, reportedUserId: reportedUserId),
+    );
+  }
+
   void _sendFriendRequest([String name = '']) {
     if (_friendRequestSent) return;
     if (ref.read(friendsNotifierProvider).isLoading) return;
@@ -344,6 +357,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
     final roomName = args?['roomName'] as String? ?? 'Red Lotus Lake';
     final matchState = ref.watch(matchmakingNotifierProvider);
     final roomId = matchState.roomId ?? args?['roomId'] as String? ?? 'AWD3V';
+    _roomId = roomId;
     final bgImage =
         backgroundThemeAsset(matchState.currentRoom?.backgroundTheme) ??
         args?['bgImage'] as String? ??
@@ -663,7 +677,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
                       onFriendRequest: _sendFriendRequest,
                       onCancelRequest: cancelFriendRequest,
                       friendRequestSent: _friendRequestSent,
-                      onReport: reportUser,
+                      onReport: _partnerUid != null
+                          ? () => _openReport(_partnerUid!)
+                          : null,
                     ),
                     const SizedBox(width: 20),
                     _StaticAvatar(
@@ -892,7 +908,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
                     initialAdded: _friendRequestSent,
                     onAddFriend: () => _sendFriendRequest(partnerName),
                     onCancelRequest: () => cancelFriendRequest(partnerName),
-                    onReport: reportUser,
+                    onReport: _partnerUid != null
+                        ? () => _openReport(_partnerUid!)
+                        : null,
                     avatarState: avatarState,
                   ),
                 ),
@@ -1024,7 +1042,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
                     initialAdded: _friendRequestSent,
                     onAddFriend: () => _sendFriendRequest(partnerName),
                     onCancelRequest: () => cancelFriendRequest(partnerName),
-                    onReport: reportUser,
+                    onReport: _partnerUid != null
+                        ? () => _openReport(_partnerUid!)
+                        : null,
                     avatarState: avatarState,
                   ),
                 ),
