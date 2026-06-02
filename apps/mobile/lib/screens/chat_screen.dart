@@ -423,10 +423,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
           ),
         ),
       ),
-    ).then((confirmed) {
+    ).then((confirmed) async {
       if (confirmed != true || !mounted) return;
       setState(() => _isSkipping = true);
       ref.read(chatNotifierProvider.notifier).endSession();
+      await ref.read(matchmakingNotifierProvider.notifier).leaveRoom();
+      if (!mounted) return;
       Navigator.of(context).pushReplacementNamed(
         AppRoutes.findingRoom,
         arguments: {

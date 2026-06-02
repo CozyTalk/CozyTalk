@@ -554,10 +554,11 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
           ),
         ),
       ),
-    ).then((confirmed) {
+    ).then((confirmed) async {
       if (confirmed != true || !mounted) return;
       setState(() => _isSkipping = true);
-      ref.read(matchmakingNotifierProvider.notifier).leaveRoom();
+      await ref.read(matchmakingNotifierProvider.notifier).leaveRoom();
+      if (!mounted) return;
       ref.read(chatNotifierProvider.notifier).forceDisconnect();
       Navigator.of(context).pushReplacementNamed(
         AppRoutes.findingRoom,
