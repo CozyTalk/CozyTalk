@@ -517,9 +517,7 @@ void main() {
         (tester) async {
           final chatFake = _FakeChatNotifier();
           final matchFake = _FakeMatchmakingNotifier();
-          await tester.pumpWidget(
-            _buildScreen(chatFake, matchFake: matchFake),
-          );
+          await tester.pumpWidget(_buildScreen(chatFake, matchFake: matchFake));
           await _pump(tester);
           await tester.tap(find.text('Skip\nRoom'));
           await tester.pump();
