@@ -103,6 +103,20 @@
         ".read":  "auth != null && (root.child('rooms').child($room_id).child('members').child(auth.uid).exists() || root.child('presence').child($room_id).child(auth.uid).exists())",
         ".write": "auth != null && (root.child('rooms').child($room_id).child('members').child(auth.uid).exists() || root.child('presence').child($room_id).child(auth.uid).exists())"
       }
+    },
+    "card_shuffle": {
+      "$room_id": {
+        ".read":  "auth != null && (root.child('rooms').child($room_id).child('members').child(auth.uid).exists() || root.child('presence').child($room_id).child(auth.uid).exists())",
+        ".write": "auth != null && (root.child('rooms').child($room_id).child('members').child(auth.uid).exists() || root.child('presence').child($room_id).child(auth.uid).exists())",
+        "shufflerName":     { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 100" },
+        "shufflerUid":      { ".validate": "newData.isString() && newData.val().length > 0" },
+        "questionId":       { ".validate": "newData.isString()" },
+        "questionText":     { ".validate": "newData.isString() && newData.val().length <= 500" },
+        "questionCategory": { ".validate": "newData.isString() && newData.val().length <= 100" },
+        "questionDepth":    { ".validate": "newData.isString()" },
+        "timestamp":        { ".validate": "newData.isNumber()" },
+        "$other":           { ".validate": false }
+      }
     }
   }
 }

@@ -1,4 +1,5 @@
 import 'package:mobile/features/chat/domain/entities/chat_message.dart';
+import 'package:mobile/features/chat/domain/entities/shuffle_event.dart';
 import 'package:mobile/features/chat/domain/entities/typing_user.dart';
 import 'package:mobile/features/chat/domain/repositories/chat_repository.dart';
 
@@ -18,6 +19,7 @@ class FakeChatRepository implements ChatRepository {
   Stream<List<ChatMessage>> messagesStream = const Stream.empty();
   Stream<List<TypingUser>> typingStream = const Stream.empty();
   Stream<Set<String>> presenceStream = const Stream.empty();
+  Stream<ShuffleEvent?> shuffleStream = const Stream.empty();
 
   @override
   Stream<List<ChatMessage>> watchMessages(String sessionId) {
@@ -35,6 +37,12 @@ class FakeChatRepository implements ChatRepository {
   Stream<Set<String>> watchPresence(String sessionId) {
     lastSessionId = sessionId;
     return presenceStream;
+  }
+
+  @override
+  Stream<ShuffleEvent?> watchCardShuffle(String sessionId) {
+    lastSessionId = sessionId;
+    return shuffleStream;
   }
 
   @override
@@ -66,6 +74,12 @@ class FakeChatRepository implements ChatRepository {
 
   @override
   Future<String?> fetchRoomBackground(String sessionId) async => null;
+
+  @override
+  Future<void> setCardShuffle({
+    required String sessionId,
+    required ShuffleEvent event,
+  }) async {}
 
   @override
   Future<void> endSession({required String sessionId}) async {

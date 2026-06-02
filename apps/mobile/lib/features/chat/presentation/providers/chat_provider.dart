@@ -11,15 +11,19 @@ import '../../data/datasources/chat_datasource.dart';
 import '../../data/repositories/chat_repository_impl.dart';
 import '../../domain/entities/chat_message.dart';
 import '../../domain/entities/session_status.dart';
+import '../../domain/entities/shuffle_event.dart';
 import '../../domain/entities/typing_user.dart';
 import '../../domain/repositories/chat_repository.dart';
 import '../../domain/usecases/end_session.dart';
 import '../../domain/usecases/fetch_room_background.dart';
 import '../../domain/usecases/send_message.dart';
+import '../../domain/usecases/set_card_shuffle.dart';
 import '../../domain/usecases/set_typing.dart';
+import '../../domain/usecases/watch_card_shuffle.dart';
 import '../../domain/usecases/watch_messages.dart';
 import '../../domain/usecases/watch_partner_typing.dart';
 import '../../domain/usecases/watch_presence.dart';
+import '../../../card_shuffle/domain/entities/icebreaker_question.dart';
 import '../../../word_filter/presentation/providers/word_filter_provider.dart';
 
 final _chatDatasourceProvider = Provider<ChatDatasource>(
@@ -63,6 +67,14 @@ final _fetchRoomBackgroundProvider = Provider<FetchRoomBackground>(
   (ref) => FetchRoomBackground(ref.watch(_chatRepositoryProvider)),
 );
 
+final _watchCardShuffleProvider = Provider<WatchCardShuffle>(
+  (ref) => WatchCardShuffle(ref.watch(_chatRepositoryProvider)),
+);
+
+final _setCardShuffleProvider = Provider<SetCardShuffle>(
+  (ref) => SetCardShuffle(ref.watch(_chatRepositoryProvider)),
+);
+
 final chatNotifierProvider = NotifierProvider<ChatNotifier, ChatState>(
   ChatNotifier.new,
 );
@@ -80,6 +92,7 @@ class ChatState {
   final List<ChatMessage> messages;
   final List<TypingUser> typingUsers;
   final Set<String>? presenceMembers;
+  final ShuffleEvent? activeShuffleEvent;
   final bool isSending;
   final String? error;
 
@@ -94,6 +107,7 @@ class ChatState {
     this.messages = const [],
     this.typingUsers = const [],
     this.presenceMembers,
+    this.activeShuffleEvent,
     this.isSending = false,
     this.error,
   });
@@ -109,6 +123,7 @@ class ChatState {
     List<ChatMessage>? messages,
     List<TypingUser>? typingUsers,
     Object? presenceMembers = _sentinel,
+    Object? activeShuffleEvent = _sentinel,
     bool? isSending,
     Object? error = _sentinel,
   }) => ChatState(
@@ -132,6 +147,9 @@ class ChatState {
     presenceMembers: presenceMembers == _sentinel
         ? this.presenceMembers
         : presenceMembers as Set<String>?,
+    activeShuffleEvent: activeShuffleEvent == _sentinel
+        ? this.activeShuffleEvent
+        : activeShuffleEvent as ShuffleEvent?,
     isSending: isSending ?? this.isSending,
     error: error == _sentinel ? this.error : error as String?,
   );
@@ -141,6 +159,7 @@ class ChatNotifier extends Notifier<ChatState> {
   StreamSubscription<List<ChatMessage>>? _messagesSub;
   StreamSubscription<List<TypingUser>>? _typingSub;
   StreamSubscription<Set<String>>? _presenceSub;
+  StreamSubscription<ShuffleEvent?>? _shuffleSub;
 
   @override
   ChatState build() => const ChatState();
@@ -234,6 +253,34 @@ class ChatNotifier extends Notifier<ChatState> {
             _presenceSub = null;
           },
         );
+
+    _shuffleSub = ref
+        .read(_watchCardShuffleProvider)(sessionId)
+        .listen(
+          (event) => state = state.copyWith(activeShuffleEvent: event),
+          onError: (Object _) {
+            _shuffleSub?.cancel();
+            _shuffleSub = null;
+          },
+        );
+  }
+
+  Future<void> broadcastCardShuffle(IcebreakerQuestion question) async {
+    final sessionId = state.sessionId;
+    if (sessionId == null) return;
+    try {
+      await ref.read(_setCardShuffleProvider)(
+        sessionId: sessionId,
+        event: ShuffleEvent(
+          shufflerUid: state.currentUserId ?? '',
+          shufflerName: state.currentUserDisplayName ?? 'Anonymous',
+          questionId: question.id,
+          questionText: question.text,
+          questionCategory: question.category,
+          questionDepth: question.depth,
+        ),
+      );
+    } catch (_) {}
   }
 
   Future<void> sendMessage(String text) async {
@@ -305,8 +352,10 @@ class ChatNotifier extends Notifier<ChatState> {
     _messagesSub?.cancel();
     _typingSub?.cancel();
     _presenceSub?.cancel();
+    _shuffleSub?.cancel();
     _messagesSub = null;
     _typingSub = null;
     _presenceSub = null;
+    _shuffleSub = null;
   }
 }

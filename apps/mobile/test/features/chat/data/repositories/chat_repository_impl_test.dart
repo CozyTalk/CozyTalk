@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mobile/features/chat/data/datasources/chat_datasource.dart';
 import 'package:mobile/features/chat/data/models/chat_message_model.dart';
 import 'package:mobile/features/chat/data/repositories/chat_repository_impl.dart';
+import 'package:mobile/features/chat/domain/entities/shuffle_event.dart';
 import 'package:mobile/features/chat/domain/entities/typing_user.dart';
 
 class _FakeChatDatasource implements ChatDatasource {
@@ -44,6 +45,10 @@ class _FakeChatDatasource implements ChatDatasource {
       Stream.value(presenceUids);
 
   @override
+  Stream<ShuffleEvent?> watchCardShuffle(String sessionId) =>
+      Stream.value(null);
+
+  @override
   Future<void> sendMessage({
     required String sessionId,
     required String text,
@@ -60,6 +65,12 @@ class _FakeChatDatasource implements ChatDatasource {
     setTypingCount++;
     lastIsTyping = isTyping;
   }
+
+  @override
+  Future<void> setCardShuffle({
+    required String sessionId,
+    required ShuffleEvent event,
+  }) async {}
 
   @override
   Future<void> endSession({required String sessionId}) async =>

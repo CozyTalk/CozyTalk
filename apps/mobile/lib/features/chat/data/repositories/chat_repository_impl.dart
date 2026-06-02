@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:cryptography/cryptography.dart';
 
 import '../../domain/entities/chat_message.dart';
+import '../../domain/entities/shuffle_event.dart';
 import '../../domain/entities/typing_user.dart';
 import '../../domain/repositories/chat_repository.dart';
 import '../datasources/chat_datasource.dart';
@@ -33,6 +34,10 @@ class ChatRepositoryImpl implements ChatRepository {
       _datasource.watchPresence(sessionId);
 
   @override
+  Stream<ShuffleEvent?> watchCardShuffle(String sessionId) =>
+      _datasource.watchCardShuffle(sessionId);
+
+  @override
   Future<String?> fetchRoomBackground(String sessionId) =>
       _datasource.fetchRoomBackground(sessionId);
 
@@ -54,6 +59,12 @@ class ChatRepositoryImpl implements ChatRepository {
     displayName: displayName,
     photoUrl: photoUrl,
   );
+
+  @override
+  Future<void> setCardShuffle({
+    required String sessionId,
+    required ShuffleEvent event,
+  }) => _datasource.setCardShuffle(sessionId: sessionId, event: event);
 
   @override
   Future<void> endSession({required String sessionId}) =>

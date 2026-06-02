@@ -6,6 +6,7 @@ import 'package:cryptography/cryptography.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart';
 
+import '../../domain/entities/shuffle_event.dart';
 import '../../domain/entities/typing_user.dart';
 import '../models/chat_message_model.dart';
 
@@ -15,6 +16,7 @@ abstract class ChatDatasource {
   Stream<List<ChatMessageModel>> watchRawMessages(String sessionId);
   Stream<List<TypingUser>> watchTypingUsers(String sessionId);
   Stream<Set<String>> watchPresence(String sessionId);
+  Stream<ShuffleEvent?> watchCardShuffle(String sessionId);
   Future<void> sendMessage({required String sessionId, required String text});
   Future<void> setTyping({
     required String sessionId,
@@ -22,6 +24,10 @@ abstract class ChatDatasource {
     required String currentUid,
     required String displayName,
     String? photoUrl,
+  });
+  Future<void> setCardShuffle({
+    required String sessionId,
+    required ShuffleEvent event,
   });
   Future<void> endSession({required String sessionId});
   Future<String> joinProtoSession({
@@ -200,22 +206,58 @@ class ChatDatasourceImpl implements ChatDatasource {
   }
 
   @override
+  Stream<ShuffleEvent?> watchCardShuffle(String sessionId) {
+    return _db.ref('card_shuffle/$sessionId').onValue.map((event) {
+      final raw = event.snapshot.value;
+      if (raw == null) return null;
+      final data = Map<String, dynamic>.from(raw as Map);
+      return ShuffleEvent(
+        shufflerUid: data['shufflerUid'] as String? ?? '',
+        shufflerName: data['shufflerName'] as String? ?? 'Someone',
+        questionId: data['questionId'] as String? ?? '',
+        questionText: data['questionText'] as String? ?? '',
+        questionCategory: data['questionCategory'] as String? ?? '',
+        questionDepth: data['questionDepth'] as String? ?? 'light',
+      );
+    });
+  }
+
+  @override
+  Future<void> setCardShuffle({
+    required String sessionId,
+    required ShuffleEvent event,
+  }) async {
+    await _db.ref('card_shuffle/$sessionId').set({
+      'shufflerUid': event.shufflerUid,
+      'shufflerName': event.shufflerName,
+      'questionId': event.questionId,
+      'questionText': event.questionText,
+      'questionCategory': event.questionCategory,
+      'questionDepth': event.questionDepth,
+      'timestamp': ServerValue.timestamp,
+    });
+  }
+
+  @override
   Future<void> endSession({required String sessionId}) async {
     final uid = _auth.currentUser?.uid;
 
     if (sessionId.startsWith('proto-')) {
+      final removes = [_db.ref('card_shuffle/$sessionId').remove()];
       if (uid != null) {
-        await Future.wait([
+        removes.addAll([
           _db.ref('typing/$sessionId/$uid').remove(),
           _db.ref('presence/$sessionId/$uid').remove(),
         ]);
       }
+      await Future.wait(removes);
       return;
     }
 
-    if (uid != null) {
-      await _db.ref('typing/$sessionId/$uid').remove();
-    }
+    await Future.wait([
+      _db.ref('card_shuffle/$sessionId').remove(),
+      if (uid != null) _db.ref('typing/$sessionId/$uid').remove(),
+    ]);
     await _functions.httpsCallable('endSession').call({'sessionId': sessionId});
   }
 
