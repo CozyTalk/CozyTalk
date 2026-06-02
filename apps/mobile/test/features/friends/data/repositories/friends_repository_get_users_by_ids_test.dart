@@ -60,6 +60,15 @@ class _FakeDatasource implements FriendsDatasource {
   Future<void> declineFriendRequest({required String requestId}) async {}
 
   @override
+  Future<void> undoAcceptFriendRequest({
+    required String requestId,
+    required String friendshipId,
+  }) async {}
+
+  @override
+  Future<void> undoDeclineFriendRequest({required String requestId}) async {}
+
+  @override
   Future<void> removeFriend({required String friendshipId}) async {}
 
   @override

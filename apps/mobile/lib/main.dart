@@ -250,7 +250,7 @@ class _FriendRequestListenerState
                 .acceptRequest(request),
             onDecline: () => ref
                 .read(friendsNotifierProvider.notifier)
-                .declineRequest(request.id),
+                .declineRequest(request),
           );
         }
       },

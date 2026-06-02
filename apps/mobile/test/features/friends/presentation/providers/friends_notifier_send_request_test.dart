@@ -126,6 +126,7 @@ void main() {
 
     test('email user: correct toUid and displayName forwarded', () async {
       setUp(_emailAuth());
+      repo.usersById = [const AppUser(uid: 'real-uid', displayName: 'Alice')];
       await container
           .read(friendsNotifierProvider.notifier)
           .sendFriendRequest(_target);
