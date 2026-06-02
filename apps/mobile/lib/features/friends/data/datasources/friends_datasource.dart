@@ -33,6 +33,11 @@ abstract class FriendsDatasource {
   });
   Future<void> declineFriendRequest({required String requestId});
   Future<void> cancelFriendRequest({required String toUid});
+  Future<void> undoAcceptFriendRequest({
+    required String requestId,
+    required String friendshipId,
+  });
+  Future<void> undoDeclineFriendRequest({required String requestId});
   Future<void> removeFriend({required String friendshipId});
   Future<void> sendMessage({
     required String chatRoomId,
@@ -104,7 +109,8 @@ class FriendsDatasourceImpl implements FriendsDatasource {
     return _firestore
         .collection('friend_requests')
         .where('toUid', isEqualTo: currentUid)
-        .where('status', isEqualTo: 'pending')
+        .orderBy('createdAt', descending: true)
+        .limit(10)
         .snapshots()
         .map((snap) {
           return snap.docs.map((doc) {
@@ -278,6 +284,26 @@ class FriendsDatasourceImpl implements FriendsDatasource {
   Future<void> cancelFriendRequest({required String toUid}) async {
     final docId = '${currentUid}_$toUid';
     await _firestore.collection('friend_requests').doc(docId).delete();
+  }
+
+  @override
+  Future<void> undoAcceptFriendRequest({
+    required String requestId,
+    required String friendshipId,
+  }) async {
+    final batch = _firestore.batch();
+    batch.delete(_firestore.collection('friendships').doc(friendshipId));
+    batch.update(_firestore.collection('friend_requests').doc(requestId), {
+      'status': 'pending',
+    });
+    await batch.commit();
+  }
+
+  @override
+  Future<void> undoDeclineFriendRequest({required String requestId}) async {
+    await _firestore.collection('friend_requests').doc(requestId).update({
+      'status': 'pending',
+    });
   }
 
   @override

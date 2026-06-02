@@ -117,7 +117,7 @@ Pending, accepted, or declined friend requests.
 | `status` | string | `'pending'` → `'accepted'` or `'declined'` |
 | `createdAt` | timestamp | |
 
-Rules: create by sender (must set `fromUid == uid`, `status == 'pending'`). Read by sender or recipient. Update by recipient only (status field only).
+Rules: create by sender (must set `fromUid == uid`, `status == 'pending'`). Read by sender or recipient. Update by recipient (status field only): `pending → accepted`, `pending → declined`, or revert `accepted/declined → pending` (undo). Sender may re-send (overwrite with a fresh pending request).
 
 ### `friendships/{friendshipId}`
 

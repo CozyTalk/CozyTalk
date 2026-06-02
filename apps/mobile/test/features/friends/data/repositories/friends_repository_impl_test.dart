@@ -111,6 +111,19 @@ class _FakeFriendsDatasource implements FriendsDatasource {
   }
 
   @override
+  Future<void> undoAcceptFriendRequest({
+    required String requestId,
+    required String friendshipId,
+  }) async {
+    if (error != null) throw error!;
+  }
+
+  @override
+  Future<void> undoDeclineFriendRequest({required String requestId}) async {
+    if (error != null) throw error!;
+  }
+
+  @override
   Future<void> removeFriend({required String friendshipId}) async {
     if (error != null) throw error!;
     removeFriendCount++;

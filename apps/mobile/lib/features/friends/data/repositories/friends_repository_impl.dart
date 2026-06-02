@@ -86,6 +86,19 @@ class FriendsRepositoryImpl implements FriendsRepository {
       _datasource.declineFriendRequest(requestId: requestId);
 
   @override
+  Future<void> undoAcceptFriendRequest({
+    required String requestId,
+    required String friendshipId,
+  }) => _datasource.undoAcceptFriendRequest(
+    requestId: requestId,
+    friendshipId: friendshipId,
+  );
+
+  @override
+  Future<void> undoDeclineFriendRequest({required String requestId}) =>
+      _datasource.undoDeclineFriendRequest(requestId: requestId);
+
+  @override
   Future<void> removeFriend({required String friendshipId}) =>
       _datasource.removeFriend(friendshipId: friendshipId);
 

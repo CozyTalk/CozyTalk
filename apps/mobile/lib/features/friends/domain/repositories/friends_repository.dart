@@ -27,6 +27,11 @@ abstract class FriendsRepository {
   });
   Future<void> declineFriendRequest({required String requestId});
   Future<void> cancelFriendRequest({required String toUid});
+  Future<void> undoAcceptFriendRequest({
+    required String requestId,
+    required String friendshipId,
+  });
+  Future<void> undoDeclineFriendRequest({required String requestId});
   Future<void> removeFriend({required String friendshipId});
   Future<void> sendMessage({
     required String chatRoomId,

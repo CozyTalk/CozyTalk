@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../features/auth/presentation/providers/auth_provider.dart';
 import '../features/avatar/presentation/providers/avatar_decoration_provider.dart';
+import '../features/friends/domain/entities/friend_request.dart'
+    show FriendRequestStatus;
 import '../features/friends/presentation/providers/friends_provider.dart';
 import '../features/matchmaking/presentation/providers/matchmaking_provider.dart';
 import '../features/profile/presentation/providers/profile_provider.dart';
@@ -103,7 +105,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           _TopBar(
             hasNotification: ref.watch(
               friendsNotifierProvider.select(
-                (s) => s.incomingRequests.isNotEmpty,
+                (s) => s.incomingRequests.any(
+                  (r) => r.status == FriendRequestStatus.pending,
+                ),
               ),
             ),
             onBellTap: () =>

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../domain/entities/app_user.dart';
+import '../../domain/entities/friend_request.dart' show FriendRequestStatus;
 import '../providers/friends_provider.dart';
 import 'friends_list_screen.dart';
 
@@ -24,6 +25,10 @@ class FriendsTestScreen extends ConsumerWidget {
     });
 
     final friendUids = friendsState.friends.map((f) => f.friendUid).toSet();
+    final incomingUids = friendsState.incomingRequests
+        .where((r) => r.status == FriendRequestStatus.pending)
+        .map((r) => r.fromUid)
+        .toSet();
 
     return Scaffold(
       appBar: AppBar(title: const Text('Friends — Dev Test')),
@@ -77,6 +82,7 @@ class FriendsTestScreen extends ConsumerWidget {
               (user) => _UserTile(
                 user: user,
                 isFriend: friendUids.contains(user.uid),
+                hasIncoming: incomingUids.contains(user.uid),
                 isLoading: friendsState.isLoading,
                 onAdd: () => ref
                     .read(friendsNotifierProvider.notifier)
@@ -110,12 +116,14 @@ class _SectionHeader extends StatelessWidget {
 class _UserTile extends StatelessWidget {
   final AppUser user;
   final bool isFriend;
+  final bool hasIncoming;
   final bool isLoading;
   final VoidCallback onAdd;
 
   const _UserTile({
     required this.user,
     required this.isFriend,
+    required this.hasIncoming,
     required this.isLoading,
     required this.onAdd,
   });
@@ -123,16 +131,22 @@ class _UserTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final name = user.displayName.isNotEmpty ? user.displayName : 'Unknown';
+    final Widget trailing;
+    if (isFriend) {
+      trailing = const Chip(label: Text('Friends'));
+    } else if (hasIncoming) {
+      trailing = const Chip(label: Text('Respond'));
+    } else {
+      trailing = OutlinedButton(
+        onPressed: isLoading ? null : onAdd,
+        child: const Text('Add'),
+      );
+    }
     return ListTile(
       leading: CircleAvatar(child: Text(name[0].toUpperCase())),
       title: Text(name),
       subtitle: Text(user.uid, style: Theme.of(context).textTheme.bodySmall),
-      trailing: isFriend
-          ? const Chip(label: Text('Friends'))
-          : OutlinedButton(
-              onPressed: isLoading ? null : onAdd,
-              child: const Text('Add'),
-            ),
+      trailing: trailing,
     );
   }
 }
