@@ -439,13 +439,6 @@ class FriendsNotifier extends Notifier<FriendsState> {
         : 'Anonymous';
     state = state.copyWith(isLoading: true, error: null);
     try {
-      final myUsers = await GetUsersByIds(ref.read(friendsRepositoryProvider))([
-        authUser!.uid,
-      ]);
-      final myDisplayName =
-          myUsers.isNotEmpty && myUsers.first.displayName.isNotEmpty
-          ? myUsers.first.displayName
-          : 'Anonymous';
       await ref.read(_sendFriendRequestProvider)(
         toUid: toUser.uid,
         toDisplayName: toUser.displayName,
