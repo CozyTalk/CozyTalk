@@ -53,6 +53,7 @@ features/chat/
 - `onDisconnect().remove()` set on `presence` path in proto sessions only; for real sessions the `endSession` CF handles RTDB cleanup server-side
 - `ChatNotifier.broadcastCardShuffle(question)` writes to `card_shuffle/{sessionId}` so all room participants receive the shuffle event; `activeShuffleEvent` in `ChatState` updates for every participant when any member shuffles
 - `ChatNotifier` subscribes to `presence/{sessionId}` via `WatchPresence` use case; result stored in `ChatState.presenceMembers` as a `Set<String>` of live UIDs. `GroupChatScreen` uses this to filter Firestore `roomUsers` — only UIDs present in RTDB are rendered in the banner, suppressing phantom members whose `cleanupMember` CF hasn't yet run.
+- `GroupChatScreen` maintains a `_memberAvatarCache` (`Map<String, AvatarState>`) that is populated whenever `avatarDecorationByUidProvider(uid)` resolves during `build()`. Message bubble rendering falls back to this cache when a sender is no longer in `roomUsers`, ensuring mood and hat overlays persist on past messages even after the user leaves.
 - Message encryption: AES-256-GCM, 12-byte random IV per message (`crypto.randomBytes(12)` in CF)
 - `_cancelSubscriptions()` does NOT cancel `onDisconnect` hooks — intentional
 
