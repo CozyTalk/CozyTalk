@@ -36,6 +36,7 @@ class _FriendChatScreenState extends ConsumerState<FriendChatScreen> {
   late Friend _friend;
   bool _initialized = false;
   Timer? _typingTimer;
+  String? _pendingGifUrl;
 
   @override
   void initState() {
@@ -82,17 +83,27 @@ class _FriendChatScreenState extends ConsumerState<FriendChatScreen> {
     }
   }
 
-  void _sendMessage() {
+  Future<void> _sendMessage() async {
+    bool sent = false;
+    if (_pendingGifUrl != null) {
+      final url = _pendingGifUrl!;
+      setState(() => _pendingGifUrl = null);
+      await _chatNotifier.sendMessage(url);
+      sent = true;
+    }
     final text = _inputCtrl.text.trim();
-    if (text.isEmpty) return;
-    _inputCtrl.clear();
-    _chatNotifier.sendMessage(text);
-    _scrollToBottom();
+    if (text.isNotEmpty) {
+      _inputCtrl.clear();
+      _chatNotifier.sendMessage(text);
+      _chatNotifier.setTyping(false);
+      _typingTimer?.cancel();
+      sent = true;
+    }
+    if (sent) _scrollToBottom();
   }
 
   void _sendGif(String gifUrl) {
-    _chatNotifier.sendMessage(gifUrl);
-    _scrollToBottom();
+    setState(() => _pendingGifUrl = gifUrl);
   }
 
   void _scrollToBottom() {
@@ -107,35 +118,96 @@ class _FriendChatScreenState extends ConsumerState<FriendChatScreen> {
     });
   }
 
-  String _formatNow() {
-    final now = DateTime.now();
-    final h = now.hour > 12
-        ? now.hour - 12
-        : now.hour == 0
+  String _formatTime(DateTime dt) {
+    final h = dt.hour > 12
+        ? dt.hour - 12
+        : dt.hour == 0
         ? 12
-        : now.hour;
-    final m = now.minute.toString().padLeft(2, '0');
-    final ampm = now.hour >= 12 ? 'pm' : 'am';
+        : dt.hour;
+    final m = dt.minute.toString().padLeft(2, '0');
+    final ampm = dt.hour >= 12 ? 'pm' : 'am';
     return '$h:$m $ampm';
   }
 
-  String _chatDateLabel() {
-    final now = DateTime.now();
-    const months = [
-      'January',
-      'February',
-      'March',
-      'April',
-      'May',
-      'June',
-      'July',
-      'August',
-      'September',
-      'October',
-      'November',
-      'December',
-    ];
-    return '${now.day} ${months[now.month - 1]} ${now.year}';
+  static const _months = [
+    'January',
+    'February',
+    'March',
+    'April',
+    'May',
+    'June',
+    'July',
+    'August',
+    'September',
+    'October',
+    'November',
+    'December',
+  ];
+
+  String _dateLabel(DateTime dt) =>
+      '${dt.day} ${_months[dt.month - 1]} ${dt.year}';
+
+  List<Widget> _buildMessageList(
+    List<FriendMessage> messages,
+    String currentUid,
+    AvatarOverlay? myMoodOverlay,
+    AvatarOverlay? myAccessoryOverlay,
+    AvatarOverlay? partnerMoodOverlay,
+    AvatarOverlay? partnerAccessoryOverlay,
+  ) {
+    if (messages.isEmpty) {
+      return [
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          child: Center(
+            child: Text(
+              _dateLabel(DateTime.now()),
+              style: Theme.of(context).textTheme.bodySmall!.copyWith(
+                fontSize: 12,
+                color: Colors.grey.shade600,
+              ),
+            ),
+          ),
+        ),
+      ];
+    }
+    final widgets = <Widget>[];
+    DateTime? lastDate;
+    for (final m in messages) {
+      final msgDay = DateTime(
+        m.timestamp.year,
+        m.timestamp.month,
+        m.timestamp.day,
+      );
+      if (lastDate == null || msgDay != lastDate) {
+        lastDate = msgDay;
+        widgets.add(
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 10),
+            child: Center(
+              child: Text(
+                _dateLabel(m.timestamp),
+                style: Theme.of(context).textTheme.bodySmall!.copyWith(
+                  fontSize: 12,
+                  color: Colors.grey.shade600,
+                ),
+              ),
+            ),
+          ),
+        );
+      }
+      widgets.add(
+        _buildMessageBubble(
+          m,
+          currentUid,
+          myMoodOverlay,
+          myAccessoryOverlay,
+          partnerMoodOverlay,
+          partnerAccessoryOverlay,
+        ),
+      );
+    }
+    return widgets;
   }
 
   @override
@@ -178,6 +250,13 @@ class _FriendChatScreenState extends ConsumerState<FriendChatScreen> {
         AvatarOverlays.mood[partnerDecoration?.moodKey ?? ''];
     final partnerAccessoryOverlay =
         AvatarOverlays.accessory[partnerDecoration?.hatKey ?? ''];
+    final myDecoration = ref
+        .watch(avatarDecorationByUidProvider(currentUid))
+        .asData
+        ?.value;
+    final myMoodOverlay = AvatarOverlays.mood[myDecoration?.moodKey ?? ''];
+    final myAccessoryOverlay =
+        AvatarOverlays.accessory[myDecoration?.hatKey ?? ''];
 
     ref.listen<FriendChatState>(friendChatNotifierProvider, (prev, next) {
       if (next.error != null && next.error != prev?.error) {
@@ -212,11 +291,15 @@ class _FriendChatScreenState extends ConsumerState<FriendChatScreen> {
               controller: _scrollCtrl,
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               children: [
-                _buildDateLabel(),
                 _buildSafetyNotice(),
                 const SizedBox(height: 8),
-                ...chatState.messages.map(
-                  (m) => _buildMessageBubble(m, currentUid),
+                ..._buildMessageList(
+                  chatState.messages,
+                  currentUid,
+                  myMoodOverlay,
+                  myAccessoryOverlay,
+                  partnerMoodOverlay,
+                  partnerAccessoryOverlay,
                 ),
                 if (chatState.isPartnerTyping)
                   const Padding(
@@ -226,7 +309,16 @@ class _FriendChatScreenState extends ConsumerState<FriendChatScreen> {
               ],
             ),
           ),
-          isBlocked ? _buildBlockedBar() : _buildInputBar(chatState),
+          if (isBlocked)
+            _buildBlockedBar()
+          else
+            Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (_pendingGifUrl != null) _buildGifPreview(),
+                _buildInputBar(chatState),
+              ],
+            ),
         ],
       ),
     );
@@ -479,20 +571,6 @@ class _FriendChatScreenState extends ConsumerState<FriendChatScreen> {
   }
 
   // ─── Date label ───
-  Widget _buildDateLabel() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 10),
-      child: Center(
-        child: Text(
-          _chatDateLabel(),
-          style: Theme.of(context).textTheme.bodySmall!.copyWith(
-            fontSize: 12,
-            color: Colors.grey.shade600,
-          ),
-        ),
-      ),
-    );
-  }
 
   // ─── Safety notice banner ───
   Widget _buildSafetyNotice() {
@@ -521,78 +599,150 @@ class _FriendChatScreenState extends ConsumerState<FriendChatScreen> {
   }
 
   // ─── Message bubble ───
-  Widget _buildMessageBubble(FriendMessage message, String currentUid) {
+  Widget _buildMessageBubble(
+    FriendMessage message,
+    String currentUid,
+    AvatarOverlay? myMoodOverlay,
+    AvatarOverlay? myAccessoryOverlay,
+    AvatarOverlay? partnerMoodOverlay,
+    AvatarOverlay? partnerAccessoryOverlay,
+  ) {
     final isMe = message.senderId == currentUid;
     final isGif = message.text.contains('giphy.com');
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Column(
-        crossAxisAlignment: isMe
-            ? CrossAxisAlignment.end
-            : CrossAxisAlignment.start,
-        children: [
-          Container(
-            constraints: BoxConstraints(
-              maxWidth: MediaQuery.of(context).size.width * 0.65,
-            ),
-            clipBehavior: Clip.hardEdge,
+    final maxW = MediaQuery.of(context).size.width * 0.62;
+    final bubbleColor = isMe
+        ? const Color(0xFFF1CEE4)
+        : const Color(0xFFDCEBCE);
+    final moodOverlay = isMe ? myMoodOverlay : partnerMoodOverlay;
+    final accessoryOverlay = isMe
+        ? myAccessoryOverlay
+        : partnerAccessoryOverlay;
+
+    final timeWidget = Text(
+      _formatTime(message.timestamp),
+      style: Theme.of(context).textTheme.labelSmall!.copyWith(
+        fontSize: 10,
+        color: Colors.black.withValues(alpha: 0.60),
+      ),
+    );
+
+    final content = isGif
+        ? Container(
+            constraints: BoxConstraints(maxWidth: maxW),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
-              color: isMe ? const Color(0xFFF6D4E5) : const Color(0xFFDEF1C2),
-              borderRadius: BorderRadius.only(
-                topLeft: const Radius.circular(18),
-                topRight: const Radius.circular(18),
-                bottomLeft: isMe
-                    ? const Radius.circular(18)
-                    : const Radius.circular(4),
-                bottomRight: isMe
-                    ? const Radius.circular(4)
-                    : const Radius.circular(18),
-              ),
-              border: isGif
-                  ? null
-                  : Border.all(
-                      color: isMe
-                          ? const Color(0xFFF0BFD6)
-                          : const Color(0xFFC7D2B5),
-                      width: 1.5,
-                    ),
+              color: bubbleColor,
+              borderRadius: BorderRadius.circular(20),
             ),
-            child: isGif
-                ? Image.network(
-                    message.text,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, _, _) => const Padding(
-                      padding: EdgeInsets.all(12),
-                      child: Text(
-                        'GIF',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w800,
-                          fontSize: 15,
-                          color: Color(0xFF4A3228),
-                        ),
-                      ),
-                    ),
-                  )
-                : Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
-                    ),
-                    child: Text(
-                      message.text,
-                      style: Theme.of(context).textTheme.bodyLarge!.copyWith(
-                        fontSize: 15,
-                        color: Colors.black87,
-                      ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: Image.network(
+                message.text,
+                fit: BoxFit.cover,
+                errorBuilder: (_, _, _) => const Padding(
+                  padding: EdgeInsets.all(8),
+                  child: Text(
+                    'GIF',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 15,
+                      color: Color(0xFF4A3228),
                     ),
                   ),
+                ),
+              ),
+            ),
+          )
+        : Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            constraints: BoxConstraints(maxWidth: maxW),
+            decoration: BoxDecoration(
+              color: bubbleColor,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Text(
+              message.text,
+              style: Theme.of(
+                context,
+              ).textTheme.bodyLarge!.copyWith(fontSize: 15, height: 1.6),
+            ),
+          );
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        mainAxisAlignment: isMe
+            ? MainAxisAlignment.end
+            : MainAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          if (!isMe) ...[
+            LayeredAvatar(
+              boxSize: 40,
+              moodOverlay: moodOverlay,
+              accessoryOverlay: accessoryOverlay,
+            ),
+            const SizedBox(width: 8),
+            content,
+            const SizedBox(width: 6),
+            timeWidget,
+          ] else ...[
+            timeWidget,
+            const SizedBox(width: 6),
+            content,
+            const SizedBox(width: 8),
+            LayeredAvatar(
+              boxSize: 40,
+              moodOverlay: moodOverlay,
+              accessoryOverlay: accessoryOverlay,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  // ─── GIF preview strip ───
+  Widget _buildGifPreview() {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+      color: const Color(0xFF6B5E5B),
+      child: Row(
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: Image.network(
+              _pendingGifUrl!,
+              width: 80,
+              height: 60,
+              fit: BoxFit.cover,
+              errorBuilder: (_, _, _) => Container(
+                width: 80,
+                height: 60,
+                color: Colors.white12,
+                alignment: Alignment.center,
+                child: const Text(
+                  'GIF',
+                  style: TextStyle(color: Colors.white54),
+                ),
+              ),
+            ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(width: 10),
           Text(
-            _formatNow(),
-            style: Theme.of(context).textTheme.labelSmall!.copyWith(
-              fontSize: 11,
-              color: Colors.grey.shade600,
+            'GIF ready to send',
+            style: Theme.of(context).textTheme.bodySmall!.copyWith(
+              color: Colors.white70,
+              fontSize: 12,
+            ),
+          ),
+          const Spacer(),
+          Semantics(
+            label: 'Close GIF preview',
+            button: true,
+            child: GestureDetector(
+              onTap: () => setState(() => _pendingGifUrl = null),
+              child: const Icon(Icons.close, color: Colors.white54, size: 20),
             ),
           ),
         ],
@@ -641,42 +791,46 @@ class _FriendChatScreenState extends ConsumerState<FriendChatScreen> {
   // ─── Bottom input bar ───
   Widget _buildInputBar(FriendChatState chatState) {
     return Container(
-      decoration: const BoxDecoration(color: AppColors.brownDeep),
       padding: EdgeInsets.fromLTRB(
         16,
-        14,
+        12,
         16,
-        MediaQuery.of(context).padding.bottom + 14,
+        MediaQuery.of(context).padding.bottom + 12,
       ),
+      color: const Color(0xFF6B5E5B),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           Expanded(
-            child: Container(
-              height: 58,
-              padding: const EdgeInsets.only(left: 20),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Colors.grey.shade300, width: 1.5),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.12),
-                    blurRadius: 8,
-                    offset: const Offset(0, 3),
-                  ),
-                ],
-              ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(24),
               child: TextField(
                 controller: _inputCtrl,
+                minLines: 1,
+                maxLines: 5,
+                keyboardType: TextInputType.multiline,
+                textInputAction: TextInputAction.newline,
+                style: Theme.of(
+                  context,
+                ).textTheme.bodyLarge!.copyWith(fontSize: 15),
+                strutStyle: const StrutStyle(
+                  fontSize: 15,
+                  height: 1.6,
+                  forceStrutHeight: true,
+                ),
                 decoration: InputDecoration(
                   hintText: 'Type here ...',
-                  hintStyle: const TextStyle(
-                    color: Colors.grey,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w500,
+                  hintStyle: const TextStyle(color: Colors.black38),
+                  filled: true,
+                  fillColor: Colors.white,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(24),
+                    borderSide: BorderSide.none,
                   ),
-                  border: InputBorder.none,
-                  contentPadding: const EdgeInsets.symmetric(vertical: 18),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 18,
+                    vertical: 16,
+                  ),
                   suffixIcon: GestureDetector(
                     onTap: () async {
                       final gif = await showGifPicker(context);
@@ -686,7 +840,7 @@ class _FriendChatScreenState extends ConsumerState<FriendChatScreen> {
                     child: Padding(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 10,
-                        vertical: 14,
+                        vertical: 12,
                       ),
                       child: Container(
                         padding: const EdgeInsets.symmetric(
@@ -710,14 +864,7 @@ class _FriendChatScreenState extends ConsumerState<FriendChatScreen> {
                     ),
                   ),
                 ),
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
-                ),
-                textAlignVertical: TextAlignVertical.center,
                 onChanged: _onTypingChanged,
-                textInputAction: TextInputAction.send,
-                onSubmitted: (_) => _sendMessage(),
               ),
             ),
           ),
@@ -728,24 +875,13 @@ class _FriendChatScreenState extends ConsumerState<FriendChatScreen> {
             child: GestureDetector(
               onTap: chatState.isSending ? null : _sendMessage,
               child: Container(
-                width: 58,
-                height: 58,
-                alignment: Alignment.center,
+                width: 50,
+                height: 50,
                 decoration: BoxDecoration(
-                  color: AppColors.yellowWarm,
-                  borderRadius: BorderRadius.circular(18),
-                  border: Border.all(
-                    color: const Color(0xFFD49A20),
-                    width: 1.5,
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.12),
-                      blurRadius: 8,
-                      offset: const Offset(0, 3),
-                    ),
-                  ],
+                  color: const Color(0xFFEAC163),
+                  borderRadius: BorderRadius.circular(16),
                 ),
+                alignment: Alignment.center,
                 child: chatState.isSending
                     ? const SizedBox(
                         width: 24,
@@ -754,12 +890,8 @@ class _FriendChatScreenState extends ConsumerState<FriendChatScreen> {
                       )
                     : SvgPicture.asset(
                         'assets/images/icons/sent.svg',
-                        width: 26,
-                        height: 26,
-                        colorFilter: const ColorFilter.mode(
-                          Color(0xFF695959),
-                          BlendMode.srcIn,
-                        ),
+                        width: 24,
+                        height: 24,
                       ),
               ),
             ),
