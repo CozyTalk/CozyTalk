@@ -180,7 +180,28 @@ void main() {
       expect(profileFake.loadCount, 1);
     });
 
-    testWidgets('logout button calls signOut', (tester) async {
+    testWidgets('tapping Log out shows confirmation overlay', (tester) async {
+      await tester.pumpWidget(
+        _build(
+          authFake: _FakeAuthNotifier(
+            initial: AuthState(
+              status: AuthStatus.authenticated,
+              user: _authenticatedUser,
+            ),
+          ),
+          profileFake: _FakeProfileNotifier(),
+        ),
+      );
+      await tester.pump();
+      expect(find.text('Log out of CozyTalk?'), findsNothing);
+      await tester.tap(find.text('Log out'));
+      await tester.pump();
+      expect(find.text('Log out of CozyTalk?'), findsOneWidget);
+    });
+
+    testWidgets('tapping Cancel hides overlay without calling signOut', (
+      tester,
+    ) async {
       int signOutCount = 0;
       final countingAuthFake = _CountingAuthNotifier(
         initial: AuthState(
@@ -194,6 +215,30 @@ void main() {
       );
       await tester.pump();
       await tester.tap(find.text('Log out'));
+      await tester.pump();
+      await tester.tap(find.text('Cancel'));
+      await tester.pump();
+      expect(find.text('Log out of CozyTalk?'), findsNothing);
+      expect(signOutCount, 0);
+    });
+
+    testWidgets('confirming logout calls signOut', (tester) async {
+      int signOutCount = 0;
+      final countingAuthFake = _CountingAuthNotifier(
+        initial: AuthState(
+          status: AuthStatus.authenticated,
+          user: _authenticatedUser,
+        ),
+        onSignOut: () => signOutCount++,
+      );
+      await tester.pumpWidget(
+        _build(authFake: countingAuthFake, profileFake: _FakeProfileNotifier()),
+      );
+      await tester.pump();
+      await tester.tap(find.text('Log out'));
+      await tester.pump();
+      // Two 'Log out' texts exist when overlay is shown; tap the last one (inside overlay).
+      await tester.tap(find.text('Log out').last);
       await tester.pump();
       expect(signOutCount, 1);
     });
