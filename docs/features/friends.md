@@ -45,7 +45,7 @@ See `docs/database/schema.md` for full field lists and security rules.
 
 **Use cases** (`domain/usecases/`)
 
-`WatchAllUsers` · `WatchFriends` · `WatchIncomingRequests` · `WatchFriendMessages` · `SendFriendRequest` · `AcceptFriendRequest` · `DeclineFriendRequest` · `RemoveFriend` · `SendFriendMessage` · `WatchFriendPresence` · `WatchFriendLastMessage` · `WatchFriendRoom` · `GetUnreadMessageCount` · `SetChatRead` · `WatchChatRead`
+`WatchAllUsers` · `WatchFriends` · `WatchIncomingRequests` · `WatchOutgoingRequests` · `WatchFriendMessages` · `SendFriendRequest` · `CancelFriendRequest` · `AcceptFriendRequest` · `DeclineFriendRequest` · `RemoveFriend` · `SendFriendMessage` · `WatchFriendPresence` · `WatchFriendLastMessage` · `WatchFriendRoom` · `GetUnreadMessageCount` · `SetChatRead` · `WatchChatRead`
 
 ---
 
@@ -72,6 +72,7 @@ See `docs/database/schema.md` for full field lists and security rules.
 |---|---|---|
 | `friends` | `List<Friend>` | Active friendships |
 | `incomingRequests` | `List<FriendRequest>` | Pending requests for the current user |
+| `outgoingRequests` | `List<FriendRequest>` | Pending requests the current user has sent; streamed live from Firestore |
 | `allUsers` | `List<AppUser>` | All users (for friend search in dev screens) |
 | `isLoading` | `bool` | Mutation in progress |
 | `error` | `String?` | Last error message; cleared by `clearError()` |
@@ -82,6 +83,8 @@ See `docs/database/schema.md` for full field lists and security rules.
 | `unreadCountMap` | `Map<String, int>` | keyed by `chatRoomId` — count of unread messages from the friend (not from self); recomputed from the server read marker and incremented per incoming message |
 
 Per-friend enrichment subscriptions are managed by `_updateEnrichmentSubscriptions()` in `FriendsNotifier`, called whenever the `friends` list changes. Stale subscriptions are cancelled when a friend is removed.
+
+**Outgoing requests stream** — `FriendsNotifier` subscribes `_outgoingRequestsSub` to `watchOutgoingRequests()` on `build()`. The stream feeds `outgoingRequests` in state. Two helpers on `FriendsState` derive add-friend button state without extra queries: `hasSentRequestTo(uid)` — `true` when a pending outgoing request exists for that UID; `isFriend(uid)` — `true` when a `Friend` entry exists for that UID. `cancelFriendRequest(toUid)` delegates to the `CancelFriendRequest` usecase.
 
 **Unread count (server-authoritative read marker)** — the read marker lives in Firestore at `friend_messages/{chatRoomId}/reads/{uid}` as `{ lastReadAt: Timestamp }`, written with `serverTimestamp()`. Because the marker and message `timestamp`s both come from the server clock, the unread boundary has no client-clock skew, and the marker syncs across devices.
 
@@ -121,7 +124,7 @@ When a friend request arrives, a slide-down banner overlays the active screen �
 
 `NotificationScreen` (`screens/notification_screen.dart`) — integrated with `friendsNotifierProvider.incomingRequests`. Accept/decline wired to notifier.
 
-**"Add Friend" in active chat sessions** — `ChatScreen` and `GroupChatScreen` call `friendsNotifierProvider.sendFriendRequest(AppUser)` when the "Add friend" button in the partner's `UserProfileDialog` is tapped. Partner identity is resolved from `MatchmakingState.partnerUids` via `getUsersByIdsProvider`. `getUsersByIdsProvider` is a `FutureProvider.autoDispose.family<List<AppUser>, List<String>>` in `friends_provider.dart` that reads `users/{uid}` Firestore docs. Errors surface as SnackBar via `ref.listen`. `isLoading` guard prevents duplicate requests.
+**"Add Friend" in active chat sessions** — `ChatScreen` and `GroupChatScreen` derive the add-friend button state from `friendsNotifierProvider` using `AddFriendStatus` enum (`notAdded` / `pending` / `friends`) rather than local session state. `_partnerFriendStatus()` / `_friendStatus(uid)` check `isFriend()`, `hasSentRequestTo()`, and `incomingRequests` (mutual-pending case → treated as `friends`). Tapping the button calls `sendFriendRequest(AppUser)` when `notAdded`, or `cancelFriendRequest(toUid)` when `pending`; the button is disabled when `friends`. `MembersPanelBody` in `GroupChatScreen` uses the same `AddFriendStatus` model per row. Partner identity is resolved from `MatchmakingState.partnerUids` via `getUsersByIdsProvider`. Errors surface as SnackBar via `ref.listen`.
 
 ### Prototype Screens (dev only)
 
