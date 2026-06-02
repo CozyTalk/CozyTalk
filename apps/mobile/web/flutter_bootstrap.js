@@ -6,8 +6,12 @@
 // immediately when a new SW takes over, ensuring users always get the latest
 // build without having to manually refresh.
 if ('serviceWorker' in navigator) {
+  let refreshing = false;
   navigator.serviceWorker.addEventListener('controllerchange', () => {
-    window.location.reload();
+    if (!refreshing) {
+      refreshing = true;
+      window.location.reload();
+    }
   });
 }
 
