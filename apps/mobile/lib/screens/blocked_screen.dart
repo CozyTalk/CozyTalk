@@ -54,7 +54,7 @@ class _BlockedScreenState extends ConsumerState<BlockedScreen> {
                     ),
                   )
                 : ListView.separated(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
                     itemCount: blocked.length,
                     separatorBuilder: (_, _) => const SizedBox(height: 16),
                     itemBuilder: (context, i) {
