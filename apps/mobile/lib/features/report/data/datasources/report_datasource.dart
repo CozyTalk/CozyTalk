@@ -57,7 +57,9 @@ class ReportDatasourceImpl implements ReportDatasource {
     for (final path in paths) {
       final xFile = XFile(path);
       final bytes = await xFile.readAsBytes();
-      final mimeType = xFile.mimeType ?? 'image/jpeg';
+      final mimeType = (xFile.mimeType?.isNotEmpty ?? false)
+          ? xFile.mimeType!
+          : 'image/jpeg';
       final ext = _extFromMime(mimeType);
       final timestamp = DateTime.now().millisecondsSinceEpoch;
       final ref = _storage.ref(

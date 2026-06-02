@@ -3,7 +3,6 @@ import 'package:flutter_svg/flutter_svg.dart';
 import '../theme/app_colors.dart';
 import '../shared/avatar_overlay.dart';
 import '../shared/layered_avatar.dart';
-import 'report_dialog.dart';
 
 /// The visual content of the members slide-down panel.
 /// Rendered inside a Stack in GroupChatScreen so the header stays on top.
@@ -18,6 +17,8 @@ class MembersPanelBody extends StatelessWidget {
   final Map<String, bool> friendRequestSent;
   // Called with the UID of the member to add.
   final void Function(String uid) onAddFriend;
+  // Called with the UID of the member to report (null = use old dialog).
+  final void Function(String uid)? onReport;
 
   const MembersPanelBody({
     super.key,
@@ -28,6 +29,7 @@ class MembersPanelBody extends StatelessWidget {
     this.currentUser = 'Me',
     this.avatarState = const AvatarState(),
     this.friendRequestSent = const {},
+    this.onReport,
   });
 
   @override
@@ -129,13 +131,12 @@ class MembersPanelBody extends StatelessWidget {
             const SizedBox(width: 8),
             // Report
             GestureDetector(
-              onTap: () {
-                onClose();
-                showDialog(
-                  context: context,
-                  builder: (_) => const ReportDialog(),
-                );
-              },
+              onTap: uid == null
+                  ? null
+                  : () {
+                      onClose();
+                      onReport?.call(uid);
+                    },
               child: Container(
                 width: 38,
                 height: 38,

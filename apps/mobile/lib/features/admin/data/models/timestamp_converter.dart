@@ -9,6 +9,7 @@ class TimestampConverter implements JsonConverter<DateTime, dynamic> {
     if (value is Timestamp) return value.toDate();
     if (value is String) return DateTime.parse(value);
     if (value is int) return DateTime.fromMillisecondsSinceEpoch(value);
+    if (value == null) return DateTime.now();
     throw ArgumentError('Cannot convert $value to DateTime');
   }
 

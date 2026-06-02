@@ -4,7 +4,6 @@ import 'package:flutter_svg/flutter_svg.dart';
 import '../shared/avatar_overlay.dart';
 import '../shared/layered_avatar.dart';
 import '../shared/user_profile.dart';
-import 'report_dialog.dart';
 
 class UserProfileDialog extends ConsumerStatefulWidget {
   final String username;
@@ -12,6 +11,7 @@ class UserProfileDialog extends ConsumerStatefulWidget {
   final bool initialAdded;
   final VoidCallback? onAddFriend;
   final VoidCallback? onCancelRequest;
+  final VoidCallback? onReport;
   // Partner-only fields — shown when isMe is false.
   final AvatarOverlay? partnerMoodOverlay;
   final AvatarOverlay? partnerAccessoryOverlay;
@@ -23,6 +23,7 @@ class UserProfileDialog extends ConsumerStatefulWidget {
     this.initialAdded = false,
     this.onAddFriend,
     this.onCancelRequest,
+    this.onReport,
     this.partnerMoodOverlay,
     this.partnerAccessoryOverlay,
     this.partnerInterest,
@@ -158,13 +159,12 @@ class _UserProfileDialogState extends ConsumerState<UserProfileDialog> {
                             const SizedBox(width: 10),
                             // Report
                             GestureDetector(
-                              onTap: () {
-                                Navigator.pop(context);
-                                showDialog(
-                                  context: context,
-                                  builder: (_) => const ReportDialog(),
-                                );
-                              },
+                              onTap: widget.onReport == null
+                                  ? null
+                                  : () {
+                                      Navigator.pop(context);
+                                      widget.onReport!();
+                                    },
                               child: Container(
                                 width: 44,
                                 height: 44,

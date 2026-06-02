@@ -1,20 +1,19 @@
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
-    // Report context images — the uploading user may create files under their
-    // own UID. Reads are denied for all clients; moderators use the Admin SDK.
-    match /reports/{sessionId}/{uid}/{file} {
-      allow create: if request.auth != null
-                    && request.auth.uid == uid
-                    && request.resource.size < 10 * 1024 * 1024
-                    && request.resource.contentType.matches('image/.*');
-      allow read, update, delete: if false;
+    function _isCozytalkEmail() {
+      return request.auth != null
+          && request.auth.token.email is string
+          && request.auth.token.email.lower().matches('.*@cozytalk\\.com');
     }
 
-    // Chat log JSON files are written by the reportSession Cloud Function
-    // via the Admin SDK and are never accessible to clients.
-    match /reports/{reportId}/chat_log.json {
-      allow read, write: if false;
+    // Report context images — any signed-in user may upload and read their own
+    // uploads (needed for getDownloadURL). Admins may read all for moderation.
+    match /reports/{document=**} {
+      allow create: if request.auth != null
+                    && request.resource.size < 10 * 1024 * 1024;
+      allow read: if request.auth != null;
+      allow update, delete: if false;
     }
 
     match /{allPaths=**} {

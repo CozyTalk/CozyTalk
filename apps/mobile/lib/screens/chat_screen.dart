@@ -27,6 +27,7 @@ import '../theme/app_routes.dart';
 import '../models/friend.dart';
 import '../shared/gif_picker.dart';
 import '../shared/info_dialog.dart';
+import '../features/report/presentation/screens/report_sheet.dart';
 
 const _kThemeAssets = <String, String>{
   'kao_tapu': 'assets/images/backgrounds/kao_tapu.png',
@@ -78,6 +79,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
   late final AnimationController _songCtrl;
   late final Animation<Offset> _songSlide;
 
+  String _roomId = '';
   String friendMood = 'I love TikTok very much.';
   bool _friendRequestSent = false;
   final List<({ChatMessage msg, int seq})> _localMessages = [];
@@ -205,6 +207,17 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
 
   void _sendGif(String url) {
     setState(() => _pendingGifUrl = url);
+  }
+
+  void _openReport(String reportedUserId) {
+    final sessionId = ref.read(chatNotifierProvider).sessionId ?? _roomId;
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (_) =>
+          ReportSheet(sessionId: sessionId, reportedUserId: reportedUserId),
+    );
   }
 
   void _sendFriendRequest(AppUser partner) {
@@ -386,6 +399,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
         ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
     final roomName = args?['roomName'] as String? ?? 'Red Lotus Lake';
     final roomId = args?['roomId'] as String? ?? 'AWD3V';
+    _roomId = roomId;
     final blocked = args?['isBlocked'] as bool? ?? _isBlocked;
 
     final avatarState = ref.watch(avatarProvider);
@@ -737,6 +751,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
                       onFriendRequest: (partner != null && !isAlreadyFriend)
                           ? () => _sendFriendRequest(partner)
                           : null,
+                      onReport: partner?.uid != null
+                          ? () => _openReport(partner!.uid)
+                          : null,
                       friendRequestSent: _friendRequestSent || isAlreadyFriend,
                     ),
                     const SizedBox(width: 20),
@@ -974,6 +991,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
                     onAddFriend: (partner != null && !isAlreadyFriend)
                         ? () => _sendFriendRequest(partner)
                         : null,
+                    onReport: partner?.uid != null
+                        ? () => _openReport(partner!.uid)
+                        : null,
                     partnerMoodOverlay: partnerMoodOverlay,
                     partnerAccessoryOverlay: partnerAccessoryOverlay,
                     partnerInterest: partnerInterest,
@@ -1104,6 +1124,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
                     initialAdded: _friendRequestSent || isAlreadyFriend,
                     onAddFriend: (partner != null && !isAlreadyFriend)
                         ? () => _sendFriendRequest(partner)
+                        : null,
+                    onReport: partner?.uid != null
+                        ? () => _openReport(partner!.uid)
                         : null,
                     partnerMoodOverlay: partnerMoodOverlay,
                     partnerAccessoryOverlay: partnerAccessoryOverlay,
@@ -1543,6 +1566,7 @@ class _StaticAvatar extends StatelessWidget {
     this.avatarState,
     this.boxWidth = 120,
     this.onFriendRequest,
+    this.onReport,
     this.friendRequestSent = false,
     this.moodOverlay,
     this.accessoryOverlay,
@@ -1554,6 +1578,7 @@ class _StaticAvatar extends StatelessWidget {
   final bool isMe;
   final AvatarState? avatarState;
   final VoidCallback? onFriendRequest;
+  final VoidCallback? onReport;
   final bool friendRequestSent;
   final double boxWidth;
   // Real partner overlays (ignored for isMe == true).
@@ -1587,6 +1612,7 @@ class _StaticAvatar extends StatelessWidget {
                     isMe: isMe,
                     initialAdded: !isMe && friendRequestSent,
                     onAddFriend: isMe ? null : onFriendRequest,
+                    onReport: isMe ? null : onReport,
                     partnerMoodOverlay: isMe ? null : moodOverlay,
                     partnerAccessoryOverlay: isMe ? null : accessoryOverlay,
                     partnerInterest: isMe ? null : partnerInterest,

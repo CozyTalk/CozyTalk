@@ -29,6 +29,7 @@ import '../theme/app_routes.dart';
 import '../models/friend.dart';
 import '../shared/gif_picker.dart';
 import '../shared/info_dialog.dart';
+import '../features/report/presentation/screens/report_sheet.dart';
 
 const _kThemeAssets = <String, String>{
   'kao_tapu': 'assets/images/backgrounds/kao_tapu.png',
@@ -279,6 +280,22 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
 
   void _sendGif(String url) {
     setState(() => _pendingGifUrl = url);
+  }
+
+  void _openReport(String reportedUserId) {
+    final sessionId =
+        ref.read(chatNotifierProvider).sessionId ??
+        (ModalRoute.of(context)?.settings.arguments
+                as Map<String, dynamic>?)?['roomId']
+            as String? ??
+        '';
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (_) =>
+          ReportSheet(sessionId: sessionId, reportedUserId: reportedUserId),
+    );
   }
 
   void _sendFriendRequest(AppUser partner) {
@@ -701,6 +718,7 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
                             final p = partnersMap[uid];
                             if (p != null) _sendFriendRequest(p);
                           },
+                          onReport: _openReport,
                         ),
                       ),
                     ),

@@ -107,9 +107,12 @@ class AdminDatasourceImpl implements AdminDatasource {
                 data['contextImageUrls'] = <String>[];
               }
               if (data['outcome'] is Map) {
-                data['outcome'] = Map<String, dynamic>.from(
+                final outcome = Map<String, dynamic>.from(
                   data['outcome'] as Map,
                 );
+                outcome['kind'] ??= 'unknown';
+                outcome['byName'] ??= 'Unknown';
+                data['outcome'] = outcome;
               }
               results.add(
                 AdminReportModel.fromJson(data).copyWith(
@@ -151,8 +154,13 @@ class AdminDatasourceImpl implements AdminDatasource {
     });
     final data = Map<String, dynamic>.from(result.data as Map);
     if (data['success'] == false) {
-      throw Exception(data['error'] ?? 'Failed to get chat log URL');
+      throw Exception(data['reason'] ?? 'Failed to get chat log');
     }
+    // New: CF returns content directly instead of a signed URL.
+    if (data['chatLogContent'] is String) {
+      return data['chatLogContent'] as String;
+    }
+    // Legacy fallback: signed URL path (emulator only).
     return data['signedUrl'] as String;
   }
 

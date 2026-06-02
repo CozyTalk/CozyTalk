@@ -76,15 +76,21 @@ class _AdminConsoleScreenState extends ConsumerState<AdminConsoleScreen> {
                 );
             if (mounted) _showToast('User banned');
           },
-          onGetChatLog: displayReport.chatLogStoragePath != null
-              ? () => reportsNotifier.getChatLogUrl(displayReport.id)
-              : null,
+          onGetChatLog: () => reportsNotifier.getChatLogUrl(displayReport.id),
         ),
       ),
     );
   }
 
   // ─── Mapping helpers ───
+
+  static String _remainingDurationLabel(DateTime? banExpiresAt) {
+    if (banExpiresAt == null) return 'Permanent';
+    final remaining = banExpiresAt.difference(DateTime.now());
+    if (remaining.isNegative) return 'Expired';
+    final days = remaining.inDays + 1;
+    return '$days ${days == 1 ? "Day" : "Days"}';
+  }
 
   static String _normalizeDuration(String raw) {
     final lower = raw.toLowerCase().trim();
@@ -175,7 +181,7 @@ class _AdminConsoleScreenState extends ConsumerState<AdminConsoleScreen> {
       reporter: e.reporterName,
       reported: e.reportedName,
       reasons: [_reportTypeLabel(e.reportType)],
-      context: e.reason,
+      context: e.contextText?.isNotEmpty == true ? e.contextText! : e.reason,
       time: _formatTime(e.createdAt),
       evidence: e.contextImageUrls.length,
       contextImageUrls: e.contextImageUrls,
@@ -220,12 +226,13 @@ class _AdminConsoleScreenState extends ConsumerState<AdminConsoleScreen> {
   }
 
   BannedUser _toBannedUser(feat.AdminUser e, {int reportCount = 0}) {
+    final durationLabel = _remainingDurationLabel(e.banExpiresAt);
     return BannedUser(
       id: e.uid,
       name: e.displayName,
       uid: e.uid,
       reason: e.banReason ?? '',
-      duration: e.banDuration ?? '',
+      duration: durationLabel,
       date: e.bannedAt != null ? _formatDate(e.bannedAt!) : '',
       expires: e.banExpiresAt != null ? _formatDate(e.banExpiresAt!) : 'Never',
       by: e.bannedByName ?? '',
@@ -256,7 +263,7 @@ class _AdminConsoleScreenState extends ConsumerState<AdminConsoleScreen> {
     final currentBan = e.banned
         ? AdminBanRecord(
             reason: e.banReason ?? '',
-            duration: e.banDuration ?? '',
+            duration: _remainingDurationLabel(e.banExpiresAt),
             date: e.bannedAt != null ? _formatDate(e.bannedAt!) : '',
             by: e.bannedByName ?? '',
             note: e.banNote ?? '',
@@ -290,7 +297,24 @@ class _AdminConsoleScreenState extends ConsumerState<AdminConsoleScreen> {
           (reportCounts[r.reportedUserId] ?? 0) + 1;
     }
 
-    final reports = reportsState.reports.map((e) {
+    // Group reports by reportedUserId, newest group first.
+    final latestPerUser = <String, DateTime>{};
+    for (final r in reportsState.reports) {
+      final prev = latestPerUser[r.reportedUserId];
+      if (prev == null || r.createdAt.isAfter(prev)) {
+        latestPerUser[r.reportedUserId] = r.createdAt;
+      }
+    }
+    final sortedRaw = [...reportsState.reports]
+      ..sort((a, b) {
+        final groupCmp = latestPerUser[b.reportedUserId]!.compareTo(
+          latestPerUser[a.reportedUserId]!,
+        );
+        if (groupCmp != 0) return groupCmp;
+        return b.createdAt.compareTo(a.createdAt);
+      });
+
+    final reports = sortedRaw.map((e) {
       final user = usersState.users
           .where((u) => u.uid == e.reportedUserId)
           .firstOrNull;
@@ -740,10 +764,7 @@ class _AdminConsoleScreenState extends ConsumerState<AdminConsoleScreen> {
                   await ref
                       .read(feat.adminUsersProvider.notifier)
                       .unbanUser(subject.uid);
-                  if (mounted) {
-                    Navigator.pop(context);
-                    _showToast('User unbanned');
-                  }
+                  if (mounted) _showToast('User unbanned');
                 },
               ),
             ),
