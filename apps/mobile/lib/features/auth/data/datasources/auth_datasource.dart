@@ -18,6 +18,7 @@ abstract class AuthDatasource {
   });
   Future<void> signOut();
   Future<void> validateToken();
+  // Signs the user out and throws [BanException] if uid is currently banned.
   Future<void> checkBanStatus(String uid);
   // Emits (daysLeft, reinstateDate) when user is actively banned, null otherwise.
   Stream<(int, String)?> watchBanStatus(String uid);
@@ -198,7 +199,7 @@ class AuthDatasourceImpl implements AuthDatasource {
     final reinstateStr = expiryDate == null
         ? 'Permanently'
         : _formatDate(expiryDate);
-    throw Exception('BANNED:$daysLeft:$reinstateStr');
+    throw BanException(daysLeft: daysLeft, reinstateDate: reinstateStr);
   }
 
   @override
@@ -221,6 +222,16 @@ class AuthDatasourceImpl implements AuthDatasource {
           expiryDate == null ? 'Permanently' : _formatDate(expiryDate),
         );
       });
+}
+
+class BanException implements Exception {
+  final int daysLeft;
+  final String reinstateDate;
+  const BanException({required this.daysLeft, required this.reinstateDate});
+
+  @override
+  String toString() =>
+      'BanException(daysLeft: $daysLeft, reinstateDate: $reinstateDate)';
 }
 
 const _monthNames = [

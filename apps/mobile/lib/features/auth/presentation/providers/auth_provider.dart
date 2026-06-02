@@ -7,7 +7,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../shared/cache_keys.dart';
 import '../../../../shared/prefs_provider.dart';
 
-import '../../data/datasources/auth_datasource.dart';
+import '../../data/datasources/auth_datasource.dart'
+    show AuthDatasource, AuthDatasourceImpl, BanException;
 import '../../data/repositories/auth_repository_impl.dart';
 import '../../domain/entities/auth_user.dart';
 import '../../domain/repositories/auth_repository.dart';
@@ -114,6 +115,7 @@ class AuthNotifier extends Notifier<AuthState> {
     _sub?.cancel();
     _banSub?.cancel();
     _sub = ref.read(authRepositoryProvider).watchAuthState().listen((user) {
+      final wasIdle = state.status == AuthStatus.idle;
       if (state.status == AuthStatus.loading) return;
       state = state.copyWith(
         status: user != null
@@ -124,6 +126,9 @@ class AuthNotifier extends Notifier<AuthState> {
       );
       if (user != null) {
         _subscribeToBan(user.uid);
+        // On the first auth event (app startup with existing session), validate
+        // the token and enforce any active ban so the LoginScreen dialog appears.
+        if (wasIdle) _checkTokenAndBan(user.uid);
       } else {
         _banSub?.cancel();
         _banSub = null;
@@ -133,7 +138,6 @@ class AuthNotifier extends Notifier<AuthState> {
       _sub?.cancel();
       _banSub?.cancel();
     });
-    _checkTokenOnStartup();
     return const AuthState();
   }
 
@@ -165,6 +169,9 @@ class AuthNotifier extends Notifier<AuthState> {
         prefs.remove(CacheKeys.avatar(uid)),
       ]);
     }
+    // Note: active chat/room sessions are cleaned up via widget disposal when the
+    // navigator transitions to LoginScreen after signOut() sets unauthenticated.
+    // RTDB onDisconnect handlers cover any residual presence/typing entries.
     await ref.read(authRepositoryProvider).signOut();
     if (!ref.mounted) return;
     state = state.copyWith(
@@ -176,23 +183,24 @@ class AuthNotifier extends Notifier<AuthState> {
     );
   }
 
-  void _checkTokenOnStartup() {
+  // Called on app startup when watchAuthState delivers the first (cached) user.
+  // Validates the token and enforces any active ban — if banned, transitions to
+  // unauthenticated + isBanned so the LoginScreen dialog appears.
+  void _checkTokenAndBan(String uid) {
     Future(() async {
       if (!ref.mounted) return;
-      if (state.user == null) return;
       try {
         await ref.read(authRepositoryProvider).validateToken();
-        await ref.read(authRepositoryProvider).checkBanStatus(state.user!.uid);
+        await ref.read(authRepositoryProvider).checkBanStatus(uid);
       } catch (e) {
         if (!ref.mounted) return;
-        final banState = _parseBanException(e);
-        if (banState != null) {
+        if (e is BanException) {
           state = state.copyWith(
             status: AuthStatus.unauthenticated,
             user: null,
             isBanned: true,
-            banDaysLeft: banState.$1,
-            banReinstateDate: banState.$2,
+            banDaysLeft: e.daysLeft,
+            banReinstateDate: e.reinstateDate,
           );
           return;
         }
@@ -203,17 +211,6 @@ class AuthNotifier extends Notifier<AuthState> {
         );
       }
     });
-  }
-
-  // Returns (daysLeft, reinstateDate) if the exception is a ban, null otherwise.
-  (int, String)? _parseBanException(Object e) {
-    final msg = e.toString().replaceFirst('Exception: ', '');
-    if (!msg.startsWith('BANNED:')) return null;
-    final parts = msg.split(':');
-    if (parts.length < 3) return null;
-    final days = int.tryParse(parts[1]) ?? 0;
-    final date = parts.sublist(2).join(':');
-    return (days, date);
   }
 
   Future<void> signInAnonymously() async {
@@ -292,14 +289,13 @@ class AuthNotifier extends Notifier<AuthState> {
   }
 
   void _handleSignInError(Object e) {
-    final banState = _parseBanException(e);
-    if (banState != null) {
+    if (e is BanException) {
       state = state.copyWith(
         status: AuthStatus.unauthenticated,
         user: null,
         isBanned: true,
-        banDaysLeft: banState.$1,
-        banReinstateDate: banState.$2,
+        banDaysLeft: e.daysLeft,
+        banReinstateDate: e.reinstateDate,
       );
       return;
     }
