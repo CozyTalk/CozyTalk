@@ -289,6 +289,7 @@ DONE WHEN: <criteria>
 | New packages during integration PR | Architect approval required |
 | Edit lock files manually | Run package manager to regenerate |
 | `git push` directly to `main` or `master` | Never — always branch + PR; hook in `.claude/settings.json` enforces this |
+| `git push --force` / `git push --force-with-lease` (any branch) | Force push rewrites shared history and can permanently destroy teammates' commits. Never force push. If you think you need it, find a different approach: use `git revert` to undo a commit, `git commit --amend` only on commits that have never been pushed, or ask the user how to proceed |
 | Run `firebase deploy` locally (any target) | Bypasses CI quality gates — all Firebase deployments (hosting, functions, Firestore rules, RTDB rules, storage rules) must go through `.github/workflows/deploy.yml` triggered by a PR merge to `main` |
 | `print()` in production code | Use structured logging |
 | Run `git add` / `git commit` / `git stash` in parallel | Git holds `.git/index.lock` for the duration of each command — parallel calls race and deadlock. Always chain with `&&` in a single shell call. |
