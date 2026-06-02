@@ -72,6 +72,9 @@ class AuthState {
   final bool isBanned;
   final int banDaysLeft;
   final String banReinstateDate;
+  // True when ban is detected while the user is already inside the app.
+  // The home screen shows the popup before signing out.
+  final bool bannedWhileActive;
 
   const AuthState({
     this.status = AuthStatus.idle,
@@ -80,6 +83,7 @@ class AuthState {
     this.isBanned = false,
     this.banDaysLeft = 0,
     this.banReinstateDate = '',
+    this.bannedWhileActive = false,
   });
 
   AuthState copyWith({
@@ -89,6 +93,7 @@ class AuthState {
     bool? isBanned,
     int? banDaysLeft,
     String? banReinstateDate,
+    bool? bannedWhileActive,
   }) => AuthState(
     status: status ?? this.status,
     user: user == _sentinel ? this.user : user as AuthUser?,
@@ -96,6 +101,7 @@ class AuthState {
     isBanned: isBanned ?? this.isBanned,
     banDaysLeft: banDaysLeft ?? this.banDaysLeft,
     banReinstateDate: banReinstateDate ?? this.banReinstateDate,
+    bannedWhileActive: bannedWhileActive ?? this.bannedWhileActive,
   );
 }
 
@@ -135,23 +141,39 @@ class AuthNotifier extends Notifier<AuthState> {
     _banSub?.cancel();
     _banSub = ref.read(authRepositoryProvider).watchBanStatus(uid).listen((
       banInfo,
-    ) async {
+    ) {
       if (banInfo == null) return;
-      if (!ref.mounted) return;
-      // Immediately sign out — user is banned while app is open.
-      await ref.read(authRepositoryProvider).signOut();
       if (!ref.mounted) return;
       _banSub?.cancel();
       _banSub = null;
+      // Signal the UI to show the popup first — do NOT sign out yet.
+      // confirmBanAndSignOut() is called when user taps "Back To Log in".
       state = state.copyWith(
-        status: AuthStatus.unauthenticated,
-        user: null,
-        isBanned: true,
+        bannedWhileActive: true,
         banDaysLeft: banInfo.$1,
         banReinstateDate: banInfo.$2,
-        error: null,
       );
     });
+  }
+
+  Future<void> confirmBanAndSignOut() async {
+    final uid = state.user?.uid;
+    if (uid != null) {
+      final prefs = ref.read(sharedPreferencesProvider);
+      await Future.wait([
+        prefs.remove(CacheKeys.profile(uid)),
+        prefs.remove(CacheKeys.avatar(uid)),
+      ]);
+    }
+    await ref.read(authRepositoryProvider).signOut();
+    if (!ref.mounted) return;
+    state = state.copyWith(
+      status: AuthStatus.unauthenticated,
+      user: null,
+      bannedWhileActive: false,
+      isBanned: true,
+      error: null,
+    );
   }
 
   void _checkTokenOnStartup() {
