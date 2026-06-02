@@ -366,11 +366,10 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
   }
 
   void _openReport(String reportedUserId) {
+    final args = ModalRoute.of(context)?.settings.arguments;
     final sessionId =
         ref.read(chatNotifierProvider).sessionId ??
-        (ModalRoute.of(context)?.settings.arguments
-                as Map<String, dynamic>?)?['roomId']
-            as String? ??
+        (args is Map<String, dynamic> ? args['roomId'] as String? : null) ??
         '';
     showModalBottomSheet<void>(
       context: context,

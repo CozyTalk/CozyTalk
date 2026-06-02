@@ -4,6 +4,7 @@ import * as logger from "firebase-functions/logger";
 import * as admin from "firebase-admin";
 
 admin.initializeApp({
+  storageBucket: "cozytalk-5d984.firebasestorage.app",
   databaseURL:
     "https://cozytalk-5d984-default-rtdb.asia-southeast1.firebasedatabase.app",
 });

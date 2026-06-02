@@ -33,7 +33,7 @@ export const adminGetChatLog = onCall(
       return {success: false, reason: "no_chat_log"};
     }
 
-    const bucket = admin.storage().bucket("cozytalk-5d984.firebasestorage.app");
+    const bucket = admin.storage().bucket();
     const file = bucket.file(chatLogStoragePath);
 
     let content: string;

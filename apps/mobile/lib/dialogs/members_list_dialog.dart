@@ -18,12 +18,9 @@ class MembersPanelBody extends StatelessWidget {
   // Called with the UID of the member to add.
   final void Function(String uid) onAddFriend;
   final void Function(String uid)? onCancelRequest;
-  // Called with the UID of the member to report (null = use old dialog).
+  // Called with the UID of the member to report.
   final void Function(String uid)? onReport;
   final Map<String, AvatarState> memberAvatarStates;
-
-  // Session ID passed to ReportDialog so reports are wired to the backend.
-  final String? sessionId;
 
   const MembersPanelBody({
     super.key,
@@ -36,7 +33,6 @@ class MembersPanelBody extends StatelessWidget {
     this.currentUser = 'Me',
     this.avatarState = const AvatarState(),
     this.friendRequestSent = const {},
-    this.sessionId,
     this.memberAvatarStates = const {},
   });
 
