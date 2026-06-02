@@ -6,7 +6,6 @@ import '../features/avatar/presentation/providers/avatar_decoration_provider.dar
 import '../features/profile/presentation/providers/profile_provider.dart';
 import '../shared/avatar_overlay.dart';
 import '../shared/layered_avatar.dart';
-import 'report_dialog.dart';
 
 class UserProfileDialog extends ConsumerStatefulWidget {
   final String username;
@@ -231,22 +230,12 @@ class _UserProfileDialogState extends ConsumerState<UserProfileDialog> {
                             const SizedBox(width: 10),
                             // Report
                             GestureDetector(
-                              onTap: () {
-                                final nav = Navigator.of(context);
-                                nav.pop();
-                                if (widget.onReport != null) {
-                                  widget.onReport!();
-                                } else if (widget.sessionId != null &&
-                                    widget.reportedUserId != null) {
-                                  showDialog(
-                                    context: nav.context,
-                                    builder: (_) => ReportDialog(
-                                      sessionId: widget.sessionId!,
-                                      reportedUserId: widget.reportedUserId!,
-                                    ),
-                                  );
-                                }
-                              },
+                              onTap: widget.onReport == null
+                                  ? null
+                                  : () {
+                                      Navigator.pop(context);
+                                      widget.onReport!();
+                                    },
                               child: Container(
                                 width: 44,
                                 height: 44,

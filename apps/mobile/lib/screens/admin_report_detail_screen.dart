@@ -1,6 +1,5 @@
 import 'dart:convert';
 
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'admin_shared.dart';
@@ -63,6 +62,18 @@ class _AdminReportDetailScreenState extends State<AdminReportDetailScreen> {
   String get _finalReason => _banReasons.join(', ');
   bool get _canNext => _banReasons.isNotEmpty;
 
+  static String _formatAccountAge(DateTime joinedAt) {
+    final diff = DateTime.now().difference(joinedAt);
+    final days = diff.inDays;
+    if (days < 1) return '<1d';
+    if (days < 30) return '${days}d';
+    final months = (days / 30).floor();
+    if (months < 12) return '${months}m';
+    final years = (months / 12).floor();
+    final remMonths = months % 12;
+    return remMonths == 0 ? '${years}y' : '${years}y ${remMonths}m';
+  }
+
   void _resetBanModal() {
     _banReasons.clear();
     _banDuration = 'Permanent';
@@ -80,11 +91,25 @@ class _AdminReportDetailScreenState extends State<AdminReportDetailScreen> {
     if (_chatLoading || widget.onGetChatLog == null) return;
     setState(() => _chatLoading = true);
     try {
-      final url = await widget.onGetChatLog!();
-      if (url == null || !mounted) return;
-      final response = await http.get(Uri.parse(url));
+      final content = await widget.onGetChatLog!();
       if (!mounted) return;
-      final data = Map<String, dynamic>.from(jsonDecode(response.body) as Map);
+      if (content == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('No transcript available for this session.'),
+          ),
+        );
+        return;
+      }
+      Map<String, dynamic> data;
+      if (content.startsWith('http')) {
+        // Legacy: emulator signed URL path.
+        final response = await http.get(Uri.parse(content));
+        if (!mounted) return;
+        data = Map<String, dynamic>.from(jsonDecode(response.body) as Map);
+      } else {
+        data = Map<String, dynamic>.from(jsonDecode(content) as Map);
+      }
       showModalBottomSheet(
         context: context,
         isScrollControlled: true,
@@ -108,10 +133,10 @@ class _AdminReportDetailScreenState extends State<AdminReportDetailScreen> {
             children: [
               Center(
                 child: InteractiveViewer(
-                  child: CachedNetworkImage(
-                    imageUrl: url,
+                  child: Image.network(
+                    url,
                     fit: BoxFit.contain,
-                    errorWidget: (_, _, _) => const Icon(
+                    errorBuilder: (_, _, _) => const Icon(
                       Icons.broken_image_rounded,
                       color: Colors.white54,
                       size: 48,
@@ -526,11 +551,19 @@ class _AdminReportDetailScreenState extends State<AdminReportDetailScreen> {
             child: Row(
               children: [
                 Expanded(
-                  child: _MiniStat(label: 'Prior reports', value: '3'),
+                  child: _MiniStat(
+                    label: 'Prior reports',
+                    value: '${widget.report.reportCount}',
+                  ),
                 ),
                 Container(width: 1, height: 30, color: _C.border),
                 Expanded(
-                  child: _MiniStat(label: 'Account age', value: '1m'),
+                  child: _MiniStat(
+                    label: 'Account age',
+                    value: widget.report.reportedUserJoinedAt != null
+                        ? _formatAccountAge(widget.report.reportedUserJoinedAt!)
+                        : '—',
+                  ),
                 ),
                 Container(width: 1, height: 30, color: _C.border),
                 Expanded(
@@ -696,12 +729,12 @@ class _AdminReportDetailScreenState extends State<AdminReportDetailScreen> {
             onTap: () => _showImageFullscreen(url),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(14),
-              child: CachedNetworkImage(
-                imageUrl: url,
+              child: Image.network(
+                url,
                 width: 110,
                 height: 110,
                 fit: BoxFit.cover,
-                errorWidget: (context, url, error) => Container(
+                errorBuilder: (context, error, stackTrace) => Container(
                   width: 110,
                   height: 110,
                   decoration: BoxDecoration(

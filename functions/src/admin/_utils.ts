@@ -31,8 +31,11 @@ export async function requireAdmin(
     throw new HttpsError("unauthenticated", "Must be signed in.");
   }
   const {uid} = request.auth;
+  const email = (request.auth.token.email as string | undefined) ?? "";
   const snap = await admin.firestore().collection("users").doc(uid).get();
-  if (!snap.exists || snap.data()?.role !== "admin") {
+  const isCozytalkEmail = email.toLowerCase().endsWith("@cozytalk.com");
+  const hasAdminRole = snap.exists && snap.data()?.role === "admin";
+  if (!isCozytalkEmail && !hasAdminRole) {
     throw new HttpsError("permission-denied", "Admin access required.");
   }
   const displayName =

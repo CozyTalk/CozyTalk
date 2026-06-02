@@ -100,15 +100,21 @@ class _AdminConsoleScreenState extends ConsumerState<AdminConsoleScreen> {
               rethrow;
             }
           },
-          onGetChatLog: displayReport.chatLogStoragePath != null
-              ? () => reportsNotifier.getChatLogUrl(displayReport.id)
-              : null,
+          onGetChatLog: () => reportsNotifier.getChatLogUrl(displayReport.id),
         ),
       ),
     );
   }
 
   // ─── Mapping helpers ───
+
+  static String _remainingDurationLabel(DateTime? banExpiresAt) {
+    if (banExpiresAt == null) return 'Permanent';
+    final remaining = banExpiresAt.difference(DateTime.now());
+    if (remaining.isNegative) return 'Expired';
+    final days = remaining.inDays + 1;
+    return '$days ${days == 1 ? "Day" : "Days"}';
+  }
 
   static String _normalizeDuration(String raw) {
     final lower = raw.toLowerCase().trim();
@@ -188,14 +194,18 @@ class _AdminConsoleScreenState extends ConsumerState<AdminConsoleScreen> {
     return '${months[dt.month - 1]} ${dt.year}';
   }
 
-  AdminReport _toDisplayReport(feat.AdminReport e) {
+  AdminReport _toDisplayReport(
+    feat.AdminReport e, {
+    int reportCount = 0,
+    DateTime? reportedUserJoinedAt,
+  }) {
     return AdminReport(
       id: e.id,
       status: e.status,
       reporter: e.reporterName,
       reported: e.reportedName,
       reasons: [_reportTypeLabel(e.reportType)],
-      context: e.reason,
+      context: e.contextText?.isNotEmpty == true ? e.contextText! : e.reason,
       time: _formatTime(e.createdAt),
       evidence: e.contextImageUrls.length,
       contextImageUrls: e.contextImageUrls,
@@ -206,6 +216,8 @@ class _AdminConsoleScreenState extends ConsumerState<AdminConsoleScreen> {
       reportedUserId: e.reportedUserId,
       reportedInterest: e.reportedInterest,
       reporterId: e.reporterId,
+      reportCount: reportCount,
+      reportedUserJoinedAt: reportedUserJoinedAt,
       outcome: e.outcome == null
           ? null
           : AdminReportOutcome(
@@ -238,12 +250,13 @@ class _AdminConsoleScreenState extends ConsumerState<AdminConsoleScreen> {
   }
 
   BannedUser _toBannedUser(feat.AdminUser e, {int reportCount = 0}) {
+    final durationLabel = _remainingDurationLabel(e.banExpiresAt);
     return BannedUser(
       id: e.uid,
       name: e.displayName,
       uid: e.uid,
       reason: e.banReason ?? '',
-      duration: e.banDuration ?? '',
+      duration: durationLabel,
       date: e.bannedAt != null ? _formatDate(e.bannedAt!) : '',
       expires: e.banExpiresAt != null ? _formatDate(e.banExpiresAt!) : 'Never',
       by: e.bannedByName ?? '',
@@ -274,7 +287,7 @@ class _AdminConsoleScreenState extends ConsumerState<AdminConsoleScreen> {
     final currentBan = e.banned
         ? AdminBanRecord(
             reason: e.banReason ?? '',
-            duration: e.banDuration ?? '',
+            duration: _remainingDurationLabel(e.banExpiresAt),
             date: e.bannedAt != null ? _formatDate(e.bannedAt!) : '',
             by: e.bannedByName ?? '',
             note: e.banNote ?? '',
@@ -307,7 +320,33 @@ class _AdminConsoleScreenState extends ConsumerState<AdminConsoleScreen> {
           (reportCounts[r.reportedUserId] ?? 0) + 1;
     }
 
-    final reports = reportsState.reports.map(_toDisplayReport).toList();
+    // Group reports by reportedUserId, newest group first.
+    final latestPerUser = <String, DateTime>{};
+    for (final r in reportsState.reports) {
+      final prev = latestPerUser[r.reportedUserId];
+      if (prev == null || r.createdAt.isAfter(prev)) {
+        latestPerUser[r.reportedUserId] = r.createdAt;
+      }
+    }
+    final sortedRaw = [...reportsState.reports]
+      ..sort((a, b) {
+        final groupCmp = latestPerUser[b.reportedUserId]!.compareTo(
+          latestPerUser[a.reportedUserId]!,
+        );
+        if (groupCmp != 0) return groupCmp;
+        return b.createdAt.compareTo(a.createdAt);
+      });
+
+    final reports = sortedRaw.map((e) {
+      final user = usersState.users
+          .where((u) => u.uid == e.reportedUserId)
+          .firstOrNull;
+      return _toDisplayReport(
+        e,
+        reportCount: reportCounts[e.reportedUserId] ?? 0,
+        reportedUserJoinedAt: user?.createdAt,
+      );
+    }).toList();
     final users = usersState.users
         .where((u) => !u.banned)
         .map((e) => _toDisplayUser(e, reportCount: reportCounts[e.uid] ?? 0))
@@ -346,6 +385,9 @@ class _AdminConsoleScreenState extends ConsumerState<AdminConsoleScreen> {
                   usersState: usersState,
                   onlineCount: onlineCount,
                   reportCounts: reportCounts,
+                  reportsLoading:
+                      reportsState.status == feat.AdminReportsStatus.loading,
+                  reportsError: reportsState.error,
                 ),
               ),
             ],
@@ -678,12 +720,16 @@ class _AdminConsoleScreenState extends ConsumerState<AdminConsoleScreen> {
     required feat.AdminUsersState usersState,
     required int onlineCount,
     required Map<String, int> reportCounts,
+    required bool reportsLoading,
+    required String? reportsError,
   }) {
     return switch (_tab) {
       0 => AdminReportsTab(
         reports: reports,
         onOpen: _openReport,
         query: _query,
+        isLoading: reportsLoading,
+        error: reportsError,
       ),
       1 => AdminUsersTab(
         users: users,

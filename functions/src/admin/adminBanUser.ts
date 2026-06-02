@@ -58,11 +58,68 @@ export const adminBanUser = onCall(
     if (!userSnap.exists) {
       return {success: false, reason: "user_not_found"};
     }
+    const durationMs = DURATION_MS[duration];
+
     if (userSnap.data()?.banned === true) {
-      return {success: false, reason: "already_banned"};
+      logger.info("adminBanUser stack-enter", {
+        uid,
+        duration,
+        bannedBy: caller.uid,
+      });
+      const existingExpiry = (
+        userSnap.data()?.banExpiresAt as Timestamp | null | undefined
+      )?.toMillis();
+      const isPermanent =
+        durationMs === null ||
+        existingExpiry === null ||
+        existingExpiry === undefined;
+      const newBanExpiresAt = isPermanent
+        ? null
+        : Timestamp.fromMillis(
+            Math.max(existingExpiry!, Date.now()) + durationMs!,
+          );
+
+      logger.info("adminBanUser stack-calc", {
+        existingExpiry,
+        isPermanent,
+        newBanExpiresAt: newBanExpiresAt?.toMillis() ?? null,
+      });
+
+      try {
+        const stackBatch = db.batch();
+        stackBatch.update(userRef, {
+          banExpiresAt: newBanExpiresAt,
+          banNote: typeof note === "string" ? note.trim() : null,
+        });
+        if (reportId && typeof reportId === "string") {
+          stackBatch.update(db.collection("reports").doc(reportId), {
+            status: "reviewed",
+            outcome: {
+              kind: "banned",
+              by: caller.uid,
+              byName: caller.displayName,
+              at: FieldValue.serverTimestamp(),
+              note: typeof note === "string" ? note.trim() : null,
+            },
+          });
+        }
+        await stackBatch.commit();
+      } catch (e) {
+        logger.error("adminBanUser stack-commit-error", {
+          error: String(e),
+          uid,
+          reportId,
+        });
+        throw new HttpsError("internal", "Failed to stack ban.");
+      }
+      logger.info("adminBanUser stacked", {
+        uid,
+        duration,
+        bannedBy: caller.uid,
+      });
+      return {success: true};
     }
 
-    const durationMs = DURATION_MS[duration];
     const banExpiresAt =
       durationMs !== null
         ? Timestamp.fromMillis(Date.now() + durationMs)
