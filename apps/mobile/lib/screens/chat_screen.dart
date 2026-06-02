@@ -861,9 +861,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
                       child: Text(
                         'Skip\nRoom',
                         textAlign: TextAlign.center,
-                        style: Theme.of(
-                          context,
-                        ).textTheme.labelSmall!.copyWith(
+                        style: Theme.of(context).textTheme.labelSmall!.copyWith(
                           fontSize: 11,
                           fontWeight: FontWeight.bold,
                         ),

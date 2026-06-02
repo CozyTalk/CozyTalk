@@ -1371,12 +1371,11 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
                           child: Text(
                             'Skip\nRoom',
                             textAlign: TextAlign.center,
-                            style: Theme.of(
-                              context,
-                            ).textTheme.labelSmall!.copyWith(
-                              fontSize: 11,
-                              fontWeight: FontWeight.bold,
-                            ),
+                            style: Theme.of(context).textTheme.labelSmall!
+                                .copyWith(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                ),
                           ),
                         ),
                       ),
