@@ -281,6 +281,9 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
     ({AvatarOverlay? mood, AvatarOverlay? hat}) decoration,
   ) {
     final showRoom = friend.room != null && friend.isOnline;
+    final isBlockedBy =
+        ref.watch(isBlockedByProvider(friend.friendUid)).asData?.value ?? false;
+    final isBlocked = friend.isBlocked || isBlockedBy;
     return GestureDetector(
       onTap: () {
         ref
@@ -421,7 +424,8 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
                 padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
                 child: FriendRoomCard(
                   room: friend.room!,
-                  onJoin: friend.room!.canJoin
+                  blocked: isBlocked,
+                  onJoin: (friend.room!.canJoin && !isBlocked)
                       ? () => Navigator.pushNamed(
                           context,
                           AppRoutes.findingRoom,

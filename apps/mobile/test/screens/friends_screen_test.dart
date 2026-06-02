@@ -86,6 +86,7 @@ Widget _build({
   required NetworkInfo networkInfo,
   _FakeFriendsNotifier? notifier,
   _FakeBlockNotifier? blockNotifier,
+  bool isBlockedByFriend = false,
 }) {
   final fake = notifier ?? _FakeFriendsNotifier();
   final blockFake = blockNotifier ?? _FakeBlockNotifier();
@@ -97,6 +98,9 @@ Widget _build({
       getUsersByIdsProvider.overrideWith((ref, csv) async => []),
       blockNotifierProvider.overrideWith(() => blockFake),
       profileByUidProvider.overrideWith((ref, uid) async => null),
+      isBlockedByProvider.overrideWith(
+        (ref, uid) => Stream.value(isBlockedByFriend),
+      ),
     ],
     child: const MaterialApp(home: FriendsScreen()),
   );
@@ -212,6 +216,85 @@ void main() {
       expect(find.byType(FriendRoomCard), findsOneWidget);
       expect(find.text('Group Room'), findsOneWidget);
     });
+
+    testWidgets(
+      'Join button is disabled when current user has blocked the friend',
+      (tester) async {
+        const roomStatus = FriendRoomStatus(
+          roomId: 'abc12',
+          memberCount: 2,
+          maxUsers: 5,
+          isLocked: false,
+          mode: 'group',
+        );
+        final ts = DateTime(2024);
+        final fake = _FakeFriendsNotifier(
+          initial: FriendsState(
+            friends: [_fakeDomainFriend],
+            presenceMap: {'uid1': true},
+            roomMap: {'uid1': roomStatus},
+          ),
+        );
+        final blockFake = _FakeBlockNotifier(
+          initial: BlockState(
+            status: BlockStatus.loaded,
+            blockedUsers: [BlockedUser(uid: 'uid1', blockedAt: ts)],
+          ),
+        );
+        await tester.pumpWidget(
+          _build(
+            networkInfo: FakeNetworkInfo(isOnline: true),
+            notifier: fake,
+            blockNotifier: blockFake,
+          ),
+        );
+        await tester.pump();
+        expect(find.byType(FriendRoomCard), findsOneWidget);
+        final joinFinder = find.text('Join');
+        expect(joinFinder, findsOneWidget);
+        final container = tester.widget<Container>(
+          find.ancestor(of: joinFinder, matching: find.byType(Container)).first,
+        );
+        final decoration = container.decoration as BoxDecoration;
+        expect(decoration.color, Colors.grey.shade200);
+      },
+    );
+
+    testWidgets(
+      'Join button is disabled when friend has blocked the current user',
+      (tester) async {
+        const roomStatus = FriendRoomStatus(
+          roomId: 'abc12',
+          memberCount: 2,
+          maxUsers: 5,
+          isLocked: false,
+          mode: 'group',
+        );
+        final fake = _FakeFriendsNotifier(
+          initial: FriendsState(
+            friends: [_fakeDomainFriend],
+            presenceMap: {'uid1': true},
+            roomMap: {'uid1': roomStatus},
+          ),
+        );
+        await tester.pumpWidget(
+          _build(
+            networkInfo: FakeNetworkInfo(isOnline: true),
+            notifier: fake,
+            isBlockedByFriend: true,
+          ),
+        );
+        await tester.pump();
+        expect(find.byType(FriendRoomCard), findsOneWidget);
+        final joinFinder = find.text('Join');
+        expect(joinFinder, findsOneWidget);
+        final container = tester.widget<Container>(
+          find.ancestor(of: joinFinder, matching: find.byType(Container)).first,
+        );
+        final decoration = container.decoration as BoxDecoration;
+        expect(decoration.color, Colors.grey.shade200);
+      },
+    );
 
     testWidgets(
       'does not show FriendRoomCard when friend is offline even with room data',
