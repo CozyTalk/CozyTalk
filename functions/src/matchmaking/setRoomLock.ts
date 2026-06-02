@@ -28,29 +28,23 @@ export const setRoomLock = onCall(
     const db = admin.firestore();
     const roomRef = db.collection("rooms").doc(roomId);
 
-    const roomSnap = await roomRef.get();
-    if (!roomSnap.exists) {
-      throw new HttpsError("not-found", "Room not found.");
-    }
-
-    const data = roomSnap.data()!;
-    if (data.status === "expired") {
-      throw new HttpsError("failed-precondition", "Room has expired.");
-    }
-    if (data.roomType !== "custom") {
-      throw new HttpsError(
-        "failed-precondition",
-        "Only custom rooms can be locked.",
-      );
-    }
-    if (!(data.users as string[]).includes(uid)) {
-      throw new HttpsError(
-        "permission-denied",
-        "Must be a room member to change lock state.",
-      );
-    }
-
-    await roomRef.update({isLocked});
+    await db.runTransaction(async (txn) => {
+      const snap = await txn.get(roomRef);
+      if (!snap.exists) {
+        throw new HttpsError("not-found", "Room not found.");
+      }
+      const data = snap.data()!;
+      if (data.status === "expired") {
+        throw new HttpsError("failed-precondition", "Room has expired.");
+      }
+      if (!(data.users as string[]).includes(uid)) {
+        throw new HttpsError(
+          "permission-denied",
+          "Must be a room member to change lock state.",
+        );
+      }
+      txn.update(roomRef, {isLocked});
+    });
     logger.info("Room lock toggled", {uid, roomId, isLocked});
     return {success: true};
   },

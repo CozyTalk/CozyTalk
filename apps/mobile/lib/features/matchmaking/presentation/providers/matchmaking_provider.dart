@@ -352,10 +352,22 @@ class MatchmakingNotifier extends Notifier<MatchmakingState> {
   Future<void> setRoomLock({required bool isLocked}) async {
     final roomId = state.roomId;
     if (roomId == null) return;
+    final prevIsLocked = state.currentRoom?.isLocked;
+    if (state.currentRoom != null) {
+      state = state.copyWith(
+        currentRoom: state.currentRoom!.copyWith(isLocked: isLocked),
+      );
+    }
     try {
       await ref.read(_setRoomLockProvider)(roomId: roomId, isLocked: isLocked);
     } catch (e) {
-      state = state.copyWith(error: _message(e));
+      final current = state.currentRoom;
+      state = state.copyWith(
+        currentRoom: current != null && prevIsLocked != null
+            ? current.copyWith(isLocked: prevIsLocked)
+            : current,
+        error: _message(e),
+      );
     }
   }
 

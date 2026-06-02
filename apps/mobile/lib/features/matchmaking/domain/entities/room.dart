@@ -32,4 +32,19 @@ class Room {
     this.roomInterestVector,
     this.backgroundTheme,
   });
+
+  Room copyWith({bool? isLocked}) => Room(
+    roomId: roomId,
+    roomType: roomType,
+    mode: mode,
+    status: status,
+    maxUsers: maxUsers,
+    memberCount: memberCount,
+    users: users,
+    isLocked: isLocked ?? this.isLocked,
+    createdAt: createdAt,
+    paddingUntil: paddingUntil,
+    roomInterestVector: roomInterestVector,
+    backgroundTheme: backgroundTheme,
+  );
 }

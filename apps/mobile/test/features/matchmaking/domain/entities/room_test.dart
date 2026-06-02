@@ -62,6 +62,84 @@ void main() {
     });
   });
 
+  group('copyWith', () {
+    test('sets isLocked to true', () {
+      final room = Room(
+        roomId: 'Rm001',
+        roomType: RoomType.public,
+        mode: RoomMode.group,
+        status: RoomStatus.active,
+        maxUsers: 5,
+        memberCount: 2,
+        users: const ['uid1', 'uid2'],
+        isLocked: false,
+        createdAt: DateTime(2025),
+      );
+
+      expect(room.copyWith(isLocked: true).isLocked, true);
+    });
+
+    test('sets isLocked to false', () {
+      final room = Room(
+        roomId: 'Rm001',
+        roomType: RoomType.custom,
+        mode: RoomMode.group,
+        status: RoomStatus.active,
+        maxUsers: 5,
+        memberCount: 1,
+        users: const ['uid1'],
+        isLocked: true,
+        createdAt: DateTime(2025),
+      );
+
+      expect(room.copyWith(isLocked: false).isLocked, false);
+    });
+
+    test('preserves isLocked when called with no args', () {
+      final room = Room(
+        roomId: 'Rm001',
+        roomType: RoomType.public,
+        mode: RoomMode.group,
+        status: RoomStatus.active,
+        maxUsers: 5,
+        memberCount: 1,
+        users: const ['uid1'],
+        isLocked: true,
+        createdAt: DateTime(2025),
+      );
+
+      expect(room.copyWith().isLocked, true);
+    });
+
+    test('preserves all other fields after copyWith', () {
+      final created = DateTime(2025, 3, 1);
+      final room = Room(
+        roomId: 'Rm999',
+        roomType: RoomType.custom,
+        mode: RoomMode.group,
+        status: RoomStatus.active,
+        maxUsers: 5,
+        memberCount: 2,
+        users: const ['uid1', 'uid2'],
+        isLocked: false,
+        createdAt: created,
+        backgroundTheme: 'kao_tapu',
+      );
+
+      final updated = room.copyWith(isLocked: true);
+
+      expect(updated.roomId, 'Rm999');
+      expect(updated.roomType, RoomType.custom);
+      expect(updated.mode, RoomMode.group);
+      expect(updated.status, RoomStatus.active);
+      expect(updated.maxUsers, 5);
+      expect(updated.memberCount, 2);
+      expect(updated.users, ['uid1', 'uid2']);
+      expect(updated.createdAt, created);
+      expect(updated.backgroundTheme, 'kao_tapu');
+    });
+  });
+
   group('RoomType', () {
     test('contains exactly public and custom', () {
       expect(RoomType.values, containsAll([RoomType.public, RoomType.custom]));
