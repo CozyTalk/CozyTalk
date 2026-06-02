@@ -227,7 +227,16 @@ class _FriendRequestListener extends ConsumerStatefulWidget {
 
 class _FriendRequestListenerState
     extends ConsumerState<_FriendRequestListener> {
-  Set<String>? _seenIds;
+  late Set<String> _seenIds;
+
+  @override
+  void initState() {
+    super.initState();
+    _seenIds = ref
+        .read(friendsNotifierProvider.select((s) => s.incomingRequests))
+        .map((r) => r.id)
+        .toSet();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -235,12 +244,8 @@ class _FriendRequestListenerState
       friendsNotifierProvider.select((s) => s.incomingRequests),
       (_, next) {
         if (!mounted) return;
-        if (_seenIds == null) {
-          _seenIds = next.map((r) => r.id).toSet();
-          return;
-        }
-        for (final request in next.where((r) => !_seenIds!.contains(r.id))) {
-          _seenIds!.add(request.id);
+        for (final request in next.where((r) => !_seenIds.contains(r.id))) {
+          _seenIds.add(request.id);
           showFriendRequestPopup(
             context,
             requesterName: request.fromDisplayName,

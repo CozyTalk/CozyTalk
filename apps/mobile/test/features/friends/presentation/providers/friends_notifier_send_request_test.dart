@@ -180,5 +180,37 @@ void main() {
 
       expect(repo.lastFromDisplayName, 'Alice');
     });
+
+    test('falls back to authUser displayName when profile displayName is empty',
+        () async {
+      setUp(
+        _emailAuth(),
+        ProfileState(
+          profile: const ProfileUser(uid: 'real-uid', displayName: ''),
+        ),
+      );
+      await container
+          .read(friendsNotifierProvider.notifier)
+          .sendFriendRequest(_target);
+
+      expect(repo.lastFromDisplayName, 'Alice');
+    });
+
+    test(
+      'falls back to authUser displayName when profile displayName is whitespace',
+      () async {
+        setUp(
+          _emailAuth(),
+          ProfileState(
+            profile: const ProfileUser(uid: 'real-uid', displayName: '   '),
+          ),
+        );
+        await container
+            .read(friendsNotifierProvider.notifier)
+            .sendFriendRequest(_target);
+
+        expect(repo.lastFromDisplayName, 'Alice');
+      },
+    );
   });
 }

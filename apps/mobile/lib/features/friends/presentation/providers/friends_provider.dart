@@ -392,10 +392,14 @@ class FriendsNotifier extends Notifier<FriendsState> {
       );
       return;
     }
-    final myDisplayName =
-        ref.read(profileNotifierProvider).profile?.displayName ??
-        authUser?.displayName ??
-        'Anonymous';
+    final profileName =
+        ref.read(profileNotifierProvider).profile?.displayName?.trim();
+    final authName = authUser?.displayName?.trim();
+    final myDisplayName = (profileName?.isNotEmpty ?? false)
+        ? profileName!
+        : (authName?.isNotEmpty ?? false)
+            ? authName!
+            : 'Anonymous';
     state = state.copyWith(isLoading: true, error: null);
     try {
       await ref.read(_sendFriendRequestProvider)(
