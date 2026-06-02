@@ -428,13 +428,12 @@ class FriendsNotifier extends Notifier<FriendsState> {
     }
     state = state.copyWith(isLoading: true, error: null);
     try {
-      final myUsers = await GetUsersByIds(ref.read(friendsRepositoryProvider))([
-        authUser!.uid,
-      ]);
-      final myDisplayName =
-          myUsers.isNotEmpty && myUsers.first.displayName.isNotEmpty
-          ? myUsers.first.displayName
-          : 'Anonymous';
+      final profileName =
+          ref.read(profileNotifierProvider).profile?.displayName?.trim() ?? '';
+      final authName = authUser!.displayName ?? '';
+      final myDisplayName = profileName.isNotEmpty
+          ? profileName
+          : (authName.isNotEmpty ? authName : 'Anonymous');
       await ref.read(_sendFriendRequestProvider)(
         toUid: toUser.uid,
         toDisplayName: toUser.displayName,
