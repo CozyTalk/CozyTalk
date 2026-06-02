@@ -32,6 +32,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     ref.listen<AuthState>(authNotifierProvider, (previous, next) {
+      if (next.isBanned && !(previous?.isBanned ?? false)) {
+        showAccountSuspendedDialog(
+          context,
+          days: next.banDaysLeft,
+          reinstateDate: next.banReinstateDate,
+        );
+        return;
+      }
       if (next.error != null && next.error != previous?.error) {
         ScaffoldMessenger.of(context)
           ..clearSnackBars()

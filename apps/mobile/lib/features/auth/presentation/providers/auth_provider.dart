@@ -69,17 +69,33 @@ class AuthState {
   final AuthStatus status;
   final AuthUser? user;
   final String? error;
+  final bool isBanned;
+  final int banDaysLeft;
+  final String banReinstateDate;
 
-  const AuthState({this.status = AuthStatus.idle, this.user, this.error});
+  const AuthState({
+    this.status = AuthStatus.idle,
+    this.user,
+    this.error,
+    this.isBanned = false,
+    this.banDaysLeft = 0,
+    this.banReinstateDate = '',
+  });
 
   AuthState copyWith({
     AuthStatus? status,
     Object? user = _sentinel,
     Object? error = _sentinel,
+    bool? isBanned,
+    int? banDaysLeft,
+    String? banReinstateDate,
   }) => AuthState(
     status: status ?? this.status,
     user: user == _sentinel ? this.user : user as AuthUser?,
     error: error == _sentinel ? this.error : error as String?,
+    isBanned: isBanned ?? this.isBanned,
+    banDaysLeft: banDaysLeft ?? this.banDaysLeft,
+    banReinstateDate: banReinstateDate ?? this.banReinstateDate,
   );
 }
 
@@ -110,8 +126,20 @@ class AuthNotifier extends Notifier<AuthState> {
       if (state.user == null) return;
       try {
         await ref.read(authRepositoryProvider).validateToken();
-      } catch (_) {
+        await ref.read(authRepositoryProvider).checkBanStatus(state.user!.uid);
+      } catch (e) {
         if (!ref.mounted) return;
+        final banState = _parseBanException(e);
+        if (banState != null) {
+          state = state.copyWith(
+            status: AuthStatus.unauthenticated,
+            user: null,
+            isBanned: true,
+            banDaysLeft: banState.$1,
+            banReinstateDate: banState.$2,
+          );
+          return;
+        }
         await signOut();
         if (!ref.mounted) return;
         state = state.copyWith(
@@ -121,6 +149,17 @@ class AuthNotifier extends Notifier<AuthState> {
     });
   }
 
+  // Returns (daysLeft, reinstateDate) if the exception is a ban, null otherwise.
+  (int, String)? _parseBanException(Object e) {
+    final msg = e.toString().replaceFirst('Exception: ', '');
+    if (!msg.startsWith('BANNED:')) return null;
+    final parts = msg.split(':');
+    if (parts.length < 3) return null;
+    final days = int.tryParse(parts[1]) ?? 0;
+    final date = parts.sublist(2).join(':');
+    return (days, date);
+  }
+
   Future<void> signInAnonymously() async {
     if (state.status == AuthStatus.loading) return;
     state = state.copyWith(status: AuthStatus.loading, error: null);
@@ -128,10 +167,7 @@ class AuthNotifier extends Notifier<AuthState> {
       final user = await ref.read(_signInAnonymouslyProvider)();
       state = state.copyWith(status: AuthStatus.authenticated, user: user);
     } catch (e) {
-      state = state.copyWith(
-        status: AuthStatus.unauthenticated,
-        error: e.toString().replaceFirst('Exception: ', ''),
-      );
+      _handleSignInError(e);
     }
   }
 
@@ -143,11 +179,11 @@ class AuthNotifier extends Notifier<AuthState> {
       state = state.copyWith(status: AuthStatus.authenticated, user: user);
     } catch (e) {
       final msg = e.toString().replaceFirst('Exception: ', '');
-      // Empty message = user dismissed the popup (not an error — clear spinner silently).
-      state = state.copyWith(
-        status: AuthStatus.unauthenticated,
-        error: msg.isEmpty ? null : msg,
-      );
+      if (msg.isEmpty) {
+        state = state.copyWith(status: AuthStatus.unauthenticated);
+        return;
+      }
+      _handleSignInError(e);
     }
   }
 
@@ -161,10 +197,7 @@ class AuthNotifier extends Notifier<AuthState> {
       );
       state = state.copyWith(status: AuthStatus.authenticated, user: user);
     } catch (e) {
-      state = state.copyWith(
-        status: AuthStatus.unauthenticated,
-        error: e.toString().replaceFirst('Exception: ', ''),
-      );
+      _handleSignInError(e);
     }
   }
 
@@ -178,11 +211,26 @@ class AuthNotifier extends Notifier<AuthState> {
       );
       state = state.copyWith(status: AuthStatus.authenticated, user: user);
     } catch (e) {
+      _handleSignInError(e);
+    }
+  }
+
+  void _handleSignInError(Object e) {
+    final banState = _parseBanException(e);
+    if (banState != null) {
       state = state.copyWith(
         status: AuthStatus.unauthenticated,
-        error: e.toString().replaceFirst('Exception: ', ''),
+        user: null,
+        isBanned: true,
+        banDaysLeft: banState.$1,
+        banReinstateDate: banState.$2,
       );
+      return;
     }
+    state = state.copyWith(
+      status: AuthStatus.unauthenticated,
+      error: e.toString().replaceFirst('Exception: ', ''),
+    );
   }
 
   Future<void> signOut() async {

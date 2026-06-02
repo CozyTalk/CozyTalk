@@ -9,4 +9,6 @@ abstract class AuthRepository {
   Future<void> signOut();
   // Refreshes the current user's ID token. Throws if token is invalid/expired.
   Future<void> validateToken();
+  // Throws Exception('BANNED:daysLeft:reinstateDate') if uid is currently banned.
+  Future<void> checkBanStatus(String uid);
 }

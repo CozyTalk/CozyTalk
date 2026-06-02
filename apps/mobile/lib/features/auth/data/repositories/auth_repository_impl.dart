@@ -46,4 +46,7 @@ class AuthRepositoryImpl implements AuthRepository {
 
   @override
   Future<void> validateToken() => _datasource.validateToken();
+
+  @override
+  Future<void> checkBanStatus(String uid) => _datasource.checkBanStatus(uid);
 }

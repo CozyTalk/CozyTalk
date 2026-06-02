@@ -67,6 +67,9 @@ class _FakeAuthDatasource implements AuthDatasource {
 
   @override
   Future<void> validateToken() async {}
+
+  @override
+  Future<void> checkBanStatus(String uid) async {}
 }
 
 const _model = AuthUserModel(

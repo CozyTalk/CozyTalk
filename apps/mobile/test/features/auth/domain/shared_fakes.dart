@@ -67,4 +67,7 @@ class FakeAuthRepository implements AuthRepository {
 
   @override
   Future<void> validateToken() async {}
+
+  @override
+  Future<void> checkBanStatus(String uid) async {}
 }
