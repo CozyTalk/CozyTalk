@@ -103,9 +103,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           _TopBar(
             hasNotification: ref.watch(
               friendsNotifierProvider.select(
-                (s) =>
-                    s.incomingRequests.isNotEmpty ||
-                    s.unreadChatRoomIds.isNotEmpty,
+                (s) => s.incomingRequests.isNotEmpty,
               ),
             ),
             onBellTap: () =>
@@ -168,6 +166,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           label: 'Friends',
                           imageWidth: 39,
                           imageHeight: 39,
+                          showBadge: ref.watch(
+                            friendsNotifierProvider.select(
+                              (s) => s.unreadCountMap.values.any((c) => c > 0),
+                            ),
+                          ),
                           onTap: () =>
                               Navigator.pushNamed(context, AppRoutes.friends),
                         ),
@@ -559,9 +562,9 @@ class _QuickAction extends StatelessWidget {
   final String imagePath;
   final String label;
   final VoidCallback onTap;
-
   final double imageWidth;
   final double imageHeight;
+  final bool showBadge;
 
   const _QuickAction({
     required this.imagePath,
@@ -569,6 +572,7 @@ class _QuickAction extends StatelessWidget {
     required this.onTap,
     this.imageWidth = 35,
     this.imageHeight = 35,
+    this.showBadge = false,
   });
 
   @override
@@ -577,27 +581,49 @@ class _QuickAction extends StatelessWidget {
       onTap: onTap,
       child: Column(
         children: [
-          Container(
-            width: 75,
-            height: 75,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(22),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.08),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
+          Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Container(
+                width: 75,
+                height: 75,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(22),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.08),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                  border: Border.all(color: Colors.grey.shade300, width: 1.5),
                 ),
-              ],
-              border: Border.all(color: Colors.grey.shade300, width: 1.5),
-            ),
-            child: SvgPicture.asset(
-              imagePath,
-              width: imageWidth,
-              height: imageHeight,
-            ),
+                child: SvgPicture.asset(
+                  imagePath,
+                  width: imageWidth,
+                  height: imageHeight,
+                ),
+              ),
+              if (showBadge)
+                Positioned(
+                  top: -4,
+                  right: -4,
+                  child: Container(
+                    width: 16,
+                    height: 16,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFCF5733),
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: const Color(0xFFA33615),
+                        width: 2.0,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
           ),
           const SizedBox(height: 10),
           Text(

@@ -90,7 +90,13 @@ class _FakeFriendsNotifier extends FriendsNotifier {
   @override
   void clearError() {}
   @override
-  void markChatAsRead(String chatRoomId) {}
+  void clearBadgeLocally(String chatRoomId) {}
+  @override
+  void markChatRead(String chatRoomId) {}
+  @override
+  void setActiveChat(String chatRoomId) {}
+  @override
+  void clearActiveChat() {}
 }
 
 class _FakeFriendChatNotifierWithError extends FriendChatNotifier {
