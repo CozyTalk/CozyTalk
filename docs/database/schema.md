@@ -68,7 +68,7 @@ Rules: update restricted to `updatedAt` field only (prevents client status manip
 | `roomInterestVector` | number[]? | mean of all members' 256-dim Vertex AI interest embeddings; written by `joinGroupRoom` and `match1v1Users` CFs; used for group room cosine similarity matching |
 | `backgroundTheme` | string? | one of `kao_tapu`, `red_lotus_lake`, `sea_of_cloud`, `lumphini_park`; absent when no theme was chosen; acts as hard partition key during matchmaking |
 
-Rules: read by members (must appear in `users[]`) or any signed-in user when `status == 'expired'` (allows clients to surface expiry errors). Admins (`isAdmin()`) may read and list all rooms without membership — required for the dashboard online-count stream. Write: Cloud Functions only, except `isLocked` which any current member may toggle on any active room (public or custom).
+Rules: read by members (must appear in `users[]`) or any signed-in user when `status == 'expired'` (allows clients to surface expiry errors). Admins (`isAdmin()`) may read and list all rooms without membership — required for the dashboard online-count stream. Write: Cloud Functions only, except `isLocked` which any current member may toggle on active group rooms (`status == 'active'` and `mode == 'group'`).
 
 ### `active_sessions/{id}`
 

@@ -106,10 +106,11 @@ service cloud.firestore {
 
       allow create, delete: if false;
 
-      // Members may toggle isLocked on any active room
+      // Members may toggle isLocked on active group rooms
       allow update: if isSignedIn()
         && request.auth.uid in resource.data.users
-        && resource.data.status != 'expired'
+        && resource.data.status == 'active'
+        && resource.data.mode == 'group'
         && request.resource.data.diff(resource.data)
             .affectedKeys().hasOnly(['isLocked'])
         && request.resource.data.isLocked is bool;

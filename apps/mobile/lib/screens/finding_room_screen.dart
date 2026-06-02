@@ -162,7 +162,7 @@ class _FindingRoomScreenState extends ConsumerState<FindingRoomScreen> {
             .when(data: (v) => v, loading: () => true, error: (_, _) => true);
         if (isOffline) return;
         _notifier?.cancelSearch();
-        if (next.error?.contains('locked') == true) {
+        if (next.error == 'This room is locked.') {
           showDialog(
             context: context,
             barrierDismissible: false,
