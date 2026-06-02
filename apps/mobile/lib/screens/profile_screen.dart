@@ -400,21 +400,26 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 Row(
                   children: [
                     Expanded(
-                      child: GestureDetector(
-                        onTap: () => setState(() => _showLogoutConfirm = false),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(vertical: 13),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFD8D2C8),
-                            borderRadius: BorderRadius.circular(999),
-                          ),
-                          child: const Center(
-                            child: Text(
-                              'Cancel',
-                              style: TextStyle(
-                                fontWeight: FontWeight.w800,
-                                fontSize: 14,
-                                color: Color(0xFF1F1A18),
+                      child: Semantics(
+                        label: 'Cancel logout',
+                        button: true,
+                        child: GestureDetector(
+                          onTap: () =>
+                              setState(() => _showLogoutConfirm = false),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(vertical: 13),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFD8D2C8),
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                            child: const Center(
+                              child: Text(
+                                'Cancel',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 14,
+                                  color: Color(0xFF1F1A18),
+                                ),
                               ),
                             ),
                           ),
@@ -423,44 +428,48 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     ),
                     const SizedBox(width: 10),
                     Expanded(
-                      child: GestureDetector(
-                        onTap: () async {
-                          setState(() => _showLogoutConfirm = false);
-                          final navigator = Navigator.of(context);
-                          await ref
-                              .read(authNotifierProvider.notifier)
-                              .signOut();
-                          if (!mounted) return;
-                          navigator.popUntil((route) => route.isFirst);
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(vertical: 13),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFD85542),
-                            borderRadius: BorderRadius.circular(999),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              SvgPicture.asset(
-                                'assets/images/icons/LogOut.svg',
-                                width: 16,
-                                height: 16,
-                                colorFilter: const ColorFilter.mode(
-                                  Colors.white,
-                                  BlendMode.srcIn,
+                      child: Semantics(
+                        label: 'Confirm log out',
+                        button: true,
+                        child: GestureDetector(
+                          onTap: () async {
+                            setState(() => _showLogoutConfirm = false);
+                            final navigator = Navigator.of(context);
+                            await ref
+                                .read(authNotifierProvider.notifier)
+                                .signOut();
+                            if (!mounted) return;
+                            navigator.popUntil((route) => route.isFirst);
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(vertical: 13),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFD85542),
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                SvgPicture.asset(
+                                  'assets/images/icons/LogOut.svg',
+                                  width: 16,
+                                  height: 16,
+                                  colorFilter: const ColorFilter.mode(
+                                    Colors.white,
+                                    BlendMode.srcIn,
+                                  ),
                                 ),
-                              ),
-                              const SizedBox(width: 6),
-                              Text(
-                                'Log out',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w800,
-                                  fontSize: 14,
-                                  color: Colors.white,
+                                const SizedBox(width: 6),
+                                const Text(
+                                  'Log out',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 14,
+                                    color: Colors.white,
+                                  ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
                         ),
                       ),
