@@ -173,7 +173,9 @@ class FriendsDatasourceImpl implements FriendsDatasource {
 
   @override
   Stream<FriendRoomStatus?> watchFriendRoom(String friendUid) {
-    return _database.ref('user_status/$friendUid').onValue.map((event) {
+    return _database.ref('user_status/$friendUid').onValue.asyncMap((
+      event,
+    ) async {
       if (!event.snapshot.exists || event.snapshot.value == null) {
         debugPrint('[watchFriendRoom] $friendUid: node missing');
         return null;
@@ -183,13 +185,24 @@ class FriendsDatasourceImpl implements FriendsDatasource {
       if (data['status'] != 'in_room') return null;
       final roomId = data['roomId'] as String?;
       if (roomId == null) return null;
+
+      var backgroundTheme = data['backgroundTheme'] as String?;
+      if (backgroundTheme == null) {
+        try {
+          final doc = await _firestore.collection('rooms').doc(roomId).get();
+          backgroundTheme = doc.data()?['backgroundTheme'] as String?;
+        } catch (e) {
+          debugPrint('[watchFriendRoom] Firestore fallback failed: $e');
+        }
+      }
+
       return FriendRoomStatus(
         roomId: roomId,
         memberCount: (data['memberCount'] as num?)?.toInt() ?? 1,
         maxUsers: (data['maxUsers'] as num?)?.toInt() ?? 5,
         isLocked: data['isLocked'] as bool? ?? false,
         mode: data['roomMode'] as String? ?? 'group',
-        backgroundTheme: data['backgroundTheme'] as String?,
+        backgroundTheme: backgroundTheme,
       );
     });
   }
