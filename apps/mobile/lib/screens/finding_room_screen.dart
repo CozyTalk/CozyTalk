@@ -165,6 +165,7 @@ class _FindingRoomScreenState extends ConsumerState<FindingRoomScreen> {
         if (next.error?.contains('locked') == true) {
           showDialog(
             context: context,
+            barrierDismissible: false,
             builder: (_) => AlertDialog(
               title: const Text('Room Locked'),
               content: const Text(
