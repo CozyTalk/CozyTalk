@@ -6,6 +6,7 @@ import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../auth/presentation/providers/auth_provider.dart';
+import '../../../profile/presentation/providers/profile_provider.dart';
 import '../../data/datasources/friends_datasource.dart';
 import '../../data/repositories/friends_repository_impl.dart';
 import '../../domain/entities/app_user.dart';
@@ -425,6 +426,17 @@ class FriendsNotifier extends Notifier<FriendsState> {
       );
       return;
     }
+    final profileName = ref
+        .read(profileNotifierProvider)
+        .profile
+        ?.displayName
+        ?.trim();
+    final authName = authUser?.displayName?.trim();
+    final myDisplayName = (profileName?.isNotEmpty ?? false)
+        ? profileName!
+        : (authName?.isNotEmpty ?? false)
+        ? authName!
+        : 'Anonymous';
     state = state.copyWith(isLoading: true, error: null);
     try {
       final myUsers = await GetUsersByIds(ref.read(friendsRepositoryProvider))([

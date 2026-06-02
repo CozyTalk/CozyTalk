@@ -135,6 +135,9 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
   final Map<String, String> _memberInterestCache = {};
   // uid→thoughts (status message) loaded from Firestore profiles.
   final Map<String, String> _memberThoughtsCache = {};
+  // uid→AvatarState populated while the member is live; persists after they leave
+  // so message avatars retain their mood/hat overlays even when the sender is gone.
+  final Map<String, AvatarState> _memberAvatarCache = {};
   // displayName→uid reverse index so bubble taps can resolve interest.
   final Map<String, String> _uidByDisplayName = {};
   // Pending hop-in UIDs whose display names aren't known yet.
@@ -578,6 +581,7 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
         mood: AvatarOverlays.mood[deco?.moodKey ?? ''],
         accessory: AvatarOverlays.accessory[deco?.hatKey ?? ''],
       );
+      if (deco != null) _memberAvatarCache[uid] = state;
       memberAvatarStates[uid] = state;
       memberAvatarByName[displayName] = state;
     }
@@ -1390,7 +1394,8 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
               builder: (ctx) {
                 final senderUid = _uidByDisplayName[msg.sender ?? ''];
                 final memberState = senderUid != null
-                    ? memberAvatarStates[senderUid]
+                    ? (memberAvatarStates[senderUid] ??
+                          _memberAvatarCache[senderUid])
                     : null;
                 return GestureDetector(
                   onTap: () => showDialog(

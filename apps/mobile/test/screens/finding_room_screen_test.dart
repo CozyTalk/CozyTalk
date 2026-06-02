@@ -224,9 +224,9 @@ void main() {
         ),
       );
       await tester
-          .pump(); // ref.listen fires → _goToChat → Future.delayed(700ms)
+          .pump(); // ref.listen fires → _goToChat → Future.delayed(1200ms)
       await tester.pump(
-        const Duration(milliseconds: 750),
+        const Duration(milliseconds: 1250),
       ); // delay expires + nav fires
       await tester.pump(); // new screen renders
 
@@ -246,9 +246,9 @@ void main() {
           ),
         );
         await tester
-            .pump(); // ref.listen fires → _goToChat → Future.delayed(700ms)
+            .pump(); // ref.listen fires → _goToChat → Future.delayed(1200ms)
         await tester.pump(
-          const Duration(milliseconds: 750),
+          const Duration(milliseconds: 1250),
         ); // delay expires + nav fires
         await tester.pump(); // new screen renders
 
