@@ -112,8 +112,11 @@ class AdminDatasourceImpl implements AdminDatasource {
         .asyncMap((snap) async {
           final uids = <String>{};
           for (final doc in snap.docs) {
-            uids.add(doc.data()['reporterId'] as String);
-            uids.add(doc.data()['reportedUserId'] as String);
+            final d = doc.data();
+            final rid = d['reporterId'];
+            final ruid = d['reportedUserId'];
+            if (rid is String && rid.isNotEmpty) uids.add(rid);
+            if (ruid is String && ruid.isNotEmpty) uids.add(ruid);
           }
           final nameMap = <String, String>{};
           final interestMap = <String, String>{};
@@ -129,16 +132,29 @@ class AdminDatasourceImpl implements AdminDatasource {
               }
             }
           }
-          final result = <AdminReportModel>[];
+          final results = <AdminReportModel>[];
+          Object? firstParseError;
           for (final doc in snap.docs) {
             try {
               final data = Map<String, dynamic>.from(doc.data());
+              data['id'] = doc.id;
+              data['reporterId'] ??= '';
+              data['reportedUserId'] ??= '';
+              data['sessionId'] ??= '';
+              data['reportType'] ??= 'other';
+              data['reason'] ??= '';
+              if (data['contextImageUrls'] is! List) {
+                data['contextImageUrls'] = <String>[];
+              }
               if (data['outcome'] is Map) {
-                data['outcome'] = Map<String, dynamic>.from(
+                final outcome = Map<String, dynamic>.from(
                   data['outcome'] as Map,
                 );
+                outcome['kind'] ??= 'unknown';
+                outcome['byName'] ??= 'Unknown';
+                data['outcome'] = outcome;
               }
-              result.add(
+              results.add(
                 AdminReportModel.fromJson(data).copyWith(
                   id: doc.id,
                   reporterName: nameMap[data['reporterId']] ?? 'Unknown',
@@ -150,9 +166,14 @@ class AdminDatasourceImpl implements AdminDatasource {
               debugPrint(
                 '[AdminDatasource] skipping malformed report ${doc.id}: $e',
               );
+              firstParseError ??= e;
             }
           }
-          return result;
+          if (results.isEmpty && firstParseError != null) {
+            // ignore: only_throw_errors
+            throw firstParseError;
+          }
+          return results;
         });
   }
 
@@ -176,8 +197,13 @@ class AdminDatasourceImpl implements AdminDatasource {
     });
     final data = Map<String, dynamic>.from(result.data as Map);
     if (data['success'] == false) {
-      throw Exception(data['error'] ?? 'Failed to get chat log URL');
+      throw Exception(data['reason'] ?? 'Failed to get chat log');
     }
+    // New: CF returns content directly instead of a signed URL.
+    if (data['chatLogContent'] is String) {
+      return data['chatLogContent'] as String;
+    }
+    // Legacy fallback: signed URL path (emulator only).
     return data['signedUrl'] as String;
   }
 

@@ -322,7 +322,7 @@ export const reportSession = onCall(
     try {
       const storagePath = `reports/${reportId}/chat_log.json`;
       await getStorage()
-        .bucket()
+        .bucket("cozytalk-5d984.firebasestorage.app")
         .file(storagePath)
         .save(
           JSON.stringify(

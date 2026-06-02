@@ -25,6 +25,7 @@ import '../shared/info_dialog.dart';
 import '../shared/layered_avatar.dart';
 import '../shared/press_bounce_btn.dart';
 import '../theme/room_themes.dart';
+import '../features/report/presentation/screens/report_sheet.dart';
 
 // ── Card assets ────────────────────────────────────────────────────────────
 const _cardAssets = [
@@ -362,6 +363,22 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
 
   void _sendGif(String url) {
     setState(() => _pendingGifUrl = url);
+  }
+
+  void _openReport(String reportedUserId) {
+    final sessionId =
+        ref.read(chatNotifierProvider).sessionId ??
+        (ModalRoute.of(context)?.settings.arguments
+                as Map<String, dynamic>?)?['roomId']
+            as String? ??
+        '';
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (_) =>
+          ReportSheet(sessionId: sessionId, reportedUserId: reportedUserId),
+    );
   }
 
   void _sendFriendRequest(String targetName) {
@@ -811,7 +828,7 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
                           friendRequestSent: _friendRequestSent,
                           onAddFriend: _sendFriendRequest,
                           onCancelRequest: cancelFriendRequest,
-                          onReport: reportUser,
+                          onReport: _openReport,
                           memberAvatarStates: memberAvatarByName,
                         ),
                       ),
