@@ -38,6 +38,7 @@ import 'screens/chat_screen.dart';
 import 'screens/group_chat_screen.dart';
 import 'screens/finding_room_screen.dart';
 import 'screens/admin_console_screen.dart';
+import 'dialogs/account_suspended_dialog.dart';
 
 const _useEmulator = bool.fromEnvironment('USE_EMULATOR', defaultValue: true);
 
@@ -166,6 +167,26 @@ class _MainUIAuthRouter extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     // Keep own RTDB presence alive — same as _AuthRouter.
     ref.watch(ownStatusNotifierProvider);
+
+    // Show the ban popup on whatever screen the user is currently on.
+    ref.listen<bool>(authNotifierProvider.select((s) => s.bannedWhileActive), (
+      prev,
+      next,
+    ) {
+      if (!next || (prev ?? false)) return;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!context.mounted) return;
+        final state = ref.read(authNotifierProvider);
+        showAccountSuspendedDialog(
+          context,
+          days: state.banDaysLeft,
+          reinstateDate: state.banReinstateDate,
+          onBackToLogin: () =>
+              ref.read(authNotifierProvider.notifier).confirmBanAndSignOut(),
+        );
+      });
+    });
+
     ref.listen<AuthStatus>(authNotifierProvider.select((s) => s.status), (
       _,
       next,

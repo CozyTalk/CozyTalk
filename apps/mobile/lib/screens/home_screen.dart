@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import '../dialogs/account_suspended_dialog.dart';
 import '../features/auth/presentation/providers/auth_provider.dart';
 import '../features/avatar/presentation/providers/avatar_decoration_provider.dart';
 import '../features/friends/presentation/providers/friends_provider.dart';
@@ -68,18 +67,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Widget build(BuildContext context) {
     // Keep matchmaking interest in sync with profile interest so the two
     // always use the same value for CF-side embedding.
-    ref.listen<AuthState>(authNotifierProvider, (prev, next) {
-      if (next.bannedWhileActive && !(prev?.bannedWhileActive ?? false)) {
-        showAccountSuspendedDialog(
-          context,
-          days: next.banDaysLeft,
-          reinstateDate: next.banReinstateDate,
-          onBackToLogin: () =>
-              ref.read(authNotifierProvider.notifier).confirmBanAndSignOut(),
-        );
-      }
-    });
-
     ref.listen<ProfileState>(profileNotifierProvider, (prev, next) {
       final interest = next.profile?.interest;
       if (interest != null && interest.isNotEmpty) {
