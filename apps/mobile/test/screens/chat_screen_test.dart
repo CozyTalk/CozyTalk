@@ -8,6 +8,7 @@ import 'package:mobile/features/chat/domain/entities/chat_message.dart'
 import 'package:mobile/features/chat/domain/entities/session_status.dart';
 import 'package:mobile/features/chat/presentation/providers/chat_provider.dart';
 import 'package:mobile/features/friends/domain/entities/app_user.dart';
+import 'package:mobile/features/friends/domain/entities/friend_request.dart';
 import 'package:mobile/features/friends/presentation/providers/friends_provider.dart';
 import 'package:mobile/features/matchmaking/domain/entities/matchmaking_status.dart';
 import 'package:mobile/features/matchmaking/domain/entities/room.dart';
@@ -179,6 +180,9 @@ class _FakeFriendsNotifierForChat extends FriendsNotifier {
     sendFriendRequestCount++;
     lastRequestedUser = toUser;
   }
+
+  @override
+  Future<void> cancelFriendRequest(String toUid) async {}
 
   @override
   void clearError() {}
@@ -700,6 +704,62 @@ void main() {
           await tester.pump();
           expect(find.byType(SnackBar), findsOneWidget);
           expect(find.text('Request failed'), findsOneWidget);
+        },
+      );
+
+      testWidgets(
+        'add-friend button updates reactively when outgoingRequests state changes',
+        (tester) async {
+          final handle = tester.ensureSemantics();
+          try {
+            final friendsFake = _FakeFriendsNotifierForChat();
+            await tester.pumpWidget(
+              _buildScreen(
+                _FakeChatNotifier(),
+                matchFake: matchWithPartnerFake(),
+                friendsFake: friendsFake,
+              ),
+            );
+            await _pump(tester);
+            await tester.pump(); // settle FutureProvider
+
+            // Initial state: no outgoing request → "Add friend"
+            await tester.tap(find.bySemanticsLabel('View user profile').first);
+            await tester.pump();
+            await tester.pump(const Duration(milliseconds: 250));
+            expect(find.bySemanticsLabel('Add friend'), findsOneWidget);
+            await tester.tapAt(
+              const Offset(10, 10),
+            ); // dismiss dialog via barrier
+            await tester.pump(); // close dialog
+
+            // Simulate outgoing request added to state (proves ref.watch triggers rebuild)
+            friendsFake.state = friendsFake.state.copyWith(
+              outgoingRequests: [
+                FriendRequest(
+                  id: 'req-1',
+                  fromUid: 'u1',
+                  fromDisplayName: 'Me',
+                  toUid: 'partner-uid',
+                  toDisplayName: 'Partner',
+                  status: FriendRequestStatus.pending,
+                  createdAt: DateTime(2025),
+                ),
+              ],
+            );
+            await tester.pump();
+
+            // Reopen dialog — button must now reflect the updated state
+            await tester.tap(find.bySemanticsLabel('View user profile').first);
+            await tester.pump();
+            await tester.pump(const Duration(milliseconds: 250));
+            expect(
+              find.bySemanticsLabel('Cancel friend request'),
+              findsOneWidget,
+            );
+          } finally {
+            handle.dispose();
+          }
         },
       );
     });
