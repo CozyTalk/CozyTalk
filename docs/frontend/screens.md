@@ -6,7 +6,7 @@ All screens in `apps/mobile/lib/screens/`. These are the production frontend —
 
 | Class | File | Route | Extends | Integration |
 |---|---|---|---|---|
-| `HomeScreen` | `screens/home_screen.dart` | `/` | ConsumerStatefulWidget | ✅ integrated — notification badge wired to `friendsNotifierProvider.incomingRequests`; shows `OfflineChip` when offline; avatar write errors (mood/dress) surface as SnackBar via `ref.listen` on `avatarDecorationNotifierProvider` |
+| `HomeScreen` | `screens/home_screen.dart` | `/` | ConsumerStatefulWidget | ✅ integrated — notification badge wired to `friendsNotifierProvider.incomingRequests`; shows `OfflineChip` when offline; avatar write errors (mood/dress) surface as SnackBar via `ref.listen` on `avatarDecorationNotifierProvider`. A slide-down popup banner for incoming friend requests is driven by `_FriendRequestListener` in `main.dart` (see below) — not by `HomeScreen` itself. |
 | `ChatScreen` | `screens/chat_screen.dart` | `/chat` | ConsumerStatefulWidget | ✅ integrated — wired to `chatNotifierProvider`; GIF via Giphy API; topic card shows shuffler's display name above the card image for cards received from the partner |
 | `GroupChatScreen` | `screens/group_chat_screen.dart` | `/group-chat` | ConsumerStatefulWidget | ✅ integrated — wired to `chatNotifierProvider` + `matchmakingNotifierProvider` (isLocked); GIF via Giphy API; topic card shows shuffler's display name above the card image for cards received from other participants |
 | `FindingRoomScreen` | `screens/finding_room_screen.dart` | `/finding-room` | ConsumerStatefulWidget | ✅ integrated — calls `join1v1Pool()` / `joinGroupRoom()` / `createCustomRoom()` / `joinRoomById(roomId)` based on `roomType` arg; navigates to `chatScreen` (1v1) or `groupChatScreen` (group/create/joinById) on `matched`; sets room lock for `create` type; `cancelSearch()` on Cancel or dispose; shows `OfflineCard` instead of tuk-tuk animation when offline; `_startMatchmaking` checks `isConnected` and returns early if offline; `cancelSearch` in `dispose` deferred via `Future.microtask` (prevents Riverpod provider-modified-during-build crash) |
@@ -49,6 +49,16 @@ All admin screens are wired to `features/admin/` via `adminReportsProvider`, `ad
 | block dialogs | `screens/block_dialogs.dart` | |
 | shared widgets | `screens/widgets.dart` | |
 | admin shared | `screens/admin_shared.dart` | |
+
+## Friend Request Popup (`_FriendRequestListener` in `main.dart`)
+
+`_FriendRequestListener` is a `ConsumerStatefulWidget` that wraps the authenticated home widget (`HomeScreen`) in `_MainUIAuthRouter`. It owns a `Set<String>? _seenIds` and calls `ref.listen` on `friendsNotifierProvider.select((s) => s.incomingRequests)` inside `build()`.
+
+Because the widget sits above the `Navigator`'s route stack, the `Overlay.of(context)` it resolves is the root overlay — so `showFriendRequestPopup()` inserts an `OverlayEntry` that appears above any route currently on the stack (chat screens, finding room, etc.).
+
+On the **first emission** (app launch / sign-in), all pending request IDs are seeded into `_seenIds` silently — no popup is shown for pre-existing requests. On **subsequent emissions**, any ID not in `_seenIds` triggers a popup and is added to the set.
+
+The popup (`shared/friend_request_popup.dart`) auto-dismisses after 5 seconds or on swipe-up. Accept/Decline delegate directly to `friendsNotifierProvider.notifier`.
 
 ## App Routes
 
