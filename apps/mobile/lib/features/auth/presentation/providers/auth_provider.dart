@@ -226,6 +226,7 @@ class AuthNotifier extends Notifier<AuthState> {
     try {
       final user = await ref.read(_signInAnonymouslyProvider)();
       state = state.copyWith(status: AuthStatus.authenticated, user: user);
+      _subscribeToBan(user.uid);
     } catch (e) {
       _handleSignInError(e);
     }
@@ -241,6 +242,7 @@ class AuthNotifier extends Notifier<AuthState> {
     try {
       final user = await ref.read(_signInWithGoogleProvider)();
       state = state.copyWith(status: AuthStatus.authenticated, user: user);
+      _subscribeToBan(user.uid);
     } catch (e) {
       final msg = e.toString().replaceFirst('Exception: ', '');
       if (msg.isEmpty) {
@@ -264,6 +266,7 @@ class AuthNotifier extends Notifier<AuthState> {
         password: password,
       );
       state = state.copyWith(status: AuthStatus.authenticated, user: user);
+      _subscribeToBan(user.uid);
     } catch (e) {
       _handleSignInError(e);
     }
@@ -282,6 +285,7 @@ class AuthNotifier extends Notifier<AuthState> {
         password: password,
       );
       state = state.copyWith(status: AuthStatus.authenticated, user: user);
+      _subscribeToBan(user.uid);
     } catch (e) {
       _handleSignInError(e);
     }

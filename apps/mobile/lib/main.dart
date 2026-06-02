@@ -174,17 +174,15 @@ class _MainUIAuthRouter extends ConsumerWidget {
       next,
     ) {
       if (!next || (prev ?? false)) return;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!context.mounted) return;
-        final state = ref.read(authNotifierProvider);
-        showAccountSuspendedDialog(
-          context,
-          days: state.banDaysLeft,
-          reinstateDate: state.banReinstateDate,
-          onBackToLogin: () =>
-              ref.read(authNotifierProvider.notifier).confirmBanAndSignOut(),
-        );
-      });
+      if (!context.mounted) return;
+      final banState = ref.read(authNotifierProvider);
+      showAccountSuspendedDialog(
+        context,
+        days: banState.banDaysLeft,
+        reinstateDate: banState.banReinstateDate,
+        onBackToLogin: () =>
+            ref.read(authNotifierProvider.notifier).confirmBanAndSignOut(),
+      );
     });
 
     ref.listen<AuthStatus>(authNotifierProvider.select((s) => s.status), (
