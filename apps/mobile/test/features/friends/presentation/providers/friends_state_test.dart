@@ -224,6 +224,93 @@ void main() {
       expect(updated.unreadCountMap['room1'], 0);
     });
 
+    test('initial state has empty outgoingRequests', () {
+      const state = FriendsState();
+      expect(state.outgoingRequests, isEmpty);
+    });
+
+    test('copyWith replaces outgoingRequests list', () {
+      const state = FriendsState();
+      final request = FriendRequest(
+        id: 'req-2',
+        fromUid: 'me',
+        fromDisplayName: 'Me',
+        toUid: 'u3',
+        toDisplayName: 'Carol',
+        status: FriendRequestStatus.pending,
+        createdAt: DateTime(2024),
+      );
+      final updated = state.copyWith(outgoingRequests: [request]);
+      expect(updated.outgoingRequests, hasLength(1));
+      expect(updated.outgoingRequests[0].toUid, 'u3');
+    });
+
+    test('copyWith preserves outgoingRequests when not provided', () {
+      final request = FriendRequest(
+        id: 'req-3',
+        fromUid: 'me',
+        fromDisplayName: 'Me',
+        toUid: 'u4',
+        toDisplayName: 'Dave',
+        status: FriendRequestStatus.pending,
+        createdAt: DateTime(2024),
+      );
+      final state = FriendsState(outgoingRequests: [request]);
+      final updated = state.copyWith(isLoading: true);
+      expect(updated.outgoingRequests, hasLength(1));
+      expect(updated.outgoingRequests[0].id, 'req-3');
+    });
+  });
+
+  group('FriendsState helpers', () {
+    FriendRequest makeOutgoing(String toUid) => FriendRequest(
+      id: 'out-$toUid',
+      fromUid: 'me',
+      fromDisplayName: 'Me',
+      toUid: toUid,
+      toDisplayName: toUid,
+      status: FriendRequestStatus.pending,
+      createdAt: DateTime(2024),
+    );
+
+    Friend makeFriend(String friendUid) => Friend(
+      friendshipId: 'me_$friendUid',
+      friendUid: friendUid,
+      friendDisplayName: friendUid,
+      chatRoomId: 'me_$friendUid',
+      friendedAt: DateTime(2024),
+    );
+
+    test('hasSentRequestTo returns true when outgoing request exists', () {
+      final state = FriendsState(outgoingRequests: [makeOutgoing('u1')]);
+      expect(state.hasSentRequestTo('u1'), isTrue);
+    });
+
+    test('hasSentRequestTo returns false when no outgoing request', () {
+      final state = FriendsState(outgoingRequests: [makeOutgoing('u1')]);
+      expect(state.hasSentRequestTo('u2'), isFalse);
+    });
+
+    test('hasSentRequestTo returns false on empty outgoingRequests', () {
+      const state = FriendsState();
+      expect(state.hasSentRequestTo('u1'), isFalse);
+    });
+
+    test('isFriend returns true when friend entry exists', () {
+      final state = FriendsState(friends: [makeFriend('u1')]);
+      expect(state.isFriend('u1'), isTrue);
+    });
+
+    test('isFriend returns false when no friend entry for uid', () {
+      final state = FriendsState(friends: [makeFriend('u1')]);
+      expect(state.isFriend('u2'), isFalse);
+    });
+
+    test('isFriend returns false on empty friends list', () {
+      const state = FriendsState();
+      expect(state.isFriend('u1'), isFalse);
+    });
+
     test('copyWith without arguments preserves enrichment maps', () {
       final ts = DateTime(2024, 3, 15);
       final state = FriendsState(

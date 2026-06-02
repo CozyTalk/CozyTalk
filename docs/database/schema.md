@@ -211,7 +211,7 @@ Note: `cleanupMember` CF triggers on `rooms/{roomId}/members/{uid}` deletion. `c
 
 ## Firestore Indexes
 
-`firestore.indexes.json` — 8 composite indexes deployed:
+`firestore.indexes.json` — 9 composite indexes deployed:
 
 | Collection | Fields | Purpose |
 |---|---|---|
@@ -223,6 +223,7 @@ Note: `cleanupMember` CF triggers on `rooms/{roomId}/members/{uid}` deletion. `c
 | `rooms` | `mode ASC, status ASC, isLocked ASC, backgroundTheme ASC, memberCount ASC` | Theme-filtered group room queries in `joinGroupRoom` (themed users only) |
 | `rooms` | `status ASC, paddingUntil ASC` | `expireRooms` cron: find rooms past their padding window |
 | `friend_requests` | `toUid ASC, status ASC` | Friends: incoming pending requests for a user |
+| `friend_requests` | `fromUid ASC, status ASC` | Friends: outgoing pending requests sent by a user (`watchOutgoingRequests`) |
 
 TTL field policies (live in prod): `chat_rooms/{id}/messages.expiresAt` and `session_keys.expiresAt`.
 

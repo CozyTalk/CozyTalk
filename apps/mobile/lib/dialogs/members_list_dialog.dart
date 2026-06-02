@@ -3,6 +3,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import '../theme/app_colors.dart';
 import '../shared/avatar_overlay.dart';
 import '../shared/layered_avatar.dart';
+import 'user_profile_dialog.dart' show AddFriendStatus;
 
 /// The visual content of the members slide-down panel.
 /// Rendered inside a Stack in GroupChatScreen so the header stays on top.
@@ -13,11 +14,14 @@ class MembersPanelBody extends StatelessWidget {
   final VoidCallback onClose;
   final String currentUser;
   final AvatarState avatarState;
-  // Keyed by UID.
-  final Map<String, bool> friendRequestSent;
+  // UIDs for which the current user has a pending outgoing request.
+  final Set<String> pendingUids;
+  // UIDs that are already friends with the current user.
+  final Set<String> friendUids;
   // Called with the UID of the member to add.
   final void Function(String uid) onAddFriend;
-  final void Function(String uid)? onCancelRequest;
+  // Called with the UID of the member to cancel the pending request.
+  final void Function(String uid) onCancelRequest;
   // Called with the UID of the member to report.
   final void Function(String uid)? onReport;
   final Map<String, AvatarState> memberAvatarStates;
@@ -27,12 +31,13 @@ class MembersPanelBody extends StatelessWidget {
     required this.members,
     required this.onClose,
     required this.onAddFriend,
-    this.onCancelRequest,
+    required this.onCancelRequest,
     this.onReport,
     this.memberUids = const [],
     this.currentUser = 'Me',
     this.avatarState = const AvatarState(),
-    this.friendRequestSent = const {},
+    this.pendingUids = const {},
+    this.friendUids = const {},
     this.memberAvatarStates = const {},
   });
 
@@ -57,7 +62,14 @@ class MembersPanelBody extends StatelessWidget {
 
   Widget _buildRow(BuildContext context, String name, String? uid) {
     final bool isMe = name == currentUser;
-    final bool isAdded = uid != null && friendRequestSent[uid] == true;
+    final AddFriendStatus status = uid == null
+        ? AddFriendStatus.notAdded
+        : friendUids.contains(uid)
+        ? AddFriendStatus.friends
+        : pendingUids.contains(uid)
+        ? AddFriendStatus.pending
+        : AddFriendStatus.notAdded;
+    final bool isGrey = status != AddFriendStatus.notAdded;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
@@ -101,22 +113,26 @@ class MembersPanelBody extends StatelessWidget {
             ),
           ),
           if (!isMe) ...[
-            // Add / Cancel friend request
+            // Add / pending / already friends button
             GestureDetector(
-              onTap: () {
-                if (uid != null && !isAdded) onAddFriend(uid);
-              },
+              onTap: uid == null
+                  ? null
+                  : switch (status) {
+                      AddFriendStatus.friends => null,
+                      AddFriendStatus.pending => () => onCancelRequest(uid),
+                      AddFriendStatus.notAdded => () => onAddFriend(uid),
+                    },
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
                 width: 38,
                 height: 38,
                 decoration: BoxDecoration(
-                  color: isAdded
+                  color: isGrey
                       ? Colors.grey.shade300
                       : const Color(0xFFDCEBCE),
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(
-                    color: isAdded
+                    color: isGrey
                         ? Colors.grey.shade400
                         : const Color(0xFFC7D2B5),
                   ),
@@ -126,7 +142,7 @@ class MembersPanelBody extends StatelessWidget {
                     'assets/images/icons/add_friend.svg',
                     width: 22,
                     height: 22,
-                    colorFilter: isAdded
+                    colorFilter: isGrey
                         ? ColorFilter.mode(
                             Colors.grey.shade500,
                             BlendMode.srcIn,

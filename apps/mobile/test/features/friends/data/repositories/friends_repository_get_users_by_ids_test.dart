@@ -26,6 +26,12 @@ class _FakeDatasource implements FriendsDatasource {
   Stream<List<FriendRequestModel>> watchIncomingRequests() => Stream.value([]);
 
   @override
+  Stream<List<FriendRequestModel>> watchOutgoingRequests() => Stream.value([]);
+
+  @override
+  Future<void> cancelFriendRequest({required String toUid}) async {}
+
+  @override
   Stream<List<FriendMessageModel>> watchMessages(String chatRoomId) =>
       Stream.value([]);
 
