@@ -206,7 +206,7 @@ class _FriendChatScreenState extends ConsumerState<FriendChatScreen> {
           if (chatState.isLoading)
             const LinearProgressIndicator()
           else
-            _buildRoomBanner(context, partnerUid, isOnline),
+            _buildRoomBanner(context, partnerUid, isOnline, isBlocked),
           Expanded(
             child: ListView(
               controller: _scrollCtrl,
@@ -249,6 +249,7 @@ class _FriendChatScreenState extends ConsumerState<FriendChatScreen> {
     BuildContext context,
     String partnerUid,
     bool isOnline,
+    bool isBlocked,
   ) {
     final roomStatus = ref.watch(
       friendsNotifierProvider.select((s) => s.roomMap[partnerUid]),
@@ -273,7 +274,8 @@ class _FriendChatScreenState extends ConsumerState<FriendChatScreen> {
         room: room,
         showLabel: true,
         backgroundColor: Colors.white,
-        onJoin: room.canJoin
+        blocked: isBlocked,
+        onJoin: (room.canJoin && !isBlocked)
             ? () => Navigator.pushNamed(
                 context,
                 AppRoutes.findingRoom,
