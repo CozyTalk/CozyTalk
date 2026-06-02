@@ -71,7 +71,8 @@ See `docs/database/schema.md` for full field lists and security rules.
 | Field | Type | Purpose |
 |---|---|---|
 | `friends` | `List<Friend>` | Active friendships |
-| `incomingRequests` | `List<FriendRequest>` | Pending requests for the current user |
+| `incomingRequests` | `List<FriendRequest>` | All friend requests addressed to the current user (all statuses); sorted newest-first, capped at 10 client-side |
+| `pendingActions` | `Map<String, String>` | Local-only deferred decisions: `requestId → 'accepted' \| 'declined' \| 'undoing'`; committed to Firestore when the user leaves `NotificationScreen` |
 | `allUsers` | `List<AppUser>` | All users (for friend search in dev screens) |
 | `isLoading` | `bool` | Mutation in progress |
 | `error` | `String?` | Last error message; cleared by `clearError()` |
@@ -119,7 +120,7 @@ When a friend request arrives, a slide-down banner overlays the active screen �
 
 `FriendChatScreen` (`screens/friend_chat_screen.dart`) — integrated with `friendChatNotifierProvider`. Receives a `Friend` (screen model) from route arguments. Calls `enterChat(chatRoomId, username)` on first frame and `leaveChat()` on dispose. Renders real messages from `FriendChatState.messages`; `isMe` is derived from `senderId == authNotifierProvider.user.uid`. Shows loading indicator and sending indicator from state. The date label + safety notice banner are always rendered above the message list, even when there are no messages yet. Errors surface as SnackBar via `ref.listen`. A "CURRENTLY IN" banner pulls the partner's live room state from `friendsNotifierProvider.roomMap[partnerUid]` (not from stale route args) and offers a **Join** action with the same logic as `FriendsScreen`.
 
-`NotificationScreen` (`screens/notification_screen.dart`) — integrated with `friendsNotifierProvider.incomingRequests`. Accept/decline wired to notifier.
+`NotificationScreen` (`screens/notification_screen.dart`) — integrated with `friendsNotifierProvider.incomingRequests`. Uses a **deferred-write pattern**: tapping Accept or Decline queues the decision in `pendingActions` locally (showing the card greyed-out immediately). The Firestore write happens only when the user presses Back (`commitPendingActions()`), called via `PopScope.onPopInvokedWithResult` and the custom app bar back button. Tapping a grey card undoes the queued action (`undoPendingAction` — local only) or reverts an already-committed action (`undoCommittedAction` — Firestore write reverting status back to `'pending'`). The history shows up to 10 cards (all statuses, newest-first); badge counts and the Requests tab in `FriendsListScreen` filter to `status == pending` only.
 
 **"Add Friend" in active chat sessions** — `ChatScreen` and `GroupChatScreen` call `friendsNotifierProvider.sendFriendRequest(AppUser)` when the "Add friend" button in the partner's `UserProfileDialog` is tapped. Partner identity is resolved from `MatchmakingState.partnerUids` via `getUsersByIdsProvider`. `getUsersByIdsProvider` is a `FutureProvider.autoDispose.family<List<AppUser>, List<String>>` in `friends_provider.dart` that reads `users/{uid}` Firestore docs. Errors surface as SnackBar via `ref.listen`. `isLoading` guard prevents duplicate requests.
 
