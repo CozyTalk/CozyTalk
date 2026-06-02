@@ -94,7 +94,7 @@ service cloud.firestore {
 
     // ── rooms ─────────────────────────────────────────────────────────────────
     // Cloud Functions are the sole writers except for the isLocked field on
-    // custom rooms, which any current member may toggle directly.
+    // active rooms, which any current member may toggle directly.
     match /rooms/{roomId} {
       // Members read active/pending rooms; tombstones (status=='expired', users:[])
       // are readable by any signed-in user so clients can surface "expired" errors.
@@ -106,10 +106,9 @@ service cloud.firestore {
 
       allow create, delete: if false;
 
-      // Members may toggle isLocked on custom rooms only
+      // Members may toggle isLocked on any active room
       allow update: if isSignedIn()
         && request.auth.uid in resource.data.users
-        && resource.data.roomType == 'custom'
         && resource.data.status != 'expired'
         && request.resource.data.diff(resource.data)
             .affectedKeys().hasOnly(['isLocked']);

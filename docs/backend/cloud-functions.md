@@ -152,7 +152,7 @@ All admin functions are callable, deployed to `us-central1`. Every function veri
 `functions/src/matchmaking/setRoomLock.ts`
 - **Trigger:** callable (authenticated)
 - **Input:** `{ roomId: string, isLocked: boolean }`
-- **Process:** Verifies caller is room participant. Sets `rooms/{roomId}.isLocked`.
+- **Process:** Verifies caller is an active room member. Sets `rooms/{roomId}.isLocked`. Works for both `public` and `custom` group rooms. Rejects expired rooms.
 - **Output:** `{ success: true }`
 
 ### `expireRooms`

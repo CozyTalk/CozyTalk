@@ -211,19 +211,18 @@ void main() {
     await tryLeaveRoom(roomId);
   });
 
-  test('setRoomLock: fails on public group rooms', () async {
+  test('setRoomLock: works on public group rooms', () async {
     await signInAnon();
     final res = await callFn('joinGroupRoom');
     final roomId = res['roomId'] as String;
 
-    try {
-      await callFn('setRoomLock', {'roomId': roomId, 'isLocked': true});
-      fail('expected exception');
-    } catch (e) {
-      expect(e.toString(), contains('failed-precondition'));
-    } finally {
-      await tryLeaveRoom(roomId);
-    }
+    await callFn('setRoomLock', {'roomId': roomId, 'isLocked': true});
+
+    final doc = await firestoreDoc('rooms/$roomId');
+    expect(doc.data()!['isLocked'], isTrue);
+
+    await callFn('setRoomLock', {'roomId': roomId, 'isLocked': false});
+    await tryLeaveRoom(roomId);
   });
 
   // ── sendMessage ───────────────────────────────────────────────────────────

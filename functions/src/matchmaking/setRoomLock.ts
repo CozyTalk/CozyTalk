@@ -37,12 +37,6 @@ export const setRoomLock = onCall(
     if (data.status === "expired") {
       throw new HttpsError("failed-precondition", "Room has expired.");
     }
-    if (data.roomType !== "custom") {
-      throw new HttpsError(
-        "failed-precondition",
-        "Only custom rooms can be locked.",
-      );
-    }
     if (!(data.users as string[]).includes(uid)) {
       throw new HttpsError(
         "permission-denied",
