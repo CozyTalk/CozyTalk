@@ -91,10 +91,11 @@ class _FriendChatScreenState extends ConsumerState<FriendChatScreen> {
       await _chatNotifier.sendMessage(url);
       sent = true;
     }
+    if (!mounted) return;
     final text = _inputCtrl.text.trim();
     if (text.isNotEmpty) {
       _inputCtrl.clear();
-      _chatNotifier.sendMessage(text);
+      await _chatNotifier.sendMessage(text);
       _chatNotifier.setTyping(false);
       _typingTimer?.cancel();
       sent = true;
@@ -147,31 +148,11 @@ class _FriendChatScreenState extends ConsumerState<FriendChatScreen> {
   String _dateLabel(DateTime dt) =>
       '${dt.day} ${_months[dt.month - 1]} ${dt.year}';
 
-  List<Widget> _buildMessageList(
-    List<FriendMessage> messages,
-    String currentUid,
-    AvatarOverlay? myMoodOverlay,
-    AvatarOverlay? myAccessoryOverlay,
-    AvatarOverlay? partnerMoodOverlay,
-    AvatarOverlay? partnerAccessoryOverlay,
-  ) {
-    if (messages.isEmpty) {
-      return [
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 10),
-          child: Center(
-            child: Text(
-              _dateLabel(DateTime.now()),
-              style: Theme.of(context).textTheme.bodySmall!.copyWith(
-                fontSize: 12,
-                color: Colors.grey.shade600,
-              ),
-            ),
-          ),
-        ),
-      ];
-    }
-    final widgets = <Widget>[];
+  // Returns a flat list of items: either a DateTime (date separator)
+  // or a FriendMessage. Used by ListView.builder for lazy rendering.
+  List<Object> _buildItemList(List<FriendMessage> messages) {
+    if (messages.isEmpty) return [DateTime.now()];
+    final items = <Object>[];
     DateTime? lastDate;
     for (final m in messages) {
       final msgDay = DateTime(
@@ -181,33 +162,26 @@ class _FriendChatScreenState extends ConsumerState<FriendChatScreen> {
       );
       if (lastDate == null || msgDay != lastDate) {
         lastDate = msgDay;
-        widgets.add(
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 10),
-            child: Center(
-              child: Text(
-                _dateLabel(m.timestamp),
-                style: Theme.of(context).textTheme.bodySmall!.copyWith(
-                  fontSize: 12,
-                  color: Colors.grey.shade600,
-                ),
-              ),
-            ),
-          ),
-        );
+        items.add(msgDay);
       }
-      widgets.add(
-        _buildMessageBubble(
-          m,
-          currentUid,
-          myMoodOverlay,
-          myAccessoryOverlay,
-          partnerMoodOverlay,
-          partnerAccessoryOverlay,
-        ),
-      );
+      items.add(m);
     }
-    return widgets;
+    return items;
+  }
+
+  Widget _buildDateSeparator(DateTime dt) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      child: Center(
+        child: Text(
+          _dateLabel(dt),
+          style: Theme.of(context).textTheme.bodySmall!.copyWith(
+            fontSize: 12,
+            color: Colors.grey.shade600,
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -250,10 +224,9 @@ class _FriendChatScreenState extends ConsumerState<FriendChatScreen> {
         AvatarOverlays.mood[partnerDecoration?.moodKey ?? ''];
     final partnerAccessoryOverlay =
         AvatarOverlays.accessory[partnerDecoration?.hatKey ?? ''];
-    final myDecoration = ref
-        .watch(avatarDecorationByUidProvider(currentUid))
-        .asData
-        ?.value;
+    final myDecoration = currentUid.isEmpty
+        ? null
+        : ref.watch(avatarDecorationByUidProvider(currentUid)).asData?.value;
     final myMoodOverlay = AvatarOverlays.mood[myDecoration?.moodKey ?? ''];
     final myAccessoryOverlay =
         AvatarOverlays.accessory[myDecoration?.hatKey ?? ''];
@@ -287,26 +260,45 @@ class _FriendChatScreenState extends ConsumerState<FriendChatScreen> {
           else
             _buildRoomBanner(context, partnerUid, isOnline, isBlocked),
           Expanded(
-            child: ListView(
-              controller: _scrollCtrl,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              children: [
-                _buildSafetyNotice(),
-                const SizedBox(height: 8),
-                ..._buildMessageList(
-                  chatState.messages,
-                  currentUid,
-                  myMoodOverlay,
-                  myAccessoryOverlay,
-                  partnerMoodOverlay,
-                  partnerAccessoryOverlay,
-                ),
-                if (chatState.isPartnerTyping)
-                  const Padding(
-                    padding: EdgeInsets.only(top: 6),
-                    child: _FriendTypingIndicator(),
+            child: Builder(
+              builder: (context) {
+                final msgItems = _buildItemList(chatState.messages);
+                // index 0 = safety notice, 1 = spacer,
+                // 2..n-1 = date separators / message bubbles,
+                // last = typing indicator (if visible)
+                final extraHead = 2;
+                final typingCount = chatState.isPartnerTyping ? 1 : 0;
+                final total = extraHead + msgItems.length + typingCount;
+                return ListView.builder(
+                  controller: _scrollCtrl,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
                   ),
-              ],
+                  itemCount: total,
+                  itemBuilder: (context, i) {
+                    if (i == 0) return _buildSafetyNotice();
+                    if (i == 1) return const SizedBox(height: 8);
+                    final msgIndex = i - extraHead;
+                    if (msgIndex < msgItems.length) {
+                      final item = msgItems[msgIndex];
+                      if (item is DateTime) return _buildDateSeparator(item);
+                      return _buildMessageBubble(
+                        item as FriendMessage,
+                        currentUid,
+                        myMoodOverlay,
+                        myAccessoryOverlay,
+                        partnerMoodOverlay,
+                        partnerAccessoryOverlay,
+                      );
+                    }
+                    return const Padding(
+                      padding: EdgeInsets.only(top: 6),
+                      child: _FriendTypingIndicator(),
+                    );
+                  },
+                );
+              },
             ),
           ),
           if (isBlocked)
