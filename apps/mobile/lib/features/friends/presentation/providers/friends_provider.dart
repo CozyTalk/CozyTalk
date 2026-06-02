@@ -493,13 +493,14 @@ class FriendsNotifier extends Notifier<FriendsState> {
       }
       // Stream will fire with status=pending and clear 'undoing' automatically.
     } catch (e) {
-      // Revert to grey — undo failed (e.g. security rules not deployed yet).
-      final newActions = Map<String, String>.from(state.pendingActions)
-        ..remove(request.id);
-      state = state.copyWith(
-        pendingActions: newActions,
-        error: e.toString().replaceFirst('Exception: ', ''),
-      );
+      final newActions = Map<String, String>.from(state.pendingActions);
+      if (newActions[request.id] == 'undoing') newActions.remove(request.id);
+      if (!_disposed) {
+        state = state.copyWith(
+          pendingActions: newActions,
+          error: e.toString().replaceFirst('Exception: ', ''),
+        );
+      }
     }
   }
 
