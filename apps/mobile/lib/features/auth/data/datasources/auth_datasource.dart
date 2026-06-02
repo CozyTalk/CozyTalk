@@ -169,7 +169,9 @@ class AuthDatasourceImpl implements AuthDatasource {
 }
 
 String _roleForEmail(String? email) =>
-    (email?.toLowerCase().endsWith('@cozytalk.com') ?? false) ? 'admin' : 'user';
+    (email?.toLowerCase().endsWith('@cozytalk.com') ?? false)
+    ? 'admin'
+    : 'user';
 
 // UID-derived seed ensures the same user gets the same name in an empty room; steps forward on collision.
 String _anonymousName(String uid, Set<String> taken) {
