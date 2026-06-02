@@ -54,9 +54,15 @@ class _FriendsListScreenState extends ConsumerState<FriendsListScreen>
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   const Text('Requests'),
-                  if (state.incomingRequests.isNotEmpty) ...[
+                  if (state.incomingRequests.any(
+                    (r) => r.status == FriendRequestStatus.pending,
+                  )) ...[
                     const SizedBox(width: 6),
-                    Badge(label: Text('${state.incomingRequests.length}')),
+                    Badge(
+                      label: Text(
+                        '${state.incomingRequests.where((r) => r.status == FriendRequestStatus.pending).length}',
+                      ),
+                    ),
                   ],
                 ],
               ),
@@ -69,12 +75,14 @@ class _FriendsListScreenState extends ConsumerState<FriendsListScreen>
         children: [
           _FriendsTab(friends: state.friends, isLoading: state.isLoading),
           _RequestsTab(
-            requests: state.incomingRequests,
+            requests: state.incomingRequests
+                .where((r) => r.status == FriendRequestStatus.pending)
+                .toList(),
             isLoading: state.isLoading,
             onAccept: (r) =>
                 ref.read(friendsNotifierProvider.notifier).acceptRequest(r),
-            onDecline: (id) =>
-                ref.read(friendsNotifierProvider.notifier).declineRequest(id),
+            onDecline: (r) =>
+                ref.read(friendsNotifierProvider.notifier).declineRequest(r),
           ),
         ],
       ),
@@ -162,7 +170,7 @@ class _RequestsTab extends StatelessWidget {
   final List<FriendRequest> requests;
   final bool isLoading;
   final void Function(FriendRequest) onAccept;
-  final void Function(String) onDecline;
+  final void Function(FriendRequest) onDecline;
 
   const _RequestsTab({
     required this.requests,
@@ -220,7 +228,7 @@ class _RequestsTab extends StatelessWidget {
                       tooltip: 'Accept',
                     ),
                     IconButton(
-                      onPressed: isLoading ? null : () => onDecline(req.id),
+                      onPressed: isLoading ? null : () => onDecline(req),
                       icon: const Icon(Icons.cancel_outlined),
                       color: Colors.red,
                       tooltip: 'Decline',
