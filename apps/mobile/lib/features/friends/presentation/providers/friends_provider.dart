@@ -476,7 +476,7 @@ class FriendsNotifier extends Notifier<FriendsState> {
 
   // Optimistic, in-memory clear only. Used on a friend-card tap before the chat
   // screen mounts; the chat screen's setActiveChat writes the marker.
-  void markChatAsRead(String chatRoomId) => _clearBadge(chatRoomId);
+  void clearBadgeLocally(String chatRoomId) => _clearBadge(chatRoomId);
 
   // Writes a server-authoritative read marker (reads/{uid}.lastReadAt via
   // serverTimestamp) and clears the badge optimistically. watchChatRead echoes

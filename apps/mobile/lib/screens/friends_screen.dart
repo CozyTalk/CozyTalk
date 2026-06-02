@@ -285,7 +285,7 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
       onTap: () {
         ref
             .read(friendsNotifierProvider.notifier)
-            .markChatAsRead(friend.chatRoomId);
+            .clearBadgeLocally(friend.chatRoomId);
         Navigator.pushNamed(context, AppRoutes.friendChat, arguments: friend);
       },
       child: Container(

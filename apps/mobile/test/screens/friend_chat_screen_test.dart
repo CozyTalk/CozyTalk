@@ -90,7 +90,7 @@ class _FakeFriendsNotifier extends FriendsNotifier {
   @override
   void clearError() {}
   @override
-  void markChatAsRead(String chatRoomId) {}
+  void clearBadgeLocally(String chatRoomId) {}
   @override
   void markChatRead(String chatRoomId) {}
   @override

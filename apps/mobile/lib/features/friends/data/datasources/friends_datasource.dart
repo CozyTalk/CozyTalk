@@ -304,6 +304,7 @@ class FriendsDatasourceImpl implements FriendsDatasource {
           isGreaterThan: Timestamp.fromMillisecondsSinceEpoch(sinceMs),
         )
         .orderBy('timestamp', descending: true)
+        .limit(50)
         .get();
     var count = 0;
     for (final doc in snap.docs) {
