@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -41,6 +43,25 @@ class _SelectBackgroundScreenState
       'image': 'assets/images/backgrounds/lumphini_park.png',
     },
   ];
+
+  void _navigateToFindingRoom({
+    required Map<String, String> locData,
+    required String? roomType,
+  }) {
+    ref
+        .read(matchmakingNotifierProvider.notifier)
+        .setBackgroundTheme(locData['id']);
+    Navigator.pushNamed(
+      context,
+      AppRoutes.findingRoom,
+      arguments: {
+        'roomName': locData['title'],
+        'bgImage': locData['image'],
+        'roomType': roomType,
+        'isGroup': roomType == 'group' || roomType == 'create',
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -198,48 +219,78 @@ class _SelectBackgroundScreenState
             top: false,
             child: Padding(
               padding: const EdgeInsets.only(bottom: 24, left: 24, right: 24),
-              child: SizedBox(
-                width: double.infinity,
-                height: 55,
-                child: ElevatedButton(
-                  onPressed: selectedLocation != null
-                      ? () {
-                          final selectedLocData = locations.firstWhere(
-                            (loc) => loc['id'] == selectedLocation,
-                          );
-                          ref
-                              .read(matchmakingNotifierProvider.notifier)
-                              .setBackgroundTheme(selectedLocData['id']);
-                          Navigator.pushNamed(
-                            context,
-                            AppRoutes.findingRoom,
-                            arguments: {
-                              'roomName': selectedLocData['title'],
-                              'bgImage': selectedLocData['image'],
-                              'roomType': roomType,
-                              'isGroup':
-                                  roomType == 'group' || roomType == 'create',
-                            },
-                          );
-                        }
-                      : null,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFD9EACF),
-                    foregroundColor: Colors.black,
-                    disabledBackgroundColor: const Color(0xFFE8E8E8),
-                    elevation: 3,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  SizedBox(
+                    width: double.infinity,
+                    height: 55,
+                    child: OutlinedButton(
+                      onPressed: () async {
+                        final locData =
+                            locations[Random().nextInt(locations.length)];
+                        setState(() => selectedLocation = locData['id']);
+                        await Future.delayed(const Duration(milliseconds: 600));
+                        if (!mounted) return;
+                        _navigateToFindingRoom(
+                          locData: locData,
+                          roomType: roomType,
+                        );
+                      },
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.black,
+                        side: const BorderSide(
+                          color: Color(0xFFD9EACF),
+                          width: 2,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                      ),
+                      child: Text(
+                        'Random Theme',
+                        style: Theme.of(context).textTheme.titleLarge!.copyWith(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ),
                   ),
-                  child: Text(
-                    "Let's go!",
-                    style: Theme.of(context).textTheme.titleLarge!.copyWith(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 55,
+                    child: ElevatedButton(
+                      onPressed: selectedLocation != null
+                          ? () {
+                              final locData = locations.firstWhere(
+                                (loc) => loc['id'] == selectedLocation,
+                              );
+                              _navigateToFindingRoom(
+                                locData: locData,
+                                roomType: roomType,
+                              );
+                            }
+                          : null,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFD9EACF),
+                        foregroundColor: Colors.black,
+                        disabledBackgroundColor: const Color(0xFFE8E8E8),
+                        elevation: 3,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                      ),
+                      child: Text(
+                        "Let's go!",
+                        style: Theme.of(context).textTheme.titleLarge!.copyWith(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ),
                   ),
-                ),
+                ],
               ),
             ),
           ),

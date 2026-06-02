@@ -1,3 +1,4 @@
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -29,7 +30,7 @@ class _HelloScreenState extends ConsumerState<HelloScreen> {
     final state = ref.watch(helloNotifierProvider);
     return Scaffold(
       appBar: AppBar(title: const Text('CozyTalk')),
-      body: Padding(
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -98,6 +99,13 @@ class _HelloScreenState extends ConsumerState<HelloScreen> {
               icon: const Icon(Icons.people_outline),
               label: const Text('Test Friends'),
             ),
+            const SizedBox(height: 8),
+            ElevatedButton.icon(
+              onPressed: _promptCrash,
+              icon: const Icon(Icons.bug_report),
+              label: const Text('Test Crashlytics'),
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            ),
             const SizedBox(height: 32),
             if (state.isLoading)
               const CircularProgressIndicator()
@@ -117,6 +125,57 @@ class _HelloScreenState extends ConsumerState<HelloScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _promptCrash() async {
+    final ctrl = TextEditingController();
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Test Crashlytics'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'ask Oakar',
+              style: TextStyle(fontSize: 12, color: Colors.black54),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: ctrl,
+              obscureText: true,
+              autofocus: true,
+              decoration: const InputDecoration(
+                labelText: 'Password',
+                border: OutlineInputBorder(),
+              ),
+              onSubmitted: (_) => Navigator.pop(ctx, true),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Crash'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    if (ctrl.text != 'CrashPassword') {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Wrong password')));
+      return;
+    }
+    await FirebaseCrashlytics.instance.setCrashlyticsCollectionEnabled(true);
+    FirebaseCrashlytics.instance.crash();
   }
 
   void _submit() {

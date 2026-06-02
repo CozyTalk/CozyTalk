@@ -40,6 +40,35 @@ void showConfirmBlockDialog({
   );
 }
 
+// ─── Block Limit Reached ──────────────────────────────────────────
+
+void showBlockLimitDialog({required BuildContext context}) {
+  showDialog(
+    context: context,
+    barrierColor: Colors.black.withValues(alpha: 0.35),
+    builder: (_) => _ConfirmDialog(
+      title: 'Block limit reached',
+      body: const TextSpan(
+        style: TextStyle(fontSize: 14, color: Colors.black87, height: 1.5),
+        children: [
+          TextSpan(text: 'You can block up to '),
+          TextSpan(
+            text: '5 users',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
+          TextSpan(text: '.\nUnblock someone to add a new blocked user.'),
+        ],
+      ),
+      confirmLabel: 'OK',
+      confirmBgColor: AppColors.brownDeep,
+      confirmBorderColor: const Color(0xFF4A3728),
+      confirmTextColor: Colors.white,
+      onConfirm: () {},
+      hideCancelButton: true,
+    ),
+  );
+}
+
 // ─── Confirm Unblock ──────────────────────────────────────────────
 
 void showConfirmUnblockDialog({
@@ -86,6 +115,7 @@ class _ConfirmDialog extends StatelessWidget {
   final Color confirmBorderColor;
   final Color confirmTextColor;
   final VoidCallback onConfirm;
+  final bool hideCancelButton;
 
   const _ConfirmDialog({
     required this.title,
@@ -95,6 +125,7 @@ class _ConfirmDialog extends StatelessWidget {
     required this.confirmBorderColor,
     required this.confirmTextColor,
     required this.onConfirm,
+    this.hideCancelButton = false,
   });
 
   @override
@@ -126,19 +157,21 @@ class _ConfirmDialog extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                PillButton(
-                  label: 'Cancel',
-                  bgColor: Colors.grey.shade200,
-                  borderColor: const Color(0xFFB7B4B4),
-                  textColor: Colors.black87,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 28,
-                    vertical: 12,
+                if (!hideCancelButton) ...[
+                  PillButton(
+                    label: 'Cancel',
+                    bgColor: Colors.grey.shade200,
+                    borderColor: const Color(0xFFB7B4B4),
+                    textColor: Colors.black87,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 28,
+                      vertical: 12,
+                    ),
+                    constraints: null,
+                    onTap: () => Navigator.pop(context),
                   ),
-                  constraints: null,
-                  onTap: () => Navigator.pop(context),
-                ),
-                const SizedBox(width: 12),
+                  const SizedBox(width: 12),
+                ],
                 PillButton(
                   label: confirmLabel,
                   bgColor: confirmBgColor,

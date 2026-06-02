@@ -90,7 +90,13 @@ class _FakeFriendsNotifier extends FriendsNotifier {
   @override
   void clearError() {}
   @override
-  void markChatAsRead(String chatRoomId) {}
+  void clearBadgeLocally(String chatRoomId) {}
+  @override
+  void markChatRead(String chatRoomId) {}
+  @override
+  void setActiveChat(String chatRoomId) {}
+  @override
+  void clearActiveChat() {}
 }
 
 class _FakeFriendChatNotifierWithError extends FriendChatNotifier {
@@ -160,8 +166,8 @@ Widget _buildScreen(
       authNotifierProvider.overrideWith(() => auth),
       friendChatNotifierProvider.overrideWith(() => chatFake),
       friendsNotifierProvider.overrideWith(() => _FakeFriendsNotifier()),
-      partnerDecorationProvider.overrideWith((ref, uid) async => null),
-      partnerProfileProvider.overrideWith((ref, uid) async => null),
+      avatarDecorationByUidProvider.overrideWith((ref, uid) async => null),
+      profileByUidProvider.overrideWith((ref, uid) async => null),
       blockNotifierProvider.overrideWith(() => _FakeBlockNotifier()),
       isBlockedByProvider.overrideWith(
         (ref, uid) => Stream.value(simulateBlocked),
@@ -203,8 +209,8 @@ Widget _buildScreenWithErrorNotifier(Friend? friend) {
         () => _FakeFriendChatNotifierWithError(),
       ),
       friendsNotifierProvider.overrideWith(() => _FakeFriendsNotifier()),
-      partnerDecorationProvider.overrideWith((ref, uid) async => null),
-      partnerProfileProvider.overrideWith((ref, uid) async => null),
+      avatarDecorationByUidProvider.overrideWith((ref, uid) async => null),
+      profileByUidProvider.overrideWith((ref, uid) async => null),
       blockNotifierProvider.overrideWith(() => _FakeBlockNotifier()),
       isBlockedByProvider.overrideWith((ref, uid) => Stream.value(false)),
     ],
@@ -284,7 +290,7 @@ void main() {
       expect(find.text('How are you?'), findsNothing);
     });
 
-    testWidgets('shows empty state text when no messages and not loading', (
+    testWidgets('shows safety notice banner when no messages and not loading', (
       tester,
     ) async {
       final fake = _FakeFriendChatNotifier(
@@ -292,7 +298,7 @@ void main() {
       );
       await tester.pumpWidget(_buildScreen(fake, friend: _onlineFriend));
       await _navigate(tester);
-      expect(find.text('No messages yet. Say hello!'), findsOneWidget);
+      expect(find.textContaining('Keep it friendly!'), findsOneWidget);
     });
 
     testWidgets('shows LinearProgressIndicator when isLoading', (tester) async {

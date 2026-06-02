@@ -34,23 +34,25 @@ features/user_status/
 
 ## RTDB Path
 
-`user_status/{uid}` — `{ status: 'online' | 'in_room', roomId?: string, roomMode?: string }`
+`user_status/{uid}` — `{ status: 'online' | 'in_room', roomId?: string, roomMode?: string, maxUsers?: number, memberCount?: number, isLocked?: boolean, backgroundTheme?: string }`
 
-Read rule: own UID. Write rule: own UID. Node is deleted entirely on sign-out (not set to offline) to avoid stale data.
+`maxUsers`, `memberCount`, `isLocked`, and `backgroundTheme` are only present when `status == 'in_room'`. They let friends render the "currently in" room card without a Firestore read (non-members cannot read `rooms/{roomId}`). The node is deleted entirely on sign-out (not set to offline) to avoid stale data.
+
+Read rule: own UID + `friends/{uid}/{auth.uid} === true` (friends can read each other's status). Write rule: own UID only.
 
 ## Key Behavior
 
 `OwnStatusNotifier.build()` sets up two `ref.listen` callbacks that run for the lifetime of the provider:
 
 1. **Auth listener** (`authNotifierProvider`):
-   - `authenticated` → `setOnline()` (fires immediately on first build)
+   - `authenticated` → `setOnline()` (fires immediately on first build via `fireImmediately: true`)
    - `unauthenticated` (transitioning from authenticated) → `clearStatus()`
 
 2. **Matchmaking listener** (`matchmakingNotifierProvider`):
-   - `status == matched && roomId != null && roomId != lastReportedRoomId` → `setInRoom(roomId, mode)`; updates `lastReportedRoomId` guard to prevent redundant RTDB writes as `currentRoom` populates incrementally
-   - leaving matched state → `lastReportedRoomId = null`, `setOnline()`
+   - `status == matched && roomId != null` → `setInRoom(roomId, mode, maxUsers, memberCount, isLocked, backgroundTheme)`. Writes immediately on match using defaults when `currentRoom` is not yet loaded, then re-fires each time `currentRoom` changes (Firestore subscription delivery). Change detection uses a multi-field fingerprint: the write is skipped only when `roomId`, `memberCount`, `isLocked`, `backgroundTheme`, **and** the `Room?` Freezed object reference are all identical to the last written values — ensuring null→non-null transitions (e.g. first Firestore snapshot) always trigger a refresh.
+   - leaving matched state → resets all fingerprint fields to `null`, calls `setOnline()`
 
-All use case calls swallow errors silently (`catchError((_) {})`) — presence is best-effort and must not crash the app.
+All use case calls log errors via `debugPrint` but do not rethrow — presence is best-effort and must not crash the app.
 
 ## Usage
 

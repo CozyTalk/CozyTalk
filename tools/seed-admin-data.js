@@ -332,7 +332,7 @@ async function seed() {
       by: adminUid,
       byName: "Moderator",
       note: "No violation found after review.",
-      resolvedAt: ago(4),
+      at: ago(4),
     },
   });
 
@@ -357,7 +357,7 @@ async function seed() {
       by: adminUid,
       byName: "Moderator",
       note: "Credible threat — 7-day ban issued.",
-      resolvedAt: ago(1),
+      at: ago(1),
     },
   });
 

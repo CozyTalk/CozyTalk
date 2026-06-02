@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mobile/features/avatar/presentation/providers/avatar_decoration_provider.dart';
+import 'package:mobile/features/block/domain/entities/blocked_user.dart';
 import 'package:mobile/features/block/presentation/providers/block_provider.dart';
 import 'package:mobile/features/friends/domain/entities/friend.dart' as domain;
 import 'package:mobile/features/friends/domain/entities/friend_room_status.dart';
@@ -58,8 +59,13 @@ class _LoadingToIdleFriendsNotifier extends FriendsNotifier {
 }
 
 class _FakeBlockNotifier extends BlockNotifier {
+  final BlockState _initial;
+
+  _FakeBlockNotifier({BlockState initial = const BlockState()})
+    : _initial = initial;
+
   @override
-  BlockState build() => const BlockState();
+  BlockState build() => _initial;
 
   @override
   Future<void> block(String targetUid, {String? displayName}) async {}
@@ -79,16 +85,18 @@ final _fakeDomainFriend = domain.Friend(
 Widget _build({
   required NetworkInfo networkInfo,
   _FakeFriendsNotifier? notifier,
+  _FakeBlockNotifier? blockNotifier,
 }) {
   final fake = notifier ?? _FakeFriendsNotifier();
+  final blockFake = blockNotifier ?? _FakeBlockNotifier();
   return ProviderScope(
     overrides: [
       networkInfoProvider.overrideWithValue(networkInfo),
       friendsNotifierProvider.overrideWith(() => fake),
-      partnerDecorationProvider.overrideWith((ref, uid) async => null),
+      avatarDecorationByUidProvider.overrideWith((ref, uid) async => null),
       getUsersByIdsProvider.overrideWith((ref, csv) async => []),
-      blockNotifierProvider.overrideWith(() => _FakeBlockNotifier()),
-      partnerProfileProvider.overrideWith((ref, uid) async => null),
+      blockNotifierProvider.overrideWith(() => blockFake),
+      profileByUidProvider.overrideWith((ref, uid) async => null),
     ],
     child: const MaterialApp(home: FriendsScreen()),
   );
@@ -268,10 +276,12 @@ void main() {
                 FakeNetworkInfo(isOnline: true),
               ),
               friendsNotifierProvider.overrideWith(() => notifier),
-              partnerDecorationProvider.overrideWith((ref, uid) async => null),
+              avatarDecorationByUidProvider.overrideWith(
+                (ref, uid) async => null,
+              ),
               getUsersByIdsProvider.overrideWith((ref, csv) async => []),
               blockNotifierProvider.overrideWith(() => _FakeBlockNotifier()),
-              partnerProfileProvider.overrideWith((ref, uid) async => null),
+              profileByUidProvider.overrideWith((ref, uid) async => null),
             ],
             child: const MaterialApp(home: FriendsScreen()),
           ),
@@ -315,6 +325,69 @@ void main() {
         find.textContaining('will no longer be able to contact'),
         findsNothing,
       );
+    });
+
+    group('block limit', () {
+      testWidgets(
+        'shows confirm block dialog when fewer than 5 users are blocked',
+        (tester) async {
+          final fake = _FakeFriendsNotifier(
+            initial: FriendsState(friends: [_fakeDomainFriend]),
+          );
+          await tester.pumpWidget(
+            _build(
+              networkInfo: FakeNetworkInfo(isOnline: true),
+              notifier: fake,
+            ),
+          );
+          await tester.pump();
+
+          await tester.tap(find.byType(PopupMenuButton<String>));
+          await tester.pumpAndSettle();
+
+          await tester.tap(find.text('Block'));
+          await tester.pumpAndSettle();
+
+          expect(find.text('Block "Alice"'), findsOneWidget);
+        },
+      );
+
+      testWidgets('shows block limit dialog when 5 users are already blocked', (
+        tester,
+      ) async {
+        final ts = DateTime(2024);
+        final fake = _FakeFriendsNotifier(
+          initial: FriendsState(friends: [_fakeDomainFriend]),
+        );
+        final blockFake = _FakeBlockNotifier(
+          initial: BlockState(
+            status: BlockStatus.loaded,
+            blockedUsers: [
+              BlockedUser(uid: 'b1', blockedAt: ts),
+              BlockedUser(uid: 'b2', blockedAt: ts),
+              BlockedUser(uid: 'b3', blockedAt: ts),
+              BlockedUser(uid: 'b4', blockedAt: ts),
+              BlockedUser(uid: 'b5', blockedAt: ts),
+            ],
+          ),
+        );
+        await tester.pumpWidget(
+          _build(
+            networkInfo: FakeNetworkInfo(isOnline: true),
+            notifier: fake,
+            blockNotifier: blockFake,
+          ),
+        );
+        await tester.pump();
+
+        await tester.tap(find.byType(PopupMenuButton<String>));
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.text('Block'));
+        await tester.pumpAndSettle();
+
+        expect(find.text('Block limit reached'), findsOneWidget);
+      });
     });
 
     group('accessibility', () {

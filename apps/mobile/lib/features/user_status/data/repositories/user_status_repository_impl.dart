@@ -20,11 +20,27 @@ class UserStatusRepositoryImpl implements UserStatusRepository {
   }
 
   @override
+  Stream<int> watchOnlineCount() => _datasource.watchOnlineCount();
+
+  @override
   Future<void> setOnline() => _datasource.setOnline();
 
   @override
-  Future<void> setInRoom({required String roomId, required String mode}) =>
-      _datasource.setInRoom(roomId: roomId, mode: mode);
+  Future<void> setInRoom({
+    required String roomId,
+    required String mode,
+    required int maxUsers,
+    required int memberCount,
+    required bool isLocked,
+    String? backgroundTheme,
+  }) => _datasource.setInRoom(
+    roomId: roomId,
+    mode: mode,
+    maxUsers: maxUsers,
+    memberCount: memberCount,
+    isLocked: isLocked,
+    backgroundTheme: backgroundTheme,
+  );
 
   @override
   Future<void> clearStatus() => _datasource.clearStatus();

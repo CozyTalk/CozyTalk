@@ -2,6 +2,7 @@ import 'package:cloud_functions/cloud_functions.dart';
 import 'package:cross_file/cross_file.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 abstract class ReportDatasource {
   Future<void> submitReport({
@@ -37,14 +38,19 @@ class ReportDatasourceImpl implements ReportDatasource {
 
     final imageUrls = await _uploadImages(sessionId, uid, contextImagePaths);
 
-    await _functions.httpsCallable('reportSession').call({
-      'sessionId': sessionId,
-      'reportedUserId': reportedUserId,
-      'reportType': reportType,
-      'reason': reason,
-      if (contextText != null) 'contextText': contextText,
-      'contextImageUrls': imageUrls,
-    });
+    await _functions
+        .httpsCallable(
+          'reportSession',
+          options: HttpsCallableOptions(timeout: const Duration(seconds: 30)),
+        )
+        .call({
+          'sessionId': sessionId,
+          'reportedUserId': reportedUserId,
+          'reportType': reportType,
+          'reason': reason,
+          if (contextText != null) 'contextText': contextText,
+          'contextImageUrls': imageUrls,
+        });
   }
 
   Future<List<String>> _uploadImages(
@@ -52,7 +58,10 @@ class ReportDatasourceImpl implements ReportDatasource {
     String uid,
     List<String> paths,
   ) async {
-    if (paths.isEmpty) return const [];
+    // Firebase Storage requires CORS to be configured on the bucket before
+    // browser uploads work. Skip on web until storage.cors.json is applied
+    // via: gsutil cors set storage.cors.json gs://cozytalk-5d984.firebasestorage.app
+    if (paths.isEmpty || kIsWeb) return const [];
     final urls = <String>[];
     for (final path in paths) {
       final xFile = XFile(path);

@@ -72,6 +72,7 @@ async function _expireOneRoom(
 
   let shouldDelete = false;
   await db.runTransaction(async (tx) => {
+    shouldDelete = false; // reset on every retry — stale true would wipe a live room
     const snap = await tx.get(roomRef);
     if (!snap.exists) return;
 
@@ -165,24 +166,96 @@ async function _healGhostRooms(
 
   if (snap.empty) return;
 
-  const heals = snap.docs.map(async (doc) => {
-    if ((doc.data().memberCount as number) <= 0) return;
-    const rtdbSnap = await rtdb.ref(`rooms/${doc.id}/members`).get();
-    if (rtdbSnap.exists()) return;
-    const roomRef = db.collection("rooms").doc(doc.id);
-    await db.runTransaction(async (tx) => {
-      const current = await tx.get(roomRef);
-      if (!current.exists) return;
-      const d = current.data()!;
-      if (d.status !== "active" || (d.memberCount as number) <= 0) return;
-      tx.update(roomRef, {
-        memberCount: 0,
-        status: "padding",
-        paddingUntil: Timestamp.fromMillis(Date.now() + 60 * 1000),
-      });
+  const heals = snap.docs.map((doc) => _healOneGhostRoom(db, rtdb, doc));
+  await Promise.allSettled(heals);
+}
+
+/**
+ * Attempts to heal a single ghost room.
+ *
+ * Race-condition handling:
+ *   joinGroupRoom writes Firestore first, then RTDB. Between our RTDB "no
+ *   members" check and the Firestore transaction commit, a new user can join
+ *   (Firestore updated, RTDB write in flight). Two guards close this window:
+ *
+ *   1. Transaction guard — aborts if memberCount increased since we queried
+ *      (proves a new join landed in Firestore after our RTDB check).
+ *   2. Post-commit RTDB re-verify — catches the narrow window where the
+ *      Firestore commit finished before the joining user's RTDB write landed.
+ *      If a member is found, the heal is reverted immediately.
+ *
+ * @param {admin.firestore.Firestore} db - Firestore instance.
+ * @param {admin.database.Database} rtdb - RTDB instance.
+ * @param {admin.firestore.QueryDocumentSnapshot} doc - Candidate room snapshot.
+ * @return {Promise<void>}
+ */
+async function _healOneGhostRoom(
+  db: admin.firestore.Firestore,
+  rtdb: admin.database.Database,
+  doc: admin.firestore.QueryDocumentSnapshot,
+): Promise<void> {
+  const queriedCount = doc.data().memberCount as number;
+  if (queriedCount <= 0) return;
+
+  // First RTDB check: room must have no live members to be considered a ghost.
+  const rtdbSnap = await rtdb.ref(`rooms/${doc.id}/members`).get();
+  if (rtdbSnap.exists()) return;
+
+  const roomRef = db.collection("rooms").doc(doc.id);
+  let healed = false;
+
+  await db.runTransaction(async (tx) => {
+    const current = await tx.get(roomRef);
+    if (!current.exists) return;
+    const d = current.data()!;
+    if (d.status !== "active") return;
+
+    const freshCount = d.memberCount as number;
+    // A count increase means a new user joined Firestore between our RTDB
+    // check and now — their RTDB write is in flight. Abort to avoid evicting
+    // a real member.
+    if (freshCount > queriedCount || freshCount <= 0) return;
+
+    tx.update(roomRef, {
+      memberCount: 0,
+      status: "padding",
+      paddingUntil: Timestamp.fromMillis(Date.now() + 60 * 1000),
     });
-    logger.info("Healed ghost room", {roomId: doc.id});
+    healed = true;
   });
 
-  await Promise.allSettled(heals);
+  if (!healed) return;
+
+  // Post-commit RTDB re-verify: joinGroupRoom writes Firestore then RTDB, so a
+  // joining user's RTDB entry may arrive after our transaction commits. If we
+  // find members now, revert the Firestore heal to restore the live room.
+  const verifySnap = await rtdb.ref(`rooms/${doc.id}/members`).get();
+  if (verifySnap.exists()) {
+    const liveCount = Object.keys(
+      verifySnap.val() as Record<string, unknown>,
+    ).length;
+    await db
+      .runTransaction(async (tx) => {
+        const current = await tx.get(roomRef);
+        if (!current.exists || current.data()!.status !== "padding") return;
+        tx.update(roomRef, {
+          status: "active",
+          memberCount: liveCount,
+          paddingUntil: null,
+        });
+      })
+      .catch((err) =>
+        logger.error("Failed to revert ghost room heal", {
+          roomId: doc.id,
+          err,
+        }),
+      );
+    logger.warn("Reverted ghost room heal — real member arrived post-commit", {
+      roomId: doc.id,
+      liveCount,
+    });
+    return;
+  }
+
+  logger.info("Healed ghost room", {roomId: doc.id});
 }

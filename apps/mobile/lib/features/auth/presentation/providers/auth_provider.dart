@@ -50,6 +50,17 @@ final authNotifierProvider = NotifierProvider<AuthNotifier, AuthState>(
   AuthNotifier.new,
 );
 
+final userRoleProvider = StreamProvider.autoDispose.family<String, String>((
+  ref,
+  uid,
+) {
+  return FirebaseFirestore.instance
+      .collection('users')
+      .doc(uid)
+      .snapshots()
+      .map((doc) => doc.exists ? (doc.data()!['role'] as String? ?? '') : '');
+});
+
 enum AuthStatus { idle, loading, authenticated, unauthenticated }
 
 const _sentinel = Object();
@@ -95,11 +106,14 @@ class AuthNotifier extends Notifier<AuthState> {
 
   void _checkTokenOnStartup() {
     Future(() async {
+      if (!ref.mounted) return;
       if (state.user == null) return;
       try {
         await ref.read(authRepositoryProvider).validateToken();
       } catch (_) {
+        if (!ref.mounted) return;
         await signOut();
+        if (!ref.mounted) return;
         state = state.copyWith(
           error: 'Your session has expired. Please sign in again.',
         );

@@ -543,6 +543,7 @@ class AdminModalBtn extends StatelessWidget {
   final Color bg, fg;
   final VoidCallback? onTap;
   final IconData? icon;
+  final bool isLoading;
   const AdminModalBtn({
     super.key,
     required this.label,
@@ -550,6 +551,7 @@ class AdminModalBtn extends StatelessWidget {
     required this.fg,
     this.onTap,
     this.icon,
+    this.isLoading = false,
   });
 
   @override
@@ -564,23 +566,31 @@ class AdminModalBtn extends StatelessWidget {
             color: bg,
             borderRadius: BorderRadius.circular(999),
           ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              if (icon != null) ...[
-                Icon(icon, size: 16, color: fg),
-                const SizedBox(width: 6),
-              ],
-              Text(
-                label,
-                style: TextStyle(
-                  color: fg,
-                  fontWeight: FontWeight.w800,
-                  fontSize: 14,
+          child: isLoading
+              ? Center(
+                  child: SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2, color: fg),
+                  ),
+                )
+              : Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    if (icon != null) ...[
+                      Icon(icon, size: 16, color: fg),
+                      const SizedBox(width: 6),
+                    ],
+                    Text(
+                      label,
+                      style: TextStyle(
+                        color: fg,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-            ],
-          ),
         ),
       ),
     );
@@ -590,16 +600,19 @@ class AdminModalBtn extends StatelessWidget {
 // ─── Toast ───
 class AdminToast extends StatelessWidget {
   final String msg;
-  const AdminToast({super.key, required this.msg});
+  final bool isError;
+  const AdminToast({super.key, required this.msg, this.isError = false});
 
   @override
   Widget build(BuildContext context) {
+    final bg = isError ? AdminC.red : AdminC.green;
+    final fg = isError ? Colors.white : AdminC.greenInk;
     return Material(
       color: Colors.transparent,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
         decoration: BoxDecoration(
-          color: AdminC.green,
+          color: bg,
           borderRadius: BorderRadius.circular(999),
           boxShadow: [
             BoxShadow(
@@ -613,7 +626,7 @@ class AdminToast extends StatelessWidget {
           msg,
           textAlign: TextAlign.center,
           style: Theme.of(context).textTheme.bodyMedium!.copyWith(
-            color: AdminC.greenInk,
+            color: fg,
             fontWeight: FontWeight.w800,
             fontSize: 13,
           ),
@@ -627,7 +640,8 @@ class AdminToast extends StatelessWidget {
 class AdminBanModal extends StatefulWidget {
   final String username;
   final VoidCallback onClose;
-  final void Function(String name, String reason, String duration) onConfirm;
+  final Future<void> Function(String name, String reason, String duration)
+  onConfirm;
   const AdminBanModal({
     super.key,
     required this.username,
@@ -641,9 +655,10 @@ class AdminBanModal extends StatefulWidget {
 
 class _AdminBanModalState extends State<AdminBanModal> {
   int _step = 1;
-  String? _reason;
+  final Set<String> _reasons = {};
   String _other = '';
   String _duration = 'Permanent';
+  bool _isLoading = false;
   final _otherCtrl = TextEditingController();
 
   @override
@@ -652,102 +667,105 @@ class _AdminBanModalState extends State<AdminBanModal> {
     super.dispose();
   }
 
-  String get _finalReason => (_reason == 'Others' && _other.isNotEmpty)
-      ? 'Others: $_other'
-      : (_reason ?? '');
+  String get _finalReason {
+    final parts = _reasons.map((r) {
+      if (r == 'Others') {
+        return _other.isNotEmpty ? 'Others: $_other' : 'Others';
+      }
+      return r;
+    }).toList();
+    return parts.join(', ');
+  }
+
   bool get _canNext =>
-      _reason != null && !(_reason == 'Others' && _other.isEmpty);
+      _reasons.isNotEmpty && !(_reasons.contains('Others') && _other.isEmpty);
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      color: Colors.black.withValues(alpha: .5),
-      child: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(18),
-          child: Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(24),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: .2),
-                  blurRadius: 40,
-                  offset: const Offset(0, 22),
-                ),
-              ],
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      insetPadding: const EdgeInsets.all(18),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: .2),
+              blurRadius: 40,
+              offset: const Offset(0, 22),
             ),
-            padding: const EdgeInsets.all(18),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
+          ],
+        ),
+        padding: const EdgeInsets.all(18),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
               children: [
-                Row(
-                  children: [
-                    Container(
-                      width: 32,
-                      height: 32,
-                      decoration: BoxDecoration(
-                        color: AdminC.redSoft,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: const Icon(
-                        Icons.block_rounded,
-                        color: Color(0xFF9F2A18),
-                        size: 18,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        'Ban ${widget.username}',
-                        style: Theme.of(context).textTheme.titleLarge!.copyWith(
-                          fontWeight: FontWeight.w800,
-                          fontSize: 18,
-                          color: AdminC.ink,
-                        ),
-                      ),
-                    ),
-                    GestureDetector(
-                      onTap: widget.onClose,
-                      child: Icon(
-                        Icons.close_rounded,
-                        color: AdminC.inkSoft,
-                        size: 22,
-                      ),
-                    ),
-                  ],
+                Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: AdminC.redSoft,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(
+                    Icons.block_rounded,
+                    color: Color(0xFF9F2A18),
+                    size: 18,
+                  ),
                 ),
-                const SizedBox(height: 14),
-                Row(
-                  children: [
-                    Expanded(
-                      child: Container(
-                        height: 4,
-                        decoration: BoxDecoration(
-                          color: _step >= 1 ? AdminC.red : AdminC.border,
-                          borderRadius: BorderRadius.circular(2),
-                        ),
-                      ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Ban ${widget.username}',
+                    style: Theme.of(context).textTheme.titleLarge!.copyWith(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 18,
+                      color: AdminC.ink,
                     ),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: Container(
-                        height: 4,
-                        decoration: BoxDecoration(
-                          color: _step >= 2 ? AdminC.red : AdminC.border,
-                          borderRadius: BorderRadius.circular(2),
-                        ),
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
-                const SizedBox(height: 14),
-                if (_step == 1) ..._buildStep1(),
-                if (_step == 2) ..._buildStep2(),
+                GestureDetector(
+                  onTap: _isLoading ? null : widget.onClose,
+                  child: Icon(
+                    Icons.close_rounded,
+                    color: AdminC.inkSoft,
+                    size: 22,
+                  ),
+                ),
               ],
             ),
-          ),
+            const SizedBox(height: 14),
+            Row(
+              children: [
+                Expanded(
+                  child: Container(
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: _step >= 1 ? AdminC.red : AdminC.border,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Container(
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: _step >= 2 ? AdminC.red : AdminC.border,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            if (_step == 1) ..._buildStep1(),
+            if (_step == 2) ..._buildStep2(),
+          ],
         ),
       ),
     );
@@ -755,16 +773,22 @@ class _AdminBanModalState extends State<AdminBanModal> {
 
   List<Widget> _buildStep1() => [
     Text(
-      'Why are you banning this user? Choose one.',
+      'Why are you banning this user? Choose one or more.',
       style: Theme.of(
         context,
       ).textTheme.bodyMedium!.copyWith(fontSize: 13, color: AdminC.inkSoft),
     ),
     const SizedBox(height: 12),
     ...kBanReasons.map((r) {
-      final active = _reason == r;
+      final active = _reasons.contains(r);
       return GestureDetector(
-        onTap: () => setState(() => _reason = r),
+        onTap: () => setState(() {
+          if (_reasons.contains(r)) {
+            _reasons.remove(r);
+          } else {
+            _reasons.add(r);
+          }
+        }),
         child: Container(
           margin: const EdgeInsets.only(bottom: 8),
           padding: const EdgeInsets.all(12),
@@ -815,7 +839,7 @@ class _AdminBanModalState extends State<AdminBanModal> {
         ),
       );
     }),
-    if (_reason == 'Others')
+    if (_reasons.contains('Others'))
       TextField(
         controller: _otherCtrl,
         onChanged: (v) => setState(() => _other = v),
@@ -966,7 +990,7 @@ class _AdminBanModalState extends State<AdminBanModal> {
             label: 'Back',
             bg: AdminC.neutral,
             fg: AdminC.ink,
-            onTap: () => setState(() => _step = 1),
+            onTap: _isLoading ? null : () => setState(() => _step = 1),
           ),
         ),
         const SizedBox(width: 10),
@@ -976,8 +1000,22 @@ class _AdminBanModalState extends State<AdminBanModal> {
             bg: AdminC.red,
             fg: Colors.white,
             icon: Icons.block_rounded,
-            onTap: () =>
-                widget.onConfirm(widget.username, _finalReason, _duration),
+            isLoading: _isLoading,
+            onTap: _isLoading
+                ? null
+                : () async {
+                    setState(() => _isLoading = true);
+                    try {
+                      await widget.onConfirm(
+                        widget.username,
+                        _finalReason,
+                        _duration,
+                      );
+                      if (mounted) widget.onClose();
+                    } catch (_) {
+                      if (mounted) setState(() => _isLoading = false);
+                    }
+                  },
           ),
         ),
       ],

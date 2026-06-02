@@ -51,5 +51,28 @@ void main() {
       );
       expect(status.memberCount, 0);
     });
+
+    test('backgroundTheme defaults to null', () {
+      const status = FriendRoomStatus(
+        roomId: 'r4',
+        memberCount: 1,
+        maxUsers: 5,
+        isLocked: false,
+        mode: 'group',
+      );
+      expect(status.backgroundTheme, isNull);
+    });
+
+    test('backgroundTheme preserved when provided', () {
+      const status = FriendRoomStatus(
+        roomId: 'r5',
+        memberCount: 2,
+        maxUsers: 5,
+        isLocked: false,
+        mode: 'group',
+        backgroundTheme: 'kao_tapu',
+      );
+      expect(status.backgroundTheme, 'kao_tapu');
+    });
   });
 }

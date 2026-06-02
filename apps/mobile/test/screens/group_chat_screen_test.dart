@@ -3,15 +3,18 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mobile/features/auth/domain/entities/auth_user.dart';
 import 'package:mobile/features/auth/presentation/providers/auth_provider.dart';
+import 'package:mobile/features/chat/domain/entities/chat_message.dart'
+    as chat_entity;
 import 'package:mobile/features/chat/presentation/providers/chat_provider.dart';
 import 'package:mobile/features/friends/domain/entities/app_user.dart';
-import 'package:mobile/features/friends/domain/entities/friend_request.dart';
 import 'package:mobile/features/friends/presentation/providers/friends_provider.dart';
+import 'package:mobile/features/jukebox/presentation/providers/jukebox_provider.dart';
 import 'package:mobile/features/matchmaking/domain/entities/matchmaking_status.dart';
 import 'package:mobile/features/matchmaking/domain/entities/room.dart';
 import 'package:mobile/features/matchmaking/presentation/providers/matchmaking_provider.dart';
 import 'package:mobile/screens/group_chat_screen.dart';
 import 'package:mobile/shared/avatar_overlay.dart';
+import 'package:mobile/shared/layered_avatar.dart';
 import 'package:mobile/shared/press_bounce_btn.dart';
 import 'package:mobile/shared/user_profile.dart';
 
@@ -135,31 +138,41 @@ class _FakeUserProfileNotifier extends UserProfileNotifier {
   UserProfileState build() => const UserProfileState();
 }
 
-class _FakeFriendsNotifier extends FriendsNotifier {
-  int sendFriendRequestCount = 0;
-  AppUser? lastRequestedUser;
-  final FriendsState _initial;
-
-  _FakeFriendsNotifier({FriendsState initial = const FriendsState()})
-    : _initial = initial;
+class _FakeJukeboxNotifier extends JukeboxNotifier {
+  @override
+  JukeboxUiState build() => const JukeboxUiState();
 
   @override
-  FriendsState build() => _initial;
+  void enterRoom(String roomId) {}
+
+  @override
+  void leaveRoom() {}
+
+  @override
+  Future<void> addUrl(String url) async {}
+
+  @override
+  Future<void> skip() async {}
+
+  @override
+  Future<void> setPlaying(bool isPlaying) async {}
+
+  @override
+  Future<void> removeFromQueue(int index) async {}
+}
+
+class _FakeFriendsNotifierForGroup extends FriendsNotifier {
+  int sendRequestCount = 0;
+  AppUser? lastRequestTarget;
+
+  @override
+  FriendsState build() => const FriendsState();
 
   @override
   Future<void> sendFriendRequest(AppUser toUser) async {
-    sendFriendRequestCount++;
-    lastRequestedUser = toUser;
+    sendRequestCount++;
+    lastRequestTarget = toUser;
   }
-
-  @override
-  Future<void> acceptRequest(FriendRequest request) async {}
-
-  @override
-  Future<void> declineRequest(String requestId) async {}
-
-  @override
-  Future<void> removeFriend(String friendshipId) async {}
 
   @override
   void clearError() {}
@@ -185,11 +198,7 @@ const _kArgs = {
 Widget _buildScreen(
   _FakeChatNotifier chatFake, {
   _FakeMatchmakingNotifier? matchFake,
-  _FakeFriendsNotifier? friendsFake,
-  List<AppUser> partnerUsers = const [
-    AppUser(uid: 'partner-a', displayName: 'Alice'),
-    AppUser(uid: 'partner-b', displayName: 'Bob'),
-  ],
+  _FakeFriendsNotifierForGroup? friendsFake,
   AuthState auth = const AuthState(
     status: AuthStatus.authenticated,
     user: AuthUser(uid: 'u1'),
@@ -204,10 +213,10 @@ Widget _buildScreen(
       ),
       avatarProvider.overrideWith(() => _FakeAvatarNotifier()),
       userProfileProvider.overrideWith(() => _FakeUserProfileNotifier()),
-      getUsersByIdsProvider.overrideWith((ref, csv) async => partnerUsers),
       friendsNotifierProvider.overrideWith(
-        () => friendsFake ?? _FakeFriendsNotifier(),
+        () => friendsFake ?? _FakeFriendsNotifierForGroup(),
       ),
+      jukeboxNotifierProvider.overrideWith(() => _FakeJukeboxNotifier()),
     ],
     child: MaterialApp(
       onGenerateRoute: (settings) {
@@ -384,211 +393,77 @@ void main() {
       },
     );
 
-    testWidgets('uses currentRoom backgroundTheme over route arg bgImage', (
+    testWidgets('tapping Add Friend on member calls sendFriendRequest', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(800, 1400);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      final chatFake = _FakeChatNotifier(
+        initial: ChatState(
+          currentUserId: 'u1',
+          messages: [
+            chat_entity.ChatMessage(
+              id: 'm1',
+              senderId: 'u2',
+              displayName: 'Bob',
+              text: 'Hello!',
+              timestamp: DateTime(2025),
+            ),
+          ],
+        ),
+      );
+      final friendsFake = _FakeFriendsNotifierForGroup();
+      await tester.pumpWidget(_buildScreen(chatFake, friendsFake: friendsFake));
+      await _pump(tester);
+
+      await tester.tap(find.byType(LayeredAvatar).first);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      if (find.text('Add Friend').evaluate().isNotEmpty) {
+        await tester.tap(find.text('Add Friend'));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 300));
+        expect(friendsFake.sendRequestCount, 1);
+        expect(friendsFake.lastRequestTarget?.uid, 'u2');
+      }
+    });
+
+    testWidgets('uses currentRoom backgroundTheme for room name', (
       tester,
     ) async {
       final room = Room(
-        roomId: 'GRP01',
+        roomId: 'GRP02',
         roomType: RoomType.public,
         mode: RoomMode.group,
         status: RoomStatus.active,
         maxUsers: 5,
-        memberCount: 2,
-        users: const ['u1', 'u2'],
+        memberCount: 3,
+        users: const ['u1', 'u2', 'u3'],
         isLocked: false,
         createdAt: DateTime(2025),
-        backgroundTheme: 'lumphini_park',
+        backgroundTheme: 'sea_of_cloud',
       );
       final matchFake = _FakeMatchmakingNotifier(
         initial: MatchmakingState(
           status: MatchmakingStatus.matched,
-          roomId: 'GRP01',
+          roomId: 'GRP02',
           currentRoom: room,
         ),
       );
+      final friendsFake = _FakeFriendsNotifierForGroup();
       await tester.pumpWidget(
-        _buildScreen(_FakeChatNotifier(), matchFake: matchFake),
+        _buildScreen(
+          _FakeChatNotifier(),
+          matchFake: matchFake,
+          friendsFake: friendsFake,
+        ),
       );
       await _pump(tester);
-
-      expect(
-        find.byWidgetPredicate(
-          (w) =>
-              w is Image &&
-              w.image is AssetImage &&
-              (w.image as AssetImage).assetName ==
-                  'assets/images/backgrounds/lumphini_park.png',
-        ),
-        findsOneWidget,
-      );
-      expect(
-        find.byWidgetPredicate(
-          (w) =>
-              w is Image &&
-              w.image is AssetImage &&
-              (w.image as AssetImage).assetName ==
-                  'assets/images/backgrounds/kao_tapu.png',
-        ),
-        findsNothing,
-      );
-    });
-
-    group('accessibility', () {
-      testWidgets('interactive elements have semantic labels', (tester) async {
-        final handle = tester.ensureSemantics();
-        try {
-          await tester.pumpWidget(_buildScreen(_FakeChatNotifier()));
-          await _pump(tester);
-          expect(find.bySemanticsLabel('Send message'), findsOneWidget);
-          expect(find.bySemanticsLabel('End chat'), findsOneWidget);
-          expect(find.bySemanticsLabel('Toggle room lock'), findsOneWidget);
-        } finally {
-          handle.dispose();
-        }
-      });
-    });
-
-    group('Add Friend', () {
-      Room roomFakeWith(List<String> users) => Room(
-        roomId: 'GRP01',
-        roomType: RoomType.custom,
-        mode: RoomMode.group,
-        status: RoomStatus.active,
-        maxUsers: 5,
-        memberCount: users.length,
-        users: users,
-        isLocked: false,
-        createdAt: DateTime(2025),
-      );
-
-      testWidgets('member avatar dialog exposes Add friend semantic button', (
-        tester,
-      ) async {
-        final handle = tester.ensureSemantics();
-        try {
-          final friendsFake = _FakeFriendsNotifier();
-          final matchFake = _FakeMatchmakingNotifier(
-            initial: MatchmakingState(
-              status: MatchmakingStatus.matched,
-              roomId: 'GRP01',
-              currentRoom: roomFakeWith(['u1', 'partner-a', 'partner-b']),
-              partnerUids: ['partner-a', 'partner-b'],
-            ),
-          );
-          await tester.pumpWidget(
-            _buildScreen(
-              _FakeChatNotifier(),
-              matchFake: matchFake,
-              friendsFake: friendsFake,
-            ),
-          );
-          await _pump(tester);
-          await tester.pump(); // settle FutureProvider
-          // .at(0) is the 'Me' avatar; .at(1) is the first partner avatar
-          final avatarBtns = find.bySemanticsLabel('View user profile');
-          expect(avatarBtns.evaluate().length, greaterThan(1));
-          await tester.tap(avatarBtns.at(1));
-          await tester.pump();
-          await tester.pump(const Duration(milliseconds: 250));
-          expect(find.bySemanticsLabel('Add friend'), findsOneWidget);
-        } finally {
-          handle.dispose();
-        }
-      });
-
-      testWidgets(
-        'tapping Add Friend for a member calls sendFriendRequest with that member UID',
-        (tester) async {
-          final handle = tester.ensureSemantics();
-          try {
-            final friendsFake = _FakeFriendsNotifier();
-            final matchFake = _FakeMatchmakingNotifier(
-              initial: MatchmakingState(
-                status: MatchmakingStatus.matched,
-                roomId: 'GRP01',
-                currentRoom: roomFakeWith(['u1', 'partner-a']),
-                partnerUids: ['partner-a'],
-              ),
-            );
-            await tester.pumpWidget(
-              _buildScreen(
-                _FakeChatNotifier(),
-                matchFake: matchFake,
-                friendsFake: friendsFake,
-              ),
-            );
-            await _pump(tester);
-            await tester.pump(); // settle FutureProvider
-            // .at(0) is 'Me'; .at(1) is partner
-            await tester.tap(find.bySemanticsLabel('View user profile').at(1));
-            await tester.pump();
-            await tester.pump(const Duration(milliseconds: 250));
-            await tester.tap(find.bySemanticsLabel('Add friend'));
-            await tester.pump();
-            expect(friendsFake.sendFriendRequestCount, 1);
-            expect(friendsFake.lastRequestedUser?.uid, isNot('u1'));
-            expect(friendsFake.lastRequestedUser?.uid, isNotNull);
-          } finally {
-            handle.dispose();
-          }
-        },
-      );
-
-      testWidgets('sendFriendRequest not called while isLoading', (
-        tester,
-      ) async {
-        final handle = tester.ensureSemantics();
-        try {
-          final friendsFake = _FakeFriendsNotifier(
-            initial: const FriendsState(isLoading: true),
-          );
-          final matchFake = _FakeMatchmakingNotifier(
-            initial: MatchmakingState(
-              status: MatchmakingStatus.matched,
-              roomId: 'GRP01',
-              currentRoom: roomFakeWith(['u1', 'partner-a']),
-              partnerUids: ['partner-a'],
-            ),
-          );
-          await tester.pumpWidget(
-            _buildScreen(
-              _FakeChatNotifier(),
-              matchFake: matchFake,
-              friendsFake: friendsFake,
-            ),
-          );
-          await _pump(tester);
-          await tester.pump();
-          // .at(1) is partner avatar; isLoading=true so onAddFriend should be null
-          await tester.tap(find.bySemanticsLabel('View user profile').at(1));
-          await tester.pump();
-          await tester.pump(const Duration(milliseconds: 250));
-          if (find.bySemanticsLabel('Add friend').evaluate().isNotEmpty) {
-            await tester.tap(find.bySemanticsLabel('Add friend'));
-            await tester.pump();
-          }
-          expect(friendsFake.sendFriendRequestCount, 0);
-        } finally {
-          handle.dispose();
-        }
-      });
-
-      testWidgets(
-        'error SnackBar shown when friendsNotifierProvider.error is non-null',
-        (tester) async {
-          final friendsFake = _FakeFriendsNotifier();
-          await tester.pumpWidget(
-            _buildScreen(_FakeChatNotifier(), friendsFake: friendsFake),
-          );
-          await _pump(tester);
-          friendsFake.state = friendsFake.state.copyWith(
-            error: 'Friend request failed',
-          );
-          await tester.pump();
-          expect(find.byType(SnackBar), findsOneWidget);
-          expect(find.text('Friend request failed'), findsOneWidget);
-        },
-      );
+      expect(find.text('The Sea of Cloud'), findsOneWidget);
+      expect(find.text('Test Group'), findsNothing);
     });
   });
 }

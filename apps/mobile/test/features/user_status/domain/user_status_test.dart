@@ -3,6 +3,7 @@ import 'package:mobile/features/user_status/domain/entities/user_status.dart';
 import 'package:mobile/features/user_status/domain/usecases/clear_status.dart';
 import 'package:mobile/features/user_status/domain/usecases/set_in_room.dart';
 import 'package:mobile/features/user_status/domain/usecases/set_online.dart';
+import 'package:mobile/features/user_status/domain/usecases/watch_online_count.dart';
 import 'package:mobile/features/user_status/domain/usecases/watch_user_status.dart';
 import 'package:mobile/features/user_status/domain/repositories/user_status_repository.dart';
 
@@ -15,7 +16,12 @@ class _FakeUserStatusRepository implements UserStatusRepository {
   int setOnlineCount = 0;
   String? lastRoomId;
   String? lastMode;
+  int? lastMaxUsers;
+  int? lastMemberCount;
+  bool? lastIsLocked;
+  String? lastBackgroundTheme;
   int clearCount = 0;
+  Stream<int> onlineCountReturn = Stream.value(0);
 
   void givenStatus(UserStatus value) => _returnValue = value;
   void givenError(Exception error) => _error = error;
@@ -28,16 +34,30 @@ class _FakeUserStatusRepository implements UserStatusRepository {
   }
 
   @override
+  Stream<int> watchOnlineCount() => onlineCountReturn;
+
+  @override
   Future<void> setOnline() async {
     if (_error != null) throw _error!;
     setOnlineCount++;
   }
 
   @override
-  Future<void> setInRoom({required String roomId, required String mode}) async {
+  Future<void> setInRoom({
+    required String roomId,
+    required String mode,
+    required int maxUsers,
+    required int memberCount,
+    required bool isLocked,
+    String? backgroundTheme,
+  }) async {
     if (_error != null) throw _error!;
     lastRoomId = roomId;
     lastMode = mode;
+    lastMaxUsers = maxUsers;
+    lastMemberCount = memberCount;
+    lastIsLocked = isLocked;
+    lastBackgroundTheme = backgroundTheme;
   }
 
   @override
@@ -146,15 +166,63 @@ void main() {
     });
 
     test('forwards roomId and mode to repository', () async {
-      await usecase(roomId: 'abc12', mode: '1v1');
+      await usecase(
+        roomId: 'abc12',
+        mode: '1v1',
+        maxUsers: 5,
+        memberCount: 1,
+        isLocked: false,
+      );
       expect(repo.lastRoomId, 'abc12');
       expect(repo.lastMode, '1v1');
+    });
+
+    test('forwards maxUsers, memberCount, isLocked to repository', () async {
+      await usecase(
+        roomId: 'abc12',
+        mode: 'group',
+        maxUsers: 5,
+        memberCount: 3,
+        isLocked: true,
+      );
+      expect(repo.lastMaxUsers, 5);
+      expect(repo.lastMemberCount, 3);
+      expect(repo.lastIsLocked, isTrue);
+    });
+
+    test('forwards backgroundTheme to repository', () async {
+      await usecase(
+        roomId: 'abc12',
+        mode: 'group',
+        maxUsers: 5,
+        memberCount: 1,
+        isLocked: false,
+        backgroundTheme: 'kao_tapu',
+      );
+      expect(repo.lastBackgroundTheme, 'kao_tapu');
+    });
+
+    test('backgroundTheme defaults to null when omitted', () async {
+      await usecase(
+        roomId: 'abc12',
+        mode: 'group',
+        maxUsers: 5,
+        memberCount: 1,
+        isLocked: false,
+      );
+      expect(repo.lastBackgroundTheme, isNull);
     });
 
     test('propagates exception', () async {
       repo.givenError(Exception('fail'));
       await expectLater(
-        usecase(roomId: 'abc12', mode: 'group'),
+        usecase(
+          roomId: 'abc12',
+          mode: 'group',
+          maxUsers: 5,
+          memberCount: 1,
+          isLocked: false,
+        ),
         throwsA(isA<Exception>()),
       );
     });
@@ -177,6 +245,22 @@ void main() {
     test('propagates exception', () async {
       repo.givenError(Exception('fail'));
       await expectLater(usecase(), throwsA(isA<Exception>()));
+    });
+  });
+
+  group('WatchOnlineCount usecase', () {
+    late _FakeUserStatusRepository repo;
+    late WatchOnlineCount usecase;
+
+    setUp(() {
+      repo = _FakeUserStatusRepository();
+      usecase = WatchOnlineCount(repo);
+    });
+
+    test('returns online count stream from repository', () async {
+      repo.onlineCountReturn = Stream.value(42);
+      final result = await usecase().first;
+      expect(result, 42);
     });
   });
 }

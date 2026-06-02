@@ -77,8 +77,8 @@ npm install && npm run build && npm test   # npm test requires emulators first
 .\dev.ps1 [...]                           # Windows
 ```
 
-Jest: 172 unit (matchmaking 82, admin 32, embeddingService 21, block 20, chat 12, friends 5). The 7 Vertex AI integration tests run separately via `jest.integration.config.js` — excluded from `npm test`.
-Flutter: 1118 unit + widget tests.
+Jest: unit tests across matchmaking, admin, embeddingService, block, chat, and friends suites. The Vertex AI integration tests run separately via `jest.integration.config.js` — excluded from `npm test`.
+Flutter: comprehensive unit + widget test suite.
 
 ---
 
@@ -145,8 +145,8 @@ RTDB paths: `rooms/{id}/members/{uid}`, `typing/{id}/{uid}`, `presence/{id}/{uid
 `USE_EMULATOR` — compile-time constant (default `true`). Pass `--dart-define=USE_EMULATOR=false` for production. Emulators: Auth 9099, Functions 5001, Firestore 8080, RTDB 9000.
 
 **`_useMainUI` toggle (main.dart line 35):**
-- `false` (default) → chatroom/backend testing: `_AuthRouter` → `LoginScreen` (features/auth) → `HelloScreen`. Registers `findingRoom` route.
-- `true` → production UI: `HomeScreen` (screens/) + `AppRoutes` named routes including `findingRoom`.
+- `true` (default) → production UI: `_MainUIAuthRouter` → `HomeScreen` (screens/) + `AppRoutes` named routes including `findingRoom`.
+- `false` → chatroom/backend testing: `_AuthRouter` → `LoginScreen` (features/auth) → `HelloScreen`. Registers `findingRoom` route.
 
 `_MainUIAuthRouter` routes: `authenticated + @cozytalk.com email → AdminConsoleScreen` · `authenticated (other) → HomeScreen` · `idle → spinner` · others → `LoginScreen`.
 
@@ -158,7 +158,7 @@ RTDB paths: `rooms/{id}/members/{uid}`, `typing/{id}/{uid}`, `presence/{id}/{uid
 
 ## 9. Integration Rules
 
-Integration = wiring `screens/` (production frontend) to `features/` (CA backend). When `_useMainUI = true`, the app uses `HomeScreen` + named routes (design preview). When `false` (default), it uses `_AuthRouter` → `HelloScreen` for backend testing.
+Integration = wiring `screens/` (production frontend) to `features/` (CA backend). When `_useMainUI = true` (default), the app uses `HomeScreen` + named routes (production UI). When `false`, it uses `_AuthRouter` → `HelloScreen` for backend testing.
 
 **Hard rules:**
 - Convert screen: `StatefulWidget` → `ConsumerStatefulWidget`, add `ref.watch/read` calls for real data
@@ -289,6 +289,8 @@ DONE WHEN: <criteria>
 | New packages during integration PR | Architect approval required |
 | Edit lock files manually | Run package manager to regenerate |
 | `git push` directly to `main` or `master` | Never — always branch + PR; hook in `.claude/settings.json` enforces this |
+| `git push --force` / `git push --force-with-lease` (any branch) | Force push rewrites shared history and can permanently destroy teammates' commits. Never force push. If you think you need it, find a different approach: use `git revert` to undo a commit, `git commit --amend` only on commits that have never been pushed, or ask the user how to proceed |
+| Run `firebase deploy` locally (any target) | Bypasses CI quality gates — all Firebase deployments (hosting, functions, Firestore rules, RTDB rules, storage rules) must go through `.github/workflows/deploy.yml` triggered by a PR merge to `main` |
 | `print()` in production code | Use structured logging |
 | Run `git add` / `git commit` / `git stash` in parallel | Git holds `.git/index.lock` for the duration of each command — parallel calls race and deadlock. Always chain with `&&` in a single shell call. |
 
@@ -316,7 +318,7 @@ Every code change that affects a documented behaviour **must** be accompanied by
 | The navigation system or app mode (`_useMainUI`) | `CLAUDE.md` §8, `docs/frontend/screens.md` |
 | The matchmaking CF logic or tests | `MATCHMAKING_CONTEXT_AWARE.md` |
 | Any package added or removed | `PROJECT_CONTEXT.md` tech stack table + `CLAUDE.md` §2 |
-| Test counts (Jest or Flutter) | `PROJECT_CONTEXT.md` test coverage table + `CLAUDE.md` §4 |
+| New test file added or removed | `PROJECT_CONTEXT.md` test coverage table (no counts — describe coverage scope only) |
 
 **Hard rules:**
 - Docs must describe what the code **actually does right now** — not what was planned, not what it used to do.

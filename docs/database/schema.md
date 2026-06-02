@@ -68,7 +68,7 @@ Rules: update restricted to `updatedAt` field only (prevents client status manip
 | `roomInterestVector` | number[]? | mean of all members' 256-dim Vertex AI interest embeddings; written by `joinGroupRoom` and `match1v1Users` CFs; used for group room cosine similarity matching |
 | `backgroundTheme` | string? | one of `kao_tapu`, `red_lotus_lake`, `sea_of_cloud`, `lumphini_park`; absent when no theme was chosen; acts as hard partition key during matchmaking |
 
-Rules: `users` membership checked for read/write access.
+Rules: read by members (must appear in `users[]`) or any signed-in user when `status == 'expired'` (allows clients to surface expiry errors). Admins (`isAdmin()`) may read and list all rooms without membership — required for the dashboard online-count stream. Write: Cloud Functions only, except `isLocked` which any current member may toggle on custom rooms.
 
 ### `active_sessions/{id}`
 
@@ -145,6 +145,16 @@ Permanent friend-to-friend chat messages. `chatRoomId` equals the `friendshipId`
 
 Rules: read/create by friendship participants (`_isFriendshipParticipant` helper checks `friendships/{chatRoomId}.users`). No update or delete.
 
+### `friend_messages/{chatRoomId}/reads/{uid}`
+
+Per-user read marker for the friend chat. The client compares `lastReadAt` against message `timestamp`s to compute the unread count; both are server-assigned so there is no client-clock skew, and the marker syncs across devices.
+
+| Field | Type | Notes |
+|---|---|---|
+| `lastReadAt` | timestamp | server timestamp (`request.time`); the moment the user last viewed the chat |
+
+Rules: read by friendship participants; create/update only by the owner (`uid == request.auth.uid`) and a participant, with `hasOnly(['lastReadAt'])` and `lastReadAt == request.time`. No delete.
+
 ### `reports/{id}`
 
 | Field | Type | Notes |
@@ -191,7 +201,7 @@ RTDB instance: `cozytalk-5d984-default-rtdb.asia-southeast1.firebasedatabase.app
 | `nameQueue/{roomId}` | room members | room members | anonymous name assignment — defined in RTDB rules but not actively used in current mobile or CF code; reserved for a future feature |
 | `pool_presence/{uid}` | own UID | own UID | pool presence (removed on disconnect) |
 | `jukebox/{roomId}` | room members | room members | synced music queue state (see jukebox feature) |
-| `user_status/{uid}` | own UID **or** friend of `$uid` (via `friends/{uid}/{auth.uid} === true`) | own UID | global online/in-room presence; `{ status: 'online'\|'in_room', roomId?: string, roomMode?: string }`; written by `OwnStatusNotifier` on auth and matchmaking state changes; node deleted entirely on sign-out |
+| `user_status/{uid}` | any signed-in user | own UID | global online/in-room presence; `{ status: 'online'\|'in_room', roomId?: string, roomMode?: string, maxUsers?: number, memberCount?: number, isLocked?: boolean, backgroundTheme?: string }`; `maxUsers`/`memberCount`/`isLocked`/`backgroundTheme` only present when `status == 'in_room'` so friends can render the "currently in" card without a Firestore room read; written by `OwnStatusNotifier` on auth + matchmaking state changes; node deleted entirely on sign-out |
 | `friends/{ownerUid}/{friendUid}` | own `$ownerUid` | own `$ownerUid` | denormalized friendship flag (`true`) used by RTDB security rules to allow friends to read each other's `user_status`; written by `FriendsDatasourceImpl.acceptFriendRequest()` client-side; cleaned up by `onFriendshipDeleted` CF on `friendships` document delete |
 
 Note: `cleanupMember` CF triggers on `rooms/{roomId}/members/{uid}` deletion. `cleanupPoolMember` triggers on `pool_presence/{uid}` deletion. `jukebox/{roomId}` is cleared by `endSession` CF when a session ends. `user_status/{uid}` is managed exclusively by `OwnStatusNotifier` on the client — no CF cleanup. `friends/{ownerUid}/{friendUid}` is cleaned up server-side by `onFriendshipDeleted` CF.

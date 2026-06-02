@@ -16,7 +16,11 @@ export async function getBlockedUids(
   db: admin.firestore.Firestore,
   uid: string,
 ): Promise<string[]> {
-  const snap = await db.collection("users").doc(uid).collection("blocked").get();
+  const snap = await db
+    .collection("users")
+    .doc(uid)
+    .collection("blocked")
+    .get();
   return snap.docs.map((d) => d.id);
 }
 
@@ -68,6 +72,9 @@ export function removeFromBlockList(
  * @param {string} uid
  * @return {boolean}
  */
-export function isBlockedByRoom(blockList: BlockListEntry[], uid: string): boolean {
+export function isBlockedByRoom(
+  blockList: BlockListEntry[],
+  uid: string,
+): boolean {
   return blockList.some((e) => e.userId === uid);
 }

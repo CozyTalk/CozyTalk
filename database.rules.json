@@ -55,14 +55,27 @@
         "roomMode": {
           ".validate": "newData.isString() && (newData.val() == '1v1' || newData.val() == 'group')"
         },
+        "maxUsers": {
+          ".validate": "newData.isNumber() && newData.val() >= 2 && newData.val() <= 5"
+        },
+        "memberCount": {
+          ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 5"
+        },
+        "isLocked": {
+          ".validate": "newData.isBoolean()"
+        },
+        "backgroundTheme": {
+          ".validate": "newData.isString() && newData.val().length <= 50"
+        },
         "$other": {
           ".validate": false
         }
       }
     },
     "pool_presence": {
+      ".read": "auth != null && auth.token.email != null && auth.token.email.endsWith('@cozytalk.com')",
       "$uid": {
-        ".read": "auth != null && auth.uid == $uid",
+        ".read": "auth != null && (auth.uid == $uid || root.child('friends').child(auth.uid).child($uid).exists())",
         ".write": "auth != null && auth.uid == $uid",
         ".validate": "newData.isBoolean()"
       }

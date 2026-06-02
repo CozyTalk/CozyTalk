@@ -27,11 +27,10 @@ const mockCollection = jest.fn();
 // `runTransaction(fn)` invokes the callback with a tx that proxies the same
 // terminal Firestore mocks, so the get/set/update expectations below apply
 // unchanged whether the CF reads/writes directly or inside a transaction.
-const mockRunTransaction = jest.fn(
-  (fn: (tx: unknown) => unknown) =>
-    Promise.resolve(
-      fn({get: mockGet, set: mockSet, update: mockUpdate, delete: mockDelete}),
-    ),
+const mockRunTransaction = jest.fn((fn: (tx: unknown) => unknown) =>
+  Promise.resolve(
+    fn({get: mockGet, set: mockSet, update: mockUpdate, delete: mockDelete}),
+  ),
 );
 
 // `orderBy` returns an object whose `get` resolves to a snap.
@@ -64,7 +63,9 @@ jest.mock("firebase-admin", () => ({
 }));
 
 jest.mock("firebase-admin/firestore", () => ({
-  FieldValue: {serverTimestamp: jest.fn().mockReturnValue("__serverTimestamp__")},
+  FieldValue: {
+    serverTimestamp: jest.fn().mockReturnValue("__serverTimestamp__"),
+  },
   Timestamp: jest.fn(),
 }));
 
@@ -78,9 +79,9 @@ jest.mock("firebase-functions/logger", () => ({
 // importing the raw handler directly after replacing the export with an
 // identity wrapper.
 jest.mock("firebase-functions/v2/https", () => {
-  const original = jest.requireActual<typeof import("firebase-functions/v2/https")>(
-    "firebase-functions/v2/https",
-  );
+  const original = jest.requireActual<
+    typeof import("firebase-functions/v2/https")
+  >("firebase-functions/v2/https");
   return {
     ...original,
     // Return a fake callable whose `.run` invokes the handler so tests can call
@@ -124,7 +125,9 @@ function makeRequest(
 ): CallableRequest {
   return {
     data,
-    auth: uid ? {uid, token: {} as CallableRequest["auth"]["token"]} : undefined,
+    auth: uid
+      ? {uid, token: {} as CallableRequest["auth"]["token"]}
+      : undefined,
     rawRequest: {} as CallableRequest["rawRequest"],
     acceptsStreaming: false,
   } as unknown as CallableRequest;
@@ -171,9 +174,9 @@ describe("blockUser", () => {
 
   test("throws unauthenticated if not signed in", async () => {
     const req = makeRequest({targetUid: "target-uid"}, null);
-    await expect(invoke(blockUser as {run: (r: CallableRequest) => unknown}, req)).rejects.toThrow(
-      HttpsError,
-    );
+    await expect(
+      invoke(blockUser as {run: (r: CallableRequest) => unknown}, req),
+    ).rejects.toThrow(HttpsError);
     await expect(
       invoke(blockUser as {run: (r: CallableRequest) => unknown}, req),
     ).rejects.toMatchObject({code: "unauthenticated"});
@@ -200,7 +203,10 @@ describe("blockUser", () => {
       .mockResolvedValueOnce({size: 0}); // blockedCollRef.get()
 
     const req = makeRequest({targetUid: "target-uid", displayName: "Alice"});
-    const result = await invoke(blockUser as {run: (r: CallableRequest) => unknown}, req);
+    const result = await invoke(
+      blockUser as {run: (r: CallableRequest) => unknown},
+      req,
+    );
     expect(result).toEqual({success: true});
     expect(mockSet).toHaveBeenCalledTimes(1);
     // The read-check-write sequence must run inside a transaction so the
@@ -215,7 +221,10 @@ describe("blockUser", () => {
       .mockResolvedValueOnce({size: 5});
 
     const req = makeRequest({targetUid: "target-uid"});
-    const result = await invoke(blockUser as {run: (r: CallableRequest) => unknown}, req);
+    const result = await invoke(
+      blockUser as {run: (r: CallableRequest) => unknown},
+      req,
+    );
     expect(result).toEqual({success: false, reason: "max_blocked_reached"});
     expect(mockSet).not.toHaveBeenCalled();
   });
@@ -225,7 +234,10 @@ describe("blockUser", () => {
     mockGet.mockResolvedValueOnce({exists: true});
 
     const req = makeRequest({targetUid: "target-uid"});
-    const result = await invoke(blockUser as {run: (r: CallableRequest) => unknown}, req);
+    const result = await invoke(
+      blockUser as {run: (r: CallableRequest) => unknown},
+      req,
+    );
     expect(result).toEqual({success: true});
     expect(mockSet).not.toHaveBeenCalled();
   });
@@ -280,7 +292,10 @@ describe("unblockUser", () => {
     mockDelete.mockResolvedValueOnce(undefined);
 
     const req = makeRequest({targetUid: "target-uid"});
-    const result = await invoke(unblockUser as {run: (r: CallableRequest) => unknown}, req);
+    const result = await invoke(
+      unblockUser as {run: (r: CallableRequest) => unknown},
+      req,
+    );
     expect(result).toEqual({success: true});
     expect(mockDelete).toHaveBeenCalledTimes(1);
   });
@@ -317,7 +332,10 @@ describe("adminGetBlockedUsers", () => {
     );
     const req = makeRequest({uid: "some-uid"}, null);
     await expect(
-      invoke(adminGetBlockedUsers as {run: (r: CallableRequest) => unknown}, req),
+      invoke(
+        adminGetBlockedUsers as {run: (r: CallableRequest) => unknown},
+        req,
+      ),
     ).rejects.toMatchObject({code: "unauthenticated"});
   });
 
@@ -327,20 +345,32 @@ describe("adminGetBlockedUsers", () => {
     );
     const req = makeRequest({uid: "some-uid"});
     await expect(
-      invoke(adminGetBlockedUsers as {run: (r: CallableRequest) => unknown}, req),
+      invoke(
+        adminGetBlockedUsers as {run: (r: CallableRequest) => unknown},
+        req,
+      ),
     ).rejects.toMatchObject({code: "permission-denied"});
   });
 
   test("throws invalid-argument if uid missing", async () => {
-    mockRequireAdmin.mockResolvedValueOnce({uid: "admin-uid", displayName: "Admin"});
+    mockRequireAdmin.mockResolvedValueOnce({
+      uid: "admin-uid",
+      displayName: "Admin",
+    });
     const req = makeRequest({});
     await expect(
-      invoke(adminGetBlockedUsers as {run: (r: CallableRequest) => unknown}, req),
+      invoke(
+        adminGetBlockedUsers as {run: (r: CallableRequest) => unknown},
+        req,
+      ),
     ).rejects.toMatchObject({code: "invalid-argument"});
   });
 
   test("returns blocked users list for a valid uid", async () => {
-    mockRequireAdmin.mockResolvedValueOnce({uid: "admin-uid", displayName: "Admin"});
+    mockRequireAdmin.mockResolvedValueOnce({
+      uid: "admin-uid",
+      displayName: "Admin",
+    });
 
     const fakeTs = {toDate: () => new Date("2024-01-15T10:00:00.000Z")};
     const fakeDocs = [
@@ -353,7 +383,13 @@ describe("adminGetBlockedUsers", () => {
     const result = (await invoke(
       adminGetBlockedUsers as {run: (r: CallableRequest) => unknown},
       req,
-    )) as {blockedUsers: Array<{uid: string; displayName: string | null; blockedAt: string | null}>};
+    )) as {
+      blockedUsers: Array<{
+        uid: string;
+        displayName: string | null;
+        blockedAt: string | null;
+      }>;
+    };
 
     expect(result.blockedUsers).toHaveLength(2);
     expect(result.blockedUsers[0]).toEqual({
@@ -369,7 +405,10 @@ describe("adminGetBlockedUsers", () => {
   });
 
   test("returns empty array when user has no blocked users", async () => {
-    mockRequireAdmin.mockResolvedValueOnce({uid: "admin-uid", displayName: "Admin"});
+    mockRequireAdmin.mockResolvedValueOnce({
+      uid: "admin-uid",
+      displayName: "Admin",
+    });
     mockGet.mockResolvedValueOnce({docs: []});
 
     const req = makeRequest({uid: "target-uid"});
@@ -389,11 +428,15 @@ describe("mergeIntoBlockList", () => {
   test("adds new entry when userId not present", () => {
     const current: BlockListEntry[] = [];
     const result = mergeIntoBlockList(current, "user-A", ["user-B"]);
-    expect(result).toEqual([{blockedBy: "user-A", userId: "user-B", amount: 1}]);
+    expect(result).toEqual([
+      {blockedBy: "user-A", userId: "user-B", amount: 1},
+    ]);
   });
 
   test("increments amount when userId already in list", () => {
-    const current: BlockListEntry[] = [{blockedBy: "user-A", userId: "user-B", amount: 1}];
+    const current: BlockListEntry[] = [
+      {blockedBy: "user-A", userId: "user-B", amount: 1},
+    ];
     const result = mergeIntoBlockList(current, "user-C", ["user-B"]);
     expect(result).toHaveLength(1);
     expect(result[0].amount).toBe(2);

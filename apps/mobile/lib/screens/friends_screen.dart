@@ -14,6 +14,7 @@ import '../shared/info_dialog.dart';
 import '../shared/offline_card.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_routes.dart';
+import '../theme/room_themes.dart';
 import '../models/friend.dart';
 import 'friend_profile_dialog.dart';
 import 'remove_friend_dialog.dart';
@@ -32,7 +33,6 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
   String _query = '';
 
   final Map<String, String?> _notes = {};
-  final Map<String, int> _unreadCounts = {};
   String? _pendingRemoveName;
 
   @override
@@ -67,22 +67,24 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
       note: _notes[f.friendshipId],
       lastMessage: state.lastMessageMap[f.chatRoomId] ?? '',
       isOnline: state.presenceMap[f.friendUid] ?? false,
-      unreadCount: _unreadCounts[f.friendshipId] ?? 0,
+      unreadCount: state.unreadCountMap[f.chatRoomId] ?? 0,
       isBlocked: blockedUids.contains(f.friendUid),
       interest: liveInterests[f.friendUid] ?? '',
       room: roomStatus != null ? _toRoomInfo(roomStatus) : null,
     );
   }
 
-  RoomInfo _toRoomInfo(FriendRoomStatus s) => RoomInfo(
-    name: s.mode == '1v1' ? '1v1 Room' : 'Group Room',
-    thumbnail: s.mode == '1v1'
-        ? 'assets/images/1on1_doodle.png'
-        : 'assets/images/group_doodle.png',
-    current: s.memberCount,
-    max: s.maxUsers,
-    isLocked: s.isLocked,
-  );
+  RoomInfo _toRoomInfo(FriendRoomStatus s) {
+    final theme = resolveRoomTheme(s.backgroundTheme, mode: s.mode);
+    return RoomInfo(
+      roomId: s.roomId,
+      name: theme.title,
+      thumbnail: theme.thumbnail,
+      current: s.memberCount,
+      max: s.maxUsers,
+      isLocked: s.isLocked,
+    );
+  }
 
   List<Friend> _filtered(List<Friend> friends) => _query.isEmpty
       ? friends
@@ -111,14 +113,14 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
         f.friendshipId: (
           mood:
               AvatarOverlays.mood[ref
-                      .watch(partnerDecorationProvider(f.friendUid))
+                      .watch(avatarDecorationByUidProvider(f.friendUid))
                       .asData
                       ?.value
                       ?.moodKey ??
                   ''],
           hat:
               AvatarOverlays.accessory[ref
-                      .watch(partnerDecorationProvider(f.friendUid))
+                      .watch(avatarDecorationByUidProvider(f.friendUid))
                       .asData
                       ?.value
                       ?.hatKey ??
@@ -130,7 +132,7 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
       for (final f in state.friends)
         f.friendUid:
             ref
-                .watch(partnerProfileProvider(f.friendUid))
+                .watch(profileByUidProvider(f.friendUid))
                 .asData
                 ?.value
                 ?.interest ??
@@ -141,12 +143,26 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
         .blockedUsers
         .map((u) => u.uid)
         .toSet();
-    final friends = state.friends
-        .map(
-          (f) =>
-              _toScreenFriend(f, state, liveNames, liveInterests, blockedUids),
-        )
-        .toList();
+    final friends =
+        state.friends
+            .map(
+              (f) => _toScreenFriend(
+                f,
+                state,
+                liveNames,
+                liveInterests,
+                blockedUids,
+              ),
+            )
+            .toList()
+          ..sort((a, b) {
+            final ta = state.lastMessageTimestampMap[a.chatRoomId];
+            final tb = state.lastMessageTimestampMap[b.chatRoomId];
+            if (ta == null && tb == null) return 0;
+            if (ta == null) return 1;
+            if (tb == null) return -1;
+            return tb.compareTo(ta);
+          });
     final filtered = _filtered(friends);
     final isOffline = !ref
         .watch(isOnlineProvider)
@@ -267,9 +283,9 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
     final showRoom = friend.room != null && friend.isOnline;
     return GestureDetector(
       onTap: () {
-        if (friend.unreadCount > 0) {
-          setState(() => _unreadCounts[friend.friendshipId] = 0);
-        }
+        ref
+            .read(friendsNotifierProvider.notifier)
+            .clearBadgeLocally(friend.chatRoomId);
         Navigator.pushNamed(context, AppRoutes.friendChat, arguments: friend);
       },
       child: Container(
@@ -408,8 +424,11 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
                   onJoin: friend.room!.canJoin
                       ? () => Navigator.pushNamed(
                           context,
-                          AppRoutes.groupChatScreen,
+                          AppRoutes.findingRoom,
                           arguments: {
+                            'roomType': 'joinById',
+                            'roomId': friend.room!.roomId,
+                            'isGroup': true,
                             'roomName': friend.room!.name,
                             'bgImage': friend.room!.thumbnail,
                           },
@@ -475,15 +494,19 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
               },
             );
           case 'Block':
-            showConfirmBlockDialog(
-              context: context,
-              username: friend.displayName,
-              onConfirm: () {
-                ref
-                    .read(blockNotifierProvider.notifier)
-                    .block(friend.friendUid, displayName: friend.displayName);
-              },
-            );
+            if (ref.read(blockNotifierProvider).blockedUsers.length >= 5) {
+              showBlockLimitDialog(context: context);
+            } else {
+              showConfirmBlockDialog(
+                context: context,
+                username: friend.displayName,
+                onConfirm: () {
+                  ref
+                      .read(blockNotifierProvider.notifier)
+                      .block(friend.friendUid, displayName: friend.displayName);
+                },
+              );
+            }
           case 'Unblock':
             showConfirmUnblockDialog(
               context: context,
@@ -511,7 +534,7 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
       itemBuilder: (_) => [
         _popupItem('Edit'),
         _divider(),
-        friend.isBlocked ? _popupItemDisabled('Blocked') : _popupItem('Block'),
+        friend.isBlocked ? _popupItem('Unblock') : _popupItem('Block'),
         _divider(),
         _popupItem('Unfriend'),
       ],
@@ -524,29 +547,6 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
       height: 1,
       padding: EdgeInsets.zero,
       child: Divider(height: 1, thickness: 1, color: Colors.grey.shade300),
-    );
-  }
-
-  PopupMenuItem<String> _popupItemDisabled(String label) {
-    return PopupMenuItem<String>(
-      enabled: false,
-      padding: EdgeInsets.zero,
-      child: SizedBox(
-        width: 110,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          child: Center(
-            child: Text(
-              label,
-              style: Theme.of(context).textTheme.bodyMedium!.copyWith(
-                fontWeight: FontWeight.w900,
-                fontSize: 14,
-                color: Colors.grey.shade400,
-              ),
-            ),
-          ),
-        ),
-      ),
     );
   }
 

@@ -2,15 +2,22 @@ import 'package:flutter/material.dart';
 import 'admin_shared.dart';
 import '../shared/layered_avatar.dart';
 
-class AdminBanDetailScreen extends StatelessWidget {
+class AdminBanDetailScreen extends StatefulWidget {
   final AdminBanDetailSubject subject;
-  final void Function(AdminBanDetailSubject)? onUnban;
+  final Future<void> Function(AdminBanDetailSubject)? onUnban;
 
   const AdminBanDetailScreen({super.key, required this.subject, this.onUnban});
 
   @override
+  State<AdminBanDetailScreen> createState() => _AdminBanDetailScreenState();
+}
+
+class _AdminBanDetailScreenState extends State<AdminBanDetailScreen> {
+  bool _isUnbanning = false;
+
+  @override
   Widget build(BuildContext context) {
-    final s = subject;
+    final s = widget.subject;
     final hasCurrent = s.current != null;
 
     return Scaffold(
@@ -46,7 +53,8 @@ class AdminBanDetailScreen extends StatelessWidget {
               ],
             ),
           ),
-          if (hasCurrent && onUnban != null) _buildUnbanButton(context, s),
+          if (hasCurrent && widget.onUnban != null)
+            _buildUnbanButton(context, s),
         ],
       ),
     );
@@ -562,14 +570,23 @@ class AdminBanDetailScreen extends StatelessWidget {
           label: 'Unban ${s.name}',
           bg: AdminC.green,
           fg: AdminC.greenInk,
-          onTap: () => showAdminConfirmUnban(
-            context: context,
-            username: s.name,
-            onConfirm: () {
-              onUnban!(s);
-              Navigator.pop(context);
-            },
-          ),
+          isLoading: _isUnbanning,
+          onTap: _isUnbanning
+              ? null
+              : () => showAdminConfirmUnban(
+                  context: context,
+                  username: s.name,
+                  onConfirm: () async {
+                    setState(() => _isUnbanning = true);
+                    try {
+                      await widget.onUnban!(s);
+                    } catch (_) {
+                      // error shown by caller; reset so admin can retry
+                    } finally {
+                      if (mounted) setState(() => _isUnbanning = false);
+                    }
+                  },
+                ),
         ),
       ),
     );
