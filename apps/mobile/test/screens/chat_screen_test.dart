@@ -798,10 +798,7 @@ void main() {
         'confirming calls endSession exactly once and navigates to finding-room, not home',
         (tester) async {
           final chatFake = _FakeChatNotifier();
-          Map<String, dynamic>? captured;
-          await tester.pumpWidget(
-            _buildScreen(chatFake, onFindingRoomArgs: (a) => captured = a),
-          );
+          await tester.pumpWidget(_buildScreen(chatFake));
           await _pump(tester);
           await tester.tap(find.text('Skip\nRoom'));
           await tester.pump();

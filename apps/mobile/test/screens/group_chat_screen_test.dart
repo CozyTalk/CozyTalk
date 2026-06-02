@@ -517,13 +517,8 @@ void main() {
         (tester) async {
           final chatFake = _FakeChatNotifier();
           final matchFake = _FakeMatchmakingNotifier();
-          Map<String, dynamic>? captured;
           await tester.pumpWidget(
-            _buildScreen(
-              chatFake,
-              matchFake: matchFake,
-              onFindingRoomArgs: (a) => captured = a,
-            ),
+            _buildScreen(chatFake, matchFake: matchFake),
           );
           await _pump(tester);
           await tester.tap(find.text('Skip\nRoom'));
