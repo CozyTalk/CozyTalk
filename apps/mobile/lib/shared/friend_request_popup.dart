@@ -80,11 +80,12 @@ class _FriendRequestBanner extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final decoration =
-        ref.watch(avatarDecorationByUidProvider(fromUid)).asData?.value;
+    final decoration = ref
+        .watch(avatarDecorationByUidProvider(fromUid))
+        .asData
+        ?.value;
     final moodOverlay = AvatarOverlays.mood[decoration?.moodKey ?? ''];
-    final accessoryOverlay =
-        AvatarOverlays.accessory[decoration?.hatKey ?? ''];
+    final accessoryOverlay = AvatarOverlays.accessory[decoration?.hatKey ?? ''];
 
     final topPad = MediaQuery.of(context).padding.top;
     return Positioned(
