@@ -443,6 +443,11 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
   AddFriendStatus _friendStatus(String uid) {
     final s = ref.read(friendsNotifierProvider);
     if (s.isFriend(uid)) return AddFriendStatus.friends;
+    // Mutual pending: both sent requests → treat as friends (disabled).
+    if (s.hasSentRequestTo(uid) &&
+        s.incomingRequests.any((r) => r.fromUid == uid)) {
+      return AddFriendStatus.friends;
+    }
     if (s.hasSentRequestTo(uid)) return AddFriendStatus.pending;
     return AddFriendStatus.notAdded;
   }

@@ -284,6 +284,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
     }
     final s = ref.read(friendsNotifierProvider);
     if (s.isFriend(_partnerUid!)) return AddFriendStatus.friends;
+    // Mutual pending: both sent requests → treat as friends (disabled).
+    if (s.hasSentRequestTo(_partnerUid!) &&
+        s.incomingRequests.any((r) => r.fromUid == _partnerUid)) {
+      return AddFriendStatus.friends;
+    }
     if (s.hasSentRequestTo(_partnerUid!)) return AddFriendStatus.pending;
     return AddFriendStatus.notAdded;
   }
