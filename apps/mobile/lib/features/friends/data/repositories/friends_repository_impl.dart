@@ -31,6 +31,15 @@ class FriendsRepositoryImpl implements FriendsRepository {
       .map((models) => models.map((m) => m.toEntity()).toList());
 
   @override
+  Stream<List<FriendRequest>> watchOutgoingRequests() => _datasource
+      .watchOutgoingRequests()
+      .map((models) => models.map((m) => m.toEntity()).toList());
+
+  @override
+  Future<void> cancelFriendRequest({required String toUid}) =>
+      _datasource.cancelFriendRequest(toUid: toUid);
+
+  @override
   Stream<List<FriendMessage>> watchMessages(String chatRoomId) => _datasource
       .watchMessages(chatRoomId)
       .map((models) => models.map((m) => m.toEntity()).toList());

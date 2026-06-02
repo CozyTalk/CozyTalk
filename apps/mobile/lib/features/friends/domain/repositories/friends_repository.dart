@@ -8,6 +8,7 @@ abstract class FriendsRepository {
   Stream<List<AppUser>> watchAllUsers();
   Stream<List<Friend>> watchFriends();
   Stream<List<FriendRequest>> watchIncomingRequests();
+  Stream<List<FriendRequest>> watchOutgoingRequests();
   Stream<List<FriendMessage>> watchMessages(String chatRoomId);
   Stream<bool> watchFriendPresence(String friendUid);
   Stream<({String text, DateTime? timestamp, String senderId})>
@@ -25,6 +26,7 @@ abstract class FriendsRepository {
     required String myDisplayName,
   });
   Future<void> declineFriendRequest({required String requestId});
+  Future<void> cancelFriendRequest({required String toUid});
   Future<void> removeFriend({required String friendshipId});
   Future<void> sendMessage({
     required String chatRoomId,

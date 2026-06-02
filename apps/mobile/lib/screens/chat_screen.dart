@@ -18,7 +18,8 @@ import '../dialogs/report_dialog.dart';
 import '../theme/app_colors.dart';
 import '../dialogs/leave_room_dialog.dart';
 import '../dialogs/song_dialog.dart';
-import '../dialogs/user_profile_dialog.dart';
+import '../dialogs/user_profile_dialog.dart'
+    show AddFriendStatus, UserProfileDialog;
 import '../shared/avatar_overlay.dart';
 import '../shared/background_theme.dart';
 import '../shared/gif_picker.dart';
@@ -79,7 +80,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
   late final Animation<Offset> _songSlide;
 
   String _roomId = '';
-  bool _friendRequestSent = false;
   String? _partnerUid;
   String _myThoughts = 'Care to share?';
   String _myDisplayName = '';
@@ -249,17 +249,13 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
   }
 
   void _sendFriendRequest([String name = '']) {
-    if (_friendRequestSent) return;
     if (ref.read(friendsNotifierProvider).isLoading) return;
+    final uid = _partnerUid;
+    if (uid == null || uid.isEmpty) return;
     final targetName = name.isNotEmpty ? name : 'your match';
-    setState(() => _friendRequestSent = true);
-    if (_partnerUid != null && _partnerUid!.isNotEmpty) {
-      ref
-          .read(friendsNotifierProvider.notifier)
-          .sendFriendRequest(
-            AppUser(uid: _partnerUid!, displayName: targetName),
-          );
-    }
+    ref
+        .read(friendsNotifierProvider.notifier)
+        .sendFriendRequest(AppUser(uid: uid, displayName: targetName));
     showInfoDialog(
       context,
       type: InfoDialogType.info,
@@ -270,7 +266,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
   }
 
   void cancelFriendRequest([String name = '']) {
-    setState(() => _friendRequestSent = false);
+    final uid = _partnerUid;
+    if (uid == null || uid.isEmpty) return;
+    ref.read(friendsNotifierProvider.notifier).cancelFriendRequest(uid);
     showInfoDialog(
       context,
       type: InfoDialogType.info,
@@ -278,6 +276,16 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
       message:
           'Your friend request to ${name.isNotEmpty ? name : 'your match'} has been cancelled.',
     );
+  }
+
+  AddFriendStatus _partnerFriendStatus() {
+    if (_partnerUid == null || _partnerUid!.isEmpty) {
+      return AddFriendStatus.notAdded;
+    }
+    final s = ref.read(friendsNotifierProvider);
+    if (s.isFriend(_partnerUid!)) return AddFriendStatus.friends;
+    if (s.hasSentRequestTo(_partnerUid!)) return AddFriendStatus.pending;
+    return AddFriendStatus.notAdded;
   }
 
   void reportUser() {
@@ -676,7 +684,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
                       boxWidth: eachW,
                       onFriendRequest: _sendFriendRequest,
                       onCancelRequest: cancelFriendRequest,
-                      friendRequestSent: _friendRequestSent,
+                      friendStatus: _partnerFriendStatus(),
                       onReport: _partnerUid != null
                           ? () => _openReport(_partnerUid!)
                           : null,
@@ -905,7 +913,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
                     username: partnerName,
                     interest: interest,
                     uid: _partnerUid,
-                    initialAdded: _friendRequestSent,
+                    friendStatus: _partnerFriendStatus(),
                     onAddFriend: () => _sendFriendRequest(partnerName),
                     onCancelRequest: () => cancelFriendRequest(partnerName),
                     onReport: _partnerUid != null
@@ -1039,7 +1047,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
                     username: partnerName,
                     interest: interest,
                     uid: _partnerUid,
-                    initialAdded: _friendRequestSent,
+                    friendStatus: _partnerFriendStatus(),
                     onAddFriend: () => _sendFriendRequest(partnerName),
                     onCancelRequest: () => cancelFriendRequest(partnerName),
                     onReport: _partnerUid != null
@@ -1502,7 +1510,7 @@ class _StaticAvatar extends StatelessWidget {
     this.onFriendRequest,
     this.onCancelRequest,
     this.onReport,
-    this.friendRequestSent = false,
+    this.friendStatus = AddFriendStatus.notAdded,
   });
 
   final String username;
@@ -1514,7 +1522,7 @@ class _StaticAvatar extends StatelessWidget {
   final VoidCallback? onFriendRequest;
   final VoidCallback? onCancelRequest;
   final VoidCallback? onReport;
-  final bool friendRequestSent;
+  final AddFriendStatus friendStatus;
   final double boxWidth;
 
   @override
@@ -1541,7 +1549,9 @@ class _StaticAvatar extends StatelessWidget {
                     interest: interest,
                     isMe: isMe,
                     uid: isMe ? null : uid,
-                    initialAdded: !isMe && friendRequestSent,
+                    friendStatus: isMe
+                        ? AddFriendStatus.notAdded
+                        : friendStatus,
                     onAddFriend: isMe ? null : onFriendRequest,
                     onCancelRequest: isMe ? null : onCancelRequest,
                     onReport: isMe ? null : onReport,

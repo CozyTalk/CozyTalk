@@ -65,6 +65,15 @@ class FakeFriendsRepository implements FriendsRepository {
       error != null ? Stream.error(error!) : Stream.value(requests);
 
   @override
+  Stream<List<FriendRequest>> watchOutgoingRequests() =>
+      error != null ? Stream.error(error!) : Stream.value([]);
+
+  @override
+  Future<void> cancelFriendRequest({required String toUid}) async {
+    if (error != null) throw error!;
+  }
+
+  @override
   Stream<List<FriendMessage>> watchMessages(String chatRoomId) {
     lastChatRoomId = chatRoomId;
     return error != null ? Stream.error(error!) : Stream.value(messages);

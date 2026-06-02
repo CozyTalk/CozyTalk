@@ -21,6 +21,7 @@ import '../../domain/usecases/get_users_by_ids.dart';
 import '../../domain/usecases/remove_friend.dart';
 import '../../domain/usecases/send_friend_request.dart';
 import '../../domain/usecases/set_chat_read.dart';
+import '../../domain/usecases/cancel_friend_request.dart';
 import '../../domain/usecases/watch_all_users.dart';
 import '../../domain/usecases/watch_chat_read.dart';
 import '../../domain/usecases/watch_friend_last_message.dart';
@@ -28,6 +29,7 @@ import '../../domain/usecases/watch_friend_presence.dart';
 import '../../domain/usecases/watch_friend_room.dart';
 import '../../domain/usecases/watch_friends.dart';
 import '../../domain/usecases/watch_incoming_requests.dart';
+import '../../domain/usecases/watch_outgoing_requests.dart';
 
 final friendsDatasourceProvider = Provider<FriendsDatasource>(
   (ref) => FriendsDatasourceImpl(
@@ -51,6 +53,14 @@ final _watchFriendsProvider = Provider<WatchFriends>(
 
 final _watchIncomingRequestsProvider = Provider<WatchIncomingRequests>(
   (ref) => WatchIncomingRequests(ref.watch(friendsRepositoryProvider)),
+);
+
+final _watchOutgoingRequestsProvider = Provider<WatchOutgoingRequests>(
+  (ref) => WatchOutgoingRequests(ref.watch(friendsRepositoryProvider)),
+);
+
+final _cancelFriendRequestProvider = Provider<CancelFriendRequest>(
+  (ref) => CancelFriendRequest(ref.watch(friendsRepositoryProvider)),
 );
 
 final _sendFriendRequestProvider = Provider<SendFriendRequest>(
@@ -114,6 +124,8 @@ class FriendsState {
   final List<AppUser> allUsers;
   final List<Friend> friends;
   final List<FriendRequest> incomingRequests;
+  // Pending requests sent by the current user, keyed lookup via toUid.
+  final List<FriendRequest> outgoingRequests;
   final bool isLoading;
   final String? error;
   // keyed by friendUid
@@ -131,6 +143,7 @@ class FriendsState {
     this.allUsers = const [],
     this.friends = const [],
     this.incomingRequests = const [],
+    this.outgoingRequests = const [],
     this.isLoading = false,
     this.error,
     this.presenceMap = const {},
@@ -140,10 +153,18 @@ class FriendsState {
     this.unreadCountMap = const {},
   });
 
+  /// Returns true when the current user has already sent a pending request to [uid].
+  bool hasSentRequestTo(String uid) =>
+      outgoingRequests.any((r) => r.toUid == uid);
+
+  /// Returns true when [uid] is an accepted friend of the current user.
+  bool isFriend(String uid) => friends.any((f) => f.friendUid == uid);
+
   FriendsState copyWith({
     List<AppUser>? allUsers,
     List<Friend>? friends,
     List<FriendRequest>? incomingRequests,
+    List<FriendRequest>? outgoingRequests,
     bool? isLoading,
     Object? error = _sentinel,
     Map<String, bool>? presenceMap,
@@ -155,6 +176,7 @@ class FriendsState {
     allUsers: allUsers ?? this.allUsers,
     friends: friends ?? this.friends,
     incomingRequests: incomingRequests ?? this.incomingRequests,
+    outgoingRequests: outgoingRequests ?? this.outgoingRequests,
     isLoading: isLoading ?? this.isLoading,
     error: error == _sentinel ? this.error : error as String?,
     presenceMap: presenceMap ?? this.presenceMap,
@@ -169,6 +191,7 @@ class FriendsState {
 class FriendsNotifier extends Notifier<FriendsState> {
   StreamSubscription<List<Friend>>? _friendsSub;
   StreamSubscription<List<FriendRequest>>? _requestsSub;
+  StreamSubscription<List<FriendRequest>>? _outgoingRequestsSub;
   StreamSubscription<List<AppUser>>? _usersSub;
 
   final Map<String, StreamSubscription<bool>> _presenceSubs = {};
@@ -198,6 +221,7 @@ class FriendsNotifier extends Notifier<FriendsState> {
       _disposed = true;
       _friendsSub?.cancel();
       _requestsSub?.cancel();
+      _outgoingRequestsSub?.cancel();
       _usersSub?.cancel();
       for (final sub in _presenceSubs.values) {
         sub.cancel();
@@ -227,6 +251,15 @@ class FriendsNotifier extends Notifier<FriendsState> {
         .read(_watchIncomingRequestsProvider)()
         .listen(
           (requests) => state = state.copyWith(incomingRequests: requests),
+          onError: (Object e) => state = state.copyWith(
+            error: e.toString().replaceFirst('Exception: ', ''),
+          ),
+        );
+
+    _outgoingRequestsSub = ref
+        .read(_watchOutgoingRequestsProvider)()
+        .listen(
+          (requests) => state = state.copyWith(outgoingRequests: requests),
           onError: (Object e) => state = state.copyWith(
             error: e.toString().replaceFirst('Exception: ', ''),
           ),
@@ -410,6 +443,20 @@ class FriendsNotifier extends Notifier<FriendsState> {
         toDisplayName: toUser.displayName,
         fromDisplayName: myDisplayName,
       );
+      state = state.copyWith(isLoading: false);
+    } catch (e) {
+      state = state.copyWith(
+        isLoading: false,
+        error: e.toString().replaceFirst('Exception: ', ''),
+      );
+    }
+  }
+
+  Future<void> cancelFriendRequest(String toUid) async {
+    if (state.isLoading) return;
+    state = state.copyWith(isLoading: true, error: null);
+    try {
+      await ref.read(_cancelFriendRequestProvider)(toUid: toUid);
       state = state.copyWith(isLoading: false);
     } catch (e) {
       state = state.copyWith(
