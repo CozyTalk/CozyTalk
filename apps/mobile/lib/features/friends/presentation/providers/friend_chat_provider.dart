@@ -96,8 +96,8 @@ class FriendChatNotifier extends Notifier<FriendChatState> {
       chatRoomId: chatRoomId,
       friendDisplayName: friendDisplayName,
     );
-    // Clear unread badge for this chat room.
-    ref.read(friendsNotifierProvider.notifier).markChatAsRead(chatRoomId);
+    // Mark read and track as the active chat so incoming messages stay read.
+    ref.read(friendsNotifierProvider.notifier).setActiveChat(chatRoomId);
 
     _messagesSub = ref
         .read(_watchFriendMessagesProvider)(chatRoomId)
@@ -153,6 +153,9 @@ class FriendChatNotifier extends Notifier<FriendChatState> {
   void leaveChat() {
     // Clear our typing indicator so partner doesn't see us as typing after we leave.
     setTyping(false);
+    // Write the read marker for messages received during the session and drop
+    // the active flag.
+    ref.read(friendsNotifierProvider.notifier).clearActiveChat();
     _messagesSub?.cancel();
     _typingSub?.cancel();
     _messagesSub = null;

@@ -4,6 +4,7 @@ import 'package:mobile/features/auth/domain/entities/auth_user.dart';
 import 'package:mobile/features/auth/presentation/providers/auth_provider.dart';
 import 'package:mobile/features/friends/domain/entities/app_user.dart';
 import 'package:mobile/features/friends/presentation/providers/friends_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../domain/shared_fakes.dart';
 
@@ -60,6 +61,7 @@ void main() {
     late ProviderContainer container;
 
     void setUp(AuthState auth) {
+      SharedPreferences.setMockInitialValues({});
       repo = FakeFriendsRepository();
       container = ProviderContainer(
         overrides: [

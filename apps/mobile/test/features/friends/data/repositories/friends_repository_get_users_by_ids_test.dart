@@ -33,7 +33,9 @@ class _FakeDatasource implements FriendsDatasource {
   Stream<bool> watchFriendPresence(String friendUid) => Stream.value(false);
 
   @override
-  Stream<String> watchFriendLastMessage(String chatRoomId) => Stream.value('');
+  Stream<({String text, DateTime? timestamp, String senderId})>
+  watchFriendLastMessage(String chatRoomId) =>
+      Stream.value((text: '', timestamp: null, senderId: ''));
 
   @override
   Stream<FriendRoomStatus?> watchFriendRoom(String friendUid) =>
@@ -68,7 +70,20 @@ class _FakeDatasource implements FriendsDatasource {
   }) async {}
 
   @override
+  Future<int> getUnreadMessageCount(
+    String chatRoomId, {
+    required int sinceMs,
+    required String friendUid,
+  }) async => 0;
+
+  @override
   Future<void> setFriendTyping(String chatRoomId, bool isTyping) async {}
+
+  @override
+  Future<void> setChatRead(String chatRoomId) async {}
+
+  @override
+  Stream<DateTime?> watchChatRead(String chatRoomId) => Stream.value(null);
 
   @override
   Stream<bool> watchFriendTyping(String chatRoomId) => Stream.value(false);

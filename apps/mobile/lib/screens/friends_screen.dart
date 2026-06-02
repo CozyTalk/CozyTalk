@@ -33,7 +33,6 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
   String _query = '';
 
   final Map<String, String?> _notes = {};
-  final Map<String, int> _unreadCounts = {};
   String? _pendingRemoveName;
 
   @override
@@ -68,7 +67,7 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
       note: _notes[f.friendshipId],
       lastMessage: state.lastMessageMap[f.chatRoomId] ?? '',
       isOnline: state.presenceMap[f.friendUid] ?? false,
-      unreadCount: _unreadCounts[f.friendshipId] ?? 0,
+      unreadCount: state.unreadCountMap[f.chatRoomId] ?? 0,
       isBlocked: blockedUids.contains(f.friendUid),
       interest: liveInterests[f.friendUid] ?? '',
       room: roomStatus != null ? _toRoomInfo(roomStatus) : null,
@@ -144,12 +143,26 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
         .blockedUsers
         .map((u) => u.uid)
         .toSet();
-    final friends = state.friends
-        .map(
-          (f) =>
-              _toScreenFriend(f, state, liveNames, liveInterests, blockedUids),
-        )
-        .toList();
+    final friends =
+        state.friends
+            .map(
+              (f) => _toScreenFriend(
+                f,
+                state,
+                liveNames,
+                liveInterests,
+                blockedUids,
+              ),
+            )
+            .toList()
+          ..sort((a, b) {
+            final ta = state.lastMessageTimestampMap[a.chatRoomId];
+            final tb = state.lastMessageTimestampMap[b.chatRoomId];
+            if (ta == null && tb == null) return 0;
+            if (ta == null) return 1;
+            if (tb == null) return -1;
+            return tb.compareTo(ta);
+          });
     final filtered = _filtered(friends);
     final isOffline = !ref
         .watch(isOnlineProvider)
@@ -270,9 +283,9 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
     final showRoom = friend.room != null && friend.isOnline;
     return GestureDetector(
       onTap: () {
-        if (friend.unreadCount > 0) {
-          setState(() => _unreadCounts[friend.friendshipId] = 0);
-        }
+        ref
+            .read(friendsNotifierProvider.notifier)
+            .clearBadgeLocally(friend.chatRoomId);
         Navigator.pushNamed(context, AppRoutes.friendChat, arguments: friend);
       },
       child: Container(
@@ -521,7 +534,7 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
       itemBuilder: (_) => [
         _popupItem('Edit'),
         _divider(),
-        friend.isBlocked ? _popupItemDisabled('Blocked') : _popupItem('Block'),
+        friend.isBlocked ? _popupItem('Unblock') : _popupItem('Block'),
         _divider(),
         _popupItem('Unfriend'),
       ],
@@ -534,29 +547,6 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
       height: 1,
       padding: EdgeInsets.zero,
       child: Divider(height: 1, thickness: 1, color: Colors.grey.shade300),
-    );
-  }
-
-  PopupMenuItem<String> _popupItemDisabled(String label) {
-    return PopupMenuItem<String>(
-      enabled: false,
-      padding: EdgeInsets.zero,
-      child: SizedBox(
-        width: 110,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          child: Center(
-            child: Text(
-              label,
-              style: Theme.of(context).textTheme.bodyMedium!.copyWith(
-                fontWeight: FontWeight.w900,
-                fontSize: 14,
-                color: Colors.grey.shade400,
-              ),
-            ),
-          ),
-        ),
-      ),
     );
   }
 

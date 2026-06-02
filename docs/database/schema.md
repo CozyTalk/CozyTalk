@@ -145,6 +145,16 @@ Permanent friend-to-friend chat messages. `chatRoomId` equals the `friendshipId`
 
 Rules: read/create by friendship participants (`_isFriendshipParticipant` helper checks `friendships/{chatRoomId}.users`). No update or delete.
 
+### `friend_messages/{chatRoomId}/reads/{uid}`
+
+Per-user read marker for the friend chat. The client compares `lastReadAt` against message `timestamp`s to compute the unread count; both are server-assigned so there is no client-clock skew, and the marker syncs across devices.
+
+| Field | Type | Notes |
+|---|---|---|
+| `lastReadAt` | timestamp | server timestamp (`request.time`); the moment the user last viewed the chat |
+
+Rules: read by friendship participants; create/update only by the owner (`uid == request.auth.uid`) and a participant, with `hasOnly(['lastReadAt'])` and `lastReadAt == request.time`. No delete.
+
 ### `reports/{id}`
 
 | Field | Type | Notes |

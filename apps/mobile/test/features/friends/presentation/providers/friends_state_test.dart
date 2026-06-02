@@ -118,7 +118,9 @@ void main() {
       const state = FriendsState();
       expect(state.presenceMap, isEmpty);
       expect(state.lastMessageMap, isEmpty);
+      expect(state.lastMessageTimestampMap, isEmpty);
       expect(state.roomMap, isEmpty);
+      expect(state.unreadCountMap, isEmpty);
     });
 
     test('copyWith sets presenceMap', () {
@@ -149,6 +151,24 @@ void main() {
       const state = FriendsState(lastMessageMap: {'room1': 'hi'});
       final updated = state.copyWith(isLoading: false);
       expect(updated.lastMessageMap['room1'], 'hi');
+    });
+
+    test('copyWith sets lastMessageTimestampMap', () {
+      const state = FriendsState();
+      final ts = DateTime(2024, 6, 1, 12);
+      final updated = state.copyWith(
+        lastMessageTimestampMap: {'room1': ts, 'room2': null},
+      );
+      expect(updated.lastMessageTimestampMap['room1'], ts);
+      expect(updated.lastMessageTimestampMap.containsKey('room2'), isTrue);
+      expect(updated.lastMessageTimestampMap['room2'], isNull);
+    });
+
+    test('copyWith preserves lastMessageTimestampMap when not provided', () {
+      final ts = DateTime(2024, 1, 1);
+      final state = FriendsState(lastMessageTimestampMap: {'room1': ts});
+      final updated = state.copyWith(isLoading: true);
+      expect(updated.lastMessageTimestampMap['room1'], ts);
     });
 
     test('copyWith sets roomMap with FriendRoomStatus', () {
@@ -185,16 +205,40 @@ void main() {
       expect(updated.roomMap['uid1']?.roomId, 'r2');
     });
 
+    test('copyWith sets unreadCountMap', () {
+      const state = FriendsState();
+      final updated = state.copyWith(unreadCountMap: {'room1': 3, 'room2': 0});
+      expect(updated.unreadCountMap['room1'], 3);
+      expect(updated.unreadCountMap['room2'], 0);
+    });
+
+    test('copyWith preserves unreadCountMap when not provided', () {
+      const state = FriendsState(unreadCountMap: {'room1': 2});
+      final updated = state.copyWith(isLoading: true);
+      expect(updated.unreadCountMap['room1'], 2);
+    });
+
+    test('copyWith resets unreadCountMap entry to zero', () {
+      const state = FriendsState(unreadCountMap: {'room1': 5});
+      final updated = state.copyWith(unreadCountMap: {'room1': 0});
+      expect(updated.unreadCountMap['room1'], 0);
+    });
+
     test('copyWith without arguments preserves enrichment maps', () {
-      const state = FriendsState(
+      final ts = DateTime(2024, 3, 15);
+      final state = FriendsState(
         presenceMap: {'uid1': true},
         lastMessageMap: {'room1': 'hi'},
+        lastMessageTimestampMap: {'room1': ts},
         roomMap: {'uid1': null},
+        unreadCountMap: {'room1': 4},
       );
       final copy = state.copyWith();
       expect(copy.presenceMap, {'uid1': true});
       expect(copy.lastMessageMap, {'room1': 'hi'});
+      expect(copy.lastMessageTimestampMap['room1'], ts);
       expect(copy.roomMap.containsKey('uid1'), isTrue);
+      expect(copy.unreadCountMap['room1'], 4);
     });
   });
 }
