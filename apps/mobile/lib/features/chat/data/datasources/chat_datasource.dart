@@ -209,8 +209,8 @@ class ChatDatasourceImpl implements ChatDatasource {
   Stream<ShuffleEvent?> watchCardShuffle(String sessionId) {
     return _db.ref('card_shuffle/$sessionId').onValue.map((event) {
       final raw = event.snapshot.value;
-      if (raw == null) return null;
-      final data = Map<String, dynamic>.from(raw as Map);
+      if (raw == null || raw is! Map) return null;
+      final data = Map<String, dynamic>.from(raw);
       return ShuffleEvent(
         shufflerUid: data['shufflerUid'] as String? ?? '',
         shufflerName: data['shufflerName'] as String? ?? 'Someone',

@@ -68,10 +68,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       if (next.messages.length != (prev?.messages.length ?? 0)) {
         _scrollToBottom();
       }
-      // Auto-open panel when someone draws a new card
-      final prevId = prev?.activeShuffleEvent?.questionId;
-      final nextId = next.activeShuffleEvent?.questionId;
-      if (nextId != null && nextId != prevId && !_topicPanelVisible) {
+      // Auto-open panel on every incoming shuffle, even if the same card repeats
+      if (next.activeShuffleEvent != null &&
+          !identical(prev?.activeShuffleEvent, next.activeShuffleEvent) &&
+          !_topicPanelVisible) {
         setState(() => _topicPanelVisible = true);
       }
     });

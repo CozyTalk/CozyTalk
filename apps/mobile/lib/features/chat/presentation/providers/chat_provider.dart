@@ -267,12 +267,13 @@ class ChatNotifier extends Notifier<ChatState> {
 
   Future<void> broadcastCardShuffle(IcebreakerQuestion question) async {
     final sessionId = state.sessionId;
-    if (sessionId == null) return;
+    final uid = state.currentUserId;
+    if (sessionId == null || uid == null || uid.isEmpty) return;
     try {
       await ref.read(_setCardShuffleProvider)(
         sessionId: sessionId,
         event: ShuffleEvent(
-          shufflerUid: state.currentUserId ?? '',
+          shufflerUid: uid,
           shufflerName: state.currentUserDisplayName ?? 'Anonymous',
           questionId: question.id,
           questionText: question.text,
