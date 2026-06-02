@@ -1,5 +1,3 @@
-import 'dart:math';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -225,33 +223,57 @@ class _SelectBackgroundScreenState
                   SizedBox(
                     width: double.infinity,
                     height: 55,
-                    child: OutlinedButton(
-                      onPressed: () async {
-                        final locData =
-                            locations[Random().nextInt(locations.length)];
-                        setState(() => selectedLocation = locData['id']);
-                        await Future.delayed(const Duration(milliseconds: 600));
-                        if (!mounted) return;
-                        _navigateToFindingRoom(
-                          locData: locData,
-                          roomType: roomType,
-                        );
-                      },
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.black,
-                        side: const BorderSide(
-                          color: Color(0xFFD9EACF),
-                          width: 2,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(20),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.1),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                        border: Border.all(
+                          color: Colors.grey.shade300,
+                          width: 1.5,
                         ),
                       ),
-                      child: Text(
-                        'Random Theme',
-                        style: Theme.of(context).textTheme.titleLarge!.copyWith(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
+                      child: Material(
+                        color: Colors.transparent,
+                        borderRadius: BorderRadius.circular(20),
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(20),
+                          onTap: () async {
+                            final notifier = ref.read(
+                              matchmakingNotifierProvider.notifier,
+                            );
+                            final navigator = Navigator.of(context);
+                            await Future.delayed(
+                              const Duration(milliseconds: 600),
+                            );
+                            if (!mounted) return;
+                            notifier.setBackgroundTheme(null);
+                            navigator.pushNamed(
+                              AppRoutes.findingRoom,
+                              arguments: {
+                                'roomType': roomType,
+                                'isGroup':
+                                    roomType == 'group' || roomType == 'create',
+                              },
+                            );
+                          },
+                          child: Center(
+                            child: Text(
+                              'Random Theme',
+                              style: Theme.of(context).textTheme.titleLarge!
+                                  .copyWith(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.black,
+                                  ),
+                            ),
+                          ),
                         ),
                       ),
                     ),

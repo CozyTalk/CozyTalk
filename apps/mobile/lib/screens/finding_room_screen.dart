@@ -2,11 +2,13 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../features/matchmaking/domain/entities/matchmaking_status.dart';
+import '../features/matchmaking/domain/entities/room.dart';
 import '../features/matchmaking/presentation/providers/matchmaking_provider.dart';
 import '../shared/connectivity_provider.dart';
 import '../shared/offline_card.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_routes.dart';
+import '../theme/room_themes.dart';
 
 const _frames = [
   'assets/images/tuktuk/tuk_tuk_0.png',
@@ -25,7 +27,8 @@ class FindingRoomScreen extends ConsumerStatefulWidget {
   ConsumerState<FindingRoomScreen> createState() => _FindingRoomScreenState();
 }
 
-class _FindingRoomScreenState extends ConsumerState<FindingRoomScreen> {
+class _FindingRoomScreenState extends ConsumerState<FindingRoomScreen>
+    with SingleTickerProviderStateMixin {
   int _frameIndex = 0;
   int _elapsedSeconds = 0;
   bool _didMatch = false;
@@ -33,12 +36,28 @@ class _FindingRoomScreenState extends ConsumerState<FindingRoomScreen> {
   Map<String, dynamic>? _args;
   MatchmakingNotifier? _notifier;
 
+  // Set once the actual room is known — used to update the loading UI
+  // before navigating into the chat screen.
+  RoomTheme? _matchedTheme;
+
+  late final AnimationController _shimmerCtrl;
+  late final Animation<double> _shimmerAnim;
+
   late final Timer _frameTimer;
   late final Timer _clockTimer;
 
   @override
   void initState() {
     super.initState();
+
+    _shimmerCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 700),
+    )..repeat(reverse: true);
+    _shimmerAnim = Tween<double>(
+      begin: 0.25,
+      end: 0.65,
+    ).animate(CurvedAnimation(parent: _shimmerCtrl, curve: Curves.easeInOut));
 
     _frameTimer = Timer.periodic(const Duration(milliseconds: 180), (_) {
       if (mounted) {
@@ -70,6 +89,7 @@ class _FindingRoomScreenState extends ConsumerState<FindingRoomScreen> {
 
   @override
   void dispose() {
+    _shimmerCtrl.dispose();
     _frameTimer.cancel();
     _clockTimer.cancel();
     if (!_didMatch) {
@@ -100,7 +120,7 @@ class _FindingRoomScreenState extends ConsumerState<FindingRoomScreen> {
 
   void _goToChat(String roomId) {
     if (!mounted) return;
-    setState(() => _didMatch = true);
+
     final args = _args ?? {};
     final roomType = args['roomType'] as String? ?? '1v1';
     final isGroup =
@@ -108,20 +128,29 @@ class _FindingRoomScreenState extends ConsumerState<FindingRoomScreen> {
     if (roomType == 'create') {
       _notifier?.setRoomLock(isLocked: true);
     }
+
+    setState(() => _didMatch = true);
+
     final delay = (roomType == 'create' || roomType == 'joinById')
         ? Duration.zero
-        : const Duration(milliseconds: 700);
+        : const Duration(milliseconds: 1200);
     Future.delayed(delay, () {
       if (!mounted) return;
+      // Re-read right before navigating so _subscribeToRoom has had time
+      // to populate currentRoom with the real backgroundTheme.
+      final latestRoom = ref.read(matchmakingNotifierProvider).currentRoom;
+      final finalTheme = resolveRoomTheme(
+        latestRoom?.backgroundTheme,
+        mode: latestRoom?.mode == RoomMode.group ? 'group' : '1v1',
+      );
+      setState(() => _matchedTheme = finalTheme);
       Navigator.pushReplacementNamed(
         context,
         isGroup ? AppRoutes.groupChatScreen : AppRoutes.chatScreen,
         arguments: {
           'roomId': roomId,
-          'roomName': args['roomName'] as String? ?? 'Red Lotus Lake',
-          'bgImage':
-              args['bgImage'] as String? ??
-              'assets/images/backgrounds/red_lotus_lake.png',
+          'roomName': finalTheme.title,
+          'bgImage': finalTheme.thumbnail,
           'roomType': roomType,
           'maxMembers': 5,
         },
@@ -150,6 +179,21 @@ class _FindingRoomScreenState extends ConsumerState<FindingRoomScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Update the loading screen room name whenever currentRoom is populated
+    // (e.g. when _subscribeToRoom fires after _fetchRoom failed).
+    ref.listen<Room?>(
+      matchmakingNotifierProvider.select((s) => s.currentRoom),
+      (_, room) {
+        if (!_didMatch || room == null || !mounted) return;
+        setState(() {
+          _matchedTheme = resolveRoomTheme(
+            room.backgroundTheme,
+            mode: room.mode == RoomMode.group ? 'group' : '1v1',
+          );
+        });
+      },
+    );
+
     ref.listen<MatchmakingState>(matchmakingNotifierProvider, (_, next) {
       if (_didMatch) return;
       if (next.status == MatchmakingStatus.matched && next.roomId != null) {
@@ -269,14 +313,34 @@ class _FindingRoomScreenState extends ConsumerState<FindingRoomScreen> {
                 ),
               ),
               const SizedBox(height: 12),
-              Text(
-                _args?['roomName'] as String? ?? '',
-                style: const TextStyle(
-                  fontFamily: 'Poppins',
-                  fontSize: 18,
-                  fontWeight: FontWeight.w800,
-                  color: Colors.black87,
-                ),
+              SizedBox(
+                height: 26,
+                child: (_didMatch && _matchedTheme == null)
+                    ? AnimatedBuilder(
+                        animation: _shimmerAnim,
+                        builder: (_, _) => Opacity(
+                          opacity: _shimmerAnim.value,
+                          child: Container(
+                            width: 130,
+                            height: 18,
+                            decoration: BoxDecoration(
+                              color: Colors.black26,
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                          ),
+                        ),
+                      )
+                    : Text(
+                        _matchedTheme?.title ??
+                            _args?['roomName'] as String? ??
+                            '',
+                        style: const TextStyle(
+                          fontFamily: 'Poppins',
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.black87,
+                        ),
+                      ),
               ),
 
               const SizedBox(height: 24),
