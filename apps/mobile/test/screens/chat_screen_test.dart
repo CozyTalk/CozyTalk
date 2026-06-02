@@ -87,7 +87,10 @@ class _FakeChatNotifier extends ChatNotifier {
   }
 
   @override
-  Future<void> endSession() async => endSessionCount++;
+  Future<void> endSession() async {
+    endSessionCount++;
+    state = state.copyWith(status: SessionStatus.disconnected);
+  }
 
   @override
   void forceDisconnect() => forceDisconnectCount++;

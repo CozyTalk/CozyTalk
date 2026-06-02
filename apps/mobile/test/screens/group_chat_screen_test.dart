@@ -5,6 +5,7 @@ import 'package:mobile/features/auth/domain/entities/auth_user.dart';
 import 'package:mobile/features/auth/presentation/providers/auth_provider.dart';
 import 'package:mobile/features/chat/domain/entities/chat_message.dart'
     as chat_entity;
+import 'package:mobile/features/chat/domain/entities/session_status.dart';
 import 'package:mobile/features/chat/presentation/providers/chat_provider.dart';
 import 'package:mobile/features/friends/domain/entities/app_user.dart';
 import 'package:mobile/features/friends/presentation/providers/friends_provider.dart';
@@ -57,7 +58,6 @@ class _FakeChatNotifier extends ChatNotifier {
   int setTypingCount = 0;
   bool? lastTypingValue;
   int forceDisconnectCount = 0;
-  int endSessionCount = 0;
 
   _FakeChatNotifier({ChatState initial = const ChatState()})
     : _initial = initial;
@@ -83,10 +83,13 @@ class _FakeChatNotifier extends ChatNotifier {
   }
 
   @override
-  Future<void> endSession() async => endSessionCount++;
+  Future<void> endSession() async {}
 
   @override
-  void forceDisconnect() => forceDisconnectCount++;
+  void forceDisconnect() {
+    forceDisconnectCount++;
+    state = state.copyWith(status: SessionStatus.disconnected);
+  }
 }
 
 class _FakeMatchmakingNotifier extends MatchmakingNotifier {
@@ -549,6 +552,7 @@ void main() {
           await tester.pump(const Duration(milliseconds: 400));
           expect(captured, isNotNull);
           expect(captured!['roomType'], _kArgs['roomType']); // 'group'
+          expect(captured!['roomName'], _kArgs['roomName']);
           expect(captured!['bgImage'], _kArgs['bgImage']);
           expect(captured!.containsKey('roomId'), isFalse);
         },

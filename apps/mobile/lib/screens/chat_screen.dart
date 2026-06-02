@@ -326,10 +326,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
   void _onSkipRoom() {
     final args =
         ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
-    final roomName = args?['roomName'] as String? ?? 'Red Lotus Lake';
-    final bgImage =
-        args?['bgImage'] as String? ??
-        'assets/images/backgrounds/red_lotus_lake.png';
+    final roomName = args?['roomName'] as String? ?? '';
+    final bgImage = args?['bgImage'] as String? ?? '';
+    assert(
+      roomName.isNotEmpty && bgImage.isNotEmpty,
+      'ChatScreen: roomName/bgImage missing from route args',
+    );
     showDialog<bool>(
       context: context,
       builder: (ctx) => Dialog(
@@ -427,7 +429,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
       if (confirmed != true || !mounted) return;
       setState(() => _isSkipping = true);
       ref.read(chatNotifierProvider.notifier).endSession();
+      ref.read(chatNotifierProvider.notifier).forceDisconnect();
       await ref.read(matchmakingNotifierProvider.notifier).leaveRoom();
+      await ref.read(matchmakingNotifierProvider.notifier).cancelSearch();
       if (!mounted) return;
       Navigator.of(context).pushReplacementNamed(
         AppRoutes.findingRoom,

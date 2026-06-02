@@ -558,6 +558,7 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
       if (confirmed != true || !mounted) return;
       setState(() => _isSkipping = true);
       await ref.read(matchmakingNotifierProvider.notifier).leaveRoom();
+      await ref.read(matchmakingNotifierProvider.notifier).cancelSearch();
       if (!mounted) return;
       ref.read(chatNotifierProvider.notifier).forceDisconnect();
       Navigator.of(context).pushReplacementNamed(
