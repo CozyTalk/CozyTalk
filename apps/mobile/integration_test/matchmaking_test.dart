@@ -217,11 +217,13 @@ void main() {
     final roomId = res['roomId'] as String;
 
     await callFn('setRoomLock', {'roomId': roomId, 'isLocked': true});
-
-    final doc = await firestoreDoc('rooms/$roomId');
-    expect(doc.data()!['isLocked'], isTrue);
+    final docLocked = await firestoreDoc('rooms/$roomId');
+    expect(docLocked.data()!['isLocked'], isTrue);
 
     await callFn('setRoomLock', {'roomId': roomId, 'isLocked': false});
+    final docUnlocked = await firestoreDoc('rooms/$roomId');
+    expect(docUnlocked.data()!['isLocked'], isFalse);
+
     await tryLeaveRoom(roomId);
   });
 
