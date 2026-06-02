@@ -161,16 +161,41 @@ class _FindingRoomScreenState extends ConsumerState<FindingRoomScreen> {
             .read(isOnlineProvider)
             .when(data: (v) => v, loading: () => true, error: (_, _) => true);
         if (isOffline) return;
-        ScaffoldMessenger.of(context)
-          ..clearSnackBars()
-          ..showSnackBar(
-            SnackBar(content: Text(next.error ?? 'Something went wrong')),
-          );
         _notifier?.cancelSearch();
-        Navigator.popUntil(
-          context,
-          ModalRoute.withName(AppRoutes.chooseRoomType),
-        );
+        if (next.error == 'This room is locked.') {
+          showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (_) => AlertDialog(
+              title: const Text('Room Locked'),
+              content: const Text(
+                'This room is locked. Ask a member to unlock it.',
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                    Navigator.popUntil(
+                      context,
+                      ModalRoute.withName(AppRoutes.chooseRoomType),
+                    );
+                  },
+                  child: const Text('OK'),
+                ),
+              ],
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context)
+            ..clearSnackBars()
+            ..showSnackBar(
+              SnackBar(content: Text(next.error ?? 'Something went wrong')),
+            );
+          Navigator.popUntil(
+            context,
+            ModalRoute.withName(AppRoutes.chooseRoomType),
+          );
+        }
       }
     });
 

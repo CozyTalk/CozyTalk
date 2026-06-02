@@ -180,7 +180,7 @@ See `firestore.rules` for the canonical source. Key helper functions and per-col
 |---|---|---|---|---|
 | `users/{userId}` | any signed-in user (friends search) | owner; `role=='user'`, `uid==userId`, known-field allowlist (no email) | owner; `role`, `uid`, `createdAt` immutable; only `hatKey`, `moodKey`, `displayName`, `photoUrl`, `lastSeen`, `interest`, `thoughts` | — |
 | `waiting_pool/{userId}` | owner | owner; `createdAt==request.time`, `status=='waiting'`, required keys present | owner; only `updatedAt` field, must equal `request.time` | owner |
-| `rooms/{roomId}` | member or expired tombstone (any signed-in) | false (CF only) | member on custom room; only `isLocked` field | false |
+| `rooms/{roomId}` | member or expired tombstone (any signed-in) | false (CF only) | member on active group room (`status=='active'`, `mode=='group'`); only `isLocked` field | false |
 | `active_sessions/{sessionId}` | member or `proto-*` prefix (any signed-in) | false | false | false |
 | `reports/{reportId}` | admin only | signed-in; `reporterId==uid`, `status=='pending'`, required fields | admin only | admin only |
 | `chat_rooms/{sessionId}/messages/{messageId}` | participant or `proto-*` | participant; required encrypted fields, `senderId==uid`, text ≤12 KB | false | false |
