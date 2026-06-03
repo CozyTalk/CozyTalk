@@ -384,15 +384,19 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
   }
 
   void _addFriend(String uid, String displayName) {
+    final isAutoAccept = ref
+        .read(friendsNotifierProvider)
+        .hasIncomingPendingFrom(uid);
     ref
         .read(friendsNotifierProvider.notifier)
         .sendFriendRequest(AppUser(uid: uid, displayName: displayName));
     showInfoDialog(
       context,
-      type: InfoDialogType.info,
-      title: 'Friend Request Sent',
-      message:
-          'Your friend request has been sent to $displayName.\nWaiting for them to accept.',
+      type: isAutoAccept ? InfoDialogType.success : InfoDialogType.info,
+      title: isAutoAccept ? 'Now Friends!' : 'Friend Request Sent',
+      message: isAutoAccept
+          ? 'You and $displayName are now friends.'
+          : 'Your friend request has been sent to $displayName.\nWaiting for them to accept.',
     );
   }
 

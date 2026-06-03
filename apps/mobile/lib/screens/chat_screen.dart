@@ -250,19 +250,22 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
   }
 
   void _sendFriendRequest([String name = '']) {
-    if (ref.read(friendsNotifierProvider).isLoading) return;
+    final s = ref.read(friendsNotifierProvider);
+    if (s.isLoading) return;
     final uid = _partnerUid;
     if (uid == null || uid.isEmpty) return;
     final targetName = name.isNotEmpty ? name : 'your match';
+    final isAutoAccept = s.hasIncomingPendingFrom(uid);
     ref
         .read(friendsNotifierProvider.notifier)
         .sendFriendRequest(AppUser(uid: uid, displayName: targetName));
     showInfoDialog(
       context,
-      type: InfoDialogType.info,
-      title: 'Friend Request Sent',
-      message:
-          'Your friend request has been sent to $targetName.\nWaiting for them to accept.',
+      type: isAutoAccept ? InfoDialogType.success : InfoDialogType.info,
+      title: isAutoAccept ? 'Now Friends!' : 'Friend Request Sent',
+      message: isAutoAccept
+          ? 'You and $targetName are now friends.'
+          : 'Your friend request has been sent to $targetName.\nWaiting for them to accept.',
     );
   }
 

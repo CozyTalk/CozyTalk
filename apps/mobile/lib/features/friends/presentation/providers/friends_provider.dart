@@ -164,6 +164,11 @@ class FriendsState {
   /// Returns true when [uid] is an accepted friend of the current user.
   bool isFriend(String uid) => friends.any((f) => f.friendUid == uid);
 
+  /// Returns true when there is a pending incoming request from [uid].
+  bool hasIncomingPendingFrom(String uid) => incomingRequests.any(
+    (r) => r.fromUid == uid && r.status == FriendRequestStatus.pending,
+  );
+
   FriendsState copyWith({
     List<AppUser>? allUsers,
     List<Friend>? friends,
@@ -447,9 +452,19 @@ class FriendsNotifier extends Notifier<FriendsState> {
   Future<void> sendFriendRequest(AppUser toUser) async {
     if (state.isLoading) return;
     if (state.friends.any((f) => f.friendUid == toUser.uid)) return;
-    if (state.incomingRequests.any(
-      (r) => r.fromUid == toUser.uid && r.status == FriendRequestStatus.pending,
-    )) {
+    // Mutual request: the other user already sent us a pending request.
+    // Auto-accept their request instead of creating a duplicate.
+    final mutualRequest = state.incomingRequests
+        .where(
+          (r) =>
+              r.fromUid == toUser.uid &&
+              r.status == FriendRequestStatus.pending,
+        )
+        .firstOrNull;
+    if (mutualRequest != null) {
+      state = state.copyWith(isLoading: true, error: null);
+      await _writeAccept(mutualRequest);
+      if (!_disposed) state = state.copyWith(isLoading: false);
       return;
     }
     final authUser = ref.read(authNotifierProvider).user;
