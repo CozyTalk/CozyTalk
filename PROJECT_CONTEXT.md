@@ -210,7 +210,11 @@ See `database.rules.json` for the canonical source. All nodes require `auth != n
 | `waiting_pool` | `mode ASC, status ASC, updatedAt ASC` | Matchmaking: most-recently-updated waiting user by mode |
 | `reports` | `status ASC, createdAt DESC` | Admin dashboard: pending reports by time |
 | `rooms` | `mode ASC, status ASC, isLocked ASC, memberCount ASC` | Group room picker: available unlocked rooms by fill level |
+| `rooms` | `mode ASC, status ASC, isLocked ASC, backgroundTheme ASC, memberCount ASC` | Theme-filtered group room queries |
 | `rooms` | `status ASC, paddingUntil ASC` | `expireRooms` cron: find rooms past their padding window |
+| `friend_requests` | `toUid ASC, createdAt DESC` | Legacy incoming requests query (all statuses) |
+| `friend_requests` | `toUid ASC, status ASC, createdAt DESC` | `watchIncomingRequests` — pending-only filter |
+| `friend_requests` | `fromUid ASC, status ASC` | `watchOutgoingRequests` — pending sent by current user |
 
 ### Cloud Functions — deployed (25 total)
 
@@ -462,7 +466,7 @@ CozyTalk/
 │   └── dev/                          ← seedTtlCollections (one-time HTTP dev helper)
 ├── firestore.rules                   ← deployed Firestore security rules
 ├── database.rules.json               ← deployed RTDB security rules
-├── firestore.indexes.json            ← Firestore composite indexes (6 indexes)
+├── firestore.indexes.json            ← Firestore composite indexes (10 indexes)
 ├── firebase.json                     ← Firebase deploy config (predeploy: npm --prefix functions)
 ├── .gitattributes                    ← enforces LF line endings repo-wide
 ├── .claude/agents/                   ← specialized agent definitions
