@@ -18,6 +18,10 @@ abstract class AuthDatasource {
   });
   Future<void> signOut();
   Future<void> validateToken();
+  // Signs the user out and throws [BanException] if uid is currently banned.
+  Future<void> checkBanStatus(String uid);
+  // Emits (daysLeft, reinstateDate) when user is actively banned, null otherwise.
+  Stream<(int, String)?> watchBanStatus(String uid);
 }
 
 class AuthDatasourceImpl implements AuthDatasource {
@@ -53,6 +57,8 @@ class AuthDatasourceImpl implements AuthDatasource {
           'createdAt': FieldValue.serverTimestamp(),
           'lastSeen': FieldValue.serverTimestamp(),
         });
+      } else {
+        await checkBanStatus(user.uid);
       }
       return AuthUserModel(
         uid: user.uid,
@@ -92,6 +98,9 @@ class AuthDatasourceImpl implements AuthDatasource {
           'lastSeen': FieldValue.serverTimestamp(),
         });
       }
+      if (credential.additionalUserInfo?.isNewUser != true) {
+        await checkBanStatus(user.uid);
+      }
       return AuthUserModel(
         uid: user.uid,
         email: user.email,
@@ -100,7 +109,7 @@ class AuthDatasourceImpl implements AuthDatasource {
     } on FirebaseAuthException catch (e) {
       throw Exception(_authErrorMessage(e.code));
     } catch (_) {
-      throw Exception('Sign in failed. Please try again.');
+      rethrow;
     }
   }
 
@@ -147,6 +156,7 @@ class AuthDatasourceImpl implements AuthDatasource {
         password: password,
       );
       final user = credential.user!;
+      await checkBanStatus(user.uid);
       return AuthUserModel(
         uid: user.uid,
         email: user.email,
@@ -166,7 +176,81 @@ class AuthDatasourceImpl implements AuthDatasource {
     if (user == null) return;
     await user.getIdToken(true);
   }
+
+  @override
+  Future<void> checkBanStatus(String uid) async {
+    final doc = await _firestore.collection('users').doc(uid).get();
+    if (!doc.exists) return;
+    final data = doc.data()!;
+    if (data['banned'] != true) return;
+
+    final expiresAt = data['banExpiresAt'];
+    DateTime? expiryDate;
+    if (expiresAt is Timestamp) {
+      expiryDate = expiresAt.toDate();
+      if (expiryDate.isBefore(DateTime.now())) return;
+    }
+
+    // Still banned — sign out and surface the ban details.
+    await _auth.signOut();
+    final daysLeft = expiryDate == null
+        ? 0
+        : expiryDate.difference(DateTime.now()).inDays + 1;
+    final reinstateStr = expiryDate == null
+        ? 'Permanently'
+        : _formatDate(expiryDate);
+    throw BanException(daysLeft: daysLeft, reinstateDate: reinstateStr);
+  }
+
+  @override
+  Stream<(int, String)?> watchBanStatus(String uid) =>
+      _firestore.collection('users').doc(uid).snapshots().map((doc) {
+        if (!doc.exists) return null;
+        final data = doc.data()!;
+        if (data['banned'] != true) return null;
+        final expiresAt = data['banExpiresAt'];
+        DateTime? expiryDate;
+        if (expiresAt is Timestamp) {
+          expiryDate = expiresAt.toDate();
+          if (expiryDate.isBefore(DateTime.now())) return null;
+        }
+        final daysLeft = expiryDate == null
+            ? 0
+            : expiryDate.difference(DateTime.now()).inDays + 1;
+        return (
+          daysLeft,
+          expiryDate == null ? 'Permanently' : _formatDate(expiryDate),
+        );
+      });
 }
+
+class BanException implements Exception {
+  final int daysLeft;
+  final String reinstateDate;
+  const BanException({required this.daysLeft, required this.reinstateDate});
+
+  @override
+  String toString() =>
+      'BanException(daysLeft: $daysLeft, reinstateDate: $reinstateDate)';
+}
+
+const _monthNames = [
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
+];
+
+String _formatDate(DateTime dt) =>
+    '${_monthNames[dt.month - 1]} ${dt.day}, ${dt.year}';
 
 String _roleForEmail(String? email) =>
     (email?.toLowerCase().endsWith('@cozytalk.com') ?? false)

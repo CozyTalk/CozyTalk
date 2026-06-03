@@ -139,10 +139,12 @@ class _FindingRoomScreenState extends ConsumerState<FindingRoomScreen>
       // Re-read right before navigating so _subscribeToRoom has had time
       // to populate currentRoom with the real backgroundTheme.
       final latestRoom = ref.read(matchmakingNotifierProvider).currentRoom;
-      final finalTheme = resolveRoomTheme(
-        latestRoom?.backgroundTheme,
-        mode: latestRoom?.mode == RoomMode.group ? 'group' : '1v1',
-      );
+      final finalTheme = latestRoom?.backgroundTheme != null
+          ? resolveRoomTheme(
+              latestRoom!.backgroundTheme,
+              mode: latestRoom.mode == RoomMode.group ? 'group' : '1v1',
+            )
+          : resolveRandomRoomTheme(roomId);
       Navigator.pushReplacementNamed(
         context,
         isGroup ? AppRoutes.groupChatScreen : AppRoutes.chatScreen,
@@ -185,10 +187,12 @@ class _FindingRoomScreenState extends ConsumerState<FindingRoomScreen>
       (_, room) {
         if (!_didMatch || room == null || !mounted) return;
         setState(() {
-          _matchedTheme = resolveRoomTheme(
-            room.backgroundTheme,
-            mode: room.mode == RoomMode.group ? 'group' : '1v1',
-          );
+          _matchedTheme = room.backgroundTheme != null
+              ? resolveRoomTheme(
+                  room.backgroundTheme,
+                  mode: room.mode == RoomMode.group ? 'group' : '1v1',
+                )
+              : resolveRandomRoomTheme(room.roomId);
         });
       },
     );

@@ -4,27 +4,35 @@ import '../theme/app_colors.dart';
 
 /// Shows the account suspended dialog.
 /// [days] = ban duration, [reinstateDate] = human-readable date string.
-/// On "Back To Log in" the entire nav stack is cleared back to login.
+/// [onBackToLogin] overrides the default nav-to-first-route behaviour —
+/// use this when the user is banned while already inside the app so you can
+/// sign them out before clearing the stack.
 void showAccountSuspendedDialog(
   BuildContext context, {
   int days = 30,
   String reinstateDate = 'May 29, 2026',
+  VoidCallback? onBackToLogin,
 }) {
   showDialog(
     context: context,
     barrierDismissible: false,
-    builder: (_) =>
-        _AccountSuspendedDialog(days: days, reinstateDate: reinstateDate),
+    builder: (_) => _AccountSuspendedDialog(
+      days: days,
+      reinstateDate: reinstateDate,
+      onBackToLogin: onBackToLogin,
+    ),
   );
 }
 
 class _AccountSuspendedDialog extends StatelessWidget {
   final int days;
   final String reinstateDate;
+  final VoidCallback? onBackToLogin;
 
   const _AccountSuspendedDialog({
     required this.days,
     required this.reinstateDate,
+    this.onBackToLogin,
   });
 
   @override
@@ -94,7 +102,12 @@ class _AccountSuspendedDialog extends StatelessWidget {
               height: 42,
               child: ElevatedButton(
                 onPressed: () {
-                  Navigator.of(context).popUntil((route) => route.isFirst);
+                  if (onBackToLogin != null) {
+                    Navigator.of(context).pop();
+                    onBackToLogin!();
+                  } else {
+                    Navigator.of(context).popUntil((route) => route.isFirst);
+                  }
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.saveBtn,
