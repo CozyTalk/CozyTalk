@@ -6,14 +6,17 @@ class RemoveFromQueue {
   final JukeboxRepository _repository;
   const RemoveFromQueue(this._repository);
 
-  Future<void> call({
+  Future<JukeboxRoomState?> call({
     required String roomId,
     required JukeboxRoomState current,
     required int index,
-  }) {
-    if (index < 0 || index >= current.queue.length) return Future.value();
+  }) async {
+    if (index < 0 || index >= current.queue.length) return null;
     final newQueue = List<JukeboxTrack>.from(current.queue)..removeAt(index);
-    if (newQueue.isEmpty) return _repository.clearJukebox(roomId);
+    if (newQueue.isEmpty) {
+      await _repository.clearJukebox(roomId);
+      return null;
+    }
     int newIndex = current.currentIndex;
     if (index < current.currentIndex) newIndex--;
     newIndex = newIndex.clamp(0, newQueue.length - 1);
@@ -25,6 +28,7 @@ class RemoveFromQueue {
           : current.startedAt,
       queue: newQueue,
     );
-    return _repository.writeJukeboxState(roomId: roomId, roomState: updated);
+    await _repository.writeJukeboxState(roomId: roomId, roomState: updated);
+    return updated;
   }
 }
