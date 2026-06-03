@@ -316,17 +316,10 @@ class FriendsDatasourceImpl implements FriendsDatasource {
     // from sending a new request after unfriending.
     final parts = friendshipId.split('_');
     if (parts.length == 2) {
-      for (final reqId in [
-        '${parts[0]}_${parts[1]}',
-        '${parts[1]}_${parts[0]}',
-      ]) {
-        try {
-          await _firestore.collection('friend_requests').doc(reqId).delete();
-          break;
-        } on FirebaseException catch (e) {
-          if (e.code != 'not-found') rethrow;
-        }
-      }
+      await Future.wait([
+        _firestore.collection('friend_requests').doc('${parts[0]}_${parts[1]}').delete(),
+        _firestore.collection('friend_requests').doc('${parts[1]}_${parts[0]}').delete(),
+      ]);
     }
   }
 
