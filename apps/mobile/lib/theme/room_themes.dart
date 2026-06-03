@@ -33,3 +33,11 @@ RoomTheme resolveRoomTheme(String? themeId, {required String mode}) {
         : 'assets/images/group_doodle.png',
   );
 }
+
+/// Deterministic: derives a theme from roomId so both clients resolve the same background.
+/// Used when a room has no backgroundTheme (e.g. both users pressed Random Theme).
+RoomTheme resolveRandomRoomTheme(String roomId) {
+  final themes = _kThemes.values.toList();
+  final seed = roomId.codeUnits.fold(0, (a, b) => a + b);
+  return themes[seed % themes.length];
+}
