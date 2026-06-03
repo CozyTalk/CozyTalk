@@ -325,8 +325,9 @@ class FriendsDatasourceImpl implements FriendsDatasource {
             'status': 'pending',
           });
           break;
-        } catch (_) {
-          // Wrong direction or doc absent — try the other.
+        } on FirebaseException catch (e) {
+          if (e.code != 'not-found') rethrow;
+          // Wrong direction — try the other.
         }
       }
     }

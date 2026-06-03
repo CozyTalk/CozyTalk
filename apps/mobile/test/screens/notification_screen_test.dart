@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mobile/features/friends/domain/entities/app_user.dart';
+import 'package:mobile/features/friends/domain/entities/friend.dart';
 import 'package:mobile/features/friends/domain/entities/friend_request.dart';
 import 'package:mobile/features/friends/presentation/providers/friends_provider.dart';
 import 'package:mobile/screens/notification_screen.dart';
@@ -139,11 +140,18 @@ void main() {
     testWidgets('does not show card for request from existing friend', (
       tester,
     ) async {
-      // incomingRequests from datasource is already pending-only; the screen
-      // additionally filters out requests from users in the friends list.
-      // Simulate the filtered result: empty list.
+      final friend = Friend(
+        friendUid: 'u1',
+        friendDisplayName: 'Alice',
+        friendshipId: 'me_u1',
+        chatRoomId: 'me_u1',
+        friendedAt: DateTime.now(),
+      );
       final fake = _FakeFriendsNotifier(
-        initial: const FriendsState(incomingRequests: []),
+        initial: FriendsState(
+          incomingRequests: [_makeRequest(fromUid: 'u1')],
+          friends: [friend],
+        ),
       );
       await tester.pumpWidget(_buildScreen(fake));
       expect(find.textContaining('wants to be friends'), findsNothing);
