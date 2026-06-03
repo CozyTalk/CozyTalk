@@ -258,6 +258,11 @@ class _FriendRequestListenerState
           _seenIds = next.map((r) => r.id).toSet();
           return;
         }
+        // Prune IDs that are no longer in the incoming list so that a
+        // re-sent request (same docId) is treated as new.
+        final currentIds = next.map((r) => r.id).toSet();
+        _seenIds!.removeWhere((id) => !currentIds.contains(id));
+
         for (final request in next.where((r) => !_seenIds!.contains(r.id))) {
           _seenIds!.add(request.id);
           showFriendRequestPopup(
