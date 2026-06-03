@@ -12,7 +12,7 @@ void main() {
     usecase = RemoveFromQueue(repo);
   });
 
-  test('removes correct index from queue', () async {
+  test('removes correct index from queue and returns updated state', () async {
     final current = makeRoomState(
       queue: [
         makeTrack(id: '1'),
@@ -21,20 +21,22 @@ void main() {
       ],
     );
 
-    await usecase(roomId: 'room1', current: current, index: 1);
+    final result = await usecase(roomId: 'room1', current: current, index: 1);
 
     expect(repo.writeCount, 1);
     final q = repo.lastWrittenState!.queue;
     expect(q.map((t) => t.id).toList(), ['1', '3']);
+    expect(result?.queue.map((t) => t.id).toList(), ['1', '3']);
   });
 
-  test('calls clearJukebox when last track removed', () async {
+  test('calls clearJukebox when last track removed and returns null', () async {
     final current = makeRoomState(queue: [makeTrack()]);
 
-    await usecase(roomId: 'room1', current: current, index: 0);
+    final result = await usecase(roomId: 'room1', current: current, index: 0);
 
     expect(repo.clearCount, 1);
     expect(repo.writeCount, 0);
+    expect(result, isNull);
   });
 
   test(
@@ -85,10 +87,11 @@ void main() {
     expect(repo.lastWrittenState?.startedAt, 99999);
   });
 
-  test('does nothing for out-of-bounds index', () async {
+  test('does nothing and returns null for out-of-bounds index', () async {
     final current = makeRoomState(queue: [makeTrack()]);
-    await usecase(roomId: 'room1', current: current, index: 5);
+    final result = await usecase(roomId: 'room1', current: current, index: 5);
     expect(repo.writeCount, 0);
     expect(repo.clearCount, 0);
+    expect(result, isNull);
   });
 }
