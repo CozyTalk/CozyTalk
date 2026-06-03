@@ -33,3 +33,11 @@ RoomTheme resolveRoomTheme(String? themeId, {required String mode}) {
         : 'assets/images/group_doodle.png',
   );
 }
+
+/// Picks a random theme from the available set.
+/// Used when a room has no backgroundTheme (e.g. both users pressed Random).
+RoomTheme resolveRandomRoomTheme(String roomId) {
+  final themes = _kThemes.values.toList();
+  final seed = roomId.codeUnits.fold(0, (a, b) => a + b);
+  return themes[seed % themes.length];
+}
