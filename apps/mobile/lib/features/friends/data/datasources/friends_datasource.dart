@@ -317,8 +317,14 @@ class FriendsDatasourceImpl implements FriendsDatasource {
     final parts = friendshipId.split('_');
     if (parts.length == 2) {
       await Future.wait([
-        _firestore.collection('friend_requests').doc('${parts[0]}_${parts[1]}').delete(),
-        _firestore.collection('friend_requests').doc('${parts[1]}_${parts[0]}').delete(),
+        _firestore
+            .collection('friend_requests')
+            .doc('${parts[0]}_${parts[1]}')
+            .delete(),
+        _firestore
+            .collection('friend_requests')
+            .doc('${parts[1]}_${parts[0]}')
+            .delete(),
       ]);
     }
   }
