@@ -309,6 +309,26 @@ class FriendsDatasourceImpl implements FriendsDatasource {
   @override
   Future<void> removeFriend({required String friendshipId}) async {
     await _firestore.collection('friendships').doc(friendshipId).delete();
+    // Reset the corresponding friend_request back to pending so the
+    // notification card on the receiver's screen shows Accept/Decline again.
+    // The friendshipId is sorted(uid1_uid2); try both request directions since
+    // the original sender direction is unknown at this point.
+    final parts = friendshipId.split('_');
+    if (parts.length == 2) {
+      for (final reqId in [
+        '${parts[0]}_${parts[1]}',
+        '${parts[1]}_${parts[0]}',
+      ]) {
+        try {
+          await _firestore.collection('friend_requests').doc(reqId).update({
+            'status': 'pending',
+          });
+          break;
+        } catch (_) {
+          // Wrong direction or doc absent — try the other.
+        }
+      }
+    }
   }
 
   @override

@@ -56,7 +56,7 @@ class _NotificationScreenState extends ConsumerState<NotificationScreen> {
                       itemBuilder: (_, i) {
                         final req = displayed[i];
                         final action = state.pendingActions[req.id];
-                        return _buildCard(req, action);
+                        return _buildCard(req, action, state);
                       },
                     ),
             ),
@@ -142,7 +142,7 @@ class _NotificationScreenState extends ConsumerState<NotificationScreen> {
   }
 
   // ─── Notification Card ───────────────────────────────────────
-  Widget _buildCard(FriendRequest request, String? action) {
+  Widget _buildCard(FriendRequest request, String? action, FriendsState state) {
     const imagePath = 'assets/images/icons/Friends.svg';
     final name = request.fromDisplayName.isNotEmpty
         ? request.fromDisplayName
@@ -214,7 +214,7 @@ class _NotificationScreenState extends ConsumerState<NotificationScreen> {
                 const SizedBox(height: 12),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.end,
-                  children: _buildButtons(request, action),
+                  children: _buildButtons(request, action, state),
                 ),
               ],
             ),
@@ -224,11 +224,20 @@ class _NotificationScreenState extends ConsumerState<NotificationScreen> {
     );
   }
 
-  List<Widget> _buildButtons(FriendRequest request, String? action) {
+  List<Widget> _buildButtons(
+    FriendRequest request,
+    String? action,
+    FriendsState state,
+  ) {
     // 'undoing' = undo Firestore write in-flight → show Accept/Decline optimistically.
     // null + pending status = not yet touched → Accept/Decline.
+    // accepted + no longer friends (unfriended after accept) → also show Accept/Decline.
     final isPending = request.status == FriendRequestStatus.pending;
-    if (action == 'undoing' || (action == null && isPending)) {
+    final effectivePending =
+        isPending ||
+        (request.status == FriendRequestStatus.accepted &&
+            !state.isFriend(request.fromUid));
+    if (action == 'undoing' || (action == null && effectivePending)) {
       return [
         _buildButton(
           label: 'Accept',

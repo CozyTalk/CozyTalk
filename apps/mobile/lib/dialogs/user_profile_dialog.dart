@@ -16,6 +16,7 @@ class UserProfileDialog extends ConsumerStatefulWidget {
   final AddFriendStatus friendStatus;
   final VoidCallback? onAddFriend;
   final VoidCallback? onCancelRequest;
+  final VoidCallback? onUnfriend;
 
   /// Called after the dialog is closed when the user taps Report.
   /// If null, falls back to the design-only ReportDialog.
@@ -44,6 +45,7 @@ class UserProfileDialog extends ConsumerStatefulWidget {
     this.friendStatus = AddFriendStatus.notAdded,
     this.onAddFriend,
     this.onCancelRequest,
+    this.onUnfriend,
     this.onReport,
     this.avatarState,
     this.uid,
@@ -174,18 +176,24 @@ class _UserProfileDialogState extends ConsumerState<UserProfileDialog> {
                         Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            // Add friend / pending / already friends
+                            // Add friend / pending (cancel) / friends (unfriend)
                             Semantics(
                               label: switch (widget.friendStatus) {
                                 AddFriendStatus.notAdded => 'Add friend',
                                 AddFriendStatus.pending =>
                                   'Cancel friend request',
-                                AddFriendStatus.friends => 'Already friends',
+                                AddFriendStatus.friends => 'Remove friend',
                               },
                               button: true,
                               child: GestureDetector(
                                 onTap: switch (widget.friendStatus) {
-                                  AddFriendStatus.friends => null,
+                                  AddFriendStatus.friends =>
+                                    widget.onUnfriend != null
+                                        ? () {
+                                            Navigator.pop(context);
+                                            widget.onUnfriend!();
+                                          }
+                                        : null,
                                   AddFriendStatus.pending => () {
                                     Navigator.pop(context);
                                     widget.onCancelRequest?.call();
@@ -200,18 +208,30 @@ class _UserProfileDialogState extends ConsumerState<UserProfileDialog> {
                                   width: 44,
                                   height: 44,
                                   decoration: BoxDecoration(
-                                    color:
-                                        widget.friendStatus ==
-                                            AddFriendStatus.notAdded
-                                        ? const Color(0xFFDCEBCE)
-                                        : Colors.grey.shade200,
+                                    color: switch (widget.friendStatus) {
+                                      AddFriendStatus.notAdded => const Color(
+                                        0xFFDCEBCE,
+                                      ),
+                                      AddFriendStatus.pending => const Color(
+                                        0xFFFFF3E0,
+                                      ),
+                                      AddFriendStatus.friends => const Color(
+                                        0xFFFFEBEE,
+                                      ),
+                                    },
                                     borderRadius: BorderRadius.circular(12),
                                     border: Border.all(
-                                      color:
-                                          widget.friendStatus ==
-                                              AddFriendStatus.notAdded
-                                          ? const Color(0xFFC7D2B5)
-                                          : Colors.grey.shade400,
+                                      color: switch (widget.friendStatus) {
+                                        AddFriendStatus.notAdded => const Color(
+                                          0xFFC7D2B5,
+                                        ),
+                                        AddFriendStatus.pending => const Color(
+                                          0xFFFFCC80,
+                                        ),
+                                        AddFriendStatus.friends => const Color(
+                                          0xFFFFCDD2,
+                                        ),
+                                      },
                                       width: 1,
                                     ),
                                   ),
@@ -221,13 +241,19 @@ class _UserProfileDialogState extends ConsumerState<UserProfileDialog> {
                                       width: 24,
                                       height: 24,
                                       colorFilter:
-                                          widget.friendStatus !=
-                                              AddFriendStatus.notAdded
-                                          ? ColorFilter.mode(
-                                              Colors.grey.shade500,
-                                              BlendMode.srcIn,
-                                            )
-                                          : null,
+                                          switch (widget.friendStatus) {
+                                            AddFriendStatus.notAdded => null,
+                                            AddFriendStatus.pending =>
+                                              const ColorFilter.mode(
+                                                Color(0xFFE67E22),
+                                                BlendMode.srcIn,
+                                              ),
+                                            AddFriendStatus.friends =>
+                                              const ColorFilter.mode(
+                                                Color(0xFFCF5733),
+                                                BlendMode.srcIn,
+                                              ),
+                                          },
                                     ),
                                   ),
                                 ),

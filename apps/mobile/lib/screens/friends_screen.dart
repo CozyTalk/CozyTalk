@@ -524,7 +524,7 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
           case 'Unfriend':
             showRemoveConfirmDialog(
               context: context,
-              friend: friend,
+              friendName: friend.name,
               onConfirm: () {
                 if (ref.read(friendsNotifierProvider).isLoading) return;
                 _pendingRemoveName = friend.displayName;
