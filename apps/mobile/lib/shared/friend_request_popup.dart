@@ -96,7 +96,7 @@ class _FriendRequestBanner extends ConsumerWidget {
         position: slideAnim,
         child: Material(
           color: Colors.transparent,
-          // liveRegion announces the banner text to screen readers on entry.
+          // Slide-in overlays bypass sequential focus order; liveRegion triggers announcement on entry.
           child: Semantics(
             liveRegion: true,
             child: GestureDetector(
