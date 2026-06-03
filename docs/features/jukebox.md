@@ -15,7 +15,7 @@ features/jukebox/
 │       ├── watch_jukebox.dart          WatchJukebox — stream RTDB state
 │       ├── resolve_track.dart          ResolveTrack — extract videoId + fetch YouTube oEmbed metadata
 │       ├── add_to_queue.dart           AddToQueue — appends track; auto-starts on first add; returns new JukeboxRoomState
-│       ├── remove_from_queue.dart      RemoveFromQueue — splice + index adjustment
+│       ├── remove_from_queue.dart      RemoveFromQueue — splice + index adjustment; returns updated JukeboxRoomState? (null when queue cleared)
 │       ├── skip_track.dart             SkipTrack — advance index or clear when exhausted; resets pausedAt = 0
 │       └── set_playing.dart            SetPlaying — pause/resume with startedAt/pausedAt sync math
 ├── data/
@@ -53,6 +53,8 @@ features/jukebox/
 Sentinel pattern for nullable fields (`roomId`, `roomState`, `resolveError`) — callers must pass `null` explicitly to clear.
 
 After `addUrl()` succeeds, `roomState` is updated optimistically from the `JukeboxRoomState` returned by `AddToQueue` — the NOW PLAYING section becomes visible immediately without waiting for the RTDB round-trip.
+
+After `removeFromQueue()` succeeds, `roomState` is updated optimistically from the `JukeboxRoomState?` returned by `RemoveFromQueue` (null = queue cleared and `roomState` cleared). This eliminates the race window where `addUrl()`'s pre-check would still see a full queue immediately after a remove.
 
 ## Sync Model
 
@@ -101,6 +103,8 @@ Queue max: 4 tracks (index 0 = now playing + 3 up next). All writes are full-doc
 - `JukeboxChatPlayer` (`ConsumerStatefulWidget`) mounts in `ChatScreen.body` (not inside the bottom sheet). It calls `enterRoom()` on mount and `leaveRoom()` on dispose (clears subscription and resets state when user navigates back). The embed is always rendered here so it never restarts when the sheet is opened/closed.
 - First track added to an empty queue auto-starts: `isPlaying: true`, `startedAt: now`, `pausedAt: 0`.
 - `AddToQueue` returns the new `JukeboxRoomState`; `addUrl()` applies it optimistically so the NOW PLAYING section renders without waiting for RTDB.
+- `RemoveFromQueue` returns the updated `JukeboxRoomState?` (null when the last track is removed and the queue is cleared); `removeFromQueue()` applies it immediately so `addUrl()`'s queue-full guard reflects the true count before the RTDB round-trip completes.
+- `SongPanelBody` (in `song_dialog.dart`) defers WebView creation until the panel has a real layout surface. Once a current track is detected via RTDB (even before the panel is opened), the WebView is armed via a post-frame callback so playback begins automatically on room entry without requiring the Song panel to be opened first.
 - Auto-advance: when the currently playing track ends, `JukeboxWebPlayer` fires `onTrackEnded` → `notifier.skip()` → RTDB updated → all clients load the next embed. On Android this is triggered by `onStateChange(0)` (ended) in the YouTube IFrame API JS. On web it uses the `onStateChange` postMessage event from YouTube.
 - `JukeboxWebPlayer` is a conditional export. In test environments (no platform WebView), the native controller init throws and `build()` returns `SizedBox.shrink()`.
 - `JukeboxSheet` shows track title, artist, artwork, play/pause button, skip button, and queue management. It does NOT render an embed — the embed lives in `JukeboxChatPlayer` to prevent restarts.
