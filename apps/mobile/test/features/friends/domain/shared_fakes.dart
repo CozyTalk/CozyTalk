@@ -9,6 +9,7 @@ class FakeFriendsRepository implements FriendsRepository {
   List<AppUser> allUsers = [];
   List<Friend> friends = [];
   List<FriendRequest> requests = [];
+  List<FriendRequest> outgoingRequests = [];
   List<FriendMessage> messages = [];
   List<AppUser> usersById = [];
   Exception? error;
@@ -63,6 +64,20 @@ class FakeFriendsRepository implements FriendsRepository {
   @override
   Stream<List<FriendRequest>> watchIncomingRequests() =>
       error != null ? Stream.error(error!) : Stream.value(requests);
+
+  @override
+  Stream<List<FriendRequest>> watchOutgoingRequests() =>
+      error != null ? Stream.error(error!) : Stream.value(outgoingRequests);
+
+  int cancelFriendRequestCount = 0;
+  String? lastCancelToUid;
+
+  @override
+  Future<void> cancelFriendRequest({required String toUid}) async {
+    if (error != null) throw error!;
+    cancelFriendRequestCount++;
+    lastCancelToUid = toUid;
+  }
 
   @override
   Stream<List<FriendMessage>> watchMessages(String chatRoomId) {
@@ -128,6 +143,19 @@ class FakeFriendsRepository implements FriendsRepository {
     if (error != null) throw error!;
     declineFriendRequestCount++;
     lastDeclinedRequestId = requestId;
+  }
+
+  @override
+  Future<void> undoAcceptFriendRequest({
+    required String requestId,
+    required String friendshipId,
+  }) async {
+    if (error != null) throw error!;
+  }
+
+  @override
+  Future<void> undoDeclineFriendRequest({required String requestId}) async {
+    if (error != null) throw error!;
   }
 
   @override

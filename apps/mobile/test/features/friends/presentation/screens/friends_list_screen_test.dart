@@ -11,7 +11,7 @@ class _FakeFriendsNotifier extends FriendsNotifier {
   int acceptRequestCount = 0;
   FriendRequest? lastAcceptedRequest;
   int declineRequestCount = 0;
-  String? lastDeclinedRequestId;
+  FriendRequest? lastDeclinedRequest;
   int removeFriendCount = 0;
   String? lastRemovedFriendshipId;
   final FriendsState _initial;
@@ -32,11 +32,12 @@ class _FakeFriendsNotifier extends FriendsNotifier {
   }
 
   @override
-  Future<void> declineRequest(String requestId) async {
+  Future<void> declineRequest(FriendRequest request) async {
     declineRequestCount++;
-    lastDeclinedRequestId = requestId;
+    lastDeclinedRequest = request;
   }
 
+  @override
   @override
   Future<void> removeFriend(String friendshipId) async {
     removeFriendCount++;
@@ -155,7 +156,7 @@ void main() {
       await tester.tap(find.byIcon(Icons.cancel_outlined));
       await tester.pump();
       expect(fake.declineRequestCount, 1);
-      expect(fake.lastDeclinedRequestId, 'r2');
+      expect(fake.lastDeclinedRequest?.id, 'r2');
     });
 
     testWidgets('Accept and Decline buttons are disabled when isLoading', (

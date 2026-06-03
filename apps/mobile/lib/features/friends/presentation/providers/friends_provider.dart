@@ -6,6 +6,7 @@ import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../auth/presentation/providers/auth_provider.dart';
+import '../../../profile/presentation/providers/profile_provider.dart';
 import '../../data/datasources/friends_datasource.dart';
 import '../../data/repositories/friends_repository_impl.dart';
 import '../../domain/entities/app_user.dart';
@@ -20,6 +21,7 @@ import '../../domain/usecases/get_users_by_ids.dart';
 import '../../domain/usecases/remove_friend.dart';
 import '../../domain/usecases/send_friend_request.dart';
 import '../../domain/usecases/set_chat_read.dart';
+import '../../domain/usecases/cancel_friend_request.dart';
 import '../../domain/usecases/watch_all_users.dart';
 import '../../domain/usecases/watch_chat_read.dart';
 import '../../domain/usecases/watch_friend_last_message.dart';
@@ -27,6 +29,7 @@ import '../../domain/usecases/watch_friend_presence.dart';
 import '../../domain/usecases/watch_friend_room.dart';
 import '../../domain/usecases/watch_friends.dart';
 import '../../domain/usecases/watch_incoming_requests.dart';
+import '../../domain/usecases/watch_outgoing_requests.dart';
 
 final friendsDatasourceProvider = Provider<FriendsDatasource>(
   (ref) => FriendsDatasourceImpl(
@@ -50,6 +53,14 @@ final _watchFriendsProvider = Provider<WatchFriends>(
 
 final _watchIncomingRequestsProvider = Provider<WatchIncomingRequests>(
   (ref) => WatchIncomingRequests(ref.watch(friendsRepositoryProvider)),
+);
+
+final _watchOutgoingRequestsProvider = Provider<WatchOutgoingRequests>(
+  (ref) => WatchOutgoingRequests(ref.watch(friendsRepositoryProvider)),
+);
+
+final _cancelFriendRequestProvider = Provider<CancelFriendRequest>(
+  (ref) => CancelFriendRequest(ref.watch(friendsRepositoryProvider)),
 );
 
 final _sendFriendRequestProvider = Provider<SendFriendRequest>(
@@ -113,6 +124,8 @@ class FriendsState {
   final List<AppUser> allUsers;
   final List<Friend> friends;
   final List<FriendRequest> incomingRequests;
+  // Pending requests sent by the current user, keyed lookup via toUid.
+  final List<FriendRequest> outgoingRequests;
   final bool isLoading;
   final String? error;
   // keyed by friendUid
@@ -125,11 +138,15 @@ class FriendsState {
   final Map<String, FriendRoomStatus?> roomMap;
   // keyed by chatRoomId — count of unread messages from the friend (not self)
   final Map<String, int> unreadCountMap;
+  // Queued actions not yet written to Firestore: requestId → 'accepted'/'declined'.
+  // Committed to Firestore when the user leaves the NotificationScreen.
+  final Map<String, String> pendingActions;
 
   const FriendsState({
     this.allUsers = const [],
     this.friends = const [],
     this.incomingRequests = const [],
+    this.outgoingRequests = const [],
     this.isLoading = false,
     this.error,
     this.presenceMap = const {},
@@ -137,12 +154,21 @@ class FriendsState {
     this.lastMessageTimestampMap = const {},
     this.roomMap = const {},
     this.unreadCountMap = const {},
+    this.pendingActions = const {},
   });
+
+  /// Returns true when the current user has already sent a pending request to [uid].
+  bool hasSentRequestTo(String uid) =>
+      outgoingRequests.any((r) => r.toUid == uid);
+
+  /// Returns true when [uid] is an accepted friend of the current user.
+  bool isFriend(String uid) => friends.any((f) => f.friendUid == uid);
 
   FriendsState copyWith({
     List<AppUser>? allUsers,
     List<Friend>? friends,
     List<FriendRequest>? incomingRequests,
+    List<FriendRequest>? outgoingRequests,
     bool? isLoading,
     Object? error = _sentinel,
     Map<String, bool>? presenceMap,
@@ -150,10 +176,12 @@ class FriendsState {
     Map<String, DateTime?>? lastMessageTimestampMap,
     Map<String, FriendRoomStatus?>? roomMap,
     Map<String, int>? unreadCountMap,
+    Map<String, String>? pendingActions,
   }) => FriendsState(
     allUsers: allUsers ?? this.allUsers,
     friends: friends ?? this.friends,
     incomingRequests: incomingRequests ?? this.incomingRequests,
+    outgoingRequests: outgoingRequests ?? this.outgoingRequests,
     isLoading: isLoading ?? this.isLoading,
     error: error == _sentinel ? this.error : error as String?,
     presenceMap: presenceMap ?? this.presenceMap,
@@ -162,12 +190,14 @@ class FriendsState {
         lastMessageTimestampMap ?? this.lastMessageTimestampMap,
     roomMap: roomMap ?? this.roomMap,
     unreadCountMap: unreadCountMap ?? this.unreadCountMap,
+    pendingActions: pendingActions ?? this.pendingActions,
   );
 }
 
 class FriendsNotifier extends Notifier<FriendsState> {
   StreamSubscription<List<Friend>>? _friendsSub;
   StreamSubscription<List<FriendRequest>>? _requestsSub;
+  StreamSubscription<List<FriendRequest>>? _outgoingRequestsSub;
   StreamSubscription<List<AppUser>>? _usersSub;
 
   final Map<String, StreamSubscription<bool>> _presenceSubs = {};
@@ -197,6 +227,7 @@ class FriendsNotifier extends Notifier<FriendsState> {
       _disposed = true;
       _friendsSub?.cancel();
       _requestsSub?.cancel();
+      _outgoingRequestsSub?.cancel();
       _usersSub?.cancel();
       for (final sub in _presenceSubs.values) {
         sub.cancel();
@@ -222,10 +253,41 @@ class FriendsNotifier extends Notifier<FriendsState> {
       ),
     );
 
-    _requestsSub = ref
-        .read(_watchIncomingRequestsProvider)()
+    _requestsSub = ref.read(_watchIncomingRequestsProvider)().listen(
+      (requests) {
+        // Sort newest-first; keep at most 10 cards.
+        final sorted = [...requests]
+          ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+        final capped = sorted.take(10).toList();
+
+        // Clear 'undoing' markers for requests confirmed back to pending.
+        final pendingIds = capped
+            .where((r) => r.status == FriendRequestStatus.pending)
+            .map((r) => r.id)
+            .toSet();
+        // Drop stale pendingActions for cards that fell off the cap.
+        final cappedIds = capped.map((r) => r.id).toSet();
+        final newActions = Map<String, String>.from(state.pendingActions)
+          ..removeWhere(
+            (id, v) =>
+                (v == 'undoing' && pendingIds.contains(id)) ||
+                !cappedIds.contains(id),
+          );
+
+        state = state.copyWith(
+          incomingRequests: capped,
+          pendingActions: newActions,
+        );
+      },
+      onError: (Object e) => state = state.copyWith(
+        error: e.toString().replaceFirst('Exception: ', ''),
+      ),
+    );
+
+    _outgoingRequestsSub = ref
+        .read(_watchOutgoingRequestsProvider)()
         .listen(
-          (requests) => state = state.copyWith(incomingRequests: requests),
+          (requests) => state = state.copyWith(outgoingRequests: requests),
           onError: (Object e) => state = state.copyWith(
             error: e.toString().replaceFirst('Exception: ', ''),
           ),
@@ -384,6 +446,12 @@ class FriendsNotifier extends Notifier<FriendsState> {
 
   Future<void> sendFriendRequest(AppUser toUser) async {
     if (state.isLoading) return;
+    if (state.friends.any((f) => f.friendUid == toUser.uid)) return;
+    if (state.incomingRequests.any(
+      (r) => r.fromUid == toUser.uid && r.status == FriendRequestStatus.pending,
+    )) {
+      return;
+    }
     final authUser = ref.read(authNotifierProvider).user;
     if (authUser?.email == null) {
       state = state.copyWith(
@@ -391,7 +459,17 @@ class FriendsNotifier extends Notifier<FriendsState> {
       );
       return;
     }
-    final myDisplayName = authUser?.displayName ?? 'Anonymous';
+    final profileName = ref
+        .read(profileNotifierProvider)
+        .profile
+        ?.displayName
+        ?.trim();
+    final authName = authUser?.displayName?.trim();
+    final myDisplayName = (profileName?.isNotEmpty ?? false)
+        ? profileName!
+        : (authName?.isNotEmpty ?? false)
+        ? authName!
+        : 'Anonymous';
     state = state.copyWith(isLoading: true, error: null);
     try {
       await ref.read(_sendFriendRequestProvider)(
@@ -408,18 +486,11 @@ class FriendsNotifier extends Notifier<FriendsState> {
     }
   }
 
-  Future<void> acceptRequest(FriendRequest request) async {
+  Future<void> cancelFriendRequest(String toUid) async {
     if (state.isLoading) return;
-    final myDisplayName =
-        ref.read(authNotifierProvider).user?.displayName ?? 'Anonymous';
     state = state.copyWith(isLoading: true, error: null);
     try {
-      await ref.read(_acceptFriendRequestProvider)(
-        requestId: request.id,
-        fromUid: request.fromUid,
-        fromDisplayName: request.fromDisplayName,
-        myDisplayName: myDisplayName,
-      );
+      await ref.read(_cancelFriendRequestProvider)(toUid: toUid);
       state = state.copyWith(isLoading: false);
     } catch (e) {
       state = state.copyWith(
@@ -429,19 +500,125 @@ class FriendsNotifier extends Notifier<FriendsState> {
     }
   }
 
-  Future<void> declineRequest(String requestId) async {
-    if (state.isLoading) return;
-    state = state.copyWith(isLoading: true, error: null);
+  // Called by NotificationScreen — queues locally, no Firestore write yet.
+  void queueAccept(FriendRequest request) {
+    state = state.copyWith(
+      pendingActions: {...state.pendingActions, request.id: 'accepted'},
+    );
+  }
+
+  // Called by NotificationScreen — queues locally, no Firestore write yet.
+  void queueDecline(FriendRequest request) {
+    state = state.copyWith(
+      pendingActions: {...state.pendingActions, request.id: 'declined'},
+    );
+  }
+
+  // Reverts a queued (not-yet-committed) action — purely local, no Firestore.
+  void undoPendingAction(String requestId) {
+    final newActions = Map<String, String>.from(state.pendingActions)
+      ..remove(requestId);
+    state = state.copyWith(pendingActions: newActions);
+  }
+
+  // Reverts an already-committed action by writing back to Firestore.
+  // Requires the security rule allowing toUid to revert status to 'pending'.
+  Future<void> undoCommittedAction(FriendRequest request) async {
+    // Optimistic: show Accept/Decline immediately while the write is in-flight.
+    state = state.copyWith(
+      pendingActions: {...state.pendingActions, request.id: 'undoing'},
+    );
     try {
-      await ref.read(_declineFriendRequestProvider)(requestId: requestId);
-      state = state.copyWith(isLoading: false);
+      if (request.status == FriendRequestStatus.accepted) {
+        final currentUid = ref.read(friendsDatasourceProvider).currentUid;
+        final sorted = [request.fromUid, currentUid]..sort();
+        await ref
+            .read(friendsRepositoryProvider)
+            .undoAcceptFriendRequest(
+              requestId: request.id,
+              friendshipId: '${sorted[0]}_${sorted[1]}',
+            );
+      } else {
+        await ref
+            .read(friendsRepositoryProvider)
+            .undoDeclineFriendRequest(requestId: request.id);
+      }
+      // Stream will fire with status=pending and clear 'undoing' automatically.
     } catch (e) {
-      state = state.copyWith(
-        isLoading: false,
-        error: e.toString().replaceFirst('Exception: ', ''),
-      );
+      final newActions = Map<String, String>.from(state.pendingActions);
+      if (newActions[request.id] == 'undoing') newActions.remove(request.id);
+      if (!_disposed) {
+        state = state.copyWith(
+          pendingActions: newActions,
+          error: e.toString().replaceFirst('Exception: ', ''),
+        );
+      }
     }
   }
+
+  // Called when NotificationScreen is popped — commits all queued actions to
+  // Firestore. Fire-and-forget; errors surface via the error field.
+  void commitPendingActions() {
+    final requests = {for (final r in state.incomingRequests) r.id: r};
+    // Only commit definitive choices; ignore 'undoing' (in-flight Firestore ops).
+    final toCommit = state.pendingActions.entries
+        .where((e) => e.value == 'accepted' || e.value == 'declined')
+        .toList();
+    final newActions = Map<String, String>.from(state.pendingActions)
+      ..removeWhere((_, v) => v == 'accepted' || v == 'declined');
+    state = state.copyWith(pendingActions: newActions);
+    for (final entry in toCommit) {
+      final request = requests[entry.key];
+      if (request == null) continue;
+      if (entry.value == 'accepted') {
+        _writeAccept(request);
+      } else {
+        _writeDecline(request);
+      }
+    }
+  }
+
+  Future<void> _writeAccept(FriendRequest request) async {
+    final uid = ref.read(authNotifierProvider).user?.uid;
+    if (uid == null) return;
+    try {
+      final myUsers = await GetUsersByIds(ref.read(friendsRepositoryProvider))([
+        uid,
+      ]);
+      final myDisplayName =
+          myUsers.isNotEmpty && myUsers.first.displayName.isNotEmpty
+          ? myUsers.first.displayName
+          : 'Anonymous';
+      await ref.read(_acceptFriendRequestProvider)(
+        requestId: request.id,
+        fromUid: request.fromUid,
+        fromDisplayName: request.fromDisplayName,
+        myDisplayName: myDisplayName,
+      );
+    } catch (e) {
+      if (!_disposed) {
+        state = state.copyWith(
+          error: e.toString().replaceFirst('Exception: ', ''),
+        );
+      }
+    }
+  }
+
+  Future<void> _writeDecline(FriendRequest request) async {
+    try {
+      await ref.read(_declineFriendRequestProvider)(requestId: request.id);
+    } catch (e) {
+      if (!_disposed) {
+        state = state.copyWith(
+          error: e.toString().replaceFirst('Exception: ', ''),
+        );
+      }
+    }
+  }
+
+  // Immediate write — used by FriendsListScreen (dev screen).
+  Future<void> acceptRequest(FriendRequest request) => _writeAccept(request);
+  Future<void> declineRequest(FriendRequest request) => _writeDecline(request);
 
   Future<void> removeFriend(String friendshipId) async {
     if (state.isLoading) return;

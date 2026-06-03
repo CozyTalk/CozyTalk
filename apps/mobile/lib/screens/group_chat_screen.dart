@@ -18,7 +18,8 @@ import '../theme/app_colors.dart';
 import '../dialogs/leave_room_dialog.dart';
 import '../dialogs/members_list_dialog.dart';
 import '../dialogs/song_dialog.dart';
-import '../dialogs/user_profile_dialog.dart';
+import '../dialogs/user_profile_dialog.dart'
+    show AddFriendStatus, UserProfileDialog;
 import '../shared/avatar_overlay.dart';
 import '../shared/gif_picker.dart';
 import '../shared/info_dialog.dart';
@@ -106,8 +107,6 @@ class GroupChatScreen extends ConsumerStatefulWidget {
 
 class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
     with TickerProviderStateMixin {
-  // Keyed by partner UID after integration (was display name before).
-  final Map<String, bool> _friendRequestSent = {};
   final TextEditingController _msgController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final FocusNode _focusNode = FocusNode();
@@ -135,6 +134,9 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
   final Map<String, String> _memberInterestCache = {};
   // uid→thoughts (status message) loaded from Firestore profiles.
   final Map<String, String> _memberThoughtsCache = {};
+  // uid→AvatarState populated while the member is live; persists after they leave
+  // so message avatars retain their mood/hat overlays even when the sender is gone.
+  final Map<String, AvatarState> _memberAvatarCache = {};
   // displayName→uid reverse index so bubble taps can resolve interest.
   final Map<String, String> _uidByDisplayName = {};
   // Pending hop-in UIDs whose display names aren't known yet.
@@ -380,42 +382,16 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
     );
   }
 
-  void _sendFriendRequest(String targetName) {
-    if (_friendRequestSent[targetName] == true) return;
-    setState(() => _friendRequestSent[targetName] = true);
-
-    // Primary: match by name inside roomUsers — works even before first message.
-    final myUid = ref.read(authNotifierProvider).user?.uid;
-    final roomUsers =
-        ref.read(matchmakingNotifierProvider).currentRoom?.users ?? [];
-    String? targetUid;
-    for (final uid in roomUsers) {
-      if (uid == myUid) continue;
-      if ((_memberNameCache[uid] ?? 'User') == targetName) {
-        targetUid = uid;
-        break;
-      }
-    }
-    // Fallback: scan messages (handles edge cases where roomUsers is empty).
-    if (targetUid == null) {
-      final chatState = ref.read(chatNotifierProvider);
-      targetUid = chatState.messages
-          .cast<chat_entity.ChatMessage?>()
-          .firstWhere((m) => m?.displayName == targetName, orElse: () => null)
-          ?.senderId;
-    }
-
-    if (targetUid != null) {
-      ref
-          .read(friendsNotifierProvider.notifier)
-          .sendFriendRequest(AppUser(uid: targetUid, displayName: targetName));
-    }
+  void _addFriend(String uid, String displayName) {
+    ref
+        .read(friendsNotifierProvider.notifier)
+        .sendFriendRequest(AppUser(uid: uid, displayName: displayName));
     showInfoDialog(
       context,
       type: InfoDialogType.info,
       title: 'Friend Request Sent',
       message:
-          'Your friend request has been sent to $targetName.\nWaiting for them to accept.',
+          'Your friend request has been sent to $displayName.\nWaiting for them to accept.',
     );
   }
 
@@ -454,14 +430,26 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
     );
   }
 
-  void cancelFriendRequest(String targetName) {
-    setState(() => _friendRequestSent[targetName] = false);
+  void _cancelFriendRequest(String uid, String displayName) {
+    ref.read(friendsNotifierProvider.notifier).cancelFriendRequest(uid);
     showInfoDialog(
       context,
       type: InfoDialogType.info,
       title: 'Request Cancelled',
-      message: 'Your friend request to $targetName has been cancelled.',
+      message: 'Your friend request to $displayName has been cancelled.',
     );
+  }
+
+  AddFriendStatus _friendStatus(String uid) {
+    final s = ref.read(friendsNotifierProvider);
+    if (s.isFriend(uid)) return AddFriendStatus.friends;
+    // Mutual pending: both sent requests → treat as friends (disabled).
+    if (s.hasSentRequestTo(uid) &&
+        s.incomingRequests.any((r) => r.fromUid == uid)) {
+      return AddFriendStatus.friends;
+    }
+    if (s.hasSentRequestTo(uid)) return AddFriendStatus.pending;
+    return AddFriendStatus.notAdded;
   }
 
   void shuffleTopic() {
@@ -578,6 +566,7 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
         mood: AvatarOverlays.mood[deco?.moodKey ?? ''],
         accessory: AvatarOverlays.accessory[deco?.hatKey ?? ''],
       );
+      if (deco != null) _memberAvatarCache[uid] = state;
       memberAvatarStates[uid] = state;
       memberAvatarByName[displayName] = state;
     }
@@ -824,9 +813,24 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
                           memberUids: roomUsers,
                           onClose: _closePanel,
                           avatarState: avatarState,
-                          friendRequestSent: _friendRequestSent,
-                          onAddFriend: _sendFriendRequest,
-                          onCancelRequest: cancelFriendRequest,
+                          pendingUids: ref
+                              .watch(friendsNotifierProvider)
+                              .outgoingRequests
+                              .map((r) => r.toUid)
+                              .toSet(),
+                          friendUids: ref
+                              .watch(friendsNotifierProvider)
+                              .friends
+                              .map((f) => f.friendUid)
+                              .toSet(),
+                          onAddFriend: (uid) {
+                            final name = _memberNameCache[uid] ?? 'User';
+                            _addFriend(uid, name);
+                          },
+                          onCancelRequest: (uid) {
+                            final name = _memberNameCache[uid] ?? 'User';
+                            _cancelFriendRequest(uid, name);
+                          },
                           onReport: _openReport,
                           memberAvatarStates: memberAvatarByName,
                         ),
@@ -1126,15 +1130,18 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
                                     : (memberUid != null
                                           ? _memberInterestCache[memberUid]
                                           : null),
-                                initialAdded:
-                                    !isMe &&
-                                    (_friendRequestSent[displayName] == true),
-                                onAddFriend: isMe
+                                friendStatus: (!isMe && memberUid != null)
+                                    ? _friendStatus(memberUid)
+                                    : AddFriendStatus.notAdded,
+                                onAddFriend: (isMe || memberUid == null)
                                     ? null
-                                    : () => _sendFriendRequest(displayName),
-                                onCancelRequest: isMe
+                                    : () => _addFriend(memberUid, displayName),
+                                onCancelRequest: (isMe || memberUid == null)
                                     ? null
-                                    : () => cancelFriendRequest(displayName),
+                                    : () => _cancelFriendRequest(
+                                        memberUid,
+                                        displayName,
+                                      ),
                                 onReport: isMe
                                     ? null
                                     : () => reportUser(displayName),
@@ -1390,7 +1397,8 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
               builder: (ctx) {
                 final senderUid = _uidByDisplayName[msg.sender ?? ''];
                 final memberState = senderUid != null
-                    ? memberAvatarStates[senderUid]
+                    ? (memberAvatarStates[senderUid] ??
+                          _memberAvatarCache[senderUid])
                     : null;
                 return GestureDetector(
                   onTap: () => showDialog(
@@ -1406,11 +1414,15 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
                             : null,
                         avatarState: memberState,
                         uid: senderUid,
-                        initialAdded:
-                            _friendRequestSent[msg.sender ?? ''] == true,
-                        onAddFriend: () => _sendFriendRequest(msg.sender ?? ''),
-                        onCancelRequest: () =>
-                            cancelFriendRequest(msg.sender ?? ''),
+                        friendStatus: senderUid != null
+                            ? _friendStatus(senderUid)
+                            : AddFriendStatus.notAdded,
+                        onAddFriend: senderUid != null
+                            ? () => _addFriend(senderUid, profileName)
+                            : null,
+                        onCancelRequest: senderUid != null
+                            ? () => _cancelFriendRequest(senderUid, profileName)
+                            : null,
                         onReport: () => reportUser(msg.sender ?? ''),
                       );
                     },
@@ -1569,8 +1581,11 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
                 context: context,
                 builder: (_) {
                   final senderUid = _uidByDisplayName[msg.sender ?? ''];
+                  final profileName = senderUid != null
+                      ? (_memberNameCache[senderUid] ?? msg.sender ?? '')
+                      : (msg.sender ?? '');
                   return UserProfileDialog(
-                    username: msg.sender ?? '',
+                    username: profileName,
                     interest: senderUid != null
                         ? _memberInterestCache[senderUid]
                         : null,
@@ -1578,10 +1593,15 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
                         ? memberAvatarStates[senderUid]
                         : null,
                     uid: senderUid,
-                    initialAdded: _friendRequestSent[msg.sender ?? ''] == true,
-                    onAddFriend: () => _sendFriendRequest(msg.sender ?? ''),
-                    onCancelRequest: () =>
-                        cancelFriendRequest(msg.sender ?? ''),
+                    friendStatus: senderUid != null
+                        ? _friendStatus(senderUid)
+                        : AddFriendStatus.notAdded,
+                    onAddFriend: senderUid != null
+                        ? () => _addFriend(senderUid, profileName)
+                        : null,
+                    onCancelRequest: senderUid != null
+                        ? () => _cancelFriendRequest(senderUid, profileName)
+                        : null,
                     onReport: () => reportUser(msg.sender ?? ''),
                   );
                 },

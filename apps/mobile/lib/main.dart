@@ -39,6 +39,9 @@ import 'screens/group_chat_screen.dart';
 import 'screens/finding_room_screen.dart';
 import 'screens/admin_console_screen.dart';
 import 'dialogs/account_suspended_dialog.dart';
+import 'features/friends/domain/entities/friend_request.dart';
+import 'features/friends/presentation/providers/friends_provider.dart';
+import 'shared/friend_request_popup.dart';
 
 const _useEmulator = bool.fromEnvironment('USE_EMULATOR', defaultValue: true);
 
@@ -219,7 +222,9 @@ class _MainUIAuthRouter extends ConsumerWidget {
       final isAdmin =
           role == 'admin' ||
           (email.isNotEmpty && email.endsWith('@cozytalk.com'));
-      return isAdmin ? const AdminConsoleScreen() : const HomeScreen();
+      return isAdmin
+          ? const AdminConsoleScreen()
+          : const _FriendRequestListener(child: HomeScreen());
     }
     return switch (status) {
       AuthStatus.idle => const Scaffold(
@@ -227,6 +232,49 @@ class _MainUIAuthRouter extends ConsumerWidget {
       ),
       _ => const ui.LoginScreen(),
     };
+  }
+}
+
+class _FriendRequestListener extends ConsumerStatefulWidget {
+  final Widget child;
+  const _FriendRequestListener({required this.child});
+
+  @override
+  ConsumerState<_FriendRequestListener> createState() =>
+      _FriendRequestListenerState();
+}
+
+class _FriendRequestListenerState
+    extends ConsumerState<_FriendRequestListener> {
+  Set<String>? _seenIds;
+
+  @override
+  Widget build(BuildContext context) {
+    ref.listen<List<FriendRequest>>(
+      friendsNotifierProvider.select((s) => s.incomingRequests),
+      (_, next) {
+        if (!mounted) return;
+        if (_seenIds == null) {
+          _seenIds = next.map((r) => r.id).toSet();
+          return;
+        }
+        for (final request in next.where((r) => !_seenIds!.contains(r.id))) {
+          _seenIds!.add(request.id);
+          showFriendRequestPopup(
+            context,
+            requesterName: request.fromDisplayName,
+            fromUid: request.fromUid,
+            onAccept: () => ref
+                .read(friendsNotifierProvider.notifier)
+                .acceptRequest(request),
+            onDecline: () => ref
+                .read(friendsNotifierProvider.notifier)
+                .declineRequest(request),
+          );
+        }
+      },
+    );
+    return widget.child;
   }
 }
 

@@ -56,6 +56,12 @@ class _FakeFriendsDatasource implements FriendsDatasource {
       Stream.value(requests);
 
   @override
+  Stream<List<FriendRequestModel>> watchOutgoingRequests() => Stream.value([]);
+
+  @override
+  Future<void> cancelFriendRequest({required String toUid}) async {}
+
+  @override
   Stream<List<FriendMessageModel>> watchMessages(String chatRoomId) {
     lastChatRoomId = chatRoomId;
     return Stream.value(messages);
@@ -102,6 +108,19 @@ class _FakeFriendsDatasource implements FriendsDatasource {
     if (error != null) throw error!;
     declineFriendRequestCount++;
     lastDeclinedRequestId = requestId;
+  }
+
+  @override
+  Future<void> undoAcceptFriendRequest({
+    required String requestId,
+    required String friendshipId,
+  }) async {
+    if (error != null) throw error!;
+  }
+
+  @override
+  Future<void> undoDeclineFriendRequest({required String requestId}) async {
+    if (error != null) throw error!;
   }
 
   @override

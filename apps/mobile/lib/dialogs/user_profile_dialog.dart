@@ -7,11 +7,13 @@ import '../features/profile/presentation/providers/profile_provider.dart';
 import '../shared/avatar_overlay.dart';
 import '../shared/layered_avatar.dart';
 
+enum AddFriendStatus { notAdded, pending, friends }
+
 class UserProfileDialog extends ConsumerStatefulWidget {
   final String username;
   final String? interest;
   final bool isMe;
-  final bool initialAdded;
+  final AddFriendStatus friendStatus;
   final VoidCallback? onAddFriend;
   final VoidCallback? onCancelRequest;
 
@@ -39,7 +41,7 @@ class UserProfileDialog extends ConsumerStatefulWidget {
     required this.username,
     this.interest,
     this.isMe = false,
-    this.initialAdded = false,
+    this.friendStatus = AddFriendStatus.notAdded,
     this.onAddFriend,
     this.onCancelRequest,
     this.onReport,
@@ -57,14 +59,6 @@ class UserProfileDialog extends ConsumerStatefulWidget {
 }
 
 class _UserProfileDialogState extends ConsumerState<UserProfileDialog> {
-  late bool _friendAdded;
-
-  @override
-  void initState() {
-    super.initState();
-    _friendAdded = widget.initialAdded;
-  }
-
   @override
   Widget build(BuildContext context) {
     // ── Own user ──────────────────────────────────────────────────────────────
@@ -180,34 +174,44 @@ class _UserProfileDialogState extends ConsumerState<UserProfileDialog> {
                         Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            // Add friend / cancel request
+                            // Add friend / pending / already friends
                             Semantics(
-                              label: 'Add friend',
+                              label: switch (widget.friendStatus) {
+                                AddFriendStatus.notAdded => 'Add friend',
+                                AddFriendStatus.pending =>
+                                  'Cancel friend request',
+                                AddFriendStatus.friends => 'Already friends',
+                              },
                               button: true,
                               child: GestureDetector(
-                                onTap: _friendAdded
-                                    ? () {
-                                        Navigator.pop(context);
-                                        widget.onCancelRequest?.call();
-                                      }
-                                    : () {
-                                        setState(() => _friendAdded = true);
-                                        Navigator.pop(context);
-                                        widget.onAddFriend?.call();
-                                      },
+                                onTap: switch (widget.friendStatus) {
+                                  AddFriendStatus.friends => null,
+                                  AddFriendStatus.pending => () {
+                                    Navigator.pop(context);
+                                    widget.onCancelRequest?.call();
+                                  },
+                                  AddFriendStatus.notAdded => () {
+                                    Navigator.pop(context);
+                                    widget.onAddFriend?.call();
+                                  },
+                                },
                                 child: AnimatedContainer(
                                   duration: const Duration(milliseconds: 200),
                                   width: 44,
                                   height: 44,
                                   decoration: BoxDecoration(
-                                    color: _friendAdded
-                                        ? Colors.grey.shade200
-                                        : const Color(0xFFDCEBCE),
+                                    color:
+                                        widget.friendStatus ==
+                                            AddFriendStatus.notAdded
+                                        ? const Color(0xFFDCEBCE)
+                                        : Colors.grey.shade200,
                                     borderRadius: BorderRadius.circular(12),
                                     border: Border.all(
-                                      color: _friendAdded
-                                          ? Colors.grey.shade400
-                                          : const Color(0xFFC7D2B5),
+                                      color:
+                                          widget.friendStatus ==
+                                              AddFriendStatus.notAdded
+                                          ? const Color(0xFFC7D2B5)
+                                          : Colors.grey.shade400,
                                       width: 1,
                                     ),
                                   ),
@@ -216,7 +220,9 @@ class _UserProfileDialogState extends ConsumerState<UserProfileDialog> {
                                       'assets/images/icons/add_friend.svg',
                                       width: 24,
                                       height: 24,
-                                      colorFilter: _friendAdded
+                                      colorFilter:
+                                          widget.friendStatus !=
+                                              AddFriendStatus.notAdded
                                           ? ColorFilter.mode(
                                               Colors.grey.shade500,
                                               BlendMode.srcIn,

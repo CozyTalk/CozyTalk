@@ -4,11 +4,21 @@ import 'package:mobile/features/auth/domain/entities/auth_user.dart';
 import 'package:mobile/features/auth/presentation/providers/auth_provider.dart';
 import 'package:mobile/features/friends/domain/entities/app_user.dart';
 import 'package:mobile/features/friends/presentation/providers/friends_provider.dart';
+import 'package:mobile/features/profile/domain/entities/profile_user.dart';
+import 'package:mobile/features/profile/presentation/providers/profile_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../domain/shared_fakes.dart';
 
 // ── Fakes ─────────────────────────────────────────────────────────────────────
+
+class _FakeProfileNotifier extends ProfileNotifier {
+  final ProfileState _initial;
+  _FakeProfileNotifier(this._initial);
+
+  @override
+  ProfileState build() => _initial;
+}
 
 class _FakeAuthNotifier extends AuthNotifier {
   final AuthState _initial;
@@ -116,6 +126,7 @@ void main() {
 
     test('email user: correct toUid and displayName forwarded', () async {
       setUp(_emailAuth());
+      repo.usersById = [const AppUser(uid: 'real-uid', displayName: 'Alice')];
       await container
           .read(friendsNotifierProvider.notifier)
           .sendFriendRequest(_target);
@@ -124,5 +135,85 @@ void main() {
       expect(repo.lastToDisplayName, 'Bob');
       expect(repo.lastFromDisplayName, 'Alice');
     });
+  });
+
+  group('FriendsNotifier.sendFriendRequest — fromDisplayName priority', () {
+    late FakeFriendsRepository repo;
+    late ProviderContainer container;
+
+    void setUp(AuthState auth, ProfileState profile) {
+      SharedPreferences.setMockInitialValues({});
+      repo = FakeFriendsRepository();
+      container = ProviderContainer(
+        overrides: [
+          authNotifierProvider.overrideWith(() => _FakeAuthNotifier(auth)),
+          profileNotifierProvider.overrideWith(
+            () => _FakeProfileNotifier(profile),
+          ),
+          friendsRepositoryProvider.overrideWithValue(repo),
+        ],
+      );
+      addTearDown(container.dispose);
+    }
+
+    test('uses profile displayName when profile is loaded', () async {
+      setUp(
+        _emailAuth(),
+        ProfileState(
+          profile: const ProfileUser(
+            uid: 'real-uid',
+            displayName: 'AliceFromProfile',
+          ),
+        ),
+      );
+      await container
+          .read(friendsNotifierProvider.notifier)
+          .sendFriendRequest(_target);
+
+      expect(repo.lastFromDisplayName, 'AliceFromProfile');
+    });
+
+    test('falls back to authUser displayName when profile is null', () async {
+      setUp(_emailAuth(), const ProfileState());
+      await container
+          .read(friendsNotifierProvider.notifier)
+          .sendFriendRequest(_target);
+
+      expect(repo.lastFromDisplayName, 'Alice');
+    });
+
+    test(
+      'falls back to authUser displayName when profile displayName is empty',
+      () async {
+        setUp(
+          _emailAuth(),
+          ProfileState(
+            profile: const ProfileUser(uid: 'real-uid', displayName: ''),
+          ),
+        );
+        await container
+            .read(friendsNotifierProvider.notifier)
+            .sendFriendRequest(_target);
+
+        expect(repo.lastFromDisplayName, 'Alice');
+      },
+    );
+
+    test(
+      'falls back to authUser displayName when profile displayName is whitespace',
+      () async {
+        setUp(
+          _emailAuth(),
+          ProfileState(
+            profile: const ProfileUser(uid: 'real-uid', displayName: '   '),
+          ),
+        );
+        await container
+            .read(friendsNotifierProvider.notifier)
+            .sendFriendRequest(_target);
+
+        expect(repo.lastFromDisplayName, 'Alice');
+      },
+    );
   });
 }

@@ -84,7 +84,9 @@ class _FakeFriendsNotifier extends FriendsNotifier {
   @override
   Future<void> acceptRequest(FriendRequest request) async {}
   @override
-  Future<void> declineRequest(String requestId) async {}
+  Future<void> declineRequest(FriendRequest request) async {}
+
+  @override
   @override
   Future<void> removeFriend(String friendshipId) async {}
   @override
