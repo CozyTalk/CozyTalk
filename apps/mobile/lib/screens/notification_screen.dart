@@ -230,13 +230,14 @@ class _NotificationScreenState extends ConsumerState<NotificationScreen> {
     FriendsState state,
   ) {
     // 'undoing' = undo Firestore write in-flight → show Accept/Decline optimistically.
-    // null + pending status = not yet touched → Accept/Decline.
+    // null + pending + not yet friends = not yet touched → Accept/Decline.
     // accepted + no longer friends (unfriended after accept) → also show Accept/Decline.
+    // pending + already friends (race: other side accepted via mutual flow) → grey only.
     final isPending = request.status == FriendRequestStatus.pending;
+    final alreadyFriends = state.isFriend(request.fromUid);
     final effectivePending =
-        isPending ||
-        (request.status == FriendRequestStatus.accepted &&
-            !state.isFriend(request.fromUid));
+        (!alreadyFriends && isPending) ||
+        (request.status == FriendRequestStatus.accepted && !alreadyFriends);
     if (action == 'undoing' || (action == null && effectivePending)) {
       return [
         _buildButton(
