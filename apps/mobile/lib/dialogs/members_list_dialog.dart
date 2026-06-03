@@ -22,6 +22,8 @@ class MembersPanelBody extends StatelessWidget {
   final void Function(String uid) onAddFriend;
   // Called with the UID of the member to cancel the pending request.
   final void Function(String uid) onCancelRequest;
+  // Called with the UID of the member to unfriend.
+  final void Function(String uid)? onUnfriend;
   // Called with the UID of the member to report.
   final void Function(String uid)? onReport;
   final Map<String, AvatarState> memberAvatarStates;
@@ -32,6 +34,7 @@ class MembersPanelBody extends StatelessWidget {
     required this.onClose,
     required this.onAddFriend,
     required this.onCancelRequest,
+    this.onUnfriend,
     this.onReport,
     this.memberUids = const [],
     this.currentUser = 'Me',
@@ -69,7 +72,6 @@ class MembersPanelBody extends StatelessWidget {
         : pendingUids.contains(uid)
         ? AddFriendStatus.pending
         : AddFriendStatus.notAdded;
-    final bool isGrey = status != AddFriendStatus.notAdded;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
@@ -113,12 +115,13 @@ class MembersPanelBody extends StatelessWidget {
             ),
           ),
           if (!isMe) ...[
-            // Add / pending / already friends button
+            // Add / pending (cancel) / friends (unfriend) button
             GestureDetector(
               onTap: uid == null
                   ? null
                   : switch (status) {
-                      AddFriendStatus.friends => null,
+                      AddFriendStatus.friends =>
+                        onUnfriend != null ? () => onUnfriend!(uid) : null,
                       AddFriendStatus.pending => () => onCancelRequest(uid),
                       AddFriendStatus.notAdded => () => onAddFriend(uid),
                     },
@@ -127,14 +130,18 @@ class MembersPanelBody extends StatelessWidget {
                 width: 38,
                 height: 38,
                 decoration: BoxDecoration(
-                  color: isGrey
-                      ? Colors.grey.shade300
-                      : const Color(0xFFDCEBCE),
+                  color: switch (status) {
+                    AddFriendStatus.notAdded => const Color(0xFFDCEBCE),
+                    AddFriendStatus.pending => const Color(0xFFFFF3E0),
+                    AddFriendStatus.friends => const Color(0xFFF6D4E5),
+                  },
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(
-                    color: isGrey
-                        ? Colors.grey.shade400
-                        : const Color(0xFFC7D2B5),
+                    color: switch (status) {
+                      AddFriendStatus.notAdded => const Color(0xFFC7D2B5),
+                      AddFriendStatus.pending => const Color(0xFFFFCC80),
+                      AddFriendStatus.friends => const Color(0xFFF0BFD6),
+                    },
                   ),
                 ),
                 child: Center(
@@ -142,12 +149,17 @@ class MembersPanelBody extends StatelessWidget {
                     'assets/images/icons/add_friend.svg',
                     width: 22,
                     height: 22,
-                    colorFilter: isGrey
-                        ? ColorFilter.mode(
-                            Colors.grey.shade500,
-                            BlendMode.srcIn,
-                          )
-                        : null,
+                    colorFilter: switch (status) {
+                      AddFriendStatus.notAdded => null,
+                      AddFriendStatus.pending => const ColorFilter.mode(
+                        Color(0xFFE67E22),
+                        BlendMode.srcIn,
+                      ),
+                      AddFriendStatus.friends => const ColorFilter.mode(
+                        Color(0xFFCC8AAE),
+                        BlendMode.srcIn,
+                      ),
+                    },
                   ),
                 ),
               ),

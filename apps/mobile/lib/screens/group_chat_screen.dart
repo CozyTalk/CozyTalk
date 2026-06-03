@@ -16,6 +16,7 @@ import '../features/profile/presentation/providers/profile_provider.dart';
 import '../dialogs/report_dialog.dart';
 import '../theme/app_colors.dart';
 import '../dialogs/leave_room_dialog.dart';
+import 'remove_friend_dialog.dart';
 import '../dialogs/members_list_dialog.dart';
 import '../dialogs/song_dialog.dart';
 import '../dialogs/user_profile_dialog.dart'
@@ -440,6 +441,27 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
     );
   }
 
+  void _unfriend(String uid, String displayName) {
+    final friend = ref
+        .read(friendsNotifierProvider)
+        .friends
+        .where((f) => f.friendUid == uid)
+        .firstOrNull;
+    if (friend == null) return;
+    showRemoveConfirmDialog(
+      context: context,
+      friendName: displayName.isNotEmpty
+          ? displayName
+          : friend.friendDisplayName,
+      onConfirm: () {
+        if (ref.read(friendsNotifierProvider).isLoading) return;
+        ref
+            .read(friendsNotifierProvider.notifier)
+            .removeFriend(friend.friendshipId);
+      },
+    );
+  }
+
   AddFriendStatus _friendStatus(String uid) {
     final s = ref.read(friendsNotifierProvider);
     if (s.isFriend(uid)) return AddFriendStatus.friends;
@@ -831,6 +853,10 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
                             final name = _memberNameCache[uid] ?? 'User';
                             _cancelFriendRequest(uid, name);
                           },
+                          onUnfriend: (uid) {
+                            final name = _memberNameCache[uid] ?? 'User';
+                            _unfriend(uid, name);
+                          },
                           onReport: _openReport,
                           memberAvatarStates: memberAvatarByName,
                         ),
@@ -1142,6 +1168,9 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
                                         memberUid,
                                         displayName,
                                       ),
+                                onUnfriend: (isMe || memberUid == null)
+                                    ? null
+                                    : () => _unfriend(memberUid, displayName),
                                 onReport: isMe
                                     ? null
                                     : () => reportUser(displayName),
@@ -1423,6 +1452,9 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
                         onCancelRequest: senderUid != null
                             ? () => _cancelFriendRequest(senderUid, profileName)
                             : null,
+                        onUnfriend: senderUid != null
+                            ? () => _unfriend(senderUid, profileName)
+                            : null,
                         onReport: () => reportUser(msg.sender ?? ''),
                       );
                     },
@@ -1601,6 +1633,9 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
                         : null,
                     onCancelRequest: senderUid != null
                         ? () => _cancelFriendRequest(senderUid, profileName)
+                        : null,
+                    onUnfriend: senderUid != null
+                        ? () => _unfriend(senderUid, profileName)
                         : null,
                     onReport: () => reportUser(msg.sender ?? ''),
                   );

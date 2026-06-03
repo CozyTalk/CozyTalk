@@ -216,7 +216,7 @@ class _UserProfileDialogState extends ConsumerState<UserProfileDialog> {
                                         0xFFFFF3E0,
                                       ),
                                       AddFriendStatus.friends => const Color(
-                                        0xFFFFEBEE,
+                                        0xFFF6D4E5,
                                       ),
                                     },
                                     borderRadius: BorderRadius.circular(12),
@@ -229,7 +229,7 @@ class _UserProfileDialogState extends ConsumerState<UserProfileDialog> {
                                           0xFFFFCC80,
                                         ),
                                         AddFriendStatus.friends => const Color(
-                                          0xFFFFCDD2,
+                                          0xFFF0BFD6,
                                         ),
                                       },
                                       width: 1,
@@ -250,7 +250,7 @@ class _UserProfileDialogState extends ConsumerState<UserProfileDialog> {
                                               ),
                                             AddFriendStatus.friends =>
                                               const ColorFilter.mode(
-                                                Color(0xFFCF5733),
+                                                Color(0xFFCC8AAE),
                                                 BlendMode.srcIn,
                                               ),
                                           },
