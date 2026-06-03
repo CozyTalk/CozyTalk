@@ -246,7 +246,11 @@ class _FriendRequestListener extends ConsumerStatefulWidget {
 
 class _FriendRequestListenerState
     extends ConsumerState<_FriendRequestListener> {
-  Set<String>? _seenIds;
+  // Maps request id → createdAt of the last shown notification.
+  // Using createdAt distinguishes a genuinely new request (sendFriendRequest
+  // does .set() → new timestamp) from an unfriend reset (removeFriend does
+  // .update({status: pending}) → same timestamp). Null = not yet initialised.
+  Map<String, DateTime>? _seen;
 
   @override
   Widget build(BuildContext context) {
@@ -254,12 +258,14 @@ class _FriendRequestListenerState
       friendsNotifierProvider.select((s) => s.incomingRequests),
       (_, next) {
         if (!mounted) return;
-        if (_seenIds == null) {
-          _seenIds = next.map((r) => r.id).toSet();
+        if (_seen == null) {
+          _seen = {for (final r in next) r.id: r.createdAt};
           return;
         }
-        for (final request in next.where((r) => !_seenIds!.contains(r.id))) {
-          _seenIds!.add(request.id);
+        for (final request in next) {
+          final knownAt = _seen![request.id];
+          if (knownAt != null && knownAt == request.createdAt) continue;
+          _seen![request.id] = request.createdAt;
           showFriendRequestPopup(
             context,
             requesterName: request.fromDisplayName,
