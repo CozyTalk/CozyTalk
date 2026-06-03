@@ -219,11 +219,12 @@ class JukeboxNotifier extends Notifier<JukeboxUiState> {
     final roomId = state.roomId;
     final roomState = state.roomState;
     if (roomId == null || roomState == null) return;
-    await ref.read(_removeFromQueueProvider)(
+    final updated = await ref.read(_removeFromQueueProvider)(
       roomId: roomId,
       current: roomState,
       index: index,
     );
+    state = state.copyWith(roomState: updated);
   }
 
   // ── Internal ─────────────────────────────────────────────────────────────

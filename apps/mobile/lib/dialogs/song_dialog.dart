@@ -80,6 +80,12 @@ class _SongPanelBodyState extends ConsumerState<SongPanelBody>
     final state = ref.watch(jukeboxNotifierProvider);
     final roomState = state.roomState;
 
+    if (!_webViewReady && roomState?.currentTrack != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && !_webViewReady) setState(() => _webViewReady = true);
+      });
+    }
+
     ref.listen<JukeboxUiState>(jukeboxNotifierProvider, (prev, next) {
       if (next.resolveError != null &&
           next.resolveError != prev?.resolveError) {
@@ -389,7 +395,7 @@ class _SongPanelBodyState extends ConsumerState<SongPanelBody>
               textInputAction: TextInputAction.done,
               onSubmitted: (_) => _addSong(),
               decoration: InputDecoration(
-                hintText: 'Type here..',
+                hintText: 'Paste YouTube link...',
                 hintStyle: const TextStyle(color: Colors.black38, fontSize: 14),
                 filled: true,
                 fillColor: Colors.white,
