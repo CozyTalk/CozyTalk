@@ -59,8 +59,8 @@ features/chat/
 
 ## Production Screens
 
-- `screens/chat_screen.dart` — `ChatScreen` (ConsumerStatefulWidget, ⚠️ partial — uses `shared/` providers only, not wired to `chatNotifierProvider`). AppBar has Jukebox music button (`Icons.queue_music_rounded`) and `JukeboxChatPlayer` is mounted in the Column body for audio lifecycle management.
-- `screens/group_chat_screen.dart` — `GroupChatScreen` (ConsumerStatefulWidget, integrated). Banner member list filtered by `chatState.presenceMembers` — only shows UIDs confirmed live in RTDB, falling back to the full Firestore `roomUsers` list while the subscription delivers its first event.
+- `screens/chat_screen.dart` — `ChatScreen` (ConsumerStatefulWidget, integrated). AppBar has Jukebox music button (`Icons.queue_music_rounded`) and `JukeboxChatPlayer` is mounted in the Column body for audio lifecycle management. **Skip Room** button in side column: shows confirmation dialog, calls `endSession()`, then navigates to `/finding-room` with `roomType: '1v1'` and original `roomName`/`bgImage` from route args; `_isSkipping` flag prevents the `SessionStatus.disconnected` listener from firing `popUntil(isFirst)` during the transition.
+- `screens/group_chat_screen.dart` — `GroupChatScreen` (ConsumerStatefulWidget, integrated). Banner member list filtered by `chatState.presenceMembers` — only shows UIDs confirmed live in RTDB, falling back to the full Firestore `roomUsers` list while the subscription delivers its first event. **Skip Room** button in side column: shows confirmation dialog, calls `leaveRoom()` + `forceDisconnect()`, then navigates to `/finding-room`; `roomName`/`bgImage` resolved from `currentRoom.backgroundTheme` via `resolveRoomTheme()` (falls back to route args); `joinById` roomType remapped to `'group'`; `_isSkipping` flag suppresses the disconnect-listener auto-pop.
 
 ## Privacy
 
