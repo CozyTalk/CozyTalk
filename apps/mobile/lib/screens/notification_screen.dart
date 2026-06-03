@@ -26,42 +26,33 @@ class _NotificationScreenState extends ConsumerState<NotificationScreen> {
       }
     });
 
-    // incomingRequests already sorted newest-first and capped at 10 by the notifier.
-    final displayed = state.incomingRequests;
+    // datasource filters to pending only; also hide requests from users we are
+    // already friends with (handles race where the other side accepted first).
+    final displayed = state.incomingRequests
+        .where((r) => !state.isFriend(r.fromUid))
+        .toList();
 
-    return PopScope(
-      canPop: false,
-      onPopInvokedWithResult: (didPop, _) {
-        if (didPop) return;
-        ref.read(friendsNotifierProvider.notifier).commitPendingActions();
-        Navigator.of(context).pop();
-      },
-      child: Scaffold(
-        backgroundColor: AppColors.scaffoldBg,
-        body: Column(
-          children: [
-            _buildCustomAppBar(),
-            Expanded(
-              child: displayed.isEmpty
-                  ? const Center(
-                      child: Text(
-                        'No notifications',
-                        style: TextStyle(color: Colors.black54, fontSize: 15),
-                      ),
-                    )
-                  : ListView.separated(
-                      padding: const EdgeInsets.all(20),
-                      itemCount: displayed.length,
-                      separatorBuilder: (_, _) => const SizedBox(height: 16),
-                      itemBuilder: (_, i) {
-                        final req = displayed[i];
-                        final action = state.pendingActions[req.id];
-                        return _buildCard(req, action, state);
-                      },
+    return Scaffold(
+      backgroundColor: AppColors.scaffoldBg,
+      body: Column(
+        children: [
+          _buildCustomAppBar(),
+          Expanded(
+            child: displayed.isEmpty
+                ? const Center(
+                    child: Text(
+                      'No notifications',
+                      style: TextStyle(color: Colors.black54, fontSize: 15),
                     ),
-            ),
-          ],
-        ),
+                  )
+                : ListView.separated(
+                    padding: const EdgeInsets.all(20),
+                    itemCount: displayed.length,
+                    separatorBuilder: (_, _) => const SizedBox(height: 16),
+                    itemBuilder: (_, i) => _buildCard(displayed[i]),
+                  ),
+          ),
+        ],
       ),
     );
   }
@@ -92,12 +83,7 @@ class _NotificationScreenState extends ConsumerState<NotificationScreen> {
                 label: 'Go back',
                 button: true,
                 child: GestureDetector(
-                  onTap: () {
-                    ref
-                        .read(friendsNotifierProvider.notifier)
-                        .commitPendingActions();
-                    Navigator.pop(context);
-                  },
+                  onTap: () => Navigator.pop(context),
                   child: Container(
                     width: 48,
                     height: 48,
@@ -142,7 +128,7 @@ class _NotificationScreenState extends ConsumerState<NotificationScreen> {
   }
 
   // ─── Notification Card ───────────────────────────────────────
-  Widget _buildCard(FriendRequest request, String? action, FriendsState state) {
+  Widget _buildCard(FriendRequest request) {
     const imagePath = 'assets/images/icons/Friends.svg';
     final name = request.fromDisplayName.isNotEmpty
         ? request.fromDisplayName
@@ -214,7 +200,7 @@ class _NotificationScreenState extends ConsumerState<NotificationScreen> {
                 const SizedBox(height: 12),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.end,
-                  children: _buildButtons(request, action, state),
+                  children: _buildButtons(request),
                 ),
               ],
             ),
@@ -224,67 +210,23 @@ class _NotificationScreenState extends ConsumerState<NotificationScreen> {
     );
   }
 
-  List<Widget> _buildButtons(
-    FriendRequest request,
-    String? action,
-    FriendsState state,
-  ) {
-    // 'undoing' = undo Firestore write in-flight → show Accept/Decline optimistically.
-    // null + pending + not yet friends = not yet touched → Accept/Decline.
-    // accepted + no longer friends (unfriended after accept) → also show Accept/Decline.
-    // pending + already friends (race: other side accepted via mutual flow) → grey only.
-    final isPending = request.status == FriendRequestStatus.pending;
-    final alreadyFriends = state.isFriend(request.fromUid);
-    final effectivePending =
-        (!alreadyFriends && isPending) ||
-        (request.status == FriendRequestStatus.accepted && !alreadyFriends);
-    if (action == 'undoing' || (action == null && effectivePending)) {
-      return [
-        _buildButton(
-          label: 'Accept',
-          backgroundColor: const Color(0xFFDEF1C2),
-          borderColor: const Color(0xFFC7D2B5),
-          textColor: Colors.black,
-          onTap: () =>
-              ref.read(friendsNotifierProvider.notifier).queueAccept(request),
-        ),
-        const SizedBox(width: 8),
-        _buildButton(
-          label: 'Decline',
-          backgroundColor: const Color(0xFFCF5733),
-          borderColor: const Color(0xFFA33615),
-          textColor: Colors.white,
-          onTap: () =>
-              ref.read(friendsNotifierProvider.notifier).queueDecline(request),
-        ),
-      ];
-    }
-
-    // Grey button: label = what was chosen (queued or committed).
-    final label = action == 'accepted'
-        ? 'Accept'
-        : action == 'declined'
-        ? 'Decline'
-        : request.status == FriendRequestStatus.accepted
-        ? 'Accept'
-        : 'Decline';
-
+  List<Widget> _buildButtons(FriendRequest request) {
+    final notifier = ref.read(friendsNotifierProvider.notifier);
     return [
       _buildButton(
-        label: label,
-        backgroundColor: Colors.grey.shade300,
-        borderColor: Colors.grey.shade400,
-        textColor: Colors.black54,
-        onTap: () {
-          final notifier = ref.read(friendsNotifierProvider.notifier);
-          if (action == 'accepted' || action == 'declined') {
-            // Not committed yet — undo locally.
-            notifier.undoPendingAction(request.id);
-          } else {
-            // Already committed to Firestore — revert via Firestore.
-            notifier.undoCommittedAction(request);
-          }
-        },
+        label: 'Accept',
+        backgroundColor: const Color(0xFFDEF1C2),
+        borderColor: const Color(0xFFC7D2B5),
+        textColor: Colors.black,
+        onTap: () => notifier.acceptRequest(request),
+      ),
+      const SizedBox(width: 8),
+      _buildButton(
+        label: 'Decline',
+        backgroundColor: const Color(0xFFCF5733),
+        borderColor: const Color(0xFFA33615),
+        textColor: Colors.white,
+        onTap: () => notifier.declineRequest(request),
       ),
     ];
   }

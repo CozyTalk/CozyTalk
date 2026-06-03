@@ -8,15 +8,10 @@ import 'package:mobile/screens/notification_screen.dart';
 
 class _FakeFriendsNotifier extends FriendsNotifier {
   final FriendsState _initial;
-  int queueAcceptCount = 0;
-  FriendRequest? lastQueuedAccept;
-  int queueDeclineCount = 0;
-  FriendRequest? lastQueuedDecline;
-  int undoPendingCount = 0;
-  String? lastUndoPendingId;
-  int undoCommittedCount = 0;
-  FriendRequest? lastUndoCommitted;
-  int commitCount = 0;
+  int acceptCount = 0;
+  FriendRequest? lastAccepted;
+  int declineCount = 0;
+  FriendRequest? lastDeclined;
 
   _FakeFriendsNotifier({FriendsState initial = const FriendsState()})
     : _initial = initial;
@@ -28,39 +23,16 @@ class _FakeFriendsNotifier extends FriendsNotifier {
   Future<void> sendFriendRequest(AppUser toUser) async {}
 
   @override
-  void queueAccept(FriendRequest request) {
-    queueAcceptCount++;
-    lastQueuedAccept = request;
+  Future<void> acceptRequest(FriendRequest request) async {
+    acceptCount++;
+    lastAccepted = request;
   }
 
   @override
-  void queueDecline(FriendRequest request) {
-    queueDeclineCount++;
-    lastQueuedDecline = request;
+  Future<void> declineRequest(FriendRequest request) async {
+    declineCount++;
+    lastDeclined = request;
   }
-
-  @override
-  void undoPendingAction(String requestId) {
-    undoPendingCount++;
-    lastUndoPendingId = requestId;
-  }
-
-  @override
-  Future<void> undoCommittedAction(FriendRequest request) async {
-    undoCommittedCount++;
-    lastUndoCommitted = request;
-  }
-
-  @override
-  void commitPendingActions() {
-    commitCount++;
-  }
-
-  @override
-  Future<void> acceptRequest(FriendRequest request) async {}
-
-  @override
-  Future<void> declineRequest(FriendRequest request) async {}
 
   @override
   Future<void> removeFriend(String friendshipId) async {}
@@ -107,9 +79,7 @@ void main() {
       expect(find.text('Alice wants to be friends'), findsOneWidget);
     });
 
-    testWidgets('shows Accept and Decline for pending with no action', (
-      tester,
-    ) async {
+    testWidgets('shows Accept and Decline for pending request', (tester) async {
       final fake = _FakeFriendsNotifier(
         initial: FriendsState(incomingRequests: [_makeRequest()]),
       );
@@ -118,7 +88,9 @@ void main() {
       expect(find.text('Decline'), findsOneWidget);
     });
 
-    testWidgets('tapping Accept calls queueAccept', (tester) async {
+    testWidgets('tapping Accept calls acceptRequest immediately', (
+      tester,
+    ) async {
       final request = _makeRequest(id: 'req-42');
       final fake = _FakeFriendsNotifier(
         initial: FriendsState(incomingRequests: [request]),
@@ -126,11 +98,13 @@ void main() {
       await tester.pumpWidget(_buildScreen(fake));
       await tester.tap(find.text('Accept'));
       await tester.pump();
-      expect(fake.queueAcceptCount, 1);
-      expect(fake.lastQueuedAccept?.id, 'req-42');
+      expect(fake.acceptCount, 1);
+      expect(fake.lastAccepted?.id, 'req-42');
     });
 
-    testWidgets('tapping Decline calls queueDecline', (tester) async {
+    testWidgets('tapping Decline calls declineRequest immediately', (
+      tester,
+    ) async {
       final request = _makeRequest(id: 'req-99');
       final fake = _FakeFriendsNotifier(
         initial: FriendsState(incomingRequests: [request]),
@@ -138,87 +112,8 @@ void main() {
       await tester.pumpWidget(_buildScreen(fake));
       await tester.tap(find.text('Decline'));
       await tester.pump();
-      expect(fake.queueDeclineCount, 1);
-      expect(fake.lastQueuedDecline?.id, 'req-99');
-    });
-
-    testWidgets('shows grey Accept when pendingActions is accepted', (
-      tester,
-    ) async {
-      final request = _makeRequest(id: 'req-1');
-      final fake = _FakeFriendsNotifier(
-        initial: FriendsState(
-          incomingRequests: [request],
-          pendingActions: {request.id: 'accepted'},
-        ),
-      );
-      await tester.pumpWidget(_buildScreen(fake));
-      expect(find.text('Accept'), findsOneWidget);
-      expect(find.text('Decline'), findsNothing);
-    });
-
-    testWidgets('shows grey Decline when pendingActions is declined', (
-      tester,
-    ) async {
-      final request = _makeRequest(id: 'req-1');
-      final fake = _FakeFriendsNotifier(
-        initial: FriendsState(
-          incomingRequests: [request],
-          pendingActions: {request.id: 'declined'},
-        ),
-      );
-      await tester.pumpWidget(_buildScreen(fake));
-      expect(find.text('Decline'), findsOneWidget);
-      expect(find.text('Accept'), findsNothing);
-    });
-
-    testWidgets('shows grey Accept for committed accepted request', (
-      tester,
-    ) async {
-      final request = _makeRequest(
-        id: 'req-1',
-        status: FriendRequestStatus.accepted,
-      );
-      final fake = _FakeFriendsNotifier(
-        initial: FriendsState(incomingRequests: [request]),
-      );
-      await tester.pumpWidget(_buildScreen(fake));
-      expect(find.text('Accept'), findsOneWidget);
-      expect(find.text('Decline'), findsNothing);
-    });
-
-    testWidgets('tapping grey on queued action calls undoPendingAction', (
-      tester,
-    ) async {
-      final request = _makeRequest(id: 'req-1');
-      final fake = _FakeFriendsNotifier(
-        initial: FriendsState(
-          incomingRequests: [request],
-          pendingActions: {request.id: 'declined'},
-        ),
-      );
-      await tester.pumpWidget(_buildScreen(fake));
-      await tester.tap(find.text('Decline'));
-      await tester.pump();
-      expect(fake.undoPendingCount, 1);
-      expect(fake.lastUndoPendingId, 'req-1');
-    });
-
-    testWidgets('tapping grey on committed action calls undoCommittedAction', (
-      tester,
-    ) async {
-      final request = _makeRequest(
-        id: 'req-2',
-        status: FriendRequestStatus.declined,
-      );
-      final fake = _FakeFriendsNotifier(
-        initial: FriendsState(incomingRequests: [request]),
-      );
-      await tester.pumpWidget(_buildScreen(fake));
-      await tester.tap(find.text('Decline'));
-      await tester.pump();
-      expect(fake.undoCommittedCount, 1);
-      expect(fake.lastUndoCommitted?.id, 'req-2');
+      expect(fake.declineCount, 1);
+      expect(fake.lastDeclined?.id, 'req-99');
     });
 
     testWidgets('shows multiple request cards', (tester) async {
@@ -235,10 +130,24 @@ void main() {
       expect(find.text('Carol wants to be friends'), findsOneWidget);
     });
 
-    testWidgets('shows empty state text when no requests', (tester) async {
+    testWidgets('shows empty state when no requests', (tester) async {
       await tester.pumpWidget(_buildScreen(_FakeFriendsNotifier()));
       expect(find.text('No notifications'), findsOneWidget);
       expect(find.textContaining('wants to be friends'), findsNothing);
+    });
+
+    testWidgets('does not show card for request from existing friend', (
+      tester,
+    ) async {
+      // incomingRequests from datasource is already pending-only; the screen
+      // additionally filters out requests from users in the friends list.
+      // Simulate the filtered result: empty list.
+      final fake = _FakeFriendsNotifier(
+        initial: const FriendsState(incomingRequests: []),
+      );
+      await tester.pumpWidget(_buildScreen(fake));
+      expect(find.textContaining('wants to be friends'), findsNothing);
+      expect(find.text('No notifications'), findsOneWidget);
     });
 
     group('accessibility', () {

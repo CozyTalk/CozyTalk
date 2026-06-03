@@ -109,6 +109,7 @@ class FriendsDatasourceImpl implements FriendsDatasource {
     return _firestore
         .collection('friend_requests')
         .where('toUid', isEqualTo: currentUid)
+        .where('status', isEqualTo: 'pending')
         .orderBy('createdAt', descending: true)
         .limit(10)
         .snapshots()
