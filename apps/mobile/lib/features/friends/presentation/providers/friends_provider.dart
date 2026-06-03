@@ -138,10 +138,6 @@ class FriendsState {
   final Map<String, FriendRoomStatus?> roomMap;
   // keyed by chatRoomId — count of unread messages from the friend (not self)
   final Map<String, int> unreadCountMap;
-  // Queued actions not yet written to Firestore: requestId → 'accepted'/'declined'.
-  // Committed to Firestore when the user leaves the NotificationScreen.
-  final Map<String, String> pendingActions;
-
   const FriendsState({
     this.allUsers = const [],
     this.friends = const [],
@@ -154,7 +150,6 @@ class FriendsState {
     this.lastMessageTimestampMap = const {},
     this.roomMap = const {},
     this.unreadCountMap = const {},
-    this.pendingActions = const {},
   });
 
   /// Returns true when the current user has already sent a pending request to [uid].
@@ -163,6 +158,11 @@ class FriendsState {
 
   /// Returns true when [uid] is an accepted friend of the current user.
   bool isFriend(String uid) => friends.any((f) => f.friendUid == uid);
+
+  /// Returns true when there is a pending incoming request from [uid].
+  bool hasIncomingPendingFrom(String uid) => incomingRequests.any(
+    (r) => r.fromUid == uid && r.status == FriendRequestStatus.pending,
+  );
 
   FriendsState copyWith({
     List<AppUser>? allUsers,
@@ -176,7 +176,6 @@ class FriendsState {
     Map<String, DateTime?>? lastMessageTimestampMap,
     Map<String, FriendRoomStatus?>? roomMap,
     Map<String, int>? unreadCountMap,
-    Map<String, String>? pendingActions,
   }) => FriendsState(
     allUsers: allUsers ?? this.allUsers,
     friends: friends ?? this.friends,
@@ -190,7 +189,6 @@ class FriendsState {
         lastMessageTimestampMap ?? this.lastMessageTimestampMap,
     roomMap: roomMap ?? this.roomMap,
     unreadCountMap: unreadCountMap ?? this.unreadCountMap,
-    pendingActions: pendingActions ?? this.pendingActions,
   );
 }
 
@@ -199,6 +197,8 @@ class FriendsNotifier extends Notifier<FriendsState> {
   StreamSubscription<List<FriendRequest>>? _requestsSub;
   StreamSubscription<List<FriendRequest>>? _outgoingRequestsSub;
   StreamSubscription<List<AppUser>>? _usersSub;
+  // Tracks request IDs being auto-accepted (mutual pending) to prevent double writes.
+  final Set<String> _autoAcceptingIds = {};
 
   final Map<String, StreamSubscription<bool>> _presenceSubs = {};
   final Map<
@@ -255,43 +255,43 @@ class FriendsNotifier extends Notifier<FriendsState> {
 
     _requestsSub = ref.read(_watchIncomingRequestsProvider)().listen(
       (requests) {
-        // Sort newest-first; keep at most 10 cards.
+        // Datasource already filters to pending only; sort newest-first, cap 10.
         final sorted = [...requests]
           ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
         final capped = sorted.take(10).toList();
-
-        // Clear 'undoing' markers for requests confirmed back to pending.
-        final pendingIds = capped
-            .where((r) => r.status == FriendRequestStatus.pending)
-            .map((r) => r.id)
-            .toSet();
-        // Drop stale pendingActions for cards that fell off the cap.
-        final cappedIds = capped.map((r) => r.id).toSet();
-        final newActions = Map<String, String>.from(state.pendingActions)
-          ..removeWhere(
-            (id, v) =>
-                (v == 'undoing' && pendingIds.contains(id)) ||
-                !cappedIds.contains(id),
-          );
-
-        state = state.copyWith(
-          incomingRequests: capped,
-          pendingActions: newActions,
-        );
+        state = state.copyWith(incomingRequests: capped);
+        // Auto-accept mutual pending: fire when outgoing requests were loaded first.
+        for (final r in capped) {
+          if (!_autoAcceptingIds.contains(r.id) &&
+              state.hasSentRequestTo(r.fromUid)) {
+            _autoAcceptingIds.add(r.id);
+            _writeAccept(r);
+          }
+        }
       },
       onError: (Object e) => state = state.copyWith(
         error: e.toString().replaceFirst('Exception: ', ''),
       ),
     );
 
-    _outgoingRequestsSub = ref
-        .read(_watchOutgoingRequestsProvider)()
-        .listen(
-          (requests) => state = state.copyWith(outgoingRequests: requests),
-          onError: (Object e) => state = state.copyWith(
-            error: e.toString().replaceFirst('Exception: ', ''),
-          ),
-        );
+    _outgoingRequestsSub = ref.read(_watchOutgoingRequestsProvider)().listen(
+      (requests) {
+        state = state.copyWith(outgoingRequests: requests);
+        // Auto-accept mutual pending: fire when incoming requests were loaded first.
+        for (final outgoing in requests) {
+          final mutual = state.incomingRequests
+              .where((r) => r.fromUid == outgoing.toUid)
+              .firstOrNull;
+          if (mutual != null && !_autoAcceptingIds.contains(mutual.id)) {
+            _autoAcceptingIds.add(mutual.id);
+            _writeAccept(mutual);
+          }
+        }
+      },
+      onError: (Object e) => state = state.copyWith(
+        error: e.toString().replaceFirst('Exception: ', ''),
+      ),
+    );
 
     _usersSub = ref
         .read(_watchAllUsersProvider)()
@@ -447,9 +447,19 @@ class FriendsNotifier extends Notifier<FriendsState> {
   Future<void> sendFriendRequest(AppUser toUser) async {
     if (state.isLoading) return;
     if (state.friends.any((f) => f.friendUid == toUser.uid)) return;
-    if (state.incomingRequests.any(
-      (r) => r.fromUid == toUser.uid && r.status == FriendRequestStatus.pending,
-    )) {
+    // Mutual request: the other user already sent us a pending request.
+    // Auto-accept their request instead of creating a duplicate.
+    final mutualRequest = state.incomingRequests
+        .where(
+          (r) =>
+              r.fromUid == toUser.uid &&
+              r.status == FriendRequestStatus.pending,
+        )
+        .firstOrNull;
+    if (mutualRequest != null) {
+      state = state.copyWith(isLoading: true, error: null);
+      await _writeAccept(mutualRequest);
+      if (!_disposed) state = state.copyWith(isLoading: false);
       return;
     }
     final authUser = ref.read(authNotifierProvider).user;
@@ -497,84 +507,6 @@ class FriendsNotifier extends Notifier<FriendsState> {
         isLoading: false,
         error: e.toString().replaceFirst('Exception: ', ''),
       );
-    }
-  }
-
-  // Called by NotificationScreen — queues locally, no Firestore write yet.
-  void queueAccept(FriendRequest request) {
-    state = state.copyWith(
-      pendingActions: {...state.pendingActions, request.id: 'accepted'},
-    );
-  }
-
-  // Called by NotificationScreen — queues locally, no Firestore write yet.
-  void queueDecline(FriendRequest request) {
-    state = state.copyWith(
-      pendingActions: {...state.pendingActions, request.id: 'declined'},
-    );
-  }
-
-  // Reverts a queued (not-yet-committed) action — purely local, no Firestore.
-  void undoPendingAction(String requestId) {
-    final newActions = Map<String, String>.from(state.pendingActions)
-      ..remove(requestId);
-    state = state.copyWith(pendingActions: newActions);
-  }
-
-  // Reverts an already-committed action by writing back to Firestore.
-  // Requires the security rule allowing toUid to revert status to 'pending'.
-  Future<void> undoCommittedAction(FriendRequest request) async {
-    // Optimistic: show Accept/Decline immediately while the write is in-flight.
-    state = state.copyWith(
-      pendingActions: {...state.pendingActions, request.id: 'undoing'},
-    );
-    try {
-      if (request.status == FriendRequestStatus.accepted) {
-        final currentUid = ref.read(friendsDatasourceProvider).currentUid;
-        final sorted = [request.fromUid, currentUid]..sort();
-        await ref
-            .read(friendsRepositoryProvider)
-            .undoAcceptFriendRequest(
-              requestId: request.id,
-              friendshipId: '${sorted[0]}_${sorted[1]}',
-            );
-      } else {
-        await ref
-            .read(friendsRepositoryProvider)
-            .undoDeclineFriendRequest(requestId: request.id);
-      }
-      // Stream will fire with status=pending and clear 'undoing' automatically.
-    } catch (e) {
-      final newActions = Map<String, String>.from(state.pendingActions);
-      if (newActions[request.id] == 'undoing') newActions.remove(request.id);
-      if (!_disposed) {
-        state = state.copyWith(
-          pendingActions: newActions,
-          error: e.toString().replaceFirst('Exception: ', ''),
-        );
-      }
-    }
-  }
-
-  // Called when NotificationScreen is popped — commits all queued actions to
-  // Firestore. Fire-and-forget; errors surface via the error field.
-  void commitPendingActions() {
-    final requests = {for (final r in state.incomingRequests) r.id: r};
-    // Only commit definitive choices; ignore 'undoing' (in-flight Firestore ops).
-    final toCommit = state.pendingActions.entries
-        .where((e) => e.value == 'accepted' || e.value == 'declined')
-        .toList();
-    final newActions = Map<String, String>.from(state.pendingActions)
-      ..removeWhere((_, v) => v == 'accepted' || v == 'declined');
-    state = state.copyWith(pendingActions: newActions);
-    for (final entry in toCommit) {
-      final request = requests[entry.key];
-      if (request == null) continue;
-      if (entry.value == 'accepted') {
-        _writeAccept(request);
-      } else {
-        _writeDecline(request);
-      }
     }
   }
 

@@ -45,4 +45,38 @@ void main() {
       expect(t.thumbnail, 'assets/images/group_doodle.png');
     });
   });
+
+  group('resolveRandomRoomTheme', () {
+    const knownTitles = [
+      'Kao Tapu',
+      'Red Lotus Lake',
+      'The Sea of Cloud',
+      'Lumphini Park',
+    ];
+
+    test('is deterministic — same roomId always returns the same theme', () {
+      final t1 = resolveRandomRoomTheme('room-xyz-001');
+      final t2 = resolveRandomRoomTheme('room-xyz-001');
+      expect(t1.title, t2.title);
+      expect(t1.thumbnail, t2.thumbnail);
+    });
+
+    test('returns a known scenic theme, not a doodle fallback', () {
+      final t = resolveRandomRoomTheme('room-xyz-001');
+      expect(knownTitles, contains(t.title));
+    });
+
+    test('does not crash when roomId is empty', () {
+      final t = resolveRandomRoomTheme('');
+      expect(knownTitles, contains(t.title));
+    });
+
+    test('roomIds with different code-unit sums return different themes', () {
+      // '' sums to 0 → index 0; 'a' sums to 97 → index 1 (97 % 4 = 1)
+      expect(
+        resolveRandomRoomTheme('').title,
+        isNot(resolveRandomRoomTheme('a').title),
+      );
+    });
+  });
 }

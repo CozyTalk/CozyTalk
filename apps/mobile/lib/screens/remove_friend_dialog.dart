@@ -1,18 +1,17 @@
 import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
-import '../models/friend.dart';
 import '../shared/pill_button.dart';
 
 void showRemoveConfirmDialog({
   required BuildContext context,
-  required Friend friend,
+  required String friendName,
   required VoidCallback onConfirm,
 }) {
   showDialog(
     context: context,
     barrierColor: Colors.black.withValues(alpha: 0.35),
     builder: (_) =>
-        _RemoveConfirmDialog(friendName: friend.name, onConfirm: onConfirm),
+        _RemoveConfirmDialog(friendName: friendName, onConfirm: onConfirm),
   );
 }
 

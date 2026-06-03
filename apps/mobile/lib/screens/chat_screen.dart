@@ -20,6 +20,7 @@ import '../dialogs/leave_room_dialog.dart';
 import '../dialogs/song_dialog.dart';
 import '../dialogs/user_profile_dialog.dart'
     show AddFriendStatus, UserProfileDialog;
+import 'remove_friend_dialog.dart';
 import '../shared/avatar_overlay.dart';
 import '../shared/background_theme.dart';
 import '../shared/gif_picker.dart';
@@ -251,19 +252,22 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
   }
 
   void _sendFriendRequest([String name = '']) {
-    if (ref.read(friendsNotifierProvider).isLoading) return;
+    final s = ref.read(friendsNotifierProvider);
+    if (s.isLoading) return;
     final uid = _partnerUid;
     if (uid == null || uid.isEmpty) return;
     final targetName = name.isNotEmpty ? name : 'your match';
+    final isAutoAccept = s.hasIncomingPendingFrom(uid);
     ref
         .read(friendsNotifierProvider.notifier)
         .sendFriendRequest(AppUser(uid: uid, displayName: targetName));
     showInfoDialog(
       context,
-      type: InfoDialogType.info,
-      title: 'Friend Request Sent',
-      message:
-          'Your friend request has been sent to $targetName.\nWaiting for them to accept.',
+      type: isAutoAccept ? InfoDialogType.success : InfoDialogType.info,
+      title: isAutoAccept ? 'Now Friends!' : 'Friend Request Sent',
+      message: isAutoAccept
+          ? 'You and $targetName are now friends.'
+          : 'Your friend request has been sent to $targetName.\nWaiting for them to accept.',
     );
   }
 
@@ -277,6 +281,28 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
       title: 'Request Cancelled',
       message:
           'Your friend request to ${name.isNotEmpty ? name : 'your match'} has been cancelled.',
+    );
+  }
+
+  void _unfriend([String name = '']) {
+    final uid = _partnerUid;
+    if (uid == null || uid.isEmpty) return;
+    final friend = ref
+        .read(friendsNotifierProvider)
+        .friends
+        .where((f) => f.friendUid == uid)
+        .firstOrNull;
+    if (friend == null) return;
+    final displayName = name.isNotEmpty ? name : friend.friendDisplayName;
+    showRemoveConfirmDialog(
+      context: context,
+      friendName: displayName,
+      onConfirm: () {
+        if (ref.read(friendsNotifierProvider).isLoading) return;
+        ref
+            .read(friendsNotifierProvider.notifier)
+            .removeFriend(friend.friendshipId);
+      },
     );
   }
 
@@ -813,6 +839,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
                       boxWidth: eachW,
                       onFriendRequest: _sendFriendRequest,
                       onCancelRequest: cancelFriendRequest,
+                      onUnfriend: _unfriend,
                       friendStatus: _partnerFriendStatus(),
                       onReport: _partnerUid != null
                           ? () => _openReport(_partnerUid!)
@@ -1075,6 +1102,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
                     friendStatus: _partnerFriendStatus(),
                     onAddFriend: () => _sendFriendRequest(partnerName),
                     onCancelRequest: () => cancelFriendRequest(partnerName),
+                    onUnfriend: () => _unfriend(partnerName),
                     onReport: _partnerUid != null
                         ? () => _openReport(_partnerUid!)
                         : null,
@@ -1209,6 +1237,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
                     friendStatus: _partnerFriendStatus(),
                     onAddFriend: () => _sendFriendRequest(partnerName),
                     onCancelRequest: () => cancelFriendRequest(partnerName),
+                    onUnfriend: () => _unfriend(partnerName),
                     onReport: _partnerUid != null
                         ? () => _openReport(_partnerUid!)
                         : null,
@@ -1668,6 +1697,7 @@ class _StaticAvatar extends StatelessWidget {
     this.boxWidth = 120,
     this.onFriendRequest,
     this.onCancelRequest,
+    this.onUnfriend,
     this.onReport,
     this.friendStatus = AddFriendStatus.notAdded,
   });
@@ -1680,6 +1710,7 @@ class _StaticAvatar extends StatelessWidget {
   final AvatarState? avatarState;
   final VoidCallback? onFriendRequest;
   final VoidCallback? onCancelRequest;
+  final VoidCallback? onUnfriend;
   final VoidCallback? onReport;
   final AddFriendStatus friendStatus;
   final double boxWidth;
@@ -1713,6 +1744,7 @@ class _StaticAvatar extends StatelessWidget {
                         : friendStatus,
                     onAddFriend: isMe ? null : onFriendRequest,
                     onCancelRequest: isMe ? null : onCancelRequest,
+                    onUnfriend: isMe ? null : onUnfriend,
                     onReport: isMe ? null : onReport,
                     avatarState: avatarState,
                   ),
