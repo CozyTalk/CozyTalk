@@ -219,6 +219,7 @@ class JukeboxNotifier extends Notifier<JukeboxUiState> {
     final roomId = state.roomId;
     final roomState = state.roomState;
     if (roomId == null || roomState == null) return;
+    if (index < 0 || index >= roomState.queue.length) return;
     final updated = await ref.read(_removeFromQueueProvider)(
       roomId: roomId,
       current: roomState,

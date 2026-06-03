@@ -80,11 +80,16 @@ class _SongPanelBodyState extends ConsumerState<SongPanelBody>
     final state = ref.watch(jukeboxNotifierProvider);
     final roomState = state.roomState;
 
-    if (!_webViewReady && roomState?.currentTrack != null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted && !_webViewReady) setState(() => _webViewReady = true);
-      });
-    }
+    ref.listen<JukeboxTrack?>(
+      jukeboxNotifierProvider.select((s) => s.roomState?.currentTrack),
+      (_, next) {
+        if (!_webViewReady && next != null) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted && !_webViewReady) setState(() => _webViewReady = true);
+          });
+        }
+      },
+    );
 
     ref.listen<JukeboxUiState>(jukeboxNotifierProvider, (prev, next) {
       if (next.resolveError != null &&
