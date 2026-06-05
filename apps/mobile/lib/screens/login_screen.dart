@@ -6,6 +6,7 @@ import '../dialogs/account_suspended_dialog.dart';
 import '../features/auth/presentation/providers/auth_provider.dart';
 import '../shared/connectivity_provider.dart';
 import '../shared/offline_chip.dart';
+import '../shared/web_content_box.dart';
 import '../theme/app_colors.dart';
 import 'signup_screen.dart';
 
@@ -65,7 +66,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   children: [
                     const SizedBox(height: 24),
                     const OfflineChip(),
-                    _buildCard(),
+                    WebContentBox(child: _buildCard()),
                     const SizedBox(height: 24),
                   ],
                 ),

@@ -23,7 +23,10 @@ void showFriendMessagePopup(
     end: Offset.zero,
   ).animate(CurvedAnimation(parent: ctrl, curve: Curves.easeOutCubic));
 
+  var dismissed = false;
   void dismiss() {
+    if (dismissed) return;
+    dismissed = true;
     ctrl.reverse().then((_) {
       entry.remove();
       ctrl.dispose();
@@ -77,81 +80,93 @@ class _PopupBanner extends StatelessWidget {
         position: slideAnim,
         child: Material(
           color: Colors.transparent,
-          child: GestureDetector(
-            onTap: onTap,
-            onVerticalDragEnd: (details) {
-              if (details.primaryVelocity != null &&
-                  details.primaryVelocity! < -100) {
-                onDismiss();
-              }
-            },
-            child: Container(
-              margin: EdgeInsets.fromLTRB(16, topPad + 8, 16, 0),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.grey.shade300, width: 1),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.15),
-                    blurRadius: 16,
-                    offset: const Offset(0, 4),
+          child: Align(
+            alignment: Alignment.topCenter,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 540),
+              child: GestureDetector(
+                onTap: onTap,
+                onVerticalDragEnd: (details) {
+                  if (details.primaryVelocity != null &&
+                      details.primaryVelocity! < -100) {
+                    onDismiss();
+                  }
+                },
+                child: Container(
+                  margin: EdgeInsets.fromLTRB(16, topPad + 8, 16, 0),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 14,
                   ),
-                ],
-              ),
-              child: Row(
-                children: [
-                  // Avatar placeholder
-                  Container(
-                    width: 42,
-                    height: 42,
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade100,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.grey.shade300, width: 1),
-                    ),
-                    child: const Icon(
-                      Icons.person,
-                      size: 24,
-                      color: Colors.grey,
-                    ),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: Colors.grey.shade300, width: 1),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.15),
+                        blurRadius: 16,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 12),
-                  // Name + message
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          friendName,
-                          style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w800,
-                            color: Colors.black87,
+                  child: Row(
+                    children: [
+                      // Avatar placeholder
+                      Container(
+                        width: 44,
+                        height: 44,
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade100,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: Colors.grey.shade300,
+                            width: 1,
                           ),
                         ),
-                        const SizedBox(height: 2),
-                        Text(
-                          message,
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: Colors.grey.shade600,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                        child: const Icon(
+                          Icons.person,
+                          size: 24,
+                          color: Colors.grey,
                         ),
-                      ],
-                    ),
+                      ),
+                      const SizedBox(width: 12),
+                      // Name + message
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              friendName,
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w800,
+                                color: Colors.black87,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              message,
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: Colors.grey.shade600,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Icon(
+                        Icons.chevron_right,
+                        size: 20,
+                        color: Colors.grey.shade400,
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 8),
-                  Icon(
-                    Icons.chevron_right,
-                    size: 20,
-                    color: Colors.grey.shade400,
-                  ),
-                ],
+                ),
               ),
             ),
           ),

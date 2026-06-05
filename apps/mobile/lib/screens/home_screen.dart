@@ -9,6 +9,7 @@ import '../features/friends/presentation/providers/friends_provider.dart';
 import '../features/matchmaking/presentation/providers/matchmaking_provider.dart';
 import '../features/profile/presentation/providers/profile_provider.dart';
 import '../shared/offline_chip.dart';
+import '../shared/web_content_box.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_routes.dart';
 import '../shared/avatar_overlay.dart';
@@ -119,79 +120,86 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             child: SafeArea(
               top: false,
               child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const SizedBox(height: 35),
-
-                    Text(
-                      'Hello, ${ref.watch(profileNotifierProvider).profile?.displayName ?? ''}!',
-                      style: const TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF000000),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-
-                    _AvatarCard(
-                      moodText:
-                          ref
-                              .watch(profileNotifierProvider)
-                              .profile
-                              ?.thoughts ??
-                          '',
-                      onMoodTap: _editThoughts,
-                      moodOverlay: ref.watch(avatarProvider).mood,
-                      accessoryOverlay: ref.watch(avatarProvider).accessory,
-                    ),
-                    const SizedBox(height: 22),
-
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                child: WebContentBox(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _QuickAction(
-                          imagePath: 'assets/images/icons/DressUp.svg',
-                          label: 'Dress Up!',
-                          imageWidth: 35,
-                          imageHeight: 35,
-                          onTap: _navigateDressUp,
+                        const SizedBox(height: 35),
+
+                        Text(
+                          'Hello, ${ref.watch(profileNotifierProvider).profile?.displayName ?? ''}!',
+                          style: const TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF000000),
+                          ),
                         ),
-                        _QuickAction(
-                          imagePath: 'assets/images/icons/Mood.svg',
-                          label: 'Mood',
-                          imageWidth: 38,
-                          imageHeight: 38,
-                          onTap: _navigateMood,
+                        const SizedBox(height: 8),
+
+                        _AvatarCard(
+                          moodText:
+                              ref
+                                  .watch(profileNotifierProvider)
+                                  .profile
+                                  ?.thoughts ??
+                              '',
+                          onMoodTap: _editThoughts,
+                          moodOverlay: ref.watch(avatarProvider).mood,
+                          accessoryOverlay: ref.watch(avatarProvider).accessory,
                         ),
-                        _QuickAction(
-                          imagePath: 'assets/images/icons/Friends.svg',
-                          label: 'Friends',
-                          imageWidth: 39,
-                          imageHeight: 39,
-                          showBadge: ref.watch(
-                            friendsNotifierProvider.select(
-                              (s) => s.unreadCountMap.values.any((c) => c > 0),
+                        const SizedBox(height: 22),
+
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                          children: [
+                            _QuickAction(
+                              imagePath: 'assets/images/icons/DressUp.svg',
+                              label: 'Dress Up!',
+                              imageWidth: 35,
+                              imageHeight: 35,
+                              onTap: _navigateDressUp,
+                            ),
+                            _QuickAction(
+                              imagePath: 'assets/images/icons/Mood.svg',
+                              label: 'Mood',
+                              imageWidth: 38,
+                              imageHeight: 38,
+                              onTap: _navigateMood,
+                            ),
+                            _QuickAction(
+                              imagePath: 'assets/images/icons/Friends.svg',
+                              label: 'Friends',
+                              imageWidth: 39,
+                              imageHeight: 39,
+                              showBadge: ref.watch(
+                                friendsNotifierProvider.select(
+                                  (s) =>
+                                      s.unreadCountMap.values.any((c) => c > 0),
+                                ),
+                              ),
+                              onTap: () => Navigator.pushNamed(
+                                context,
+                                AppRoutes.friends,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 22),
+                        // Let's chat
+                        Center(
+                          child: _LetsChatButton(
+                            onTap: () => Navigator.pushNamed(
+                              context,
+                              AppRoutes.chooseRoomType,
                             ),
                           ),
-                          onTap: () =>
-                              Navigator.pushNamed(context, AppRoutes.friends),
                         ),
+                        const SizedBox(height: 28),
                       ],
                     ),
-                    const SizedBox(height: 22),
-                    // Let's chat
-                    Center(
-                      child: _LetsChatButton(
-                        onTap: () => Navigator.pushNamed(
-                          context,
-                          AppRoutes.chooseRoomType,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 28),
-                  ],
+                  ),
                 ),
               ),
             ),

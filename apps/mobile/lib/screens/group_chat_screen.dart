@@ -16,6 +16,7 @@ import '../features/jukebox/presentation/providers/jukebox_provider.dart';
 import '../features/matchmaking/presentation/providers/matchmaking_provider.dart';
 import '../features/profile/presentation/providers/profile_provider.dart';
 import '../dialogs/report_dialog.dart';
+import '../shared/web_content_box.dart';
 import '../theme/app_colors.dart';
 import '../dialogs/leave_room_dialog.dart';
 import 'remove_friend_dialog.dart';
@@ -889,6 +890,7 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
     ref.listen<Map<String, int>>(
       friendsNotifierProvider.select((s) => s.unreadCountMap),
       (prev, next) {
+        if (!mounted) return;
         if (prev == null) return;
         for (final entry in next.entries) {
           if (entry.value <= (prev[entry.key] ?? 0)) continue;
@@ -941,123 +943,127 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
             buildHeader(roomName, roomId, isLocked),
             // ── Content + slide-down panel clipped together ──
             Expanded(
-              child: ClipRect(
-                child: Stack(
-                  children: [
-                    // Main content
-                    Column(
-                      children: [
-                        buildBanner(
-                          bgImage,
-                          maxMembers,
-                          avatarState,
-                          myDisplayName,
-                          members,
-                          _myInterest,
-                          roomUsers,
-                          memberAvatarStates,
-                        ),
-                        Expanded(
-                          child: Stack(
-                            children: [
-                              buildMessageList(
-                                avatarState,
-                                chatState,
-                                memberAvatarStates,
-                              ),
-                              Positioned(
-                                top: 0,
-                                left: 0,
-                                right: 0,
-                                child: IgnorePointer(
-                                  child: Container(
-                                    height: 18,
-                                    decoration: BoxDecoration(
-                                      gradient: LinearGradient(
-                                        begin: Alignment.topCenter,
-                                        end: Alignment.bottomCenter,
-                                        colors: [
-                                          Colors.black.withValues(alpha: 0.13),
-                                          Colors.transparent,
-                                        ],
+              child: WebContentBox(
+                child: ClipRect(
+                  child: Stack(
+                    children: [
+                      // Main content
+                      Column(
+                        children: [
+                          buildBanner(
+                            bgImage,
+                            maxMembers,
+                            avatarState,
+                            myDisplayName,
+                            members,
+                            _myInterest,
+                            roomUsers,
+                            memberAvatarStates,
+                          ),
+                          Expanded(
+                            child: Stack(
+                              children: [
+                                buildMessageList(
+                                  avatarState,
+                                  chatState,
+                                  memberAvatarStates,
+                                ),
+                                Positioned(
+                                  top: 0,
+                                  left: 0,
+                                  right: 0,
+                                  child: IgnorePointer(
+                                    child: Container(
+                                      height: 18,
+                                      decoration: BoxDecoration(
+                                        gradient: LinearGradient(
+                                          begin: Alignment.topCenter,
+                                          end: Alignment.bottomCenter,
+                                          colors: [
+                                            Colors.black.withValues(
+                                              alpha: 0.13,
+                                            ),
+                                            Colors.transparent,
+                                          ],
+                                        ),
                                       ),
                                     ),
                                   ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
+                          ),
+                          buildInputBar(),
+                        ],
+                      ),
+                      // Barrier — tap outside to close whichever panel is open
+                      if (_panelOpen || _songPanelOpen)
+                        ExcludeSemantics(
+                          child: GestureDetector(
+                            onTap: _panelOpen ? _closePanel : _closeSongPanel,
+                            behavior: HitTestBehavior.opaque,
+                            child: AnimatedOpacity(
+                              opacity: 1.0,
+                              duration: const Duration(milliseconds: 260),
+                              child: Container(color: Colors.black26),
+                            ),
                           ),
                         ),
-                        buildInputBar(),
-                      ],
-                    ),
-                    // Barrier — tap outside to close whichever panel is open
-                    if (_panelOpen || _songPanelOpen)
-                      ExcludeSemantics(
-                        child: GestureDetector(
-                          onTap: _panelOpen ? _closePanel : _closeSongPanel,
-                          behavior: HitTestBehavior.opaque,
-                          child: AnimatedOpacity(
-                            opacity: 1.0,
-                            duration: const Duration(milliseconds: 260),
-                            child: Container(color: Colors.black26),
+                      // Slide-down members panel
+                      Positioned(
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        child: SlideTransition(
+                          position: _panelSlide,
+                          child: MembersPanelBody(
+                            members: members,
+                            memberUids: roomUsers,
+                            onClose: _closePanel,
+                            avatarState: avatarState,
+                            pendingUids: ref
+                                .watch(friendsNotifierProvider)
+                                .outgoingRequests
+                                .map((r) => r.toUid)
+                                .toSet(),
+                            friendUids: ref
+                                .watch(friendsNotifierProvider)
+                                .friends
+                                .map((f) => f.friendUid)
+                                .toSet(),
+                            onAddFriend: (uid) {
+                              final name = _memberNameCache[uid] ?? 'User';
+                              _addFriend(uid, name);
+                            },
+                            onCancelRequest: (uid) {
+                              final name = _memberNameCache[uid] ?? 'User';
+                              _cancelFriendRequest(uid, name);
+                            },
+                            onUnfriend: (uid) {
+                              final name = _memberNameCache[uid] ?? 'User';
+                              _unfriend(uid, name);
+                            },
+                            onReport: _openReport,
+                            memberAvatarStates: memberAvatarByName,
                           ),
                         ),
                       ),
-                    // Slide-down members panel
-                    Positioned(
-                      top: 0,
-                      left: 0,
-                      right: 0,
-                      child: SlideTransition(
-                        position: _panelSlide,
-                        child: MembersPanelBody(
-                          members: members,
-                          memberUids: roomUsers,
-                          onClose: _closePanel,
-                          avatarState: avatarState,
-                          pendingUids: ref
-                              .watch(friendsNotifierProvider)
-                              .outgoingRequests
-                              .map((r) => r.toUid)
-                              .toSet(),
-                          friendUids: ref
-                              .watch(friendsNotifierProvider)
-                              .friends
-                              .map((f) => f.friendUid)
-                              .toSet(),
-                          onAddFriend: (uid) {
-                            final name = _memberNameCache[uid] ?? 'User';
-                            _addFriend(uid, name);
-                          },
-                          onCancelRequest: (uid) {
-                            final name = _memberNameCache[uid] ?? 'User';
-                            _cancelFriendRequest(uid, name);
-                          },
-                          onUnfriend: (uid) {
-                            final name = _memberNameCache[uid] ?? 'User';
-                            _unfriend(uid, name);
-                          },
-                          onReport: _openReport,
-                          memberAvatarStates: memberAvatarByName,
+                      // Song panel — always in tree so audio survives panel close.
+                      Positioned(
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        child: SlideTransition(
+                          position: _songSlide,
+                          child: SongPanelBody(
+                            onClose: _closeSongPanel,
+                            roomId: roomId,
+                            isVisible: _songPanelOpen,
+                          ),
                         ),
                       ),
-                    ),
-                    // Song panel — always in tree so audio survives panel close.
-                    Positioned(
-                      top: 0,
-                      left: 0,
-                      right: 0,
-                      child: SlideTransition(
-                        position: _songSlide,
-                        child: SongPanelBody(
-                          onClose: _closeSongPanel,
-                          roomId: roomId,
-                          isVisible: _songPanelOpen,
-                        ),
-                      ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),

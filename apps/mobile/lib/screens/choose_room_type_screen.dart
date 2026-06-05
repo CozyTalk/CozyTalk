@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../features/user_status/presentation/providers/user_status_provider.dart';
+import '../shared/web_content_box.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_routes.dart';
 
@@ -312,96 +313,105 @@ class _ChooseRoomTypeScreenState extends ConsumerState<ChooseRoomTypeScreen> {
                 // ── Scrollable cards ──
                 Expanded(
                   child: SingleChildScrollView(
-                    padding: const EdgeInsets.symmetric(
-                      vertical: 20,
-                      horizontal: 20,
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Row(
+                    child: WebContentBox(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 20,
+                          horizontal: 20,
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            Container(
-                              width: 12,
-                              height: 12,
-                              decoration: const BoxDecoration(
-                                color: Color(0xFF85BA72),
-                                shape: BoxShape.circle,
+                            Row(
+                              children: [
+                                Container(
+                                  width: 12,
+                                  height: 12,
+                                  decoration: const BoxDecoration(
+                                    color: Color(0xFF85BA72),
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'User online ~ $onlineCount',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 20),
+                            // ── 1v1 / Group — half each ──
+                            IntrinsicHeight(
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  Expanded(
+                                    child: _roomTypeCard(
+                                      type: '1v1',
+                                      title: '1 on 1',
+                                      description:
+                                          'A private chat with\none stranger.\nCozy and personal.',
+                                      imagePath:
+                                          'assets/images/1on1_doodle.png',
+                                    ),
+                                  ),
+                                  const SizedBox(width: 16),
+                                  Expanded(
+                                    child: _roomTypeCard(
+                                      type: 'group',
+                                      title: 'Group',
+                                      description:
+                                          'Meet multiple\nstrangers at once.\nMore fun, more\nchaos!',
+                                      imagePath:
+                                          'assets/images/group_doodle.png',
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
-                            const SizedBox(width: 8),
-                            Text(
-                              'User online ~ $onlineCount',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w600,
-                              ),
+                            const SizedBox(height: 16),
+                            // ── Create Group Room — full width, same as row above ──
+                            _roomTypeCard(
+                              type: 'create',
+                              title: 'Create Group Room',
+                              description: 'Chat privately with your crew.',
+                              imagePath:
+                                  'assets/images/create_group_doodle.png',
+                              imageHeight: 120,
                             ),
                           ],
                         ),
-                        const SizedBox(height: 20),
-                        // ── 1v1 / Group — half each ──
-                        IntrinsicHeight(
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              Expanded(
-                                child: _roomTypeCard(
-                                  type: '1v1',
-                                  title: '1 on 1',
-                                  description:
-                                      'A private chat with\none stranger.\nCozy and personal.',
-                                  imagePath: 'assets/images/1on1_doodle.png',
-                                ),
-                              ),
-                              const SizedBox(width: 16),
-                              Expanded(
-                                child: _roomTypeCard(
-                                  type: 'group',
-                                  title: 'Group',
-                                  description:
-                                      'Meet multiple\nstrangers at once.\nMore fun, more\nchaos!',
-                                  imagePath: 'assets/images/group_doodle.png',
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        // ── Create Group Room — full width, same as row above ──
-                        _roomTypeCard(
-                          type: 'create',
-                          title: 'Create Group Room',
-                          description: 'Chat privately with your crew.',
-                          imagePath: 'assets/images/create_group_doodle.png',
-                          imageHeight: 120,
-                        ),
-                      ],
+                      ),
                     ),
                   ),
                 ),
                 // ── Join Room button pinned to bottom ──
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(40, 16, 40, 32),
-                  child: SizedBox(
-                    width: double.infinity,
-                    height: 58,
-                    child: ElevatedButton(
-                      onPressed: isSelectedAny ? handleJoin : null,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFD9EACF),
-                        disabledBackgroundColor: const Color(0xFFE8E8E8),
-                        foregroundColor: Colors.black,
-                        disabledForegroundColor: Colors.black38,
-                        elevation: isSelectedAny ? 3 : 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(20),
+                WebContentBox(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(40, 16, 40, 32),
+                    child: SizedBox(
+                      width: double.infinity,
+                      height: 58,
+                      child: ElevatedButton(
+                        onPressed: isSelectedAny ? handleJoin : null,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFD9EACF),
+                          disabledBackgroundColor: const Color(0xFFE8E8E8),
+                          foregroundColor: Colors.black,
+                          disabledForegroundColor: Colors.black38,
+                          elevation: isSelectedAny ? 3 : 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(20),
+                          ),
                         ),
-                      ),
-                      child: const Text(
-                        'Join Room',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w800,
+                        child: const Text(
+                          'Join Room',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w800,
+                          ),
                         ),
                       ),
                     ),

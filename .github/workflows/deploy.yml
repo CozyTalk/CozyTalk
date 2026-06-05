@@ -90,7 +90,7 @@ jobs:
       - name: Deploy functions and security rules
         run: |
           echo "$FIREBASE_SA_JSON" > /tmp/firebase-sa.json
-          npx firebase-tools@latest deploy \
+          npx firebase-tools@15.15.0 deploy \
             --only functions,firestore:rules,firestore:indexes,database,storage \
             --project cozytalk-5d984 \
             --non-interactive

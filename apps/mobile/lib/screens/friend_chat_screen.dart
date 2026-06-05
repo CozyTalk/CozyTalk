@@ -11,6 +11,7 @@ import '../features/friends/presentation/providers/friend_chat_provider.dart';
 import '../features/friends/presentation/providers/friends_provider.dart';
 import '../features/profile/presentation/providers/profile_provider.dart';
 import '../shared/avatar_overlay.dart';
+import '../shared/web_content_box.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_routes.dart';
 import '../theme/room_themes.dart';
@@ -259,58 +260,64 @@ class _FriendChatScreenState extends ConsumerState<FriendChatScreen> {
           if (chatState.isLoading)
             const LinearProgressIndicator()
           else
-            _buildRoomBanner(context, partnerUid, isOnline, isBlocked),
+            WebContentBox(
+              child: _buildRoomBanner(context, partnerUid, isOnline, isBlocked),
+            ),
           Expanded(
-            child: Builder(
-              builder: (context) {
-                final msgItems = _buildItemList(chatState.messages);
-                // index 0 = safety notice, 1 = spacer,
-                // 2..n-1 = date separators / message bubbles,
-                // last = typing indicator (if visible)
-                final extraHead = 2;
-                final typingCount = chatState.isPartnerTyping ? 1 : 0;
-                final total = extraHead + msgItems.length + typingCount;
-                return ListView.builder(
-                  controller: _scrollCtrl,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
-                  ),
-                  itemCount: total,
-                  itemBuilder: (context, i) {
-                    if (i == 0) return _buildSafetyNotice();
-                    if (i == 1) return const SizedBox(height: 8);
-                    final msgIndex = i - extraHead;
-                    if (msgIndex < msgItems.length) {
-                      final item = msgItems[msgIndex];
-                      if (item is DateTime) return _buildDateSeparator(item);
-                      return _buildMessageBubble(
-                        item as FriendMessage,
-                        currentUid,
-                        myMoodOverlay,
-                        myAccessoryOverlay,
-                        partnerMoodOverlay,
-                        partnerAccessoryOverlay,
+            child: WebContentBox(
+              child: Builder(
+                builder: (context) {
+                  final msgItems = _buildItemList(chatState.messages);
+                  // index 0 = safety notice, 1 = spacer,
+                  // 2..n-1 = date separators / message bubbles,
+                  // last = typing indicator (if visible)
+                  final extraHead = 2;
+                  final typingCount = chatState.isPartnerTyping ? 1 : 0;
+                  final total = extraHead + msgItems.length + typingCount;
+                  return ListView.builder(
+                    controller: _scrollCtrl,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
+                    itemCount: total,
+                    itemBuilder: (context, i) {
+                      if (i == 0) return _buildSafetyNotice();
+                      if (i == 1) return const SizedBox(height: 8);
+                      final msgIndex = i - extraHead;
+                      if (msgIndex < msgItems.length) {
+                        final item = msgItems[msgIndex];
+                        if (item is DateTime) return _buildDateSeparator(item);
+                        return _buildMessageBubble(
+                          item as FriendMessage,
+                          currentUid,
+                          myMoodOverlay,
+                          myAccessoryOverlay,
+                          partnerMoodOverlay,
+                          partnerAccessoryOverlay,
+                        );
+                      }
+                      return const Padding(
+                        padding: EdgeInsets.only(top: 6),
+                        child: _FriendTypingIndicator(),
                       );
-                    }
-                    return const Padding(
-                      padding: EdgeInsets.only(top: 6),
-                      child: _FriendTypingIndicator(),
-                    );
-                  },
-                );
-              },
+                    },
+                  );
+                },
+              ),
             ),
           ),
           if (isBlocked)
-            _buildBlockedBar()
+            WebContentBox(child: _buildBlockedBar())
           else
-            Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (_pendingGifUrl != null) _buildGifPreview(),
-                _buildInputBar(chatState),
-              ],
+            WebContentBox(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (_pendingGifUrl != null) _buildGifPreview(),
+                  _buildInputBar(chatState),
+                ],
+              ),
             ),
         ],
       ),
@@ -676,13 +683,13 @@ class _FriendChatScreenState extends ConsumerState<FriendChatScreen> {
               accessoryOverlay: accessoryOverlay,
             ),
             const SizedBox(width: 8),
-            content,
+            Flexible(child: content),
             const SizedBox(width: 6),
             timeWidget,
           ] else ...[
             timeWidget,
             const SizedBox(width: 6),
-            content,
+            Flexible(child: content),
             const SizedBox(width: 8),
             LayeredAvatar(
               boxSize: 40,

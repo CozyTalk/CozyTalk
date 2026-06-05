@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../features/friends/domain/entities/friend_request.dart';
 import '../features/friends/presentation/providers/friends_provider.dart';
+import '../shared/web_content_box.dart';
 import '../theme/app_colors.dart';
 
 class NotificationScreen extends ConsumerStatefulWidget {
@@ -45,11 +46,13 @@ class _NotificationScreenState extends ConsumerState<NotificationScreen> {
                       style: TextStyle(color: Colors.black54, fontSize: 15),
                     ),
                   )
-                : ListView.separated(
-                    padding: const EdgeInsets.all(20),
-                    itemCount: displayed.length,
-                    separatorBuilder: (_, _) => const SizedBox(height: 16),
-                    itemBuilder: (_, i) => _buildCard(displayed[i]),
+                : WebContentBox(
+                    child: ListView.separated(
+                      padding: const EdgeInsets.all(20),
+                      itemCount: displayed.length,
+                      separatorBuilder: (_, _) => const SizedBox(height: 16),
+                      itemBuilder: (_, i) => _buildCard(displayed[i]),
+                    ),
                   ),
           ),
         ],

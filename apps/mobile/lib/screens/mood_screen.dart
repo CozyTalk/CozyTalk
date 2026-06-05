@@ -6,6 +6,7 @@ import '../features/avatar/presentation/providers/avatar_decoration_provider.dar
 import '../theme/app_colors.dart';
 import '../shared/avatar_overlay.dart';
 import '../shared/layered_avatar.dart';
+import '../shared/web_content_box.dart';
 import 'widgets.dart';
 
 class _MoodOption {
@@ -126,157 +127,165 @@ class _MoodScreenState extends ConsumerState<MoodScreen> {
             children: [
               _buildCustomAppBar(context),
 
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
-                child: Container(
-                  width: double.infinity,
-                  height: 250,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(25),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.12),
-                        blurRadius: 12,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(25),
-                    child: Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        Positioned.fill(
-                          child: Image.asset(
-                            'assets/images/backgrounds/MoodBg.png',
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, e, s) =>
-                                Container(color: AppColors.tanGreen),
-                          ),
-                        ),
-                        Positioned(
-                          bottom: -15,
-                          child: LayeredAvatar(
-                            boxSize: 130,
-                            accessoryOverlay: ref
-                                .watch(avatarProvider)
-                                .accessory,
-                            moodOverlay: _selected != null
-                                ? AvatarOverlays.mood[_selected]
-                                : ref.watch(avatarProvider).mood,
-                          ),
+              WebContentBox(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
+                  child: Container(
+                    width: double.infinity,
+                    height: 250,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(25),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.12),
+                          blurRadius: 12,
+                          offset: const Offset(0, 4),
                         ),
                       ],
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(25),
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          Positioned.fill(
+                            child: Image.asset(
+                              'assets/images/backgrounds/MoodBg.png',
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, e, s) =>
+                                  Container(color: AppColors.tanGreen),
+                            ),
+                          ),
+                          Positioned(
+                            bottom: -15,
+                            child: LayeredAvatar(
+                              boxSize: 130,
+                              accessoryOverlay: ref
+                                  .watch(avatarProvider)
+                                  .accessory,
+                              moodOverlay: _selected != null
+                                  ? AvatarOverlays.mood[_selected]
+                                  : ref.watch(avatarProvider).mood,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
               ),
 
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 14,
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    AvatarActionButton(
-                      svgPath: 'assets/images/icons/Undo.svg',
-                      enabled: _history.isNotEmpty,
-                      onTap: _undo,
-                      semanticLabel: 'Undo',
-                    ),
-                    const SizedBox(width: 12),
-                    AvatarActionButton(
-                      svgPath: 'assets/images/icons/Redo.svg',
-                      enabled: _future.isNotEmpty,
-                      onTap: _redo,
-                      semanticLabel: 'Redo',
-                    ),
-                    const SizedBox(width: 12),
-                    AvatarActionButton(
-                      svgPath: 'assets/images/icons/Trash.svg',
-                      enabled: _selected != null,
-                      onTap: _delete,
-                      semanticLabel: 'Reset mood',
-                    ),
-                  ],
+              WebContentBox(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 14,
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      AvatarActionButton(
+                        svgPath: 'assets/images/icons/Undo.svg',
+                        enabled: _history.isNotEmpty,
+                        onTap: _undo,
+                        semanticLabel: 'Undo',
+                      ),
+                      const SizedBox(width: 12),
+                      AvatarActionButton(
+                        svgPath: 'assets/images/icons/Redo.svg',
+                        enabled: _future.isNotEmpty,
+                        onTap: _redo,
+                        semanticLabel: 'Redo',
+                      ),
+                      const SizedBox(width: 12),
+                      AvatarActionButton(
+                        svgPath: 'assets/images/icons/Trash.svg',
+                        enabled: _selected != null,
+                        onTap: _delete,
+                        semanticLabel: 'Reset mood',
+                      ),
+                    ],
+                  ),
                 ),
               ),
 
               Expanded(
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 120),
-                  child: GridView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    padding: EdgeInsets.zero,
-                    gridDelegate:
-                        const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 3,
-                          crossAxisSpacing: 15,
-                          mainAxisSpacing: 15,
-                          childAspectRatio: 0.85,
-                        ),
-                    itemCount: _moods.length,
-                    itemBuilder: (_, i) {
-                      final mood = _moods[i];
-                      final sel = _selected == mood.name;
-                      return GestureDetector(
-                        onTap: () => _select(mood.name),
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 200),
-                          curve: Curves.easeOut,
-                          transform: Matrix4.translationValues(
-                            0,
-                            sel ? -10.0 : 0,
-                            0,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(22),
-                            border: Border.all(
-                              color: sel
-                                  ? const Color(0xFFCE5E42)
-                                  : Colors.grey.shade300,
-                              width: sel ? 2.5 : 1.5,
+                  child: WebContentBox(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 12, 20, 120),
+                      child: GridView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        padding: EdgeInsets.zero,
+                        gridDelegate:
+                            const SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 3,
+                              crossAxisSpacing: 15,
+                              mainAxisSpacing: 15,
+                              childAspectRatio: 0.85,
                             ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.08),
-                                blurRadius: 10,
-                                offset: const Offset(0, 4),
+                        itemCount: _moods.length,
+                        itemBuilder: (_, i) {
+                          final mood = _moods[i];
+                          final sel = _selected == mood.name;
+                          return GestureDetector(
+                            onTap: () => _select(mood.name),
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              curve: Curves.easeOut,
+                              transform: Matrix4.translationValues(
+                                0,
+                                sel ? -10.0 : 0,
+                                0,
                               ),
-                            ],
-                          ),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Image.asset(
-                                mood.imagePath,
-                                height: 45,
-                                width: 45,
-                                fit: BoxFit.contain,
-                                errorBuilder: (_, e, s) => const Icon(
-                                  Icons.sentiment_satisfied,
-                                  size: 40,
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(22),
+                                border: Border.all(
+                                  color: sel
+                                      ? const Color(0xFFCE5E42)
+                                      : Colors.grey.shade300,
+                                  width: sel ? 2.5 : 1.5,
                                 ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.08),
+                                    blurRadius: 10,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ],
                               ),
-                              const SizedBox(height: 10),
-                              Text(
-                                mood.name,
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w900,
-                                  color: Colors.black,
-                                ),
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Image.asset(
+                                    mood.imagePath,
+                                    height: 45,
+                                    width: 45,
+                                    fit: BoxFit.contain,
+                                    errorBuilder: (_, e, s) => const Icon(
+                                      Icons.sentiment_satisfied,
+                                      size: 40,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 10),
+                                  Text(
+                                    mood.name,
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w900,
+                                      color: Colors.black,
+                                    ),
+                                  ),
+                                ],
                               ),
-                            ],
-                          ),
-                        ),
-                      );
-                    },
+                            ),
+                          );
+                        },
+                      ),
+                    ),
                   ),
                 ),
               ),
