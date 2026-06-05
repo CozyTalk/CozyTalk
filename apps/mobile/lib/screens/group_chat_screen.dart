@@ -10,6 +10,8 @@ import '../features/chat/domain/entities/session_status.dart';
 import '../features/chat/presentation/providers/chat_provider.dart';
 import '../features/friends/domain/entities/app_user.dart';
 import '../features/friends/presentation/providers/friends_provider.dart';
+import '../models/friend.dart' show Friend;
+import '../shared/friend_message_popup.dart';
 import '../features/jukebox/presentation/providers/jukebox_provider.dart';
 import '../features/matchmaking/presentation/providers/matchmaking_provider.dart';
 import '../features/profile/presentation/providers/profile_provider.dart';
@@ -230,7 +232,6 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
         }
       });
     });
-    // TODO: show real incoming friend message popup from friendChatNotifierProvider
   }
 
   @override
@@ -629,8 +630,9 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
     ref.read(chatNotifierProvider.notifier).sendMessage('card::$cardPath');
   }
 
-  // TODO: implement _showLeaveForFriendChat — navigate to /friends/chat with real Friend
-  // from friendsNotifierProvider; triggered by incoming friend message popup
+  void _showLeaveForFriendChat(Friend friend) {
+    Navigator.pushNamed(context, AppRoutes.friendChat, arguments: friend);
+  }
 
   final kWarning =
       'Keep it friendly! Please be respectful and protect your personal info.\n'
@@ -883,6 +885,38 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen>
         _scrollToBottom();
       }
     });
+
+    ref.listen<Map<String, int>>(
+      friendsNotifierProvider.select((s) => s.unreadCountMap),
+      (prev, next) {
+        if (prev == null) return;
+        for (final entry in next.entries) {
+          if (entry.value <= (prev[entry.key] ?? 0)) continue;
+          final fs = ref.read(friendsNotifierProvider);
+          final df = fs.friends
+              .where((f) => f.chatRoomId == entry.key)
+              .firstOrNull;
+          if (df == null) continue;
+          final lastMsg = fs.lastMessageMap[entry.key] ?? '';
+          final uiFriend = Friend(
+            friendshipId: df.friendshipId,
+            friendUid: df.friendUid,
+            chatRoomId: df.chatRoomId,
+            name: df.friendDisplayName,
+            username: df.friendDisplayName,
+            lastMessage: lastMsg,
+            isOnline: fs.presenceMap[df.friendUid] ?? false,
+            unreadCount: entry.value,
+          );
+          showFriendMessagePopup(
+            context,
+            friendName: df.friendDisplayName,
+            message: lastMsg.isEmpty ? 'Sent you a message' : lastMsg,
+            onTap: () => _showLeaveForFriendChat(uiFriend),
+          );
+        }
+      },
+    );
 
     return PopScope(
       canPop: false,
