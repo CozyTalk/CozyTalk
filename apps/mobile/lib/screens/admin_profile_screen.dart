@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mobile/features/auth/presentation/providers/auth_provider.dart';
+import '../shared/web_content_box.dart';
 
 // Design tokens
 class _C {
@@ -49,16 +50,18 @@ class _AdminProfileScreenState extends ConsumerState<AdminProfileScreen> {
                 child: Column(
                   children: [
                     Expanded(
-                      child: SingleChildScrollView(
-                        padding: const EdgeInsets.fromLTRB(16, 18, 16, 0),
-                        child: Column(
-                          children: [
-                            _buildProfileCard(adminName),
-                            const SizedBox(height: 12),
-                            _buildEmailCard(adminEmail),
-                            const SizedBox(height: 12),
-                            _buildStatsRow(),
-                          ],
+                      child: WebContentBox(
+                        child: SingleChildScrollView(
+                          padding: const EdgeInsets.fromLTRB(16, 18, 16, 0),
+                          child: Column(
+                            children: [
+                              _buildProfileCard(adminName),
+                              const SizedBox(height: 12),
+                              _buildEmailCard(adminEmail),
+                              const SizedBox(height: 12),
+                              _buildStatsRow(),
+                            ],
+                          ),
                         ),
                       ),
                     ),

@@ -92,64 +92,67 @@ class _FriendProfileDialogState extends ConsumerState<_FriendProfileDialog> {
       ),
       backgroundColor: Colors.white,
       insetPadding: const EdgeInsets.symmetric(horizontal: 32),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
-        child: Stack(
-          clipBehavior: Clip.none,
-          children: [
-            Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // ── Avatar + Username / Note ──
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildAvatar(
-                      hasAvatar: hasAvatar,
-                      moodOverlay: moodOverlay,
-                      accessoryOverlay: accessoryOverlay,
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(child: _buildInfoColumn()),
-                  ],
-                ),
-                const SizedBox(height: 20),
-                // ── Interest ──
-                _buildInterestSection(liveInterest),
-                // ── Edit-mode buttons ──
-                if (_editing) ...[
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 540),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // ── Avatar + Username / Note ──
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildAvatar(
+                        hasAvatar: hasAvatar,
+                        moodOverlay: moodOverlay,
+                        accessoryOverlay: accessoryOverlay,
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(child: _buildInfoColumn()),
+                    ],
+                  ),
                   const SizedBox(height: 20),
-                  _buildEditButtons(),
+                  // ── Interest ──
+                  _buildInterestSection(liveInterest),
+                  // ── Edit-mode buttons ──
+                  if (_editing) ...[
+                    const SizedBox(height: 20),
+                    _buildEditButtons(),
+                  ],
                 ],
-              ],
-            ),
-            // ── X close ──
-            Positioned(
-              top: -10,
-              right: -10,
-              child: Semantics(
-                label: 'Close',
-                button: true,
-                child: GestureDetector(
-                  onTap: () => Navigator.pop(context),
-                  behavior: HitTestBehavior.opaque,
-                  child: Padding(
-                    padding: const EdgeInsets.all(4),
-                    child: SvgPicture.asset(
-                      'assets/images/icons/Close.svg',
-                      width: 30,
-                      height: 30,
-                      colorFilter: const ColorFilter.mode(
-                        Colors.black,
-                        BlendMode.srcIn,
+              ),
+              // ── X close ──
+              Positioned(
+                top: -10,
+                right: -10,
+                child: Semantics(
+                  label: 'Close',
+                  button: true,
+                  child: GestureDetector(
+                    onTap: () => Navigator.pop(context),
+                    behavior: HitTestBehavior.opaque,
+                    child: Padding(
+                      padding: const EdgeInsets.all(4),
+                      child: SvgPicture.asset(
+                        'assets/images/icons/Close.svg',
+                        width: 30,
+                        height: 30,
+                        colorFilter: const ColorFilter.mode(
+                          Colors.black,
+                          BlendMode.srcIn,
+                        ),
                       ),
                     ),
                   ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

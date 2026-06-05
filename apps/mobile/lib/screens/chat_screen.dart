@@ -248,6 +248,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
+      constraints: const BoxConstraints(maxWidth: 540),
       builder: (_) =>
           ReportSheet(sessionId: sessionId, reportedUserId: reportedUserId),
     );

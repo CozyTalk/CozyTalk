@@ -33,74 +33,77 @@ class _RemoveConfirmDialog extends StatelessWidget {
       ),
       backgroundColor: Colors.white,
       insetPadding: const EdgeInsets.symmetric(horizontal: 48),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              'Remove "$friendName"',
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontWeight: FontWeight.w900,
-                fontSize: 18,
-                color: Colors.black,
-              ),
-            ),
-            const SizedBox(height: 12),
-            RichText(
-              textAlign: TextAlign.center,
-              text: TextSpan(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 540),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Remove "$friendName"',
+                textAlign: TextAlign.center,
                 style: const TextStyle(
-                  fontSize: 14,
-                  color: Colors.black87,
-                  height: 1.5,
+                  fontWeight: FontWeight.w900,
+                  fontSize: 18,
+                  color: Colors.black,
                 ),
-                children: [
-                  const TextSpan(text: 'Are you sure you want to remove\n'),
-                  TextSpan(
-                    text: '"$friendName"',
-                    style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 12),
+              RichText(
+                textAlign: TextAlign.center,
+                text: TextSpan(
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: Colors.black87,
+                    height: 1.5,
                   ),
-                  const TextSpan(text: ' from your friends'),
+                  children: [
+                    const TextSpan(text: 'Are you sure you want to remove\n'),
+                    TextSpan(
+                      text: '"$friendName"',
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    const TextSpan(text: ' from your friends'),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  PillButton(
+                    label: 'Cancel',
+                    bgColor: Colors.grey.shade200,
+                    borderColor: const Color(0xFFB7B4B4),
+                    textColor: Colors.black87,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 28,
+                      vertical: 12,
+                    ),
+                    constraints: null,
+                    onTap: () => Navigator.pop(context),
+                  ),
+                  const SizedBox(width: 12),
+                  PillButton(
+                    label: 'Remove',
+                    bgColor: AppColors.redOrange,
+                    borderColor: const Color(0xFFA33615),
+                    textColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 28,
+                      vertical: 12,
+                    ),
+                    constraints: null,
+                    onTap: () {
+                      Navigator.pop(context);
+                      onConfirm();
+                    },
+                  ),
                 ],
               ),
-            ),
-            const SizedBox(height: 24),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                PillButton(
-                  label: 'Cancel',
-                  bgColor: Colors.grey.shade200,
-                  borderColor: const Color(0xFFB7B4B4),
-                  textColor: Colors.black87,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 28,
-                    vertical: 12,
-                  ),
-                  constraints: null,
-                  onTap: () => Navigator.pop(context),
-                ),
-                const SizedBox(width: 12),
-                PillButton(
-                  label: 'Remove',
-                  bgColor: AppColors.redOrange,
-                  borderColor: const Color(0xFFA33615),
-                  textColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 28,
-                    vertical: 12,
-                  ),
-                  constraints: null,
-                  onTap: () {
-                    Navigator.pop(context);
-                    onConfirm();
-                  },
-                ),
-              ],
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

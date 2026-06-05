@@ -8,6 +8,7 @@ import 'admin_banned_tab.dart';
 import 'admin_ban_detail_screen.dart';
 import 'admin_report_detail_screen.dart';
 import 'admin_profile_screen.dart';
+import '../shared/web_content_box.dart';
 
 // ─── Admin Console Screen ───
 class AdminConsoleScreen extends ConsumerStatefulWidget {
@@ -378,16 +379,18 @@ class _AdminConsoleScreenState extends ConsumerState<AdminConsoleScreen> {
               _buildTabs(pendingCount: pendingCount),
               _buildSearchBar(),
               Expanded(
-                child: _buildBody(
-                  reports: reports,
-                  users: users,
-                  banned: banned,
-                  usersState: usersState,
-                  onlineCount: onlineCount,
-                  reportCounts: reportCounts,
-                  reportsLoading:
-                      reportsState.status == feat.AdminReportsStatus.loading,
-                  reportsError: reportsState.error,
+                child: WebContentBox(
+                  child: _buildBody(
+                    reports: reports,
+                    users: users,
+                    banned: banned,
+                    usersState: usersState,
+                    onlineCount: onlineCount,
+                    reportCounts: reportCounts,
+                    reportsLoading:
+                        reportsState.status == feat.AdminReportsStatus.loading,
+                    reportsError: reportsState.error,
+                  ),
                 ),
               ),
             ],

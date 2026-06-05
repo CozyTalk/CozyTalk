@@ -6,6 +6,7 @@ import 'admin_shared.dart';
 import 'admin_users_tab.dart';
 import 'admin_ban_detail_screen.dart';
 import '../shared/layered_avatar.dart';
+import '../shared/web_content_box.dart';
 
 // Design tokens (same palette)
 class _C {
@@ -181,41 +182,43 @@ class _AdminReportDetailScreenState extends State<AdminReportDetailScreen> {
             children: [
               _buildHeader(context),
               Expanded(
-                child: ListView(
-                  padding: EdgeInsets.fromLTRB(
-                    16,
-                    14,
-                    16,
-                    widget.report.status == 'resolved' ? 24 : 100,
-                  ),
-                  children: [
-                    if (widget.report.outcome != null) ...[
-                      _buildResolutionBanner(widget.report.outcome!),
-                      const SizedBox(height: 12),
-                    ],
-                    _buildReportedUserCard(),
-                    const SizedBox(height: 12),
-                    _buildSection('Reasons reported', _buildReasons()),
-                    const SizedBox(height: 12),
-                    Builder(
-                      builder: (ctx) => _buildSection(
-                        'Additional context',
-                        _buildContext(),
-                        subWidget: _buildReporterLabel(ctx),
-                      ),
+                child: WebContentBox(
+                  child: ListView(
+                    padding: EdgeInsets.fromLTRB(
+                      16,
+                      14,
+                      16,
+                      widget.report.status == 'resolved' ? 24 : 100,
                     ),
-                    if (widget.onGetChatLog != null) ...[
+                    children: [
+                      if (widget.report.outcome != null) ...[
+                        _buildResolutionBanner(widget.report.outcome!),
+                        const SizedBox(height: 12),
+                      ],
+                      _buildReportedUserCard(),
                       const SizedBox(height: 12),
-                      _buildSection('Chat transcript', _buildChatLogButton()),
-                    ],
-                    if (widget.report.evidence > 0) ...[
+                      _buildSection('Reasons reported', _buildReasons()),
                       const SizedBox(height: 12),
-                      _buildSection(
-                        'Attached images (${widget.report.evidence})',
-                        _buildEvidence(),
+                      Builder(
+                        builder: (ctx) => _buildSection(
+                          'Additional context',
+                          _buildContext(),
+                          subWidget: _buildReporterLabel(ctx),
+                        ),
                       ),
+                      if (widget.onGetChatLog != null) ...[
+                        const SizedBox(height: 12),
+                        _buildSection('Chat transcript', _buildChatLogButton()),
+                      ],
+                      if (widget.report.evidence > 0) ...[
+                        const SizedBox(height: 12),
+                        _buildSection(
+                          'Attached images (${widget.report.evidence})',
+                          _buildEvidence(),
+                        ),
+                      ],
                     ],
-                  ],
+                  ),
                 ),
               ),
             ],
