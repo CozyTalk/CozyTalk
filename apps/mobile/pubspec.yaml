@@ -15,21 +15,21 @@ dependencies:
 
   # Firebase
   firebase_core: ^4.7.0
-  firebase_auth: ^6.4.0
-  cloud_firestore: ^6.4.0
-  firebase_database: ^12.3.0
-  cloud_functions: ^6.2.0
-  firebase_storage: ^13.4.0
-  firebase_crashlytics: ^5.2.2
-  firebase_remote_config: ^6.5.1
+  firebase_auth: ^6.5.2
+  cloud_firestore: ^6.5.0
+  firebase_database: ^12.4.2
+  cloud_functions: ^6.3.2
+  firebase_storage: ^13.4.2
+  firebase_crashlytics: ^5.2.3
+  firebase_remote_config: ^6.5.2
 
   # Local database — word filter feature (Android; web reads banned_words.json via rootBundle)
   # Gated by content_filtering_enabled Remote Config flag (default false)
-  sqflite: ^2.3.3
+  sqflite: ^2.4.3
 
   # Auth
   google_sign_in: ^7.2.0
-  flutter_secure_storage: ^10.3.0
+  flutter_secure_storage: ^10.3.1
 
   # Media
   image_picker: ^1.1.2
@@ -40,7 +40,7 @@ dependencies:
   riverpod_annotation: ^4.0.2
 
   # Navigation
-  go_router: ^17.2.3
+  go_router: ^17.3.0
   freezed_annotation: ^3.1.0
   json_annotation: ^4.11.0
   cryptography: ^2.7.0
