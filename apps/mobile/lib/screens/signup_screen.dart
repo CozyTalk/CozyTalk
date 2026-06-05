@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 import '../features/auth/presentation/providers/auth_provider.dart';
+import '../shared/web_content_box.dart';
 import '../theme/app_colors.dart';
 
 class SignupScreen extends ConsumerStatefulWidget {
@@ -52,7 +53,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     const SizedBox(height: 24),
-                    _buildCard(),
+                    WebContentBox(child: _buildCard()),
                     const SizedBox(height: 24),
                   ],
                 ),

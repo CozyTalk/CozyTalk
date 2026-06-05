@@ -286,127 +286,131 @@ class _AdminProfileScreenState extends ConsumerState<AdminProfileScreen> {
     return Container(
       color: Colors.black.withValues(alpha: .5),
       child: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(18),
-          child: Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(22),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: .2),
-                  blurRadius: 40,
-                  offset: const Offset(0, 22),
-                ),
-              ],
-            ),
-            padding: const EdgeInsets.all(22),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 52,
-                  height: 52,
-                  decoration: BoxDecoration(
-                    color: _C.redSoft,
-                    borderRadius: BorderRadius.circular(14),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 480),
+          child: Padding(
+            padding: const EdgeInsets.all(18),
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(22),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: .2),
+                    blurRadius: 40,
+                    offset: const Offset(0, 22),
                   ),
-                  child: Center(
-                    child: const Icon(
-                      Icons.logout_rounded,
-                      size: 26,
-                      color: Color(0xFF9F2A18),
+                ],
+              ),
+              padding: const EdgeInsets.all(22),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 52,
+                    height: 52,
+                    decoration: BoxDecoration(
+                      color: _C.redSoft,
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Center(
+                      child: const Icon(
+                        Icons.logout_rounded,
+                        size: 26,
+                        color: Color(0xFF9F2A18),
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(height: 10),
-                const Text(
-                  'Log out of CozyTalk?',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontWeight: FontWeight.w800,
-                    fontSize: 18,
-                    color: _C.ink,
+                  const SizedBox(height: 10),
+                  const Text(
+                    'Log out of CozyTalk?',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 18,
+                      color: _C.ink,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 6),
-                const Text(
-                  "You'll need to sign back in to keep moderating.",
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: _C.inkSoft,
-                    height: 1.5,
+                  const SizedBox(height: 6),
+                  const Text(
+                    "You'll need to sign back in to keep moderating.",
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: _C.inkSoft,
+                      height: 1.5,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Expanded(
-                      child: GestureDetector(
-                        onTap: () => setState(() => _showLogoutConfirm = false),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(vertical: 13),
-                          decoration: BoxDecoration(
-                            color: _C.neutral,
-                            borderRadius: BorderRadius.circular(999),
-                          ),
-                          child: const Center(
-                            child: Text(
-                              'Cancel',
-                              style: TextStyle(
-                                fontWeight: FontWeight.w800,
-                                fontSize: 14,
-                                color: _C.ink,
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () =>
+                              setState(() => _showLogoutConfirm = false),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(vertical: 13),
+                            decoration: BoxDecoration(
+                              color: _C.neutral,
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                            child: const Center(
+                              child: Text(
+                                'Cancel',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 14,
+                                  color: _C.ink,
+                                ),
                               ),
                             ),
                           ),
                         ),
                       ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: GestureDetector(
-                        onTap: () async {
-                          setState(() => _showLogoutConfirm = false);
-                          final navigator = Navigator.of(context);
-                          await ref
-                              .read(authNotifierProvider.notifier)
-                              .signOut();
-                          if (!mounted) return;
-                          navigator.popUntil((route) => route.isFirst);
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(vertical: 13),
-                          decoration: BoxDecoration(
-                            color: _C.red,
-                            borderRadius: BorderRadius.circular(999),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              const Icon(
-                                Icons.logout_rounded,
-                                size: 16,
-                                color: Colors.white,
-                              ),
-                              const SizedBox(width: 6),
-                              const Text(
-                                'Log out',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w800,
-                                  fontSize: 14,
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () async {
+                            setState(() => _showLogoutConfirm = false);
+                            final navigator = Navigator.of(context);
+                            await ref
+                                .read(authNotifierProvider.notifier)
+                                .signOut();
+                            if (!mounted) return;
+                            navigator.popUntil((route) => route.isFirst);
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(vertical: 13),
+                            decoration: BoxDecoration(
+                              color: _C.red,
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(
+                                  Icons.logout_rounded,
+                                  size: 16,
                                   color: Colors.white,
                                 ),
-                              ),
-                            ],
+                                const SizedBox(width: 6),
+                                const Text(
+                                  'Log out',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 14,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                  ],
-                ),
-              ],
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
         ),

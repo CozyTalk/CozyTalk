@@ -17,6 +17,7 @@ import '../features/matchmaking/domain/entities/matchmaking_status.dart';
 import '../features/matchmaking/presentation/providers/matchmaking_provider.dart';
 import '../features/profile/presentation/providers/profile_provider.dart';
 import '../dialogs/report_dialog.dart';
+import '../shared/web_content_box.dart';
 import '../theme/app_colors.dart';
 import '../dialogs/leave_room_dialog.dart';
 import '../dialogs/song_dialog.dart';
@@ -567,6 +568,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
     ref.listen<Map<String, int>>(
       friendsNotifierProvider.select((s) => s.unreadCountMap),
       (prev, next) {
+        if (!mounted) return;
         if (prev == null) return;
         for (final entry in next.entries) {
           if (entry.value <= (prev[entry.key] ?? 0)) continue;
@@ -651,86 +653,90 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
           children: [
             buildHeader(roomName, roomId),
             Expanded(
-              child: ClipRect(
-                child: Stack(
-                  children: [
-                    // Main content
-                    Column(
-                      children: [
-                        buildBanner(
-                          bgImage,
-                          avatarState,
-                          _myThoughts,
-                          myUsername,
-                          partnerName,
-                          partnerThought,
-                          _myInterest,
-                          partnerInterest,
-                          partnerAvatarState,
-                        ),
-                        Expanded(
-                          child: Stack(
-                            children: [
-                              buildMessageList(
-                                avatarState,
-                                chatState,
-                                partnerName,
-                                _myInterest,
-                                partnerInterest,
-                                partnerAvatarState,
-                              ),
-                              Positioned(
-                                top: 0,
-                                left: 0,
-                                right: 0,
-                                child: IgnorePointer(
-                                  child: Container(
-                                    height: 18,
-                                    decoration: BoxDecoration(
-                                      gradient: LinearGradient(
-                                        begin: Alignment.topCenter,
-                                        end: Alignment.bottomCenter,
-                                        colors: [
-                                          Colors.black.withValues(alpha: 0.13),
-                                          Colors.transparent,
-                                        ],
+              child: WebContentBox(
+                child: ClipRect(
+                  child: Stack(
+                    children: [
+                      // Main content
+                      Column(
+                        children: [
+                          buildBanner(
+                            bgImage,
+                            avatarState,
+                            _myThoughts,
+                            myUsername,
+                            partnerName,
+                            partnerThought,
+                            _myInterest,
+                            partnerInterest,
+                            partnerAvatarState,
+                          ),
+                          Expanded(
+                            child: Stack(
+                              children: [
+                                buildMessageList(
+                                  avatarState,
+                                  chatState,
+                                  partnerName,
+                                  _myInterest,
+                                  partnerInterest,
+                                  partnerAvatarState,
+                                ),
+                                Positioned(
+                                  top: 0,
+                                  left: 0,
+                                  right: 0,
+                                  child: IgnorePointer(
+                                    child: Container(
+                                      height: 18,
+                                      decoration: BoxDecoration(
+                                        gradient: LinearGradient(
+                                          begin: Alignment.topCenter,
+                                          end: Alignment.bottomCenter,
+                                          colors: [
+                                            Colors.black.withValues(
+                                              alpha: 0.13,
+                                            ),
+                                            Colors.transparent,
+                                          ],
+                                        ),
                                       ),
                                     ),
                                   ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
+                          ),
+                          blocked ? buildBlockedBar() : buildInputBar(),
+                        ],
+                      ),
+                      // Barrier
+                      if (_songPanelOpen)
+                        ExcludeSemantics(
+                          child: GestureDetector(
+                            onTap: _closeSongPanel,
+                            behavior: HitTestBehavior.opaque,
+                            child: Container(color: Colors.black26),
                           ),
                         ),
-                        blocked ? buildBlockedBar() : buildInputBar(),
-                      ],
-                    ),
-                    // Barrier
-                    if (_songPanelOpen)
-                      ExcludeSemantics(
-                        child: GestureDetector(
-                          onTap: _closeSongPanel,
-                          behavior: HitTestBehavior.opaque,
-                          child: Container(color: Colors.black26),
+                      // Song panel — always in tree so audio survives panel close.
+                      // isVisible arms the WebView on first open so it initialises
+                      // against a real surface (fixes Android off-screen init).
+                      Positioned(
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        child: SlideTransition(
+                          position: _songSlide,
+                          child: SongPanelBody(
+                            onClose: _closeSongPanel,
+                            roomId: roomId,
+                            isVisible: _songPanelOpen,
+                          ),
                         ),
                       ),
-                    // Song panel — always in tree so audio survives panel close.
-                    // isVisible arms the WebView on first open so it initialises
-                    // against a real surface (fixes Android off-screen init).
-                    Positioned(
-                      top: 0,
-                      left: 0,
-                      right: 0,
-                      child: SlideTransition(
-                        position: _songSlide,
-                        child: SongPanelBody(
-                          onClose: _closeSongPanel,
-                          roomId: roomId,
-                          isVisible: _songPanelOpen,
-                        ),
-                      ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),

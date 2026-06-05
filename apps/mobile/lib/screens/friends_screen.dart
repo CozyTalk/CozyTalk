@@ -12,6 +12,7 @@ import '../shared/connectivity_provider.dart';
 import '../shared/layered_avatar.dart';
 import '../shared/info_dialog.dart';
 import '../shared/offline_card.dart';
+import '../shared/web_content_box.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_routes.dart';
 import '../theme/room_themes.dart';
@@ -205,21 +206,23 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
             )
           else
             Expanded(
-              child: ListView.builder(
-                padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-                itemCount: filtered.length + 1,
-                itemBuilder: (context, index) {
-                  if (index == 0) return _buildSearchBar();
-                  final friend = filtered[index - 1];
-                  return Padding(
-                    padding: const EdgeInsets.only(top: 16),
-                    child: _buildFriendCard(
-                      friend,
-                      decorationMap[friend.friendshipId] ??
-                          (mood: null, hat: null),
-                    ),
-                  );
-                },
+              child: WebContentBox(
+                child: ListView.builder(
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+                  itemCount: filtered.length + 1,
+                  itemBuilder: (context, index) {
+                    if (index == 0) return _buildSearchBar();
+                    final friend = filtered[index - 1];
+                    return Padding(
+                      padding: const EdgeInsets.only(top: 16),
+                      child: _buildFriendCard(
+                        friend,
+                        decorationMap[friend.friendshipId] ??
+                            (mood: null, hat: null),
+                      ),
+                    );
+                  },
+                ),
               ),
             ),
         ],

@@ -6,6 +6,7 @@ import '../features/matchmaking/domain/entities/room.dart';
 import '../features/matchmaking/presentation/providers/matchmaking_provider.dart';
 import '../shared/connectivity_provider.dart';
 import '../shared/offline_card.dart';
+import '../shared/web_content_box.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_routes.dart';
 import '../theme/room_themes.dart';
@@ -121,6 +122,11 @@ class _FindingRoomScreenState extends ConsumerState<FindingRoomScreen>
   void _goToChat(String roomId) {
     if (!mounted) return;
 
+    // Guard first — setRoomLock synchronously mutates provider state, which
+    // re-fires this ref.listen callback. Setting _didMatch before any state
+    // mutation prevents a second call before the first one finishes.
+    setState(() => _didMatch = true);
+
     final args = _args ?? {};
     final roomType = args['roomType'] as String? ?? '1v1';
     final isGroup =
@@ -128,8 +134,6 @@ class _FindingRoomScreenState extends ConsumerState<FindingRoomScreen>
     if (roomType == 'create') {
       _notifier?.setRoomLock(isLocked: true);
     }
-
-    setState(() => _didMatch = true);
 
     final delay = (roomType == 'create' || roomType == 'joinById')
         ? Duration.zero
@@ -254,234 +258,236 @@ class _FindingRoomScreenState extends ConsumerState<FindingRoomScreen>
     return Scaffold(
       backgroundColor: AppColors.scaffoldBg,
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 28),
-          child: Column(
-            children: [
-              const Spacer(flex: 3),
-
-              const Text(
-                'Find a room',
-                style: TextStyle(
-                  fontFamily: 'Poppins',
-                  fontSize: 30,
-                  fontWeight: FontWeight.w900,
-                  color: Colors.black87,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                'off to the$_dots',
-                style: const TextStyle(
-                  fontFamily: 'Poppins',
-                  fontSize: 14,
-                  color: Colors.black38,
-                ),
-              ),
-
-              const SizedBox(height: 20),
-
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 10,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: Colors.grey.shade300, width: 1),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.06),
-                      blurRadius: 8,
-                      offset: const Offset(0, 3),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(badge.icon, size: 18, color: Colors.black87),
-                    const SizedBox(width: 8),
-                    Text(
-                      badge.label,
-                      style: const TextStyle(
-                        fontFamily: 'Poppins',
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.black87,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 12),
-              SizedBox(
-                height: 26,
-                child:
-                    (_didMatch &&
-                        _matchedTheme == null &&
-                        _args?['roomName'] == null)
-                    ? AnimatedBuilder(
-                        animation: _shimmerAnim,
-                        builder: (_, _) => Opacity(
-                          opacity: _shimmerAnim.value,
-                          child: Container(
-                            width: 130,
-                            height: 18,
-                            decoration: BoxDecoration(
-                              color: Colors.black26,
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                          ),
-                        ),
-                      )
-                    : Text(
-                        _matchedTheme?.title ??
-                            _args?['roomName'] as String? ??
-                            '',
-                        style: const TextStyle(
-                          fontFamily: 'Poppins',
-                          fontSize: 18,
-                          fontWeight: FontWeight.w800,
-                          color: Colors.black87,
-                        ),
-                      ),
-              ),
-
-              const SizedBox(height: 24),
-
-              if (isOffline) ...[
-                const OfflineCard(),
+        child: WebContentBox(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 28),
+            child: Column(
+              children: [
                 const Spacer(flex: 3),
-              ] else ...[
+
+                const Text(
+                  'Find a room',
+                  style: TextStyle(
+                    fontFamily: 'Poppins',
+                    fontSize: 30,
+                    fontWeight: FontWeight.w900,
+                    color: Colors.black87,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'off to the$_dots',
+                  style: const TextStyle(
+                    fontFamily: 'Poppins',
+                    fontSize: 14,
+                    color: Colors.black38,
+                  ),
+                ),
+
+                const SizedBox(height: 20),
+
                 Container(
-                  width: double.infinity,
-                  height: 230,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 10,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    borderRadius: BorderRadius.circular(24),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: Colors.grey.shade300, width: 1),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.07),
-                        blurRadius: 16,
-                        offset: const Offset(0, 6),
+                        color: Colors.black.withValues(alpha: 0.06),
+                        blurRadius: 8,
+                        offset: const Offset(0, 3),
                       ),
                     ],
                   ),
-                  clipBehavior: Clip.hardEdge,
-                  child: Image.asset(
-                    _frames[_frameIndex],
-                    fit: BoxFit.contain,
-                    errorBuilder: (_, _, _) => const Center(
-                      child: Icon(
-                        Icons.directions_car_rounded,
-                        size: 80,
-                        color: Colors.black12,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(badge.icon, size: 18, color: Colors.black87),
+                      const SizedBox(width: 8),
+                      Text(
+                        badge.label,
+                        style: const TextStyle(
+                          fontFamily: 'Poppins',
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.black87,
+                        ),
                       ),
-                    ),
+                    ],
                   ),
                 ),
-
-                const SizedBox(height: 28),
-
-                LayoutBuilder(
-                  builder: (context, constraints) {
-                    final pct = (_progress * 100).round();
-                    final fillW = constraints.maxWidth * _progress;
-                    return Stack(
-                      children: [
-                        Container(
-                          height: 44,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFE4E4E4),
-                            borderRadius: BorderRadius.circular(22),
-                          ),
-                        ),
-                        AnimatedContainer(
-                          duration: const Duration(milliseconds: 600),
-                          curve: Curves.easeOut,
-                          height: 44,
-                          width: fillW.clamp(44.0, constraints.maxWidth),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFB5D4A5),
-                            borderRadius: BorderRadius.circular(22),
-                          ),
-                        ),
-                        SizedBox(
-                          height: 44,
-                          width: constraints.maxWidth,
-                          child: Center(
-                            child: Text(
-                              '$pct%',
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.black54,
+                const SizedBox(height: 12),
+                SizedBox(
+                  height: 26,
+                  child:
+                      (_didMatch &&
+                          _matchedTheme == null &&
+                          _args?['roomName'] == null)
+                      ? AnimatedBuilder(
+                          animation: _shimmerAnim,
+                          builder: (_, _) => Opacity(
+                            opacity: _shimmerAnim.value,
+                            child: Container(
+                              width: 130,
+                              height: 18,
+                              decoration: BoxDecoration(
+                                color: Colors.black26,
+                                borderRadius: BorderRadius.circular(6),
                               ),
                             ),
                           ),
+                        )
+                      : Text(
+                          _matchedTheme?.title ??
+                              _args?['roomName'] as String? ??
+                              '',
+                          style: const TextStyle(
+                            fontFamily: 'Poppins',
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800,
+                            color: Colors.black87,
+                          ),
+                        ),
+                ),
+
+                const SizedBox(height: 24),
+
+                if (isOffline) ...[
+                  const OfflineCard(),
+                  const Spacer(flex: 3),
+                ] else ...[
+                  Container(
+                    width: double.infinity,
+                    height: 230,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(24),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.07),
+                          blurRadius: 16,
+                          offset: const Offset(0, 6),
                         ),
                       ],
-                    );
-                  },
-                ),
-
-                const SizedBox(height: 14),
-
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(
-                      Icons.timer_outlined,
-                      size: 16,
-                      color: Colors.black38,
                     ),
-                    const SizedBox(width: 6),
-                    Text(
-                      'Searching for $_timeLabel',
-                      style: const TextStyle(
-                        fontFamily: 'Poppins',
-                        fontSize: 13,
-                        color: Colors.black38,
+                    clipBehavior: Clip.hardEdge,
+                    child: Image.asset(
+                      _frames[_frameIndex],
+                      fit: BoxFit.contain,
+                      errorBuilder: (_, _, _) => const Center(
+                        child: Icon(
+                          Icons.directions_car_rounded,
+                          size: 80,
+                          color: Colors.black12,
+                        ),
                       ),
                     ),
-                  ],
-                ),
+                  ),
 
-                const Spacer(flex: 3),
+                  const SizedBox(height: 28),
+
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      final pct = (_progress * 100).round();
+                      final fillW = constraints.maxWidth * _progress;
+                      return Stack(
+                        children: [
+                          Container(
+                            height: 44,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFE4E4E4),
+                              borderRadius: BorderRadius.circular(22),
+                            ),
+                          ),
+                          AnimatedContainer(
+                            duration: const Duration(milliseconds: 600),
+                            curve: Curves.easeOut,
+                            height: 44,
+                            width: fillW.clamp(44.0, constraints.maxWidth),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFB5D4A5),
+                              borderRadius: BorderRadius.circular(22),
+                            ),
+                          ),
+                          SizedBox(
+                            height: 44,
+                            width: constraints.maxWidth,
+                            child: Center(
+                              child: Text(
+                                '$pct%',
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.black54,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+
+                  const SizedBox(height: 14),
+
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(
+                        Icons.timer_outlined,
+                        size: 16,
+                        color: Colors.black38,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        'Searching for $_timeLabel',
+                        style: const TextStyle(
+                          fontFamily: 'Poppins',
+                          fontSize: 13,
+                          color: Colors.black38,
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  const Spacer(flex: 3),
+                ],
+
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: OutlinedButton(
+                    onPressed: () {
+                      _notifier?.cancelSearch();
+                      Navigator.popUntil(
+                        context,
+                        ModalRoute.withName(AppRoutes.chooseRoomType),
+                      );
+                    },
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.black54,
+                      side: const BorderSide(color: Colors.black26),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(24),
+                      ),
+                    ),
+                    child: const Text(
+                      'Cancel',
+                      style: TextStyle(
+                        fontFamily: 'Poppins',
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 24),
               ],
-
-              SizedBox(
-                width: double.infinity,
-                height: 48,
-                child: OutlinedButton(
-                  onPressed: () {
-                    _notifier?.cancelSearch();
-                    Navigator.popUntil(
-                      context,
-                      ModalRoute.withName(AppRoutes.chooseRoomType),
-                    );
-                  },
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.black54,
-                    side: const BorderSide(color: Colors.black26),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(24),
-                    ),
-                  ),
-                  child: const Text(
-                    'Cancel',
-                    style: TextStyle(
-                      fontFamily: 'Poppins',
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 24),
-            ],
+            ),
           ),
         ),
       ),

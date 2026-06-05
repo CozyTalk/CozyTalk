@@ -7,6 +7,7 @@ import '../features/block/presentation/providers/block_provider.dart';
 import '../features/friends/presentation/providers/friends_provider.dart';
 import '../features/profile/presentation/providers/profile_provider.dart';
 import '../shared/avatar_overlay.dart';
+import '../shared/web_content_box.dart';
 import '../theme/app_colors.dart';
 import '../models/friend.dart';
 import '../shared/layered_avatar.dart';
@@ -53,47 +54,49 @@ class _BlockedScreenState extends ConsumerState<BlockedScreen> {
                       ),
                     ),
                   )
-                : ListView.separated(
-                    padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-                    itemCount: blocked.length,
-                    separatorBuilder: (_, _) => const SizedBox(height: 16),
-                    itemBuilder: (context, i) {
-                      final user = blocked[i];
-                      final note = _notes[user.uid];
-                      final displayName =
-                          liveNames[user.uid] ?? user.displayName ?? user.uid;
-                      final interest =
-                          ref
-                              .watch(profileByUidProvider(user.uid))
-                              .asData
-                              ?.value
-                              ?.interest ??
-                          '';
-                      final decoration = ref
-                          .watch(avatarDecorationByUidProvider(user.uid))
-                          .asData
-                          ?.value;
-                      final moodOverlay =
-                          AvatarOverlays.mood[decoration?.moodKey ?? ''];
-                      final accessoryOverlay =
-                          AvatarOverlays.accessory[decoration?.hatKey ?? ''];
-                      final friend = Friend(
-                        friendUid: user.uid,
-                        name: displayName,
-                        username: displayName,
-                        note: note,
-                        lastMessage: '',
-                        isOnline: false,
-                        interest: interest,
-                      );
-                      return _buildBlockedCard(
-                        context,
-                        friend,
-                        user.uid,
-                        moodOverlay,
-                        accessoryOverlay,
-                      );
-                    },
+                : WebContentBox(
+                    child: ListView.separated(
+                      padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+                      itemCount: blocked.length,
+                      separatorBuilder: (_, _) => const SizedBox(height: 16),
+                      itemBuilder: (context, i) {
+                        final user = blocked[i];
+                        final note = _notes[user.uid];
+                        final displayName =
+                            liveNames[user.uid] ?? user.displayName ?? user.uid;
+                        final interest =
+                            ref
+                                .watch(profileByUidProvider(user.uid))
+                                .asData
+                                ?.value
+                                ?.interest ??
+                            '';
+                        final decoration = ref
+                            .watch(avatarDecorationByUidProvider(user.uid))
+                            .asData
+                            ?.value;
+                        final moodOverlay =
+                            AvatarOverlays.mood[decoration?.moodKey ?? ''];
+                        final accessoryOverlay =
+                            AvatarOverlays.accessory[decoration?.hatKey ?? ''];
+                        final friend = Friend(
+                          friendUid: user.uid,
+                          name: displayName,
+                          username: displayName,
+                          note: note,
+                          lastMessage: '',
+                          isOnline: false,
+                          interest: interest,
+                        );
+                        return _buildBlockedCard(
+                          context,
+                          friend,
+                          user.uid,
+                          moodOverlay,
+                          accessoryOverlay,
+                        );
+                      },
+                    ),
                   ),
           ),
         ],
