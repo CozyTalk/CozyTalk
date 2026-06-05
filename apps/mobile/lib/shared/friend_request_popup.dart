@@ -96,97 +96,106 @@ class _FriendRequestBanner extends ConsumerWidget {
         position: slideAnim,
         child: Material(
           color: Colors.transparent,
-          // Slide-in overlays bypass sequential focus order; liveRegion triggers announcement on entry.
-          child: Semantics(
-            liveRegion: true,
-            child: GestureDetector(
-              onVerticalDragEnd: (d) {
-                if ((d.primaryVelocity ?? 0) < -100) onDismiss();
-              },
-              child: Container(
-                margin: EdgeInsets.fromLTRB(16, topPad + 8, 16, 0),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 14,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: Colors.grey.shade300, width: 1),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.15),
-                      blurRadius: 16,
-                      offset: const Offset(0, 4),
+          child: Align(
+            alignment: Alignment.topCenter,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 540),
+              // Slide-in overlays bypass sequential focus order; liveRegion triggers announcement on entry.
+              child: Semantics(
+                liveRegion: true,
+                child: GestureDetector(
+                  onVerticalDragEnd: (d) {
+                    if ((d.primaryVelocity ?? 0) < -100) onDismiss();
+                  },
+                  child: Container(
+                    margin: EdgeInsets.fromLTRB(16, topPad + 8, 16, 0),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 14,
                     ),
-                  ],
-                ),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    // Avatar
-                    Container(
-                      width: 42,
-                      height: 42,
-                      decoration: BoxDecoration(
-                        color: Colors.grey.shade100,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: Colors.grey.shade300,
-                          width: 1,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: Colors.grey.shade300, width: 1),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.15),
+                          blurRadius: 16,
+                          offset: const Offset(0, 4),
                         ),
-                      ),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(11),
-                        child: LayeredAvatar(
-                          boxSize: 42,
-                          moodOverlay: moodOverlay,
-                          accessoryOverlay: accessoryOverlay,
-                        ),
-                      ),
+                      ],
                     ),
-                    const SizedBox(width: 12),
-                    // Text
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            requesterName,
-                            style: const TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w800,
-                              color: Colors.black87,
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        // Avatar
+                        Container(
+                          width: 42,
+                          height: 42,
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade100,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: Colors.grey.shade300,
+                              width: 1,
                             ),
                           ),
-                          const SizedBox(height: 2),
-                          const Text(
-                            'wants to add you as a friend',
-                            style: TextStyle(fontSize: 12, color: Colors.grey),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(11),
+                            child: LayeredAvatar(
+                              boxSize: 42,
+                              moodOverlay: moodOverlay,
+                              accessoryOverlay: accessoryOverlay,
+                            ),
                           ),
-                        ],
-                      ),
+                        ),
+                        const SizedBox(width: 12),
+                        // Text
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                requesterName,
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w800,
+                                  color: Colors.black87,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              const Text(
+                                'wants to add you as a friend',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        // Accept
+                        _actionBtn(
+                          label: 'Accept',
+                          bg: const Color(0xFFDEF1C2),
+                          border: const Color(0xFFC7D2B5),
+                          fg: Colors.black,
+                          onTap: onAccept,
+                        ),
+                        const SizedBox(width: 8),
+                        // Decline
+                        _actionBtn(
+                          label: 'Decline',
+                          bg: const Color(0xFFCF5733),
+                          border: const Color(0xFFA33615),
+                          fg: Colors.white,
+                          onTap: onDecline,
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 8),
-                    // Accept
-                    _actionBtn(
-                      label: 'Accept',
-                      bg: const Color(0xFFDEF1C2),
-                      border: const Color(0xFFC7D2B5),
-                      fg: Colors.black,
-                      onTap: onAccept,
-                    ),
-                    const SizedBox(width: 8),
-                    // Decline
-                    _actionBtn(
-                      label: 'Decline',
-                      bg: const Color(0xFFCF5733),
-                      border: const Color(0xFFA33615),
-                      fg: Colors.white,
-                      onTap: onDecline,
-                    ),
-                  ],
+                  ),
                 ),
               ),
             ),

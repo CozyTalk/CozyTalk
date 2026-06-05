@@ -15,6 +15,7 @@ Future<String?> showGifPicker(BuildContext context) {
     context: context,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
+    constraints: const BoxConstraints(maxWidth: 540),
     builder: (_) => const _GifPickerSheet(),
   );
 }

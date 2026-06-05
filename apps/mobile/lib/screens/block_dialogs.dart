@@ -137,59 +137,62 @@ class _ConfirmDialog extends StatelessWidget {
       ),
       backgroundColor: Colors.white,
       insetPadding: const EdgeInsets.symmetric(horizontal: 48),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              title,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontWeight: FontWeight.w900,
-                fontSize: 18,
-                color: Colors.black,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 540),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                title,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w900,
+                  fontSize: 18,
+                  color: Colors.black,
+                ),
               ),
-            ),
-            const SizedBox(height: 12),
-            RichText(textAlign: TextAlign.center, text: body),
-            const SizedBox(height: 24),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                if (!hideCancelButton) ...[
+              const SizedBox(height: 12),
+              RichText(textAlign: TextAlign.center, text: body),
+              const SizedBox(height: 24),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  if (!hideCancelButton) ...[
+                    PillButton(
+                      label: 'Cancel',
+                      bgColor: Colors.grey.shade200,
+                      borderColor: const Color(0xFFB7B4B4),
+                      textColor: Colors.black87,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 28,
+                        vertical: 12,
+                      ),
+                      constraints: null,
+                      onTap: () => Navigator.pop(context),
+                    ),
+                    const SizedBox(width: 12),
+                  ],
                   PillButton(
-                    label: 'Cancel',
-                    bgColor: Colors.grey.shade200,
-                    borderColor: const Color(0xFFB7B4B4),
-                    textColor: Colors.black87,
+                    label: confirmLabel,
+                    bgColor: confirmBgColor,
+                    borderColor: confirmBorderColor,
+                    textColor: confirmTextColor,
                     padding: const EdgeInsets.symmetric(
                       horizontal: 28,
                       vertical: 12,
                     ),
                     constraints: null,
-                    onTap: () => Navigator.pop(context),
+                    onTap: () {
+                      Navigator.pop(context);
+                      onConfirm();
+                    },
                   ),
-                  const SizedBox(width: 12),
                 ],
-                PillButton(
-                  label: confirmLabel,
-                  bgColor: confirmBgColor,
-                  borderColor: confirmBorderColor,
-                  textColor: confirmTextColor,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 28,
-                    vertical: 12,
-                  ),
-                  constraints: null,
-                  onTap: () {
-                    Navigator.pop(context);
-                    onConfirm();
-                  },
-                ),
-              ],
-            ),
-          ],
+              ),
+            ],
+          ),
         ),
       ),
     );

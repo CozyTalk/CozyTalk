@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'admin_shared.dart';
 import '../shared/layered_avatar.dart';
+import '../shared/web_content_box.dart';
 
 class AdminBanDetailScreen extends StatefulWidget {
   final AdminBanDetailSubject subject;
@@ -26,31 +27,33 @@ class _AdminBanDetailScreenState extends State<AdminBanDetailScreen> {
         children: [
           _buildPageHeader(context, hasCurrent, s),
           Expanded(
-            child: ListView(
-              padding: const EdgeInsets.fromLTRB(16, 14, 16, 24),
-              children: [
-                _buildSubjectCard(context, s, hasCurrent),
-                if (hasCurrent) ...[
-                  const SizedBox(height: 12),
-                  _sectionLabel(context, 'Current ban'),
-                  _buildBanRecord(context, s.current!, current: true),
-                ],
-                if (s.previous.isNotEmpty) ...[
-                  const SizedBox(height: 12),
-                  _sectionLabel(
-                    context,
-                    'Previous bans (${s.previous.length})',
-                  ),
-                  ...s.previous.map(
-                    (p) => Padding(
-                      padding: const EdgeInsets.only(top: 8),
-                      child: _buildBanRecord(context, p, current: false),
+            child: WebContentBox(
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(16, 14, 16, 24),
+                children: [
+                  _buildSubjectCard(context, s, hasCurrent),
+                  if (hasCurrent) ...[
+                    const SizedBox(height: 12),
+                    _sectionLabel(context, 'Current ban'),
+                    _buildBanRecord(context, s.current!, current: true),
+                  ],
+                  if (s.previous.isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    _sectionLabel(
+                      context,
+                      'Previous bans (${s.previous.length})',
                     ),
-                  ),
+                    ...s.previous.map(
+                      (p) => Padding(
+                        padding: const EdgeInsets.only(top: 8),
+                        child: _buildBanRecord(context, p, current: false),
+                      ),
+                    ),
+                  ],
+                  if (!hasCurrent && s.previous.isEmpty)
+                    _buildEmptyState(context),
                 ],
-                if (!hasCurrent && s.previous.isEmpty)
-                  _buildEmptyState(context),
-              ],
+              ),
             ),
           ),
           if (hasCurrent && widget.onUnban != null)
