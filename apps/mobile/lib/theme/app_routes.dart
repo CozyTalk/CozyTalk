@@ -4,7 +4,6 @@ class AppRoutes {
   static const String home = '/';
   static const String notification = '/notification';
   static const String profile = '/profile';
-  static const String profileEdit = '/profile/edit';
   static const String blocked = '/blocked';
   static const String dressUp = '/dressup';
   static const String mood = '/mood';
