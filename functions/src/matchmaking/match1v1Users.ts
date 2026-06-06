@@ -59,6 +59,19 @@ export const match1v1Users = onDocumentCreated(
     );
     candidates = blockChecks.filter((r) => !r.blocked).map((r) => r.doc);
 
+    // Soft exclusion: prefer candidates not in each other's recent-skip lists.
+    // No extra Firestore reads — excludeUids is already in the pool docs.
+    const triggerExclude = (data.excludeUids as string[] | null) ?? [];
+    const nonExcluded = candidates.filter((c) => {
+      const cExclude = (c.data().excludeUids as string[] | null) ?? [];
+      return (
+        !triggerExclude.includes(c.id) && !cExclude.includes(triggerUid)
+      );
+    });
+    // Only apply the filter when at least one non-excluded candidate remains,
+    // so sparse pools don't strand users indefinitely.
+    if (nonExcluded.length > 0) candidates = nonExcluded;
+
     // Themed users match same-theme OR unthemed candidates (unthemed = flexible,
     // adopts the room's theme). Unthemed triggers match anyone. The only pairing
     // that is blocked is themed-A vs differently-themed-B.

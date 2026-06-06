@@ -20,7 +20,7 @@ class _FakeMatchmakingNotifier extends MatchmakingNotifier {
   void setBackgroundTheme(String? theme) => lastBackgroundTheme = theme;
 
   @override
-  Future<void> join1v1Pool() async {}
+  Future<void> join1v1Pool({List<String> excludeUids = const []}) async {}
 
   @override
   Future<void> joinGroupRoom() async {}

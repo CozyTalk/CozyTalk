@@ -30,11 +30,15 @@ class MatchmakingRepositoryImpl implements MatchmakingRepository {
   Future<void> leaveRoom(String roomId) => _datasource.leaveRoom(roomId);
 
   @override
-  Future<void> join1v1Pool({String? interestText, String? backgroundTheme}) =>
-      _datasource.join1v1Pool(
-        interestText: interestText,
-        backgroundTheme: backgroundTheme,
-      );
+  Future<void> join1v1Pool({
+    String? interestText,
+    String? backgroundTheme,
+    List<String> excludeUids = const [],
+  }) => _datasource.join1v1Pool(
+    interestText: interestText,
+    backgroundTheme: backgroundTheme,
+    excludeUids: excludeUids,
+  );
 
   @override
   Future<bool> cancel1v1Pool() => _datasource.cancel1v1Pool();

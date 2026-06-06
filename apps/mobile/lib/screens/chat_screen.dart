@@ -456,6 +456,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
       ),
     ).then((confirmed) async {
       if (confirmed != true || !mounted) return;
+      // Capture partner UIDs before leaveRoom() resets matchmaking state to idle.
+      final partnerUids = ref
+          .read(matchmakingNotifierProvider)
+          .partnerUids
+          .toList();
       setState(() => _isSkipping = true);
       ref.read(chatNotifierProvider.notifier).endSession();
       ref.read(chatNotifierProvider.notifier).forceDisconnect();
@@ -468,6 +473,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
           'roomName': roomName,
           'bgImage': bgImage,
           'roomType': '1v1',
+          'excludeUids': partnerUids,
         },
       );
     });
@@ -602,6 +608,24 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
     ref.listen(chatNotifierProvider.select((s) => s.status), (_, next) {
       if (next == SessionStatus.disconnected) {
         if (_isSkipping) return;
+        // If the backend has already re-queued us (partner skipped), go to the
+        // finding-room loading screen instead of home so the user sees they are
+        // actively searching for a new match.
+        if (ref.read(matchmakingNotifierProvider).status ==
+            MatchmakingStatus.waiting1v1) {
+          final args =
+              ModalRoute.of(context)?.settings.arguments
+                  as Map<String, dynamic>?;
+          Navigator.of(context).pushReplacementNamed(
+            AppRoutes.findingRoom,
+            arguments: {
+              'roomName': args?['roomName'] as String? ?? '',
+              'bgImage': args?['bgImage'] as String? ?? '',
+              'roomType': '1v1',
+            },
+          );
+          return;
+        }
         Navigator.of(context).popUntil((route) => route.isFirst);
       }
     });

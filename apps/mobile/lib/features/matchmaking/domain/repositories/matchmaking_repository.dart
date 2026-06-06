@@ -10,7 +10,11 @@ abstract class MatchmakingRepository {
     String roomId,
   );
   Future<void> leaveRoom(String roomId);
-  Future<void> join1v1Pool({String? interestText, String? backgroundTheme});
+  Future<void> join1v1Pool({
+    String? interestText,
+    String? backgroundTheme,
+    List<String> excludeUids = const [],
+  });
   Future<bool> cancel1v1Pool();
   Future<void> setRoomLock({required String roomId, required bool isLocked});
   Stream<Room?> watchRoom(String roomId);

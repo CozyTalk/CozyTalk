@@ -65,6 +65,7 @@ class _FakeMatchmakingDatasource implements MatchmakingDatasource {
   Future<void> join1v1Pool({
     String? interestText,
     String? backgroundTheme,
+    List<String> excludeUids = const [],
   }) async {
     join1v1PoolCalls++;
     lastJoin1v1PoolBackgroundTheme = backgroundTheme;

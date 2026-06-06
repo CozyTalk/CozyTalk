@@ -16,7 +16,11 @@ abstract class MatchmakingDatasource {
     String roomId,
   );
   Future<void> leaveRoom(String roomId);
-  Future<void> join1v1Pool({String? interestText, String? backgroundTheme});
+  Future<void> join1v1Pool({
+    String? interestText,
+    String? backgroundTheme,
+    List<String> excludeUids = const [],
+  });
   Future<bool> cancel1v1Pool();
   Future<void> setRoomLock({required String roomId, required bool isLocked});
   Stream<RoomModel?> watchRoom(String roomId);
@@ -98,11 +102,13 @@ class MatchmakingDatasourceImpl implements MatchmakingDatasource {
   Future<void> join1v1Pool({
     String? interestText,
     String? backgroundTheme,
+    List<String> excludeUids = const [],
   }) async {
     await _functions.httpsCallable('join1v1Pool').call({
       if (interestText != null && interestText.isNotEmpty)
         'interestText': interestText,
       if (backgroundTheme != null) 'backgroundTheme': backgroundTheme,
+      if (excludeUids.isNotEmpty) 'excludeUids': excludeUids,
     });
     // Write RTDB pool presence so onDisconnect auto-removes the waiting_pool entry
     // when the browser closes without pressing Cancel.

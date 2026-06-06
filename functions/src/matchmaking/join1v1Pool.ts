@@ -19,6 +19,7 @@ export const join1v1Pool = onCall(
     const data = request.data as {
       interestText?: unknown;
       backgroundTheme?: unknown;
+      excludeUids?: unknown;
     };
     const rawInterest =
       typeof data?.interestText === "string" ? data.interestText.trim() : null;
@@ -28,6 +29,11 @@ export const join1v1Pool = onCall(
         : null;
     const backgroundTheme =
       rawTheme && VALID_BACKGROUND_THEMES.has(rawTheme) ? rawTheme : null;
+    const excludeUids: string[] = Array.isArray(data?.excludeUids)
+      ? (data.excludeUids as unknown[])
+          .filter((u): u is string => typeof u === "string")
+          .slice(0, 10)
+      : [];
 
     // Embed interest text if provided; falls back to null on Vertex AI failure so
     // the join still succeeds and the user gets random matching instead of an error.
@@ -47,6 +53,7 @@ export const join1v1Pool = onCall(
       interestText: rawInterest,
       interestVector: interestVector,
       backgroundTheme: backgroundTheme,
+      excludeUids: excludeUids.length > 0 ? excludeUids : null,
     });
 
     logger.info("User joined 1v1 pool", {
