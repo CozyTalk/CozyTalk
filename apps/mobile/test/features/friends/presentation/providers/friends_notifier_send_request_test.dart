@@ -66,7 +66,7 @@ const _target = AppUser(uid: 'target-uid', displayName: 'Bob');
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
 void main() {
-  group('FriendsNotifier.sendFriendRequest — anonymous guard', () {
+  group('FriendsNotifier.sendFriendRequest — auth user support', () {
     late FakeFriendsRepository repo;
     late ProviderContainer container;
 
@@ -82,37 +82,33 @@ void main() {
       addTearDown(container.dispose);
     }
 
-    test('anonymous user: error is set, repository is never called', () async {
+    test('anonymous user: request is forwarded to repository', () async {
       setUp(_anonAuth());
       await container
           .read(friendsNotifierProvider.notifier)
           .sendFriendRequest(_target);
 
-      expect(container.read(friendsNotifierProvider).error, isNotNull);
-      expect(repo.sendFriendRequestCount, 0);
+      expect(repo.sendFriendRequestCount, 1);
+      expect(container.read(friendsNotifierProvider).error, isNull);
     });
 
-    test('anonymous user: error message contains "sign in"', () async {
+    test('anonymous user: no error is set', () async {
       setUp(_anonAuth());
       await container
           .read(friendsNotifierProvider.notifier)
           .sendFriendRequest(_target);
 
-      final error = container.read(friendsNotifierProvider).error!;
-      expect(error.toLowerCase(), contains('sign in'));
+      expect(container.read(friendsNotifierProvider).error, isNull);
     });
 
-    test(
-      'anonymous user: isLoading stays false (no half-started mutation)',
-      () async {
-        setUp(_anonAuth());
-        await container
-            .read(friendsNotifierProvider.notifier)
-            .sendFriendRequest(_target);
+    test('anonymous user: isLoading is false after completion', () async {
+      setUp(_anonAuth());
+      await container
+          .read(friendsNotifierProvider.notifier)
+          .sendFriendRequest(_target);
 
-        expect(container.read(friendsNotifierProvider).isLoading, isFalse);
-      },
-    );
+      expect(container.read(friendsNotifierProvider).isLoading, isFalse);
+    });
 
     test('email user: request is forwarded to repository', () async {
       setUp(_emailAuth());

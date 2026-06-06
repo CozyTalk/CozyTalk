@@ -463,12 +463,6 @@ class FriendsNotifier extends Notifier<FriendsState> {
       return;
     }
     final authUser = ref.read(authNotifierProvider).user;
-    if (authUser?.email == null) {
-      state = state.copyWith(
-        error: 'Please sign in with an account to add friends.',
-      );
-      return;
-    }
     final profileName = ref
         .read(profileNotifierProvider)
         .profile
