@@ -114,7 +114,11 @@ class _FindingRoomScreenState extends ConsumerState<FindingRoomScreen>
         final roomId = _args?['roomId'] as String? ?? '';
         _notifier?.joinRoomById(roomId);
       default:
-        _notifier?.join1v1Pool();
+        final excludeUids = (_args?['excludeUids'] as List<dynamic>?)
+                ?.whereType<String>()
+                .toList() ??
+            const <String>[];
+        _notifier?.join1v1Pool(excludeUids: excludeUids);
     }
   }
 

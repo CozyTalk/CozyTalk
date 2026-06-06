@@ -139,6 +139,7 @@ export const leaveRoom = onCall(
         interestText: null,
         interestVector: requeueInterestVector,
         backgroundTheme: requeueBackgroundTheme,
+        excludeUids: [uid],
       });
       // Remove the remaining user's RTDB membership so cleanupMember fires,
       // decrements memberCount to 0, and lets expireRooms clean up the old room.

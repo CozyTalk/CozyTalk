@@ -34,7 +34,8 @@ class _FakeMatchmakingNotifier extends MatchmakingNotifier {
   Future<void> joinGroupRoom() async => joinGroupRoomCalls++;
 
   @override
-  Future<void> join1v1Pool() async => join1v1PoolCalls++;
+  Future<void> join1v1Pool({List<String> excludeUids = const []}) async =>
+      join1v1PoolCalls++;
 
   @override
   Future<void> createCustomRoom() async => createCustomRoomCalls++;
