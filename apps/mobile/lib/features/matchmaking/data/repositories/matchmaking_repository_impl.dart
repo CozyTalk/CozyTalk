@@ -34,12 +34,11 @@ class MatchmakingRepositoryImpl implements MatchmakingRepository {
     String? interestText,
     String? backgroundTheme,
     List<String> excludeUids = const [],
-  }) =>
-      _datasource.join1v1Pool(
-        interestText: interestText,
-        backgroundTheme: backgroundTheme,
-        excludeUids: excludeUids,
-      );
+  }) => _datasource.join1v1Pool(
+    interestText: interestText,
+    backgroundTheme: backgroundTheme,
+    excludeUids: excludeUids,
+  );
 
   @override
   Future<bool> cancel1v1Pool() => _datasource.cancel1v1Pool();

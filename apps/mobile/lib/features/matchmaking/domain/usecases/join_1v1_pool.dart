@@ -8,10 +8,9 @@ class Join1v1Pool {
     String? interestText,
     String? backgroundTheme,
     List<String> excludeUids = const [],
-  }) =>
-      _repository.join1v1Pool(
-        interestText: interestText,
-        backgroundTheme: backgroundTheme,
-        excludeUids: excludeUids,
-      );
+  }) => _repository.join1v1Pool(
+    interestText: interestText,
+    backgroundTheme: backgroundTheme,
+    excludeUids: excludeUids,
+  );
 }

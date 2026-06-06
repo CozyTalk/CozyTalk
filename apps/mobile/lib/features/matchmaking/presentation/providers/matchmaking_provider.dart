@@ -316,11 +316,13 @@ class MatchmakingNotifier extends Notifier<MatchmakingState> {
       final interest = state.interestText.isNotEmpty
           ? state.interestText
           : null;
-      await ref.read(_join1v1PoolProvider).call(
-        interestText: interest,
-        backgroundTheme: state.backgroundTheme,
-        excludeUids: excludeUids,
-      );
+      await ref
+          .read(_join1v1PoolProvider)
+          .call(
+            interestText: interest,
+            backgroundTheme: state.backgroundTheme,
+            excludeUids: excludeUids,
+          );
       final uid = ref.read(_matchmakingDatasourceProvider).getCurrentUserId();
       if (uid == null) throw Exception('Not signed in.');
       // Pass _lastKnownRoomId so the stream skips any stale 'matched' entry

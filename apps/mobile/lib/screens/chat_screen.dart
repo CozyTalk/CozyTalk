@@ -454,8 +454,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
     ).then((confirmed) async {
       if (confirmed != true || !mounted) return;
       // Capture partner UIDs before leaveRoom() resets matchmaking state to idle.
-      final partnerUids =
-          ref.read(matchmakingNotifierProvider).partnerUids.toList();
+      final partnerUids = ref
+          .read(matchmakingNotifierProvider)
+          .partnerUids
+          .toList();
       setState(() => _isSkipping = true);
       ref.read(chatNotifierProvider.notifier).endSession();
       ref.read(chatNotifierProvider.notifier).forceDisconnect();
@@ -574,8 +576,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
         // actively searching for a new match.
         if (ref.read(matchmakingNotifierProvider).status ==
             MatchmakingStatus.waiting1v1) {
-          final args = ModalRoute.of(context)?.settings.arguments
-              as Map<String, dynamic>?;
+          final args =
+              ModalRoute.of(context)?.settings.arguments
+                  as Map<String, dynamic>?;
           Navigator.of(context).pushReplacementNamed(
             AppRoutes.findingRoom,
             arguments: {
